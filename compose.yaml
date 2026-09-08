@@ -1,0 +1,22 @@
+name: ps-cooperadora
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cooperadora}
+      POSTGRES_USER: ${POSTGRES_USER:-cooperadora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cooperadora_local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cooperadora} -d ${POSTGRES_DB:-cooperadora}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
