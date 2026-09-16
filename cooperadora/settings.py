@@ -3,7 +3,12 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Read only this project's optional file; process variables retain precedence.
+load_dotenv(BASE_DIR / ".env", override=False)
 
 
 def env_bool(name: str, default: bool = False) -> bool:

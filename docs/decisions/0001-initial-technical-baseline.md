@@ -48,3 +48,16 @@ todavía requieren validación, por lo que la base debe ser pequeña y reversibl
 
 - [Descargas oficiales de Django](https://www.djangoproject.com/download/)
 - [Versiones de Python compatibles con Django](https://docs.djangoproject.com/en/5.2/faq/install/#what-python-version-can-i-use-with-django)
+
+## Revisión posterior a la planificación
+
+La revisión humana confirmó la división vertical: Franco, gastos/pagos; Matías,
+facturación/cobros. La base técnica se conserva para preparar
+[I1](../specs/001-demostracion-gastos.md), sin implementar todavía sus reglas.
+Las versiones institucionales siguen pendientes de consulta al tutor.
+
+La preparación autorizada corrige la carga de `.env` con `python-dotenv`,
+manteniendo prioridad de las variables del proceso, y limita el puerto local de
+PostgreSQL a `127.0.0.1`. La nueva dependencia resuelve la diferencia detectada
+entre las instrucciones de instalación y el comportamiento de Django. Este
+apartado actualiza el estado de la decisión sin reemplazar su contexto inicial.
