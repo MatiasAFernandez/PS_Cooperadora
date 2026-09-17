@@ -29,3 +29,6 @@ Thumbs.db
 *.dump
 *.sql
 *.sqlite3
+
+# Fuentes locales de relevamiento y contexto
+docs/fuentes/
