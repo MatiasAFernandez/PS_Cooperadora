@@ -13,6 +13,17 @@ Se propone un único tablero con estos estados:
 El tablero no reemplaza las Issues ni el Plan de Trabajo académico. Su función es
 mostrar el estado técnico actual sin duplicar descripciones extensas.
 
+La herramienta propuesta es GitHub Issues con un GitHub Project compartido. Este
+documento no crea el tablero ni publica tareas. El [paquete de I1](planning/i1-tareas.md)
+prepara sus primeras tarjetas y las dependencias. Tras publicarlas, el estado se
+actualiza en el tablero; las specs mantienen comportamiento y aceptación.
+
+Una tarea documental puede estar Ready para revisión sin habilitar implementación.
+Una tarea de demo puede usar hipótesis explícitas sin convertirlas en reglas reales.
+La terminación técnica y la validación con Cooperadora se siguen por separado:
+T06 demuestra técnicamente el recorrido y T07 registra la devolución operativa
+en el paquete local. Si hay un bloqueo, registrar causa y responsable.
+
 ## Coordinación semanal
 
 Una conversación breve entre Franco y Matías debería resolver:

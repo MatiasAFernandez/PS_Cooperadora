@@ -1,9 +1,11 @@
 # SPEC-002 — Identidad recibida y permisos internos
 
-- Estado: borrador; pendiente de validación técnica y funcional.
+- Estado: tramo de demo concretado para revisión técnica; alcance institucional
+  y de ambos circuitos todavía en borrador. No implementado. Actualizado: 17/09/2026.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue: pendiente de crear.
-- Rol de Franco: acordar el contrato y comprobar el acceso en gastos/pagos.
+- Rol de Franco: revisar el contrato preparado con asistencia de IA y comprobar
+  su consumo y acceso por solicitud en gastos/pagos.
 - Validadores: Franco y Matías para el contrato; Cooperadora para capacidades y
   pertenencia; tutor técnico/Sistemas para la identidad institucional.
 - Plan: RF-001, RNF-001, M-E03 e I02.
@@ -16,6 +18,23 @@ permite probar los recorridos con cuentas sintéticas y adaptar más adelante el
 origen institucional de la identidad.
 
 ## Alcance
+
+### Tramo que se prepara para I1
+
+Usar el [contrato de identidad de demo](../contracts/identidad-demo-i1.md) como
+definición única de entradas, salidas, capacidades y errores. La IA propone la
+interfaz; los alumnos revisan sus garantías y la implementación. No se exige que
+inventen por separado qué debe entregar cada módulo.
+
+Matías implementará después de la revisión un adaptador local con cuentas
+sintéticas, sesión Django y capacidades explícitas. Franco consumirá el actor y
+aplicará propiedad/estado en gastos. Staff o superusuario no implican autoridad
+de negocio. La selección del origen de identidad será explícita y la demo quedará
+desactivada por defecto; no se construye un login definitivo del producto.
+
+Las tareas [T01, T02 y T06](../planning/i1-tareas.md) cubren revisión, componente
+común e integración con gastos. Comprobar ID-R04 en facturación y acceso a archivos
+queda para sus incrementos. Completar el tramo de I1 no completa toda SPEC-002.
 
 ### Incluye
 
@@ -46,8 +65,10 @@ origen institucional de la identidad.
 - La identidad autenticada y las capacidades de negocio son conceptos separados.
 - La pertenencia a una unidad no concede por sí sola acceso a todos sus trámites;
   cualquier excepción requiere validación funcional.
-- Los nombres de capacidades, el alcance por persona o unidad y las delegaciones
-  quedan pendientes de acuerdo.
+- Los códigos y asignaciones sintéticas de I1 están propuestos en el contrato.
+  El alcance real por persona/unidad, las delegaciones y la matriz completa de
+  permisos siguen pendientes de validación; la visibilidad propia/global es sólo
+  una parte de la autorización del producto.
 
 ## Criterios de aceptación
 
@@ -57,6 +78,11 @@ origen institucional de la identidad.
    acción reservada a Cooperadora, entonces no cambia el trámite.
 3. Dada una sesión ausente o inválida, cuando solicita un recurso protegido,
    entonces la operación se deniega.
+
+Para I1, completar también CT-01–CT-08 del contrato en las tareas asignadas.
+La cuenta de consulta global sin permiso de decisión verifica que ambas capacidades
+son independientes. Estos casos comprueban el adaptador sintético y su consumo,
+no la autenticación institucional ni toda la futura configuración de permisos.
 
 ## Datos, permisos y sensibilidad
 
@@ -72,7 +98,8 @@ origen institucional de la identidad.
 - Módulo propietario: componente común de identidad y autorización, a cargo de Matías.
 - Entradas y salidas: identidad recibida → sujeto y capacidades utilizables por
   vistas y servicios internos; operación no autorizada → denegación.
-- Dependencias: contrato de identidad aceptado por ambos módulos.
+- Dependencias: revisión técnica de la interfaz v1 en T01; para I1 se conecta
+  sólo gastos. No esperar la implementación de facturación para probar el adaptador.
 - Integración requerida: SPEC-001 de Franco y SPEC-004 a SPEC-009; prueba cruzada I02.
 
 ## Estrategia de prueba y evidencia
@@ -92,6 +119,10 @@ origen institucional de la identidad.
 
 ## Decisiones
 
+El cuerpo mantiene la definición vigente. Esta tabla conserva sólo decisiones que
+explican el diseño; no reemplaza el historial de Git ni acredita aprobación externa.
+
 | Fecha | Fuente | Decisión | Consecuencia |
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido y SPEC-001 | Separar identidad recibida y permisos de negocio; usar identidades sintéticas en la demo. | Se especifica un contrato interno antes de conectar ambos módulos; la identidad institucional sigue pendiente. |
+| 2026-09-17 | Preparación técnica autorizada por Franco, con asistencia de IA | Proponer el contrato v1 y limitar el primer consumidor a gastos. | Revisión conjunta sobre una solución concreta; permisos operativos e integración institucional siguen pendientes. |
