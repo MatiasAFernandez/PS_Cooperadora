@@ -34,11 +34,15 @@ su nombre original y ya identifica a Franco como propietario en su encabezado.
 Cuando una capacidad es compartida, el documento indica el aporte del compañero
 y quién revisa el contrato; la autoría no convierte una regla pendiente en aprobada.
 
-Las especificaciones nuevas de Matías se mantienen en **borrador** hasta validar
-recorridos, datos y reglas con Cooperadora y los contratos compartidos con Franco.
-Después se completan las decisiones, se dividen en Issues verificables y se cambia
-el estado a `listo` antes de implementar. Las pruebas técnicas y la devolución de
-Cooperadora se registran como evidencias distintas.
+Las specs pueden tener un tramo de demo preparado y otros tramos todavía en
+borrador. SPEC-002 concreta ahora su interfaz con SPEC-001 sin afirmar que estén
+validados el proveedor institucional ni los permisos reales. Las demás specs de
+Matías conservan sus pendientes. Las hipótesis explícitas permiten preparar una
+demo acotada; no sustituyen la confirmación de las reglas de operación real.
+
+La IA puede proponer arquitectura, contratos y tareas. Los alumnos revisan y
+comprenden la solución; Cooperadora confirma reglas operativas y Sistemas describe
+la interfaz institucional. Pruebas técnicas y devolución funcional son evidencias distintas.
 
 | Spec | Capacidad | Referencia principal del plan |
 |---|---|---|
@@ -60,8 +64,24 @@ SPEC-006, SPEC-003 y SPEC-007; y abordar los resúmenes SHOULD de SPEC-008 despu
 de los recorridos principales. SPEC-009 acompaña cada interfaz compartida, no es
 una integración única al final.
 
-Al pasar cada spec de `borrador` a `listo`, crear Issues pequeñas que indiquen los
-requisitos y criterios que cubren, responsable, dependencia, prueba y evidencia.
+Se pueden registrar Issues en Backlog mientras una spec está en borrador. Para
+pasar una tarea a Ready se requieren alcance suficiente, responsable, aceptación
+verificable y dependencias resueltas para empezar; una hipótesis de demo debe quedar
+identificada como tal. No se necesita cerrar todas las specs del sistema a la vez.
+Las Issues indican requisitos y criterios cubiertos, dependencia, prueba y evidencia.
 Un cambio de contrato entre módulos requiere una tarea de integración y revisión
 cruzada explícita. Las tareas académicas de relevamiento, manuales, pruebas y
 entrega se trazan al plan, aunque no todas necesitan una spec funcional propia.
+
+El [paquete inicial de I1](../planning/i1-tareas.md) contiene siete tareas locales
+para revisión, implementación futura, demostración y devolución operativa. Todavía
+no son Issues publicadas. El [contrato v1](../contracts/identidad-demo-i1.md) evita
+duplicar la interfaz en cada spec. Escribir o integrar documentación no inicia por
+sí mismo la implementación de todo el backlog.
+
+## Mantener una spec vigente
+
+Actualizar o reemplazar el texto que dejó de aplicar; Git conserva el historial.
+No acumular notas de conversaciones que obliguen a deducir qué decisión sigue vigente.
+Mantener preguntas abiertas identificadas y conservar sólo la justificación útil
+de decisiones relevantes. Un cambio de contrato exige revisar consumidores y pruebas.

@@ -1,9 +1,11 @@
 # SPEC-001 — I1: presentación y decisión de un gasto
 
-- Estado: preparado para revisión; no implementado ni validado por Cooperadora.
+- Estado: paquete técnico de demo preparado para revisión; no implementado ni
+  validado por Cooperadora. Actualizado: 17/09/2026.
 - Issue: pendiente; no se creó una Issue remota.
 - Propietario: Franco, módulo vertical de gastos/pagos.
-- Aporte de Matías: revisar contrato de acceso e integridad e integración común.
+- Aporte de Matías: componente de identidad sintética y capacidades; revisión
+  de integridad e integración común.
 - Validadores: equipo para el contrato técnico; operadora de Cooperadora para
   validar las hipótesis de demo, con Marcos para las reglas institucionales.
 - Resultado: una demostración local con datos ficticios, sin uso productivo.
@@ -23,14 +25,18 @@ validar el recorrido antes de registrar pagos o recibir documentos reales.
 - **Revisión humana en la tarea de planificación:** ambos alumnos aceptaron la
   división vertical; I1 será una demostración de gastos. Según Franco, Cooperadora
   prevé uso desde 2027 y desea terminación durante 2026.
-- **Síntesis del planificador:** `SINTESIS_PLANIFICACION_ASTRA.md`, sección
-  «Propiedad de componentes comunes», en el proyecto académico. Reparto inicial
-  pendiente de revisión breve con Matías.
+- **Responsabilidades actuales:** Franco desarrolla gastos; Matías aporta
+  identidad/permisos conforme a SPEC-002. La IA concreta la interfaz y las tareas;
+  ambos revisan su comprensión, coherencia y posterior implementación.
 - **H1–H4, hipótesis de demostración:** decisiones acotadas descritas abajo. No
   constituyen políticas aprobadas de Cooperadora.
-- **Actualización de Franco del 16/09/2026:** Matías confirmó la división vertical.
-  H1–H4 siguen como hipótesis para validar luego con la operadora. Se autoriza
-  revisar, probar y versionar esta preparación local, sin implementar I1.
+- **Límite vigente:** se prepara el diseño técnico y las tareas. No se autoriza
+  iniciar I1 ni se considera validada la matriz real de permisos. El ejemplo de
+  solicitudes propias/globales no es el conjunto completo de permisos del producto.
+
+Este cuerpo describe el estado vigente; Git conserva versiones anteriores. El
+[contrato de demo](../contracts/identidad-demo-i1.md) define una única interfaz
+compartida y el [paquete de tareas](../planning/i1-tareas.md) organiza su ejecución futura.
 
 ## Alcance
 
@@ -59,6 +65,9 @@ generar deuda de factura definitiva.
 Importes, nombres, unidades y cuentas serán sintéticos. La pertenencia a una unidad
 no concede por sí sola acceso a solicitudes ajenas. Tener acceso al administrador
 de Django no concede automáticamente la capacidad de decidir gastos.
+Como restricción provisional de la demo, el contrato deniega decidir solicitudes
+propias aunque se combinen grupos. No se presume que ésa sea la política real:
+el tratamiento de operadores que también solicitan queda pendiente de validación.
 
 ## Reglas de estado
 
@@ -101,6 +110,9 @@ para preparar las cuentas de prueba; no sustituye el recorrido de la demo.
 
 Los contratos son internos a una aplicación Django. No requieren una API HTTP,
 servicios separados ni anticipar la estructura completa de facturación.
+Gastos consume `resolve_actor` y capacidades; conserva el filtrado por solicitante,
+las transiciones y la escritura atómica con versión descritos en el contrato.
+Consultar todas las solicitudes no concede automáticamente permiso para decidir.
 
 ## Estrategia de prueba y evidencia
 
@@ -120,14 +132,15 @@ servicios separados ni anticipar la estructura completa de facturación.
 
 | Pendiente | Cuándo se necesita | Efecto |
 |---|---|---|
-| Revisar H1–H4 como hipótesis explícitas de demo y contrato de acceso | Antes de implementar las funciones afectadas | Revisión breve Franco/Matías; no confundir hipótesis con aprobación de Marcos. |
+| Revisar el paquete técnico y el contrato propuesto por la IA | T01, antes de implementar dependencias | Los alumnos revisan la solución concreta; no necesitan diseñar por separado sus interfaces ni dar H1–H4 por validadas. |
 | La operadora valida H1–H4; las reglas institucionales se confirman con Marcos | En la validación del incremento; antes de consolidar reglas reales | Puede cambiar la demo. Si contradice el recorrido principal, revisar la especificación antes de continuar. |
 | Reglas de pagos, cierre, deuda documental y bloqueo | Antes de sus incrementos | No bloquean I1. |
 | Fechas, evidencia y condiciones académicas | Consulta paralela a cátedra | No se inventan fechas ni acreditaciones; no bloquea preparar esta especificación. |
 | Alojamiento e identidad institucional | Antes de despliegue o integración institucional | No bloquean la demostración local ni la publicación del repositorio. |
 
-I1 estará listo para implementación cuando el equipo revise las hipótesis y el
-contrato mínimo de acceso. Estará implementado cuando pase sus verificaciones y
-revisión cruzada. Sólo estará validado funcionalmente cuando se registre la
-devolución de Cooperadora. Esta preparación no declara ninguno de esos hitos
-cumplido ni autoriza comenzar la implementación de I1.
+La preparación será revisable mediante T01. Las tareas podrán pasar a Ready para
+implementación cuando se resuelvan sus dependencias técnicas y se autorice ejecutar
+ese trabajo, manteniendo H1–H4 como hipótesis explícitas. No requieren aprobación
+institucional de esas hipótesis para construir la demo. I1 estará implementado
+cuando complete pruebas y revisión cruzada; la devolución de Cooperadora se registra
+aparte en T07. Ninguno de esos hitos se declara cumplido por escribir esta spec.
