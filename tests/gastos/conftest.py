@@ -1,23 +1,50 @@
-"""Fixtures y dobles de prueba para el módulo de gastos."""
+"""Fixtures y configuración de pruebas para el módulo de gastos."""
 
+import secrets
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.middleware.csrf import _get_new_csrf_string, _mask_cipher_secret
 from django.test import Client
+
+from identidad.services import GROUP_CAPABILITIES, Actor
 
 User = get_user_model()
 
 
-@dataclass(frozen=True)
-class Actor:
-    """Estructura de doble de prueba del actor según el contrato de demo v1."""
+@pytest.fixture(autouse=True)
+def enable_demo_identity(settings: Any) -> None:
+    """Habilita la identidad de demo por defecto para las pruebas de gastos."""
+    settings.DEMO_IDENTITY_ENABLED = True
 
-    subject_id: Any
-    capabilities: frozenset[str]
+
+@pytest.fixture
+def demo_groups(db: Any) -> dict[str, Group]:
+    """Crea los grupos de identidad de demo."""
+    return {
+        name: Group.objects.get_or_create(name=name)[0]
+        for name in ("demo_solicitante", "demo_operadora", "demo_lectura")
+    }
+
+
+@pytest.fixture
+def demo_accounts(db: Any, demo_groups: dict[str, Group]) -> tuple[dict[str, Any], str]:
+    """Crea las cuentas sintéticas A, B, O y L asociadas a sus respectivos grupos."""
+    password = secrets.token_urlsafe(24)
+    accounts = {}
+    for username, group_name in {
+        "demo_a": "demo_solicitante",
+        "demo_b": "demo_solicitante",
+        "demo_o": "demo_operadora",
+        "demo_l": "demo_lectura",
+    }.items():
+        user = User.objects.create_user(username=username, password=password)
+        user.groups.add(demo_groups[group_name])
+        accounts[username] = user
+    return accounts, password
 
 
 def issue_csrf_credentials(client: Client) -> str:
@@ -28,53 +55,36 @@ def issue_csrf_credentials(client: Client) -> str:
 
 
 @pytest.fixture
-def create_actor() -> Callable[[str, list[str]], tuple[Any, Actor]]:
-    """Crea un usuario y un actor asociado con las capacidades indicadas."""
+def create_actor(demo_groups: dict[str, Group]) -> Callable[[str, list[str]], tuple[Any, Actor]]:
+    """Crea un usuario real asignado al grupo correspondiente según las capacidades requeridas."""
 
     def _factory(username: str, capabilities: list[str]) -> tuple[Any, Actor]:
         user, _ = User.objects.get_or_create(username=username)
-        actor = Actor(
-            subject_id=user.pk,
-            capabilities=frozenset(capabilities),
+        caps_set = frozenset(capabilities)
+        if "gastos.presentar" in caps_set:
+            user.groups.add(demo_groups["demo_solicitante"])
+        elif "gastos.decidir" in caps_set:
+            user.groups.add(demo_groups["demo_operadora"])
+        elif "gastos.consultar_todas" in caps_set:
+            user.groups.add(demo_groups["demo_lectura"])
+        else:
+            user.groups.clear()
+
+        group_names = user.groups.values_list("name", flat=True)
+        real_caps = frozenset().union(
+            *(GROUP_CAPABILITIES[name] for name in group_names if name in GROUP_CAPABILITIES)
         )
+        actor = Actor(subject_id=user.pk, capabilities=real_caps)
         return user, actor
 
     return _factory
 
 
 @pytest.fixture
-def mock_identity_registry(monkeypatch: pytest.MonkeyPatch) -> dict[int, Actor]:
-    """Registro en memoria y mocks para resolver actor y capacidades en pruebas desacopladas."""
-    registry: dict[int, Actor] = {}
+def auth_client() -> Callable[[Any, Any], Client]:
+    """Crea un test client estándar con el usuario autenticado vía sesión real."""
 
-    def mock_resolve_actor(request: Any) -> Any:
-        req_user = getattr(request, "user", None)
-        if req_user and req_user.is_authenticated:
-            return registry.get(req_user.pk)
-        return None
-
-    def mock_has_capability(actor: Any, code: str) -> bool:
-        if actor is None or not hasattr(actor, "capabilities"):
-            return False
-        return code in getattr(actor, "capabilities", ())
-
-    monkeypatch.setattr("gastos.auth.resolve_actor", mock_resolve_actor)
-    monkeypatch.setattr("gastos.views.resolve_actor", mock_resolve_actor)
-    monkeypatch.setattr("gastos.auth.has_capability", mock_has_capability)
-    monkeypatch.setattr("gastos.views.has_capability", mock_has_capability)
-    monkeypatch.setattr("gastos.queries.has_capability", mock_has_capability)
-
-    return registry
-
-
-@pytest.fixture
-def auth_client(
-    mock_identity_registry: dict[int, Actor],
-) -> Callable[[Any, Actor], Client]:
-    """Crea un test client estándar con el usuario logueado y el actor inyectado en el registro."""
-
-    def _factory(user: Any, actor: Actor) -> Client:
-        mock_identity_registry[user.pk] = actor
+    def _factory(user: Any, actor: Any = None) -> Client:
         client = Client()
         client.force_login(user)
         return client
@@ -83,13 +93,10 @@ def auth_client(
 
 
 @pytest.fixture
-def csrf_auth_client(
-    mock_identity_registry: dict[int, Actor],
-) -> Callable[[Any, Actor], tuple[Client, str]]:
+def csrf_auth_client() -> Callable[[Any, Any], tuple[Client, str]]:
     """Crea un test client con enforce_csrf_checks=True, sesión iniciada y token CSRF válido."""
 
-    def _factory(user: Any, actor: Actor) -> tuple[Client, str]:
-        mock_identity_registry[user.pk] = actor
+    def _factory(user: Any, actor: Any = None) -> tuple[Client, str]:
         client = Client(enforce_csrf_checks=True)
         client.force_login(user)
         token = issue_csrf_credentials(client)

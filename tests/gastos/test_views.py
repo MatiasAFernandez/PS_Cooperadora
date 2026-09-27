@@ -327,7 +327,7 @@ def test_ausencia_actor_alta_lista_detalle(settings: Any) -> None:
     settings.DEMO_IDENTITY_ENABLED = True
     resp_l = anon_client.get(url_lista)
     assert resp_l.status_code == 302
-    assert "/login/" in resp_l.url or "login" in resp_l.url
+    assert reverse("identidad:login") in resp_l.url
 
     resp_p = anon_client.get(url_presentar)
     assert resp_p.status_code == 302

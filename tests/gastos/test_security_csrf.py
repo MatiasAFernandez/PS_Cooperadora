@@ -26,11 +26,10 @@ def test_ct08_get_presentar_no_crea_solicitudes(create_actor: Any, auth_client: 
 
 @pytest.mark.django_db
 def test_ct08_post_sin_csrf_rechazado_con_comprobacion_real(
-    create_actor: Any, mock_identity_registry: dict[int, Any]
+    create_actor: Any,
 ) -> None:
     """CT-08: POST autorizado sin CSRF válido es rechazado con 403 y no crea registros."""
     user, actor = create_actor("solicitante_csrf", ["gastos.presentar", "gastos.consultar_propias"])
-    mock_identity_registry[user.pk] = actor
 
     # Test client con verificación estricta de CSRF activada
     client = Client(enforce_csrf_checks=True)
