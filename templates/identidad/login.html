@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Acceso de demostración</title>
+</head>
+<body>
+  <h1>Acceso de demostración</h1>
+  <p>Usá una cuenta sintética preparada localmente.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Ingresar</button>
+  </form>
+</body>
+</html>

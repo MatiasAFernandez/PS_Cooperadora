@@ -66,6 +66,10 @@ Los valores de ejemplo y la configuración con depuración son para desarrollo
 local con datos sintéticos. Las condiciones de despliegue y uso real se
 definirán con Sistemas antes de habilitarlos.
 
+La identidad sintética de I1 se habilita sólo de forma explícita. La
+[guía local de identidad de demo](docs/guides/identidad-demo-local.md) explica
+cómo preparar las cuentas A, B, O y L sin publicar contraseñas.
+
 Para validar el proyecto:
 
 ```powershell
