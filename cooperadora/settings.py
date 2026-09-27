@@ -25,6 +25,7 @@ def env_list(name: str, default: str = "") -> list[str]:
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-development-key")
 DEBUG = env_bool("DJANGO_DEBUG", default=True)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+DEMO_IDENTITY_ENABLED = env_bool("DEMO_IDENTITY_ENABLED", default=False)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "gastos",
 ]
 
 MIDDLEWARE = [

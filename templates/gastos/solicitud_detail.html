@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'gastos:lista' %}">&larr; Volver al listado</a></p>
+
+<h3>Detalle de la Solicitud #{{ solicitud.pk }}</h3>
+
+<table style="max-width: 600px;">
+    <tr>
+        <th>Identificador</th>
+        <td>#{{ solicitud.pk }}</td>
+    </tr>
+    <tr>
+        <th>Concepto</th>
+        <td>{{ solicitud.concepto }}</td>
+    </tr>
+    <tr>
+        <th>Monto Estimado</th>
+        <td>${{ solicitud.monto_estimado }} ARS</td>
+    </tr>
+    <tr>
+        <th>Unidad Requirente</th>
+        <td>{{ solicitud.unidad_requirente }}</td>
+    </tr>
+    <tr>
+        <th>Estado</th>
+        <td><span class="badge">{{ solicitud.get_estado_display }}</span></td>
+    </tr>
+    <tr>
+        <th>Fecha de Presentación</th>
+        <td>{{ solicitud.fecha_creacion|date:"d/m/Y H:i:s" }}</td>
+    </tr>
+    <tr>
+        <th>Versión</th>
+        <td>{{ solicitud.version }}</td>
+    </tr>
+</table>
+{% endblock %}

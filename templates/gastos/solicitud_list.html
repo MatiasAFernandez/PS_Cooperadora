@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Listado de Solicitudes — PS Cooperadora{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h3>Solicitudes de Gasto</h3>
+    <a href="{% url 'gastos:presentar' %}" class="btn">Nueva Solicitud</a>
+</div>
+
+{% if solicitudes %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Concepto</th>
+                <th>Monto Estimado (ARS)</th>
+                <th>Unidad</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in solicitudes %}
+                <tr>
+                    <td>#{{ s.pk }}</td>
+                    <td>{{ s.concepto }}</td>
+                    <td>${{ s.monto_estimado }}</td>
+                    <td>{{ s.unidad_requirente }}</td>
+                    <td><span class="badge">{{ s.get_estado_display }}</span></td>
+                    <td>{{ s.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td><a href="{% url 'gastos:detalle' pk=s.pk %}">Ver Detalle</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No se encontraron solicitudes de gasto visibles para su cuenta.</p>
+{% endif %}
+{% endblock %}
