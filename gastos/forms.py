@@ -54,3 +54,29 @@ class SolicitudGastoForm(forms.ModelForm):
         if monto is None or monto <= Decimal("0"):
             raise ValidationError("El importe estimado debe ser un monto positivo en ARS.")
         return monto
+
+
+class DecisionGastoForm(forms.Form):
+    """Formulario para la captura de una decisión humana sobre una solicitud de gasto."""
+
+    action = forms.ChoiceField(
+        choices=[
+            ("aceptar", "Aceptar"),
+            ("postergar", "Postergar"),
+            ("rechazar", "Rechazar"),
+        ],
+        widget=forms.HiddenInput(),
+    )
+    version = forms.CharField(widget=forms.HiddenInput())
+    motivo = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": (
+                    "Ingrese el motivo de la decisión (obligatorio para postergar o rechazar)..."
+                ),
+            }
+        ),
+    )

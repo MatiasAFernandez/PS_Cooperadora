@@ -37,4 +37,61 @@
         <td>{{ solicitud.version }}</td>
     </tr>
 </table>
+
+{% if can_decide %}
+<div style="margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 4px; max-width: 600px;">
+    <h4>Registrar Decisión Humana</h4>
+    {% if error_decision %}
+        <div style="color: red; margin-bottom: 15px;">
+            <strong>Error:</strong> {{ error_decision }}
+        </div>
+    {% endif %}
+    <form method="post" action="{% url 'gastos:decidir' pk=solicitud.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="version" value="{{ solicitud.version }}">
+        <div style="margin-bottom: 15px;">
+            <label for="id_motivo"><strong>Motivo / Justificación:</strong></label><br>
+            <textarea name="motivo" id="id_motivo" rows="3" style="width: 100%; box-sizing: border-box;" placeholder="Obligatorio para postergar o rechazar; opcional para aceptar.">{{ decision_form.motivo.value|default:'' }}</textarea>
+            {% if decision_form.motivo.errors %}
+                <div style="color: red; font-size: 0.9em;">
+                    {{ decision_form.motivo.errors.0 }}
+                </div>
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" name="action" value="aceptar" style="background-color: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Aceptar</button>
+            <button type="submit" name="action" value="postergar" style="background-color: #ffc107; color: black; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Postergar</button>
+            <button type="submit" name="action" value="rechazar" style="background-color: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Rechazar</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<h4 style="margin-top: 30px;">Historial de Decisiones</h4>
+{% if decisiones %}
+    <table style="max-width: 700px; width: 100%; margin-top: 10px;">
+        <thead>
+            <tr>
+                <th>Fecha y Hora</th>
+                <th>Autor</th>
+                <th>Estado Anterior</th>
+                <th>Estado Resultante</th>
+                <th>Motivo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in decisiones %}
+                <tr>
+                    <td>{{ d.fecha|date:"d/m/Y H:i:s" }}</td>
+                    <td>{{ d.autor.username }}</td>
+                    <td>{{ d.get_estado_anterior_display }}</td>
+                    <td><span class="badge">{{ d.get_estado_resultante_display }}</span></td>
+                    <td>{{ d.motivo|default:"—" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Sin decisiones registradas para esta solicitud.</p>
+{% endif %}
 {% endblock %}
