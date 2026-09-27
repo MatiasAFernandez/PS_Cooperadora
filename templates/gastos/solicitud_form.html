@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Presentar Solicitud de Gasto — PS Cooperadora{% endblock %}
+
+{% block content %}
+<h3>Presentar Solicitud de Gasto</h3>
+
+<form method="post" action="{% url 'gastos:presentar' %}">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="alert-error">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <div class="form-group">
+        <label for="{{ form.concepto.id_for_label }}">Concepto / Justificación:</label>
+        {{ form.concepto }}
+        {% if form.concepto.errors %}
+            <div class="alert-error">{{ form.concepto.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.monto_estimado.id_for_label }}">Importe Estimado (ARS):</label>
+        {{ form.monto_estimado }}
+        {% if form.monto_estimado.errors %}
+            <div class="alert-error">{{ form.monto_estimado.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.unidad_requirente.id_for_label }}">Unidad Requirente (sintética de prueba):</label>
+        {{ form.unidad_requirente }}
+        {% if form.unidad_requirente.errors %}
+            <div class="alert-error">{{ form.unidad_requirente.errors }}</div>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="btn">Enviar Solicitud</button>
+</form>
+{% endblock %}
