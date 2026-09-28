@@ -38,6 +38,11 @@
     </tr>
 </table>
 
+<div id="respaldo-documental" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
+    <h4 style="margin-top: 0; margin-bottom: 8px;">Documentación de Respaldo</h4>
+    <p style="margin: 0;">{{ mensaje_respaldo|default:solicitud.mensaje_respaldo }}</p>
+</div>
+
 {% if can_decide %}
 <div style="margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 4px; max-width: 600px;">
     <h4>Registrar Decisión Humana</h4>

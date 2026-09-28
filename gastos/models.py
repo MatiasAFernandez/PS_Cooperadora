@@ -15,6 +15,17 @@ class EstadoSolicitud(models.TextChoices):
     RECHAZADA = "rechazada", "Rechazada"
 
 
+MENSAJE_RESPALDO_ACEPTADA = "Respaldo del gasto (presupuesto o factura): por aportar"
+MENSAJE_RESPALDO_OTRAS = "No se solicita documentación en esta etapa de la demostración"
+
+
+def get_mensaje_respaldo(estado: str) -> str:
+    """Retorna el mensaje de documentación de respaldo para un estado según la hipótesis H4."""
+    if estado == EstadoSolicitud.ACEPTADA:
+        return MENSAJE_RESPALDO_ACEPTADA
+    return MENSAJE_RESPALDO_OTRAS
+
+
 class SolicitudGasto(models.Model):
     """Solicitud de gasto presentada ante Cooperadora."""
 
@@ -70,6 +81,11 @@ class SolicitudGasto(models.Model):
 
     def __str__(self) -> str:
         return f"Solicitud #{self.pk} - {self.concepto} (${self.monto_estimado})"
+
+    @property
+    def mensaje_respaldo(self) -> str:
+        """Mensaje de documentación de respaldo según hipótesis de demo H4."""
+        return get_mensaje_respaldo(self.estado)
 
 
 class DecisionGasto(models.Model):

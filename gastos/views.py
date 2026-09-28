@@ -138,6 +138,7 @@ class SolicitudGastoDetailView(View):
                 "decisiones": decisiones,
                 "can_decide": can_decide,
                 "decision_form": decision_form,
+                "mensaje_respaldo": solicitud.mensaje_respaldo,
             },
         )
 
@@ -189,6 +190,7 @@ class SolicitudGastoDecidirView(View):
                         "can_decide": can_decide,
                         "decision_form": form,
                         "error_decision": str(exc),
+                        "mensaje_respaldo": solicitud.mensaje_respaldo,
                     },
                     status=400,
                 )
