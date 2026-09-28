@@ -160,3 +160,41 @@ def test_decision_gasto_proteccion_eliminacion_autor() -> None:
 
     with pytest.raises(ProtectedError):
         autor.delete()
+
+
+@pytest.mark.django_db
+def test_solicitud_mensaje_respaldo_h4() -> None:
+    """I1-R05 / H4: Comprobar mensaje de respaldo según estado en SolicitudGasto."""
+    solicitante = User.objects.create_user(username="sol_respaldo_model")
+    solicitud = SolicitudGasto.objects.create(
+        concepto="Gasto de prueba respaldo",
+        monto_estimado=Decimal("2000.00"),
+        unidad_requirente="Electrónica",
+        solicitante=solicitante,
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    assert (
+        solicitud.mensaje_respaldo
+        == "No se solicita documentación en esta etapa de la demostración"
+    )
+
+    solicitud.estado = EstadoSolicitud.ACEPTADA
+    solicitud.save()
+    assert (
+        solicitud.mensaje_respaldo
+        == "Respaldo del gasto (presupuesto o factura): por aportar"
+    )
+
+    solicitud.estado = EstadoSolicitud.POSTERGADA
+    solicitud.save()
+    assert (
+        solicitud.mensaje_respaldo
+        == "No se solicita documentación en esta etapa de la demostración"
+    )
+
+    solicitud.estado = EstadoSolicitud.RECHAZADA
+    solicitud.save()
+    assert (
+        solicitud.mensaje_respaldo
+        == "No se solicita documentación en esta etapa de la demostración"
+    )
