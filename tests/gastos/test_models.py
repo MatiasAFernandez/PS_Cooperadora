@@ -1,4 +1,4 @@
-"""Pruebas del modelo SolicitudGasto (I1-R01, restricciones y tipos)."""
+"""Pruebas del modelo SolicitudGasto y DecisionGasto (I1-R01, I1-R03, restricciones y tipos)."""
 
 from decimal import Decimal
 
@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 
-from gastos.models import EstadoSolicitud, SolicitudGasto
+from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
 
 User = get_user_model()
 
@@ -84,3 +84,79 @@ def test_proteccion_eliminacion_usuario_solicitante() -> None:
 
     with pytest.raises(ProtectedError):
         solicitante.delete()
+
+
+@pytest.mark.django_db
+def test_creacion_decision_gasto_valida() -> None:
+    """I1-R03: Alta válida de evento DecisionGasto asociado a SolicitudGasto."""
+    solicitante = User.objects.create_user(username="solicitante_dec")
+    autor = User.objects.create_user(username="operador_dec")
+    solicitud = SolicitudGasto.objects.create(
+        concepto="Insumos varios",
+        monto_estimado=Decimal("8000.00"),
+        unidad_requirente="Taller",
+        solicitante=solicitante,
+    )
+
+    decision = DecisionGasto.objects.create(
+        solicitud=solicitud,
+        autor=autor,
+        motivo="Gasto necesario para actividades prácticas",
+        estado_anterior=EstadoSolicitud.PRESENTADA,
+        estado_resultante=EstadoSolicitud.ACEPTADA,
+    )
+
+    assert decision.pk is not None
+    assert decision.fecha is not None
+    assert decision.motivo == "Gasto necesario para actividades prácticas"
+    assert decision.estado_anterior == EstadoSolicitud.PRESENTADA
+    assert decision.estado_resultante == EstadoSolicitud.ACEPTADA
+    expected_str = f"Decisión #{decision.pk} sobre Solicitud #{solicitud.pk}: aceptada"
+    assert str(decision) == expected_str
+
+
+@pytest.mark.django_db
+def test_decision_gasto_eliminacion_cascada_solicitud() -> None:
+    """Al eliminar una solicitud, sus eventos de decisión se eliminan en cascada (CASCADE)."""
+    solicitante = User.objects.create_user(username="sol_cascada")
+    autor = User.objects.create_user(username="op_cascada")
+    solicitud = SolicitudGasto.objects.create(
+        concepto="Gasto a eliminar",
+        monto_estimado=Decimal("3000.00"),
+        unidad_requirente="Informática",
+        solicitante=solicitante,
+    )
+    DecisionGasto.objects.create(
+        solicitud=solicitud,
+        autor=autor,
+        motivo="Aceptado",
+        estado_anterior=EstadoSolicitud.PRESENTADA,
+        estado_resultante=EstadoSolicitud.ACEPTADA,
+    )
+
+    assert DecisionGasto.objects.filter(solicitud=solicitud).count() == 1
+    solicitud.delete()
+    assert DecisionGasto.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_decision_gasto_proteccion_eliminacion_autor() -> None:
+    """El autor de una decisión no puede eliminarse si tiene decisiones asociadas (PROTECT)."""
+    solicitante = User.objects.create_user(username="sol_autor_prot")
+    autor = User.objects.create_user(username="op_autor_prot")
+    solicitud = SolicitudGasto.objects.create(
+        concepto="Gasto autor protegido",
+        monto_estimado=Decimal("4500.00"),
+        unidad_requirente="Laboratorio",
+        solicitante=solicitante,
+    )
+    DecisionGasto.objects.create(
+        solicitud=solicitud,
+        autor=autor,
+        motivo="Aceptado",
+        estado_anterior=EstadoSolicitud.PRESENTADA,
+        estado_resultante=EstadoSolicitud.ACEPTADA,
+    )
+
+    with pytest.raises(ProtectedError):
+        autor.delete()

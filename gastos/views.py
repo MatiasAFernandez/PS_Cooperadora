@@ -5,15 +5,24 @@ from typing import Any
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 
 from gastos.auth import has_capability, resolve_actor
-from gastos.forms import SolicitudGastoForm
+from gastos.forms import DecisionGastoForm, SolicitudGastoForm
 from gastos.models import EstadoSolicitud
 from gastos.queries import visible_expenses
+from gastos.services import (
+    ConcurrencyConflictError,
+    ExpenseNotFoundError,
+    ExpensePermissionDeniedError,
+    InvalidDecisionInputError,
+    InvalidTransitionError,
+    can_decide_expense,
+    decide_expense,
+)
 
 
 def _enforce_actor(request: HttpRequest) -> Any:
@@ -109,9 +118,83 @@ class SolicitudGastoDetailView(View):
 
         # Aislamiento estricto: 404 para inexistentes o ajenas no visibles
         solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
+        decisiones = solicitud.decisiones.select_related("autor").all()
+        can_decide = any(
+            can_decide_expense(actor, solicitud, act)
+            for act in ("aceptar", "postergar", "rechazar")
+        )
+        decision_form = (
+            DecisionGastoForm(initial={"version": solicitud.version})
+            if can_decide
+            else None
+        )
 
         return render(
             request,
             "gastos/solicitud_detail.html",
-            {"solicitud": solicitud, "actor": actor},
+            {
+                "solicitud": solicitud,
+                "actor": actor,
+                "decisiones": decisiones,
+                "can_decide": can_decide,
+                "decision_form": decision_form,
+            },
         )
+
+
+class SolicitudGastoDecidirView(View):
+    """Registro de la decisión humana autorizada sobre una solicitud."""
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+
+        action = request.POST.get("action")
+        version = request.POST.get("version")
+        motivo = request.POST.get("motivo")
+
+        try:
+            decide_expense(
+                actor=actor,
+                solicitud_id=pk,
+                action=action,
+                expected_version=version,
+                motivo=motivo,
+            )
+            return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
+        except ExpenseNotFoundError as exc:
+            raise Http404("Solicitud inexistente o no visible.") from exc
+        except ExpensePermissionDeniedError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except InvalidDecisionInputError as exc:
+            solicitud = visible_expenses(actor).filter(pk=pk).first()
+            if solicitud:
+                decisiones = solicitud.decisiones.select_related("autor").all()
+                can_decide = any(
+                    can_decide_expense(actor, solicitud, act)
+                    for act in ("aceptar", "postergar", "rechazar")
+                )
+                form = DecisionGastoForm(data=request.POST)
+                form.is_valid()
+                form.add_error("motivo" if "motivo" in str(exc).lower() else None, str(exc))
+                return render(
+                    request,
+                    "gastos/solicitud_detail.html",
+                    {
+                        "solicitud": solicitud,
+                        "actor": actor,
+                        "decisiones": decisiones,
+                        "can_decide": can_decide,
+                        "decision_form": form,
+                        "error_decision": str(exc),
+                    },
+                    status=400,
+                )
+            return HttpResponse(str(exc), status=400)
+        except (ConcurrencyConflictError, InvalidTransitionError) as exc:
+            return HttpResponse(str(exc), status=409)
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        return HttpResponseNotAllowed(["POST"])
