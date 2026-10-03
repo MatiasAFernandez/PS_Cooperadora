@@ -5,7 +5,19 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 
-from gastos.models import SolicitudGasto
+from gastos.models import EstadoSolicitud, SolicitudGasto
+
+
+class FiltroEstadoGastoForm(forms.Form):
+    """Consulta de sólo lectura sobre los estados existentes de la demo."""
+
+    estado = forms.ChoiceField(
+        label="Estado",
+        required=False,
+        choices=[("", "Todos los estados"), *EstadoSolicitud.choices],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        error_messages={"invalid_choice": "Seleccione un estado válido."},
+    )
 
 
 class SolicitudGastoForm(forms.ModelForm):
