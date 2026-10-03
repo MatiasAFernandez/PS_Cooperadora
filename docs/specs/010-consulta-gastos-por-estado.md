@@ -15,7 +15,8 @@
 Permitir al solicitante y a las cuentas con consulta global localizar los gastos
 visibles que están en un estado elegido, conservando acceso al detalle e historial.
 Es una primera entrega pequeña de consultas operativas. No completa RF-007 ni
-F-E09: búsqueda textual, otros filtros y resúmenes quedan para tareas posteriores.
+F-E09: otros filtros y resúmenes quedan para tareas posteriores. La búsqueda
+textual se delimita como extensión I2-T02 al final de este documento.
 
 La selección por estado es una concreción técnica del requisito de filtros,
 no una solicitud literal de la operadora ni una prioridad institucional confirmada.
@@ -103,3 +104,40 @@ Alternativas concretas tras esta tarea:
 
 El primer camino permite avance técnico independiente; los otros dependen de
 evidencia externa. La coordinación concilia prioridad y publicación del trabajo.
+
+## Extensión I2-T02 — búsqueda por concepto
+
+Contrato definido el 03/10/2026 antes de editar código, con autorización de
+coordinación para implementación delimitada. Se apoya en la búsqueda de RF-007
+y la consulta de F-E09. Código implementado y pruebas focalizadas aprobadas;
+revisión independiente de la extensión pendiente. Franco autorizó el 03/10/2026
+consolidar y avanzar con la actualización del repositorio. Se entrega para revisión
+en PR borrador; esta publicación no equivale a aprobación de la extensión.
+
+- Se conserva `GET /gastos/`; se agrega el parámetro opcional `q` al mismo formulario.
+- Ausente, vacío o sólo espacios: sin búsqueda. Para buscar se quitan espacios
+  exteriores; se conserva el texto enviado en el campo al renderizar y recargar.
+- Término de hasta 255 caracteres, longitud del campo `SolicitudGasto.concepto`.
+  El límite se aplica al término sin espacios exteriores. Un término mayor se
+  rechaza en el formulario, con HTTP 200, error visible y cero resultados.
+- Coincidencia por contenido de concepto mediante `concepto__icontains`, sin
+  distinguir mayúsculas, usando la consulta de Django/PostgreSQL existente.
+  No se agrega normalización de acentos, búsqueda aproximada ni sintaxis especial.
+  `%` y `_` se buscan como caracteres literales, conforme al ORM.
+- Se aplica sobre `visible_expenses(actor)` y se combina con estado mediante
+  intersección: cada resultado debe satisfacer visibilidad, estado y concepto.
+- Un campo inválido impide toda la consulta filtrada; no se descarta silenciosamente.
+  Si se repite `q`, se valida y utiliza su último valor, como los formularios Django.
+- Selector y texto se mantienen en el formulario GET; «Quitar filtro» elimina
+  ambos parámetros. Una búsqueda válida sin coincidencias muestra un mensaje
+  específico sin revelar solicitudes ajenas. Los casos sólo de estado conservan
+  su comportamiento y mensaje previos.
+- No hay escrituras en solicitudes, decisiones o versiones; tampoco cambios de
+  identidad, permisos, modelos, dependencias ni contratos compartidos.
+
+Plan: extender formulario, filtro de la vista y plantilla existentes; agregar
+`tests/gastos/test_busqueda_concepto.py`. Verificar coincidencia parcial y casing,
+texto vacío/espacios, combinación con estados, sólo solicitudes visibles, consulta
+global y sin capacidades, límites, literales, conservación de campos, recarga y
+ausencia de escrituras. Reproducir los casos de estado afectados; no repetir la
+suite completa ni el recorrido de aceptación humana de I1.

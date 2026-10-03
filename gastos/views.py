@@ -105,6 +105,9 @@ class SolicitudGastoListView(View):
             estado = filtro_form.cleaned_data["estado"]
             if estado:
                 solicitudes = solicitudes.filter(estado=estado)
+            concepto = filtro_form.cleaned_data["q"]
+            if concepto:
+                solicitudes = solicitudes.filter(concepto__icontains=concepto)
         else:
             solicitudes = solicitudes.none()
         return render(
