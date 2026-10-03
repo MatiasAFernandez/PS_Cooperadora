@@ -1,10 +1,11 @@
-# SPEC-010 — Consulta de gastos por estado
+# SPEC-010 — Consulta de gastos por estado y concepto
 
 - Fecha: 03/10/2026. Preparación de I2; I2-T01 implementada y probada.
-- Responsable: Franco, módulo gastos/pagos. Revisión independiente de coordinación
+- Responsable: Franco Damián Sánchez, módulo gastos/pagos. Revisión independiente de coordinación
   aprobada el 03/10/2026, sin bloqueos materiales. Revisión del compañero pendiente.
 - Tarea local: I2-T01. Commit local autorizado por coordinación tras su revisión;
-  versión y SHA en Git y handoff local. Sin Issue nueva ni publicación autorizada.
+  versión y SHA en Git. Publicación para revisión autorizada por Franco el 03/10/2026;
+  revisión independiente de I2-T02 y aceptación humana pendientes.
 - Fuentes: Plan de Trabajo de Franco, RF-007 y F-E09 (búsqueda, filtros y
   resúmenes de gastos); SPEC-001 para estados actuales y contrato
   `docs/contracts/identidad-demo-i1.md` para visibilidad. El handoff local conserva
@@ -86,6 +87,11 @@ Django; no repetir suites completas sin un cambio o fallo que lo justifique.
 La comprobación automatizada del HTML no acredita usabilidad ni aceptación humana.
 
 ## Secuencia posterior y decisiones materiales
+
+Esta consulta es apoyo de [SPEC-011](011-franco-seguimiento-pago-externo.md).
+La siguiente prioridad es la ficha de pago externo y el contrato consumidor de
+documentos de ese incremento; no continuar otros SHOULD para sustituir el núcleo.
+I2 no se considera completo con estado y búsqueda.
 
 Antes de ampliar el circuito hacia transferencia/pago externo, precisar con la
 operadora/Marcos: datos de cada etapa; relación de unidad y centro de costo;

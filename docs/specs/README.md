@@ -54,6 +54,8 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [007](007-matias-seguimiento-cierre.md) | Estados, historial y cierre | RF-002, RF-006, M-E08 |
 | [008](008-matias-consultas.md) | Filtros y resúmenes | RF-007, M-E09 |
 | [009](009-matias-integracion-compartida.md) | Contratos e integración de módulos | I01-I05 |
+| [010](010-franco-consulta-gastos.md) | Consulta por estado y concepto; apoyo parcial de I2 | RF-007, F-E09 |
+| [011](011-franco-seguimiento-pago-externo.md) | Propuesta de núcleo I2: gasto aceptado, pago externo y pendientes | RF-003/004/005/006, F-E07/08, I03 |
 
 ## De las specs a las tareas
 
