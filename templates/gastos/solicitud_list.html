@@ -8,6 +8,25 @@
     <a href="{% url 'gastos:presentar' %}" class="btn">Nueva Solicitud</a>
 </div>
 
+<form method="get" action="{% url 'gastos:lista' %}">
+    <div class="form-group">
+        {{ filtro_form.estado.label_tag }}
+        {{ filtro_form.estado }}
+        {% if filtro_form.estado.errors %}
+            <div class="alert-error" role="alert">{{ filtro_form.estado.errors }}</div>
+        {% endif %}
+    </div>
+    <div class="form-group">
+        {{ filtro_form.q.label_tag }}
+        {{ filtro_form.q }}
+        {% if filtro_form.q.errors %}
+            <div class="alert-error" role="alert">{{ filtro_form.q.errors }}</div>
+        {% endif %}
+    </div>
+    <button type="submit" class="btn">Filtrar</button>
+    <a href="{% url 'gastos:lista' %}">Quitar filtro</a>
+</form>
+
 {% if solicitudes %}
     <table>
         <thead>
@@ -35,6 +54,12 @@
             {% endfor %}
         </tbody>
     </table>
+{% elif filtro_form.errors %}
+    <p>Corrija el filtro para consultar las solicitudes.</p>
+{% elif filtro_form.cleaned_data.q %}
+    <p>No se encontraron solicitudes visibles con el concepto buscado y los filtros seleccionados.</p>
+{% elif filtro_form.cleaned_data.estado %}
+    <p>No se encontraron solicitudes visibles con el estado seleccionado.</p>
 {% else %}
     <p>No se encontraron solicitudes de gasto visibles para su cuenta.</p>
 {% endif %}
