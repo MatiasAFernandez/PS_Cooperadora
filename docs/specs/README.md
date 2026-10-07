@@ -59,6 +59,10 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 
 ## De las specs a las tareas
 
+El [paquete de tareas I2](../planning/i2-tareas.md) descompone SPEC-011 en tramos,
+con dependencias y evidencia, preservando las consultas S0 y los pendientes T06/T07 de I1.
+Es un plan compartido para revisión; no declara I2 completo ni contratos acordados.
+
 La secuencia inicial sugerida es acordar primero SPEC-002 con Franco para el
 primer incremento de gastos; relevar y validar el recorrido de facturación de
 SPEC-004; completar comprobantes, cobros, documentos y cierre con SPEC-005,
