@@ -1,6 +1,6 @@
 # SPEC-009 — Contratos e integración de los dos circuitos
 
-- Estado: borrador; pendiente de revisión conjunta con Franco.
+- Estado: borrador; fuentes iniciales relevadas, pendiente de revisión conjunta con Franco.
 - Autor y responsable principal: Matías Alejandro Fernández por su aporte de
   estructura, identidad y documentos compartidos.
 - Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
@@ -55,6 +55,10 @@ duplicar reglas contradictorias.
 - Cada módulo mantiene la responsabilidad por sus decisiones y transiciones.
 - Un contrato compartido se acuerda con ejemplos de ambos circuitos antes de
   cambiar modelos o interfaces que dependan de él.
+- El [relevamiento de #20](../planning/i2-issues/01-relevamiento-fuentes.md)
+  distingue los datos observados de facturación y transferencia. Los acuerdos
+  [A01-A05](../planning/i2-issues/01-consulta-cooperadora.md) siguen pendientes
+  de revisión cruzada; los formularios no fijan por sí solos interfaces Django.
 - La integración se verifica con datos sintéticos y casos permitidos/denegados;
   la devolución de Cooperadora se registra por separado.
 
@@ -106,3 +110,4 @@ duplicar reglas contradictorias.
 | Fecha | Fuente | Decisión | Consecuencia |
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido y división registrada en README | Una aplicación Django modular con propiedad vertical y componentes compartidos. | Los contratos se acuerdan con Franco antes de implementarlos. |
+| 2026-10-09 | Formularios y primera entrevista | Inventariar datos y actores de ambos circuitos como evidencia para el acuerdo. | Identificadores, capacidades, documento y evento compartidos siguen sin aprobación de Franco. |

@@ -2,7 +2,17 @@
 **Specs:** [SPEC-004](https://github.com/MatiasAFernandez/PS_Cooperadora/blob/main/docs/specs/004-matias-solicitudes-facturacion.md), [SPEC-009](https://github.com/MatiasAFernandez/PS_Cooperadora/blob/main/docs/specs/009-matias-integracion-compartida.md); preguntas de SPEC-002/003/005/006/007.  
 **Plan:** M-E01, M-E02, C01, C02.  
 **Responsable principal:** Matías Alejandro Fernández. **Revisor:** Franco Damián Sánchez para interfaces; Cooperadora para reglas de operación.  
-**Estado inicial:** Ready para relevamiento y revisión documental.
+**Estado actual:** En Curso; relevamiento de fuentes registrado, pendiente de
+validación de Cooperadora y acuerdo técnico con Franco.
+
+## Avance del relevamiento
+
+El [inventario y recorrido respaldado por fuentes](01-relevamiento-fuentes.md)
+separan situación actual, alcance del Plan de Trabajo y decisiones aún abiertas.
+La [consulta priorizada a Cooperadora](01-consulta-cooperadora.md) recoge las
+preguntas P01-P18 y los acuerdos internos A01-A05 con Franco. No hay todavía
+minuta de confirmación posterior ni contratos compartidos aprobados; esta Issue
+permanece abierta.
 
 ## Resultado esperado
 

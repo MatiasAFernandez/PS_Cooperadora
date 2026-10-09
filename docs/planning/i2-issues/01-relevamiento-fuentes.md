@@ -1,0 +1,80 @@
+# I2-01 - Relevamiento inicial de facturación y contratos
+
+Estado: evidencia registrada el 09/10/2026 para la Issue #20. No equivale a
+validación posterior de Cooperadora ni a acuerdo de interfaces con Franco.
+
+## Fuentes y alcance de la evidencia
+
+| Fuente | Qué permite afirmar | Límite |
+|---|---|---|
+| [Formulario de solicitud de factura](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Facturas.md) | Nombres de preguntas, opciones visibles y una sección de comprobante. | La copia en Markdown no conserva qué preguntas llevan asterisco ni las condiciones de navegación entre secciones. |
+| [Formulario de transferencia](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Transferencia.md) y [captura PDF](../../fuentes/Solicitud%20de%20Transferencia.pdf) | Campos de una variante, obligatoriedad visible en la captura y adjunto de factura o proforma. | La entrevista menciona dos formularios de transferencia; aquí sólo se identifica una variante. Este circuito pertenece funcionalmente a gastos/pagos de Franco. |
+| [Primera entrevista](../../fuentes/transcripcion_reunion_cooperadora.md) y audio homónimo en `docs/fuentes` | Práctica actual, problemas y propuestas expresadas durante el relevamiento. | La transcripción contiene pasajes ambiguos. Una propuesta expresada en condicional no es una regla aprobada. |
+| [Plan de Trabajo](../../fuentes/Plan%20de%20Trabajo.pdf) | Alcance comprometido y verificaciones RF-001/002/004/006, RNF-001 a RNF-004, M-E01/02 y C01/02. | Define el sistema a desarrollar, no completa las reglas operativas que C02 exige validar. |
+
+No se incorporan respuestas reales, CUIT, correos, datos bancarios ni archivos
+operativos a la documentación o a los datos de prueba. La entrevista indica que
+Cooperadora prepararía recortes anonimizados de sus planillas; todavía no constan
+en estas fuentes.
+
+## Datos visibles en los formularios
+
+**Solicitud de factura:** correo; declaración de si se presentó comprobante de
+pago; nombre del solicitante; CUIT y nombre de quien recibirá la factura;
+condición ante el IVA; correo de destino; detalle e importe; producto/servicio;
+centro de costo; medio o cuenta indicado (incluida `Cuenta corriente`, descrita
+como aún no cobrada); observaciones; y, en la sección de comprobante, fecha,
+número de operación y archivo de transferencia con límite visible de 10 MB.
+El formulario muestra opciones para condición fiscal, producto/servicio, centro
+de costo y medio/cuenta. Su presencia no demuestra que cada campo sea siempre
+obligatorio, que el comprobante exista al presentar la solicitud ni que esas
+listas deban copiarse sin cambios al nuevo sistema.
+
+**Solicitud de transferencia disponible:** correo; solicitante; titular y CUIT
+de la cuenta; CBU o alias (con indicación de escribir `frecuente` para un
+proveedor habitual); correo de envío del comprobante; importe; centro de costo;
+observaciones; y archivo de factura o proforma. En la captura PDF esos campos
+aparecen marcados como obligatorios y el adjunto tiene límite visible de 10 MB.
+La captura no describe el segundo formulario mencionado en la entrevista. Estos
+datos sirven para acordar identidad, documentos y relaciones compartidas con
+Franco; no definen por sí solos los campos de facturación.
+
+## Recorrido y responsabilidades respaldados
+
+| Hallazgo | Tipo de evidencia | Consecuencia para las specs |
+|---|---|---|
+| Actualmente se usa un formulario Google de factura para la comunidad y dos de transferencia, separados por tipo de solicitante. | Situación relatada en la entrevista. | Registrar ambos circuitos y pedir la variante de transferencia faltante; no asumir que ya están unificados. |
+| Las correcciones tras enviar un formulario se tramitan por correo o mensajería; Cooperadora busca y reconcilia datos y documentos en formularios, planillas y carpetas. | Situación relatada en la entrevista. | SPEC-004 debe conservar observación y corrección trazables, pero falta definir quién puede realizarlas y sus estados. |
+| Las facturas y notas se generan en Exubio; los comprobantes de ingreso y la factura se relacionan hoy manualmente para consulta contable. | Situación relatada en la entrevista. | SPEC-005/006 deben registrar procedencia y vínculos, sin atribuir al nuevo sistema emisión fiscal o conciliación automática. |
+| Una factura emitida necesita respaldo de ingreso; el formulario admite indicar cuenta corriente todavía no cobrada. | Entrevista y formulario de factura. | Distinguir emisión de cobro/cancelación. No cerrar automáticamente al registrar factura ni exigir pago previo en todos los casos. La regla exacta sigue abierta. |
+| El presupuesto puede iniciar una solicitud de pago, pero después se necesita la factura definitiva para justificarla. | Entrevista y formulario de transferencia. | Es regla del circuito de gastos; coordinar el contrato documental con Franco sin incorporarla como transición de facturación. |
+| Se mencionan solicitantes de secretarías, direcciones y grupos de investigación; presidencia y tesorería para la vista administrativa. | Entrevista. | Usar estos actores como candidatos para la matriz de permisos, no como asignación definitiva de capacidades. |
+| El plan exige solicitudes de factura observables/corregibles, documentos protegidos, estado e historial, y registro de facturas/notas/cobros externos hasta cierre. | Alcance definido en el Plan de Trabajo. | Mantener RF-001/002/004/006 y RNF-001/002/003/004 como restricciones de diseño; validar con Cooperadora las reglas concretas. |
+
+El plan dispone una aplicación Django modular y registro de resultados externos
+mediante la interfaz, sin integración directa con Exubio, bancos ni ATP. La
+entrevista contempla la conveniencia de importar datos en el futuro; eso no
+amplía el alcance definido para I2.
+
+## Qué está decidido y qué no
+
+- **Decidido por el plan:** Matías es responsable del circuito de facturación y
+  cobros; Franco del de gastos/pagos. Identidad, documentos e historial requieren
+  contratos compartidos y revisión cruzada. Las operaciones externas se
+  registran; la aplicación no las ejecuta ni emite comprobantes fiscales.
+- **Observado en las fuentes actuales:** campos y opciones arriba inventariados,
+  herramientas utilizadas, actores mencionados y problemas de búsqueda manual.
+- **Pendiente de confirmación institucional:** obligatoriedad y validaciones del
+  formulario de factura; capacidades por rol; observación y corrección; tipos y
+  revisión de documentos; multiplicidad y efecto de notas; imputación de cobros;
+  estados, cancelación, reapertura y cierre.
+- **Pendiente de acuerdo técnico con Franco:** identificadores y propiedad de
+  modelos, contrato de identidad/capacidades, documento protegido, evento de
+  historial, errores y responsable de integración. La entrevista no aprueba
+  estas interfaces.
+
+La [consulta a Cooperadora](01-consulta-cooperadora.md) convierte esos pendientes
+en decisiones concretas. Las respuestas se registrarán con fecha, persona que
+confirma, ejemplo anonimizado y consecuencia en SPEC-002 a SPEC-009. Hasta
+entonces, las pruebas podrán usar datos sintéticos, pero no presentar sus
+hipótesis como reglas aprobadas.
