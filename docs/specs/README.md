@@ -34,9 +34,9 @@ su nombre original y ya identifica a Franco como propietario en su encabezado.
 Cuando una capacidad es compartida, el documento indica el aporte del compañero
 y quién revisa el contrato; la autoría no convierte una regla pendiente en aprobada.
 
-Las specs pueden tener un tramo de demo preparado y otros tramos todavía en
-borrador. SPEC-002 concreta ahora su interfaz con SPEC-001 sin afirmar que estén
-validados el proveedor institucional ni los permisos reales. Las demás specs de
+Las specs pueden tener un tramo de demo implementado y otros tramos todavía en
+borrador. SPEC-002 tiene un adaptador sintético de I1 para gastos sin afirmar que
+estén validados el proveedor institucional ni los permisos reales. Las demás specs de
 Matías conservan sus pendientes. Las hipótesis explícitas permiten preparar una
 demo acotada; no sustituyen la confirmación de las reglas de operación real.
 
@@ -78,6 +78,11 @@ para revisión, implementación futura, demostración y devolución operativa. T
 no son Issues publicadas. El [contrato v1](../contracts/identidad-demo-i1.md) evita
 duplicar la interfaz en cada spec. Escribir o integrar documentación no inicia por
 sí mismo la implementación de todo el backlog.
+
+El [paquete propuesto de I2](../planning/i2-issues/README.md) valida las specs de
+Matías contra su Plan de Trabajo y deja cuerpos de Issues, orden y dependencias
+para publicación. La implementación de identidad sintética de T02 ya está en el
+repositorio; I2 amplía su uso a facturación y a las pruebas cruzadas.
 
 ## Mantener una spec vigente
 

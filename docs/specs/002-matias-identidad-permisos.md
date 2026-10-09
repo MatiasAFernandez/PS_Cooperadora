@@ -1,7 +1,8 @@
 # SPEC-002 — Identidad recibida y permisos internos
 
-- Estado: tramo de demo concretado para revisión técnica; alcance institucional
-  y de ambos circuitos todavía en borrador. No implementado. Actualizado: 17/09/2026.
+- Estado: tramo de demo I1 implementado con identidad sintética; revisión técnica
+  y validación institucional pendientes. El consumo desde facturación y la matriz
+  de ambos circuitos siguen en borrador. Actualizado: 09/10/2026.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue: pendiente de crear.
 - Rol de Franco: revisar el contrato preparado con asistencia de IA y comprobar
@@ -26,15 +27,17 @@ definición única de entradas, salidas, capacidades y errores. La IA propone la
 interfaz; los alumnos revisan sus garantías y la implementación. No se exige que
 inventen por separado qué debe entregar cada módulo.
 
-Matías implementará después de la revisión un adaptador local con cuentas
-sintéticas, sesión Django y capacidades explícitas. Franco consumirá el actor y
+Matías implementó un adaptador local con cuentas sintéticas, sesión Django y
+capacidades explícitas para gastos. Franco consumirá el actor y
 aplicará propiedad/estado en gastos. Staff o superusuario no implican autoridad
 de negocio. La selección del origen de identidad será explícita y la demo quedará
 desactivada por defecto; no se construye un login definitivo del producto.
 
 Las tareas [T01, T02 y T06](../planning/i1-tareas.md) cubren revisión, componente
-común e integración con gastos. Comprobar ID-R04 en facturación y acceso a archivos
-queda para sus incrementos. Completar el tramo de I1 no completa toda SPEC-002.
+común e integración con gastos. T02 tiene implementación local; el estado de T01
+y T06 se verifica por separado. Comprobar ID-R04 en facturación y acceso a archivos
+queda para [I2](../planning/i2-issues/README.md). Completar el tramo de I1 no
+completa toda SPEC-002.
 
 ### Incluye
 
