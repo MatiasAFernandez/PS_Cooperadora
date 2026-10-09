@@ -43,7 +43,7 @@ compartidas con Franco; no definen por sí solos los campos de facturación.
 
 | Hallazgo | Tipo de evidencia | Consecuencia para las specs |
 |---|---|---|
-| Actualmente hay un único formulario de transferencia en uso, descrito por el Markdown y el PDF. La entrevista y el plan mencionan dos en el momento de su redacción. | Aclaración del responsable del 09/10/2026 sobre la situación vigente, frente a fuentes históricas. | No pedir ni modelar una segunda variante; mantener la mención anterior sólo como contexto histórico. |
+| Actualmente se usan dos formularios: uno de solicitud de factura y uno de solicitud de transferencia. El Markdown y el PDF de transferencia describen el mismo formulario. | Aclaración del responsable del 09/10/2026 y plantillas disponibles en `docs/fuentes`. | Inventariar los dos circuitos sin pedir ni modelar una variante adicional de transferencia. |
 | Las correcciones tras enviar un formulario se tramitan por correo o mensajería; Cooperadora busca y reconcilia datos y documentos en formularios, planillas y carpetas. | Situación relatada en la entrevista. | SPEC-004 debe conservar observación y corrección trazables, pero falta definir quién puede realizarlas y sus estados. |
 | Las facturas y notas se generan en Exubio; los comprobantes de ingreso y la factura se relacionan hoy manualmente para consulta contable. | Situación relatada en la entrevista. | SPEC-005/006 deben registrar procedencia y vínculos, sin atribuir al nuevo sistema emisión fiscal o conciliación automática. |
 | Una factura emitida necesita respaldo de ingreso; el formulario admite indicar cuenta corriente todavía no cobrada. | Entrevista y formulario de factura. | Distinguir emisión de cobro/cancelación. No cerrar automáticamente al registrar factura ni exigir pago previo en todos los casos. La regla exacta sigue abierta. |
@@ -55,6 +55,10 @@ El plan dispone una aplicación Django modular y registro de resultados externos
 mediante la interfaz, sin integración directa con Exubio, bancos ni ATP. La
 entrevista contempla la conveniencia de importar datos en el futuro; eso no
 amplía el alcance definido para I2.
+
+El apartado de antecedentes del Plan de Trabajo enumera dos formularios de
+transferencia. Esa enumeración no se toma como inventario vigente: para el
+relevamiento actual se sigue la aclaración de un formulario por circuito.
 
 ## Qué está decidido y qué no
 
