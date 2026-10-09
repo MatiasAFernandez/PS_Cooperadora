@@ -17,7 +17,7 @@ si Cooperadora confirma expresamente ese diferimiento.
 
 | ID | Pregunta y decisión requerida | Resultado que desbloquea |
 |---|---|---|
-| P01 | ¿Estas copias son las versiones vigentes de los formularios? ¿Pueden facilitar la segunda variante de transferencia y uno o dos trámites completos anonimizados, uno cobrado y otro pendiente? | Inventario y ejemplos M-E01, sin inferir diferencias entre variantes. |
+| P01 | ¿La plantilla de solicitud de factura refleja la versión vigente? ¿Pueden facilitar uno o dos trámites de facturación completos y anonimizados, uno cobrado y otro pendiente? | Inventario y ejemplos M-E01 del circuito de facturación. |
 | P02 | En la solicitud de factura, ¿qué campos son obligatorios, opcionales o condicionales? En particular: comprobante presentado, fecha/número/archivo, CUIT, condición IVA, importe, correo de destino y observaciones. ¿Qué formato y validación se exige? | Contrato de datos de SPEC-004 y casos de rechazo. |
 | P03 | ¿Qué significa cada opción de medio/cuenta, especialmente `Cuenta corriente (aun no se cobró la factura que se va a emitir)`? ¿Se admite presentar o emitir la factura sin comprobante de pago? ¿Cuándo se vuelve exigible? | Separación de solicitud, factura, cobro y cancelación. |
 | P04 | ¿Los catálogos de producto/servicio, centro de costo, condición IVA y medio/cuenta se reutilizan tal como aparecen, se administran desde Cooperadora o cambian por tipo de solicitante? ¿Se permite `Otros` y con qué detalle? | Catálogos y validaciones sin copiar opciones obsoletas. |

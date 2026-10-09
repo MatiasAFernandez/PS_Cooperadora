@@ -8,7 +8,7 @@ validación posterior de Cooperadora ni a acuerdo de interfaces con Franco.
 | Fuente | Qué permite afirmar | Límite |
 |---|---|---|
 | [Formulario de solicitud de factura](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Facturas.md) | Nombres de preguntas, opciones visibles y una sección de comprobante. | La copia en Markdown no conserva qué preguntas llevan asterisco ni las condiciones de navegación entre secciones. |
-| [Formulario de transferencia](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Transferencia.md) y [captura PDF](../../fuentes/Solicitud%20de%20Transferencia.pdf) | Campos de una variante, obligatoriedad visible en la captura y adjunto de factura o proforma. | La entrevista menciona dos formularios de transferencia; aquí sólo se identifica una variante. Este circuito pertenece funcionalmente a gastos/pagos de Franco. |
+| [Formulario de transferencia](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Transferencia.md) y [captura PDF](../../fuentes/Solicitud%20de%20Transferencia.pdf) | Ambos describen el mismo formulario actualmente utilizado; permiten identificar sus campos, la obligatoriedad visible en la captura y el adjunto de factura o proforma. | Este circuito pertenece funcionalmente a gastos/pagos de Franco. |
 | [Primera entrevista](../../fuentes/transcripcion_reunion_cooperadora.md) y audio homónimo en `docs/fuentes` | Práctica actual, problemas y propuestas expresadas durante el relevamiento. | La transcripción contiene pasajes ambiguos. Una propuesta expresada en condicional no es una regla aprobada. |
 | [Plan de Trabajo](../../fuentes/Plan%20de%20Trabajo.pdf) | Alcance comprometido y verificaciones RF-001/002/004/006, RNF-001 a RNF-004, M-E01/02 y C01/02. | Define el sistema a desarrollar, no completa las reglas operativas que C02 exige validar. |
 
@@ -30,20 +30,20 @@ de costo y medio/cuenta. Su presencia no demuestra que cada campo sea siempre
 obligatorio, que el comprobante exista al presentar la solicitud ni que esas
 listas deban copiarse sin cambios al nuevo sistema.
 
-**Solicitud de transferencia disponible:** correo; solicitante; titular y CUIT
+**Solicitud de transferencia vigente:** correo; solicitante; titular y CUIT
 de la cuenta; CBU o alias (con indicación de escribir `frecuente` para un
 proveedor habitual); correo de envío del comprobante; importe; centro de costo;
 observaciones; y archivo de factura o proforma. En la captura PDF esos campos
 aparecen marcados como obligatorios y el adjunto tiene límite visible de 10 MB.
-La captura no describe el segundo formulario mencionado en la entrevista. Estos
-datos sirven para acordar identidad, documentos y relaciones compartidas con
-Franco; no definen por sí solos los campos de facturación.
+El Markdown y el PDF son dos representaciones de ese mismo formulario, no dos
+variantes. Estos datos sirven para acordar identidad, documentos y relaciones
+compartidas con Franco; no definen por sí solos los campos de facturación.
 
 ## Recorrido y responsabilidades respaldados
 
 | Hallazgo | Tipo de evidencia | Consecuencia para las specs |
 |---|---|---|
-| Actualmente se usa un formulario Google de factura para la comunidad y dos de transferencia, separados por tipo de solicitante. | Situación relatada en la entrevista. | Registrar ambos circuitos y pedir la variante de transferencia faltante; no asumir que ya están unificados. |
+| Actualmente hay un único formulario de transferencia en uso, descrito por el Markdown y el PDF. La entrevista y el plan mencionan dos en el momento de su redacción. | Aclaración del responsable del 09/10/2026 sobre la situación vigente, frente a fuentes históricas. | No pedir ni modelar una segunda variante; mantener la mención anterior sólo como contexto histórico. |
 | Las correcciones tras enviar un formulario se tramitan por correo o mensajería; Cooperadora busca y reconcilia datos y documentos en formularios, planillas y carpetas. | Situación relatada en la entrevista. | SPEC-004 debe conservar observación y corrección trazables, pero falta definir quién puede realizarlas y sus estados. |
 | Las facturas y notas se generan en Exubio; los comprobantes de ingreso y la factura se relacionan hoy manualmente para consulta contable. | Situación relatada en la entrevista. | SPEC-005/006 deben registrar procedencia y vínculos, sin atribuir al nuevo sistema emisión fiscal o conciliación automática. |
 | Una factura emitida necesita respaldo de ingreso; el formulario admite indicar cuenta corriente todavía no cobrada. | Entrevista y formulario de factura. | Distinguir emisión de cobro/cancelación. No cerrar automáticamente al registrar factura ni exigir pago previo en todos los casos. La regla exacta sigue abierta. |
