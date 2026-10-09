@@ -45,11 +45,11 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 ## Reglas de negocio
 
 - El [relevamiento inicial](../planning/i2-issues/01-relevamiento-fuentes.md)
-  identifica 16 preguntas marcadas como obligatorias en el formulario actual:
-  13 en la primera página y tres en la sección de comprobante. Las condiciones
-  de esa sección, las validaciones para el nuevo sistema, la facultad de
-  observar/corregir y el mapa de estados se definirán con Cooperadora antes de
-  pasar a `listo`.
+  identifica 13 preguntas marcadas como obligatorias en la primera página del
+  formulario actual. Fecha, número de operación y archivo de la sección de
+  comprobante no llevan `*`. Las condiciones de esa sección, las validaciones
+  para el nuevo sistema, la facultad de observar/corregir y el mapa de estados
+  se definirán con Cooperadora antes de pasar a `listo`.
 - Una corrección no borra el historial de lo presentado ni la observación.
 - La protección de acceso se aplica a listas, detalle y acciones del servidor.
 
@@ -64,11 +64,13 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Datos, permisos y sensibilidad
 
-- Datos visibles y marcados con `*` en el formulario actual: contacto,
-  solicitante, destinatario fiscal, condición IVA, detalle, importe,
-  producto/servicio, centro de costo, medio/cuenta, observaciones y, en la
-  sección de comprobante, fecha, número de operación y archivo. Su necesidad
-  por estado y validación en el nuevo sistema siguen abiertas. El trámite agrega
+- Datos visibles y marcados con `*` en la primera página del formulario actual:
+  correo del presentador, respuesta sobre comprobante presentado, solicitante,
+  CUIT y nombre del destinatario, condición IVA, correo de envío, detalle,
+  importe, producto/servicio, centro de costo, medio/cuenta y observaciones.
+  Fecha, número de operación y archivo de la
+  sección de comprobante son visibles pero no llevan `*`. Su necesidad por
+  estado y validación en el nuevo sistema siguen abiertas. El trámite agrega
   identificador, presentador, fechas, estado e historial.
 - Roles autorizados: solicitante y personal de Cooperadora con capacidades de
   presentación, revisión o corrección por validar.
@@ -107,4 +109,4 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido | Matías desarrolla el recorrido completo de solicitudes de facturación. | Los campos y reglas quedan en borrador hasta el relevamiento y la validación. |
 | 2026-10-09 | Formulario de factura y primera entrevista | Registrar el inventario y separar el proceso actual de propuestas para el nuevo sistema. | La spec sigue en borrador; no se aprueban todavía obligatoriedades ni transiciones para el nuevo sistema. |
-| 2026-10-09 | Formulario de factura actualizado por el usuario | Registrar las 16 marcas de obligatoriedad de la fuente. | P02 queda parcialmente respondida; las condiciones y validaciones para el nuevo sistema siguen sin confirmar. |
+| 2026-10-09 | Corrección del formulario de factura por el usuario | Registrar 13 marcas de obligatoriedad en la primera página y ninguna en los tres campos de comprobante. | P02 queda parcialmente respondida; las condiciones y validaciones para el nuevo sistema siguen sin confirmar. |

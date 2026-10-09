@@ -15,8 +15,9 @@ minuta de confirmación posterior ni contratos compartidos aprobados; esta Issue
 permanece abierta.
 
 P02 está parcialmente respondida: la plantilla local de solicitud de factura
-marca 16 preguntas obligatorias. Faltan la lógica condicional de la sección de
-comprobante y las validaciones que regirán en la nueva aplicación.
+marca 13 preguntas obligatorias en la primera página; fecha, número de operación
+y archivo de comprobante no llevan `*`. Faltan la lógica condicional de la
+sección de comprobante y las validaciones que regirán en la nueva aplicación.
 
 ## Resultado esperado
 
