@@ -2,7 +2,9 @@
 
 - Estado: borrador; pendiente de relevar formularios y validar el recorrido.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear.
+- Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
+  para validación y [#23](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/23)
+  para el recorrido funcional.
 - Rol de Franco: revisar navegación compartida y contrato de historial y acceso.
 - Validador: personal de Cooperadora para campos, actores y observaciones.
 - Plan: RF-002, M-E01, M-E02 y M-E05.

@@ -2,7 +2,7 @@
 
 - Estado: borrador; pendiente de validar el circuito de ingreso.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear.
+- Issue I2: [#26](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/26).
 - Rol de Franco: revisar precisión monetaria y vínculos documentales compartidos.
 - Validador: personal de Cooperadora para datos, conciliación y asociaciones.
 - Plan: RF-002, RNF-002, RNF-003, M-E07 e I03.

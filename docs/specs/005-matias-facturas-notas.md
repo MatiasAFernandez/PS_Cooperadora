@@ -2,7 +2,7 @@
 
 - Estado: borrador; pendiente de validar datos y procedencia.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear.
+- Issue I2: [#25](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/25).
 - Rol de Franco: revisar vínculos con documentos y modelo compartido.
 - Validador: personal de Cooperadora para tipos, datos y asociaciones.
 - Plan: RF-002, M-E06 e I01/I03.

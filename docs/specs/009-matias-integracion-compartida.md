@@ -3,7 +3,11 @@
 - Estado: borrador; pendiente de revisión conjunta con Franco.
 - Autor y responsable principal: Matías Alejandro Fernández por su aporte de
   estructura, identidad y documentos compartidos.
-- Issue: pendiente de crear; dividir las integraciones verificables en tareas.
+- Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
+  para acordar contratos, [#22](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/22)
+  para el modelo compartido, [#28](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/28)
+  para integración cruzada y [#29](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/29)
+  para verificación y entrega.
 - Rol de Franco: acordar ejemplos de gastos, integrar su recorrido y revisar los
   contratos y cambios comunes.
 - Validadores: Franco y Matías para interfaces; Cooperadora para el recorrido

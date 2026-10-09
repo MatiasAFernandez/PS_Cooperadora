@@ -1,16 +1,16 @@
 # I2 - paquete de Issues de Matías
 
-Estado: preparación local para revisión y publicación. Los IDs `I2-01` a `I2-11`
-son referencias locales, no números de GitHub. Ninguna tarea de este paquete
-acredita por sí sola validación de Cooperadora ni inicio de implementación.
+Estado: Issues [#20 a #30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues?q=is%3Aissue+is%3Aopen+%5BI2%5D)
+publicadas el 09/10/2026 y asignadas a Matías. Los IDs `I2-01` a `I2-11` son
+referencias locales; el número real figura en la tabla. La publicación no
+acredita validación de Cooperadora ni inicio de implementación.
 
-Se cotejó además con `origin/main` y con el borrador I2 de Franco en
-`origin/codex/i2-consulta-estados` disponibles localmente. Allí se registra
+Se cotejó además con `main` y con el borrador I2 de Franco en
+`origin/codex/i2-consulta-estados`. Ya se registra
 [Issue #19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19) para el
 primer tramo de SPEC-003 (DOC-R01–R03), y [#15](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/15)
 y [#16](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/16) para I2 de
-gastos. Comprobar su estado en GitHub al publicar: este paquete no los recrea ni
-supone que estén terminados.
+gastos. Este paquete no los recrea ni supone que estén terminados.
 
 El Plan de Trabajo define una entrega incremental, pero no fija el contenido de
 un incremento llamado I2. Este paquete propone I2 como el recorrido de
@@ -39,19 +39,19 @@ porque éstas reagrupan resultados y no hay horas ejecutadas acreditadas.
 
 ## Orden de desarrollo
 
-| Orden | Issue y título para GitHub | Spec principal | Depende de | Esfuerzo y prueba | Prioridad / situación inicial |
+| Orden | Issue y título | Spec principal | Depende de | Esfuerzo y prueba | Prioridad / situación inicial |
 |---|---|---|---|---|---|
-| 1 | [I2-01](01-validar-alcance.md) `[I2] Validar el recorrido de facturación y los contratos compartidos` | 004, 009 | Ninguna | Bajo en código; requiere validación humana | MUST; Ready para relevamiento y revisión, no para dar reglas por aprobadas |
-| 2 | [I2-02](02-identidad-facturacion.md) `[I2] Extender identidad y permisos a facturación` | 002 | I2-01 (matriz mínima) y T02 de I1 | Bajo-medio; reutiliza componente probado | MUST; Backlog |
-| 3 | [I2-03](03-modelo-contratos.md) `[I2] Acordar e integrar el modelo y los contratos comunes` | 009 | I2-01; revisión de Franco | Medio; migraciones e integridad cruzada | MUST; Backlog |
-| 4 | [I2-04](04-solicitudes.md) `[I2] Presentar, consultar, observar y corregir solicitudes de facturación` | 004 | I2-02/03 y reglas de I2-01 | Medio; flujo, permisos e historial inicial | MUST; Backlog |
-| 5 | [I2-05](05-documentos.md) `[I2] Registrar la revisión documental y su trazabilidad` | 003 | #19, I2-02/03 y regla de revisión de I2-01 | Medio; acciones y pruebas de autorización | MUST; Backlog |
-| 6 | [I2-06](06-facturas-notas.md) `[I2] Registrar facturas y notas externas vinculadas` | 005 | I2-04, #19 y datos de I2-01 | Medio; vínculos y duplicados | MUST; Backlog |
-| 7 | [I2-07](07-cobros.md) `[I2] Registrar cobros externos y sus comprobantes` | 006 | I2-06, #19 y reglas de I2-01 | Alto; importes, imputación y atomicidad | MUST; Backlog |
-| 8 | [I2-08](08-seguimiento-cierre.md) `[I2] Completar estados, historial, pendientes y cierre de facturación` | 007 | I2-04 a I2-07, #19 y reglas de I2-01 | Alto; transiciones y concurrencia | MUST; Backlog |
-| 9 | [I2-09](09-integracion-circuitos.md) `[I2] Integrar permisos, documentos y navegación de ambos circuitos` | 009 | I2-02 a I2-08, #19 y entregables de gastos I1/I2 | Alto; pruebas entre módulos | MUST; Backlog |
-| 10 | [I2-10](10-verificacion-entrega.md) `[I2] Verificar, documentar y demostrar el circuito integrado` | 009 (apoyo) | I2-09; validación funcional separada | Medio-alto; regresión y reproducción | MUST; Backlog |
-| 11 | [I2-11](11-consultas.md) `[I2] Agregar filtros y resúmenes operativos de facturación` | 008 | I2-06/07/08; priorización confirmada | Medio; permisos y totales decimales | SHOULD; Backlog opcional |
+| 1 | [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20) ([I2-01](01-validar-alcance.md)) Validar el recorrido de facturación y los contratos compartidos | 004, 009 | Ninguna | Bajo en código; requiere validación humana | MUST; Ready para relevamiento y revisión, no para dar reglas por aprobadas |
+| 2 | [#21](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/21) ([I2-02](02-identidad-facturacion.md)) Extender identidad y permisos a facturación | 002 | #20 (matriz mínima) y #4 de I1 | Bajo-medio; reutiliza componente probado | MUST; Backlog |
+| 3 | [#22](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/22) ([I2-03](03-modelo-contratos.md)) Acordar e integrar el modelo y los contratos comunes | 009 | #20; revisión de Franco | Medio; migraciones e integridad cruzada | MUST; Backlog |
+| 4 | [#23](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/23) ([I2-04](04-solicitudes.md)) Presentar, consultar, observar y corregir solicitudes de facturación | 004 | #21/#22 y reglas de #20 | Medio; flujo, permisos e historial inicial | MUST; Backlog |
+| 5 | [#24](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/24) ([I2-05](05-documentos.md)) Registrar la revisión documental y su trazabilidad | 003 | #19, #21/#22 y regla de revisión de #20 | Medio; acciones y pruebas de autorización | MUST; Backlog |
+| 6 | [#25](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/25) ([I2-06](06-facturas-notas.md)) Registrar facturas y notas externas vinculadas | 005 | #23, #19 y datos de #20 | Medio; vínculos y duplicados | MUST; Backlog |
+| 7 | [#26](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/26) ([I2-07](07-cobros.md)) Registrar cobros externos y sus comprobantes | 006 | #25, #19 y reglas de #20 | Alto; importes, imputación y atomicidad | MUST; Backlog |
+| 8 | [#27](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/27) ([I2-08](08-seguimiento-cierre.md)) Completar estados, historial, pendientes y cierre de facturación | 007 | #23 a #26, #19 y reglas de #20 | Alto; transiciones y concurrencia | MUST; Backlog |
+| 9 | [#28](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/28) ([I2-09](09-integracion-circuitos.md)) Integrar permisos, documentos y navegación de ambos circuitos | 009 | #21 a #27, #19 y entregables de gastos I1/I2 | Alto; pruebas entre módulos | MUST; Backlog |
+| 10 | [#29](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/29) ([I2-10](10-verificacion-entrega.md)) Verificar, documentar y demostrar el circuito integrado | 009 (apoyo) | #28; validación funcional separada | Medio-alto; regresión y reproducción | MUST; Backlog |
+| 11 | [#30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/30) ([I2-11](11-consultas.md)) Agregar filtros y resúmenes operativos de facturación | 008 | #25 a #27; priorización confirmada | Medio; permisos y totales decimales | SHOULD; Backlog opcional |
 
 Los órdenes 2 y 3 pueden avanzar en paralelo tras I2-01. La Issue #19 puede
 avanzar después del identificador y las capacidades documentales acordadas, sin
@@ -64,21 +64,14 @@ completa esas reglas después de verificar los datos vinculados. I2-11 puede
 desarrollarse antes de la demostración final si Cooperadora confirma su prioridad;
 no bloquea el cierre del recorrido MUST.
 
-## Publicación e integración
+## Seguimiento e integración
 
-Cada archivo numerado contiene el cuerpo listo para una Issue con el título de
-la tabla. Vincularlo al repositorio y al mismo GitHub Project compartido de
-[WORKFLOW](../../WORKFLOW.md); usar `Incremento = I2`, `Spec = SPEC-NNN`,
-responsable principal Matías y estado inicial de la tabla. Si el Project o esos
-campos aún no existen, crearlos o acordarlos antes de cargar el paquete; no
-suponer que el documento local los crea. Las dependencias mencionan IDs locales:
-al publicar, reemplazarlos por vínculos de Issues reales y registrar los enlaces
-en este índice y en el campo `Issue` de cada spec. No abrir duplicados de T02 de
-I1 ni del tramo DOC-R01–R03 documentado como #19. Los enlaces a specs en los
-cuerpos apuntan a `main` y funcionarán al publicar las specs allí. Este checkout
-está en `feat/4-identidad-demo`, anterior a `origin/main`; integrar primero este
-paquete documental sobre `main` actualizada y resolver sus cambios posteriores
-antes de usar los cuerpos como fuente definitiva.
+Cada archivo numerado conserva el cuerpo de su Issue. Las dependencias de los
+cuerpos publicados usan números reales, registrados también en las specs y esta
+tabla. Las Issues están asignadas a Matías; no se duplican #4 ni #19.
+[WORKFLOW](../../WORKFLOW.md) propone un GitHub Project compartido con estado,
+responsable, spec e incremento. Si ese Project está disponible, registrar allí
+estas mismas Issues con `Incremento = I2`, sin mantener un segundo tablero manual.
 
 Una Issue pasa a `Ready` de implementación sólo con alcance y aceptación
 verificables, responsable, dependencias resueltas y reglas operativas necesarias

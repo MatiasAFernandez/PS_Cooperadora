@@ -73,16 +73,16 @@ Un cambio de contrato entre módulos requiere una tarea de integración y revisi
 cruzada explícita. Las tareas académicas de relevamiento, manuales, pruebas y
 entrega se trazan al plan, aunque no todas necesitan una spec funcional propia.
 
-El [paquete inicial de I1](../planning/i1-tareas.md) contiene siete tareas locales
-para revisión, implementación futura, demostración y devolución operativa. Todavía
-no son Issues publicadas. El [contrato v1](../contracts/identidad-demo-i1.md) evita
+El [paquete inicial de I1](../planning/i1-tareas.md) definió siete tareas locales
+para revisión, implementación, demostración y devolución operativa; sus Issues
+se publicaron después. El [contrato v1](../contracts/identidad-demo-i1.md) evita
 duplicar la interfaz en cada spec. Escribir o integrar documentación no inicia por
 sí mismo la implementación de todo el backlog.
 
-El [paquete propuesto de I2](../planning/i2-issues/README.md) valida las specs de
-Matías contra su Plan de Trabajo y deja cuerpos de Issues, orden y dependencias
-para publicación. La implementación de identidad sintética de T02 ya está en el
-repositorio; I2 amplía su uso a facturación y a las pruebas cruzadas.
+El [paquete de I2 de Matías](../planning/i2-issues/README.md) valida sus specs
+contra el Plan de Trabajo y registra las Issues #20–#30 con orden y dependencias.
+La identidad sintética de T02 ya está en el repositorio; I2 amplía su uso a
+facturación y a las pruebas cruzadas.
 
 ## Mantener una spec vigente
 

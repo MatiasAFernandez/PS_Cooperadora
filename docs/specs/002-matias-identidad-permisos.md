@@ -4,7 +4,10 @@
   y validación institucional pendientes. El consumo desde facturación y la matriz
   de ambos circuitos siguen en borrador. Actualizado: 09/10/2026.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear.
+- Issues I2: [#21](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/21)
+  para facturación y [#28](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/28)
+  para la prueba cruzada; [#4](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/4)
+  cubrió el adaptador sintético de I1.
 - Rol de Franco: revisar el contrato preparado con asistencia de IA y comprobar
   su consumo y acceso por solicitud en gastos/pagos.
 - Validadores: Franco y Matías para el contrato; Cooperadora para capacidades y
