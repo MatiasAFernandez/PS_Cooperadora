@@ -7,10 +7,13 @@ validación posterior de Cooperadora ni a acuerdo de interfaces con Franco.
 
 | Fuente | Qué permite afirmar | Límite |
 |---|---|---|
-| [Formulario de solicitud de factura](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Facturas.md) | Nombres de preguntas, opciones visibles y una sección de comprobante. | La copia en Markdown no conserva qué preguntas llevan asterisco ni las condiciones de navegación entre secciones. |
+| [Formulario de solicitud de factura](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Facturas.md) | Nombres de preguntas, opciones visibles y 16 preguntas marcadas como obligatorias con `*`: 13 en la primera página y tres en la sección de comprobante. | La copia en Markdown no describe las condiciones de navegación entre secciones ni las validaciones de formato. |
 | [Formulario de transferencia](../../fuentes/Formulario%20de%20Google%20de%20Solicitud%20de%20Transferencia.md) y [captura PDF](../../fuentes/Solicitud%20de%20Transferencia.pdf) | Ambos describen el mismo formulario actualmente utilizado; permiten identificar sus campos, la obligatoriedad visible en la captura y el adjunto de factura o proforma. | Este circuito pertenece funcionalmente a gastos/pagos de Franco. |
 | [Primera entrevista](../../fuentes/transcripcion_reunion_cooperadora.md) y audio homónimo en `docs/fuentes` | Práctica actual, problemas y propuestas expresadas durante el relevamiento. | La transcripción contiene pasajes ambiguos. Una propuesta expresada en condicional no es una regla aprobada. |
 | [Plan de Trabajo](../../fuentes/Plan%20de%20Trabajo.pdf) | Alcance comprometido y verificaciones RF-001/002/004/006, RNF-001 a RNF-004, M-E01/02 y C01/02. | Define el sistema a desarrollar, no completa las reglas operativas que C02 exige validar. |
+
+`docs/fuentes` está excluido de Git; estos enlaces sirven en el checkout local,
+pero no publican las fuentes en GitHub. Sólo se integra este inventario derivado.
 
 No se incorporan respuestas reales, CUIT, correos, datos bancarios ni archivos
 operativos a la documentación o a los datos de prueba. La entrevista indica que
@@ -25,10 +28,16 @@ condición ante el IVA; correo de destino; detalle e importe; producto/servicio;
 centro de costo; medio o cuenta indicado (incluida `Cuenta corriente`, descrita
 como aún no cobrada); observaciones; y, en la sección de comprobante, fecha,
 número de operación y archivo de transferencia con límite visible de 10 MB.
-El formulario muestra opciones para condición fiscal, producto/servicio, centro
-de costo y medio/cuenta. Su presencia no demuestra que cada campo sea siempre
-obligatorio, que el comprobante exista al presentar la solicitud ni que esas
-listas deban copiarse sin cambios al nuevo sistema.
+Las 13 preguntas de la primera página están marcadas como obligatorias en el
+formulario actual: correo, comprobante presentado, solicitante, CUIT y nombre
+del destinatario, condición IVA, correo de envío, detalle, importe,
+producto/servicio, centro de costo, medio/cuenta y observaciones. También están
+marcadas como obligatorias las tres de la sección de comprobante: fecha, número
+de operación y archivo. El formulario muestra opciones para condición fiscal,
+producto/servicio, centro de costo y medio/cuenta. La marca `*` no demuestra
+si la sección de comprobante se muestra cuando se respondió `No` o se indicó
+cuenta corriente, ni que las mismas exigencias deban copiarse sin cambios al
+nuevo sistema.
 
 **Solicitud de transferencia vigente:** correo; solicitante; titular y CUIT
 de la cuenta; CBU o alias (con indicación de escribir `frecuente` para un
@@ -68,8 +77,9 @@ relevamiento actual se sigue la aclaración de un formulario por circuito.
   registran; la aplicación no las ejecuta ni emite comprobantes fiscales.
 - **Observado en las fuentes actuales:** campos y opciones arriba inventariados,
   herramientas utilizadas, actores mencionados y problemas de búsqueda manual.
-- **Pendiente de confirmación institucional:** obligatoriedad y validaciones del
-  formulario de factura; capacidades por rol; observación y corrección; tipos y
+- **Pendiente de confirmación institucional:** condiciones y validaciones de los
+  campos marcados como obligatorios en el formulario de factura, y su aplicación
+  en el nuevo sistema; capacidades por rol; observación y corrección; tipos y
   revisión de documentos; multiplicidad y efecto de notas; imputación de cobros;
   estados, cancelación, reapertura y cierre.
 - **Pendiente de acuerdo técnico con Franco:** identificadores y propiedad de

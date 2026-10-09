@@ -28,7 +28,8 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 - Emitir facturas o notas desde el sistema; su registro se trata en SPEC-005.
 - Registrar cobros, cancelación o cierre; se tratan en SPEC-006 y SPEC-007.
-- Fijar obligatoriedad, condiciones o validaciones no confirmadas del formulario.
+- Trasladar al nuevo sistema la obligatoriedad del formulario Google sin validar
+  las condiciones y excepciones de cada paso.
 
 ## Requisitos verificables
 
@@ -44,9 +45,11 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 ## Reglas de negocio
 
 - El [relevamiento inicial](../planning/i2-issues/01-relevamiento-fuentes.md)
-  identifica los campos visibles del formulario. Su obligatoriedad y condiciones,
-  la facultad de observar/corregir y el mapa de estados se definirán con
-  Cooperadora antes de pasar a `listo`.
+  identifica 16 preguntas marcadas como obligatorias en el formulario actual:
+  13 en la primera página y tres en la sección de comprobante. Las condiciones
+  de esa sección, las validaciones para el nuevo sistema, la facultad de
+  observar/corregir y el mapa de estados se definirán con Cooperadora antes de
+  pasar a `listo`.
 - Una corrección no borra el historial de lo presentado ni la observación.
 - La protección de acceso se aplica a listas, detalle y acciones del servidor.
 
@@ -61,11 +64,12 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Datos, permisos y sensibilidad
 
-- Datos visibles en el formulario: contacto, solicitante, destinatario fiscal,
-  condición IVA, detalle, importe, producto/servicio, centro de costo,
-  medio/cuenta, observaciones y sección de comprobante. Su necesidad por estado
-  y validación siguen abiertas. El trámite agrega identificador, presentador,
-  fechas, estado e historial.
+- Datos visibles y marcados con `*` en el formulario actual: contacto,
+  solicitante, destinatario fiscal, condición IVA, detalle, importe,
+  producto/servicio, centro de costo, medio/cuenta, observaciones y, en la
+  sección de comprobante, fecha, número de operación y archivo. Su necesidad
+  por estado y validación en el nuevo sistema siguen abiertas. El trámite agrega
+  identificador, presentador, fechas, estado e historial.
 - Roles autorizados: solicitante y personal de Cooperadora con capacidades de
   presentación, revisión o corrección por validar.
 - Datos sintéticos o anonimizados para pruebas: dos solicitantes, solicitudes y
@@ -89,8 +93,9 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Preguntas abiertas
 
-- ¿Qué campos son obligatorios o condicionales y cuándo se exige comprobante,
-  especialmente si se indicó cuenta corriente aún no cobrada?
+- ¿Se mantienen los campos obligatorios del formulario actual y cuándo se exige
+  la sección de comprobante, especialmente si se respondió `No` o se indicó
+  cuenta corriente aún no cobrada? ¿Qué formatos se validan?
 - ¿Quién puede observar y corregir, cuántas rondas se permiten y qué historial
   queda visible?
 - ¿Cuáles son los estados, motivos y plazos del recorrido real? Ver preguntas
@@ -101,4 +106,5 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 | Fecha | Fuente | Decisión | Consecuencia |
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido | Matías desarrolla el recorrido completo de solicitudes de facturación. | Los campos y reglas quedan en borrador hasta el relevamiento y la validación. |
-| 2026-10-09 | Formulario de factura y primera entrevista | Registrar el inventario y separar el proceso actual de propuestas para el nuevo sistema. | La spec sigue en borrador; ninguna obligatoriedad o transición se considera aprobada por este relevamiento. |
+| 2026-10-09 | Formulario de factura y primera entrevista | Registrar el inventario y separar el proceso actual de propuestas para el nuevo sistema. | La spec sigue en borrador; no se aprueban todavía obligatoriedades ni transiciones para el nuevo sistema. |
+| 2026-10-09 | Formulario de factura actualizado por el usuario | Registrar las 16 marcas de obligatoriedad de la fuente. | P02 queda parcialmente respondida; las condiciones y validaciones para el nuevo sistema siguen sin confirmar. |
