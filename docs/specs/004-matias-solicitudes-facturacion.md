@@ -1,6 +1,6 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
-- Estado: borrador; pendiente de relevar formularios y validar el recorrido.
+- Estado: borrador; formulario inventariado, pendiente de validar campos y recorrido.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
   para validación y [#23](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/23)
@@ -28,7 +28,7 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 - Emitir facturas o notas desde el sistema; su registro se trata en SPEC-005.
 - Registrar cobros, cancelación o cierre; se tratan en SPEC-006 y SPEC-007.
-- Fijar campos del formulario sin relevar el formulario y ejemplos actuales.
+- Fijar obligatoriedad, condiciones o validaciones no confirmadas del formulario.
 
 ## Requisitos verificables
 
@@ -43,8 +43,10 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Reglas de negocio
 
-- Los datos obligatorios, la facultad de observar/corregir y el mapa de estados
-  se definirán con Cooperadora antes de pasar a `listo`.
+- El [relevamiento inicial](../planning/i2-issues/01-relevamiento-fuentes.md)
+  identifica los campos visibles del formulario. Su obligatoriedad y condiciones,
+  la facultad de observar/corregir y el mapa de estados se definirán con
+  Cooperadora antes de pasar a `listo`.
 - Una corrección no borra el historial de lo presentado ni la observación.
 - La protección de acceso se aplica a listas, detalle y acciones del servidor.
 
@@ -59,8 +61,11 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Datos, permisos y sensibilidad
 
-- Datos requeridos: campos del formulario por relevar, identificador de solicitud,
-  presentador, fechas, estado y observaciones.
+- Datos visibles en el formulario: contacto, solicitante, destinatario fiscal,
+  condición IVA, detalle, importe, producto/servicio, centro de costo,
+  medio/cuenta, observaciones y sección de comprobante. Su necesidad por estado
+  y validación siguen abiertas. El trámite agrega identificador, presentador,
+  fechas, estado e historial.
 - Roles autorizados: solicitante y personal de Cooperadora con capacidades de
   presentación, revisión o corrección por validar.
 - Datos sintéticos o anonimizados para pruebas: dos solicitantes, solicitudes y
@@ -84,13 +89,16 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Preguntas abiertas
 
-- ¿Cuáles son los campos y documentos del formulario actual, y cuáles son
-  obligatorios?
-- ¿Quién puede observar y corregir? ¿Cuántas rondas de corrección se permiten?
-- ¿Cuáles son los estados, motivos y plazos del recorrido real?
+- ¿Qué campos son obligatorios o condicionales y cuándo se exige comprobante,
+  especialmente si se indicó cuenta corriente aún no cobrada?
+- ¿Quién puede observar y corregir, cuántas rondas se permiten y qué historial
+  queda visible?
+- ¿Cuáles son los estados, motivos y plazos del recorrido real? Ver preguntas
+  [P01-P10 y P15](../planning/i2-issues/01-consulta-cooperadora.md).
 
 ## Decisiones
 
 | Fecha | Fuente | Decisión | Consecuencia |
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido | Matías desarrolla el recorrido completo de solicitudes de facturación. | Los campos y reglas quedan en borrador hasta el relevamiento y la validación. |
+| 2026-10-09 | Formulario de factura y primera entrevista | Registrar el inventario y separar el proceso actual de propuestas para el nuevo sistema. | La spec sigue en borrador; ninguna obligatoriedad o transición se considera aprobada por este relevamiento. |

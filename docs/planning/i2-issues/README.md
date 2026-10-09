@@ -24,7 +24,7 @@ propuesta técnica del equipo.
 |---|---|---|
 | [002](../../specs/002-matias-identidad-permisos.md) | RF-001, RNF-001, M-E03, I02 | Alineada. El adaptador sintético de I1 ya existe en `identidad`; I2 debe ampliar capacidades y probar el consumidor facturación, sin rehacer T02 ni prometer autenticación institucional. |
 | [003](../../specs/003-matias-documentos.md) | RF-004, RNF-001/004, M-E04, I03 | Alineada. En `origin/main`, el primer tramo DOC-R01–R03 ya está preparado para #19; I2-05 cubre DOC-R04 sin duplicarlo. Política de revisión y ubicación de prueba siguen sin validar. RF-005 sobre deuda tras un pago de gastos corresponde a Franco. |
-| [004](../../specs/004-matias-solicitudes-facturacion.md) | RF-002, M-E01/02/05 | Alineada. Faltan formulario real, actores, observaciones y transiciones; se puede avanzar en un contrato y un recorrido básico sólo después de definirlos. |
+| [004](../../specs/004-matias-solicitudes-facturacion.md) | RF-002, M-E01/02/05 | Alineada. El formulario y la entrevista ya están inventariados para #20; falta confirmar obligatoriedad, actores, observaciones y transiciones antes de fijar reglas de implementación. |
 | [005](../../specs/005-matias-facturas-notas.md) | RF-002, M-E06, I01/03 | Alineada. Se registran operaciones externas; no se emiten comprobantes ni se integra Exubio por API. Falta validar campos, unicidad y efecto de notas. |
 | [006](../../specs/006-matias-cobros.md) | RF-002, RNF-002/003, M-E07, I03 | Alineada. Faltan imputación, cobros parciales y moneda; las pruebas deben cubrir precisión y atomicidad. |
 | [007](../../specs/007-matias-seguimiento-cierre.md) | RF-002/006, RNF-002, M-E08 | Alineada. El historial base se acuerda al modelar la solicitud; cancelación y cierre esperan las reglas de Cooperadora. |
@@ -41,7 +41,7 @@ porque éstas reagrupan resultados y no hay horas ejecutadas acreditadas.
 
 | Orden | Issue y título | Spec principal | Depende de | Esfuerzo y prueba | Prioridad / situación inicial |
 |---|---|---|---|---|---|
-| 1 | [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20) ([I2-01](01-validar-alcance.md)) Validar el recorrido de facturación y los contratos compartidos | 004, 009 | Ninguna | Bajo en código; requiere validación humana | MUST; Ready para relevamiento y revisión, no para dar reglas por aprobadas |
+| 1 | [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20) ([I2-01](01-validar-alcance.md)) Validar el recorrido de facturación y los contratos compartidos | 004, 009 | Ninguna | Bajo en código; requiere validación humana | MUST; En Curso: [inventario](01-relevamiento-fuentes.md) y [preguntas](01-consulta-cooperadora.md); aún no aprobada |
 | 2 | [#21](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/21) ([I2-02](02-identidad-facturacion.md)) Extender identidad y permisos a facturación | 002 | #20 (matriz mínima) y #4 de I1 | Bajo-medio; reutiliza componente probado | MUST; Backlog |
 | 3 | [#22](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/22) ([I2-03](03-modelo-contratos.md)) Acordar e integrar el modelo y los contratos comunes | 009 | #20; revisión de Franco | Medio; migraciones e integridad cruzada | MUST; Backlog |
 | 4 | [#23](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/23) ([I2-04](04-solicitudes.md)) Presentar, consultar, observar y corregir solicitudes de facturación | 004 | #21/#22 y reglas de #20 | Medio; flujo, permisos e historial inicial | MUST; Backlog |
