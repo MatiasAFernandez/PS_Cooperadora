@@ -14,6 +14,10 @@ preguntas P01-P18 y los acuerdos internos A01-A05 con Franco. No hay todavía
 minuta de confirmación posterior ni contratos compartidos aprobados; esta Issue
 permanece abierta.
 
+P02 está parcialmente respondida: la plantilla local de solicitud de factura
+marca 16 preguntas obligatorias. Faltan la lógica condicional de la sección de
+comprobante y las validaciones que regirán en la nueva aplicación.
+
 ## Resultado esperado
 
 Inventario de formularios, ejemplos anonimizados, actores y documentos; recorrido
