@@ -70,7 +70,7 @@ Cada archivo numerado conserva el cuerpo de su Issue. Las dependencias de los
 cuerpos publicados usan números reales, registrados también en las specs y esta
 tabla. Las Issues están asignadas a Matías; no se duplican #4 ni #19.
 [WORKFLOW](../../WORKFLOW.md) propone un GitHub Project compartido. Para estas
-Issues, usar únicamente los estados `Backlog`, `Ready`, `En curso`, `Revision` y
+Issues, usar únicamente los estados `Backlog`, `Ready`, `En Curso`, `Revisión` y
 `Terminado`; el incremento `[I2]`, la spec y el responsable quedan identificados
 en las Issues y sus enlaces, sin agregar campos al Project.
 
