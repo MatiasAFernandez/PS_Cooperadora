@@ -38,12 +38,21 @@ falta y configurar `POSTGRES_PORT=55432` y `DEMO_IDENTITY_ENABLED=true`. Mantene
 los restantes valores locales de desarrollo o ajustarlos a la base de prueba.
 
 ```powershell
-if (-not (Test-Path .venv)) { py -3.11 -m venv .venv }
-$PythonVersion = & .\.venv\Scripts\python.exe --version
+$Venv = '.venv'
+if (Test-Path .venv\Scripts\python.exe) {
+  $CurrentVersion = & .\.venv\Scripts\python.exe --version
+  if ($CurrentVersion -notmatch '^Python 3\.11\.') {
+    $Venv = Join-Path $env:TEMP 'ps-cooperadora-i1-venv'
+  }
+}
+if (-not (Test-Path (Join-Path $Venv 'Scripts\python.exe'))) {
+  py -3.11 -m venv $Venv
+}
+$PythonVersion = & (Join-Path $Venv 'Scripts\python.exe') --version
 if ($PythonVersion -notmatch '^Python 3\.11\.') {
   throw "Se requiere un entorno virtual con Python 3.11; el actual usa $PythonVersion"
 }
-.\.venv\Scripts\Activate.ps1
+& (Join-Path $Venv 'Scripts\Activate.ps1')
 pip install -r requirements/dev.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
@@ -68,8 +77,8 @@ python manage.py runserver 127.0.0.1:8000
 Definir las cuatro contrasenas distintas por
 prompt, sin incorporarlas al repositorio, capturas o acta. Si el puerto `8000`
 esta ocupado, usar otro puerto y conservar las mismas rutas.
-No reutilizar un `.venv` creado con otra version de Python: preparar un entorno
-3.11 separado, sin borrar el existente sin revisar su contenido.
+Si `.venv` usa otra version de Python, el bloque crea un entorno 3.11 separado
+en la carpeta temporal del usuario, sin alterar el entorno existente.
 
 ## Recorrido en pantalla
 
