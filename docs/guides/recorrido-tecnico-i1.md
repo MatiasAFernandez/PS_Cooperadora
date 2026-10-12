@@ -7,9 +7,10 @@ recorrido.
 
 ## Preparacion de PostgreSQL en Windows
 
-Requisitos: Python 3.11 o 3.14, PostgreSQL 17 y un puerto local libre (el
-ejemplo usa `55432`). La CI usa Python 3.11; Django 5.2.17 y Psycopg 3.3.5
-tambien admiten Python 3.14. El servidor PostgreSQL se instala y ejecuta fuera
+Requisitos: Python 3.11 o 3.14, PostgreSQL 17 o 18 y un puerto local libre (el
+ejemplo usa `55432`). La CI usa PostgreSQL 17 y Python 3.11; la reproduccion
+local se verifico tambien con PostgreSQL 18.6 y Python 3.14.7. Django 5.2.17 y
+Psycopg 3.3.5 admiten Python 3.14. El servidor PostgreSQL se ejecuta fuera
 del entorno virtual de Python. El proyecto ya incluye el cliente `psycopg[binary]`
 en `requirements/base.txt`.
 
@@ -41,7 +42,7 @@ arrancarlo con `& $Podman start cooperadora-i1-demo-db`; no crear otro con el
 mismo nombre. La clave del ejemplo es solo para esta base sintetica local, nunca
 para un entorno real.
 
-**Opcion nativa:** instalar [PostgreSQL 17 para Windows](https://www.postgresql.org/download/windows/)
+**Opcion nativa:** instalar [PostgreSQL para Windows](https://www.postgresql.org/download/windows/)
 como servicio separado, sin Podman ni WSL. Preparar una base y un usuario de
 prueba que coincidan con `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD`
 de `.env`; usar el puerto configurado en `POSTGRES_PORT`. No sobrescribir una
