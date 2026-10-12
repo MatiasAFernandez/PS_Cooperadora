@@ -5,14 +5,20 @@ necesidad de gasto previa a un pago; no registra pagos, recibe archivos ni valid
 reglas institucionales. Cada integrante debe ejecutar y registrar su propio
 recorrido.
 
-## Preparacion con Podman en Windows
+## Preparacion de PostgreSQL en Windows
 
-Requisitos: Python 3.11, Podman con una maquina Linux funcional y un puerto local
-libre (el ejemplo usa `55432`). Si `podman machine start` falla con
+Requisitos: Python 3.11 o 3.14, PostgreSQL 17 y un puerto local libre (el
+ejemplo usa `55432`). La CI usa Python 3.11; Django 5.2.17 y Psycopg 3.3.5
+tambien admiten Python 3.14. El servidor PostgreSQL se instala y ejecuta fuera
+del entorno virtual de Python. El proyecto ya incluye el cliente `psycopg[binary]`
+en `requirements/base.txt`.
+
+**Opcion Podman:** requiere una maquina Linux funcional. Si
+`podman machine start` falla con
 `HCS_E_SERVICE_NOT_AVAILABLE`, comprobar `wsl --status`: Windows puede requerir
 habilitar la caracteristica "Plataforma de maquina virtual" y la virtualizacion
 en BIOS/UEFI. Esto puede requerir permisos de administrador y reinicio; no se
-puede continuar la prueba local con PostgreSQL hasta que la maquina inicie.
+puede continuar con este contenedor hasta que la maquina inicie.
 No borrar volumenes ni bases existentes para intentar resolver ese error.
 
 Desde la raiz del repositorio, con `main` actualizada:
@@ -33,32 +39,25 @@ if (-not $Podman) { $Podman = "$env:LOCALAPPDATA\Programs\Podman\podman.exe" }
 Si el contenedor ya existe, comprobar su estado con `& $Podman ps -a` y
 arrancarlo con `& $Podman start cooperadora-i1-demo-db`; no crear otro con el
 mismo nombre. La clave del ejemplo es solo para esta base sintetica local, nunca
-para un entorno real. En `.env` (ignorado por Git), copiar `.env.example` si hace
-falta y configurar `POSTGRES_PORT=55432` y `DEMO_IDENTITY_ENABLED=true`. Mantener
-los restantes valores locales de desarrollo o ajustarlos a la base de prueba.
+para un entorno real.
+
+**Opcion nativa:** instalar [PostgreSQL 17 para Windows](https://www.postgresql.org/download/windows/)
+como servicio separado, sin Podman ni WSL. Preparar una base y un usuario de
+prueba que coincidan con `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD`
+de `.env`; usar el puerto configurado en `POSTGRES_PORT`. No sobrescribir una
+instancia o base existente. En ambas opciones, copiar `.env.example` si hace
+falta, configurar el puerto correcto y `DEMO_IDENTITY_ENABLED=true`.
 
 ```powershell
-$Venv = '.venv'
-if (Test-Path .venv\Scripts\python.exe) {
-  $CurrentVersion = & .\.venv\Scripts\python.exe --version
-  if ($CurrentVersion -notmatch '^Python 3\.11\.') {
-    $Venv = Join-Path $env:TEMP 'ps-cooperadora-i1-venv'
-  }
-}
-if (-not (Test-Path (Join-Path $Venv 'Scripts\python.exe'))) {
-  py -3.11 -m venv $Venv
-}
-$PythonVersion = & (Join-Path $Venv 'Scripts\python.exe') --version
-if ($PythonVersion -notmatch '^Python 3\.11\.') {
-  throw "Se requiere un entorno virtual con Python 3.11; el actual usa $PythonVersion"
-}
-& (Join-Path $Venv 'Scripts\Activate.ps1')
+if (-not (Test-Path .venv\Scripts\python.exe)) { py -3.11 -m venv .venv }
+.\.venv\Scripts\Activate.ps1
+python --version
 pip install -r requirements/dev.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Editar `.env` antes de continuar: definir `POSTGRES_PORT=55432` y
-`DEMO_IDENTITY_ENABLED=true`. Luego ejecutar:
+Editar `.env` antes de continuar: definir `POSTGRES_PORT` segun la instancia
+elegida y `DEMO_IDENTITY_ENABLED=true`. Luego ejecutar:
 
 ```powershell
 python manage.py migrate
@@ -77,8 +76,9 @@ python manage.py runserver 127.0.0.1:8000
 Definir las cuatro contrasenas distintas por
 prompt, sin incorporarlas al repositorio, capturas o acta. Si el puerto `8000`
 esta ocupado, usar otro puerto y conservar las mismas rutas.
-Si `.venv` usa otra version de Python, el bloque crea un entorno 3.11 separado
-en la carpeta temporal del usuario, sin alterar el entorno existente.
+El `.venv` existente con Python 3.14 puede reutilizarse. Si se crea uno nuevo
+con 3.14, sustituir `py -3.11` por `py -3.14` en el comando anterior. Registrar
+la version usada en el acta para compararla con CI.
 
 ## Recorrido en pantalla
 

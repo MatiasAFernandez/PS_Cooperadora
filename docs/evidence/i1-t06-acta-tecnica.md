@@ -31,14 +31,14 @@ virtualizacion en BIOS/UEFI. No se detecto PostgreSQL en los puertos 5432 o
 La comprobacion de migraciones se interrumpio al esperar la conexion a la base;
 no produjo un resultado aprobatorio. No se borraron volumenes ni datos.
 El entorno virtual disponible usa Python 3.14.7; la version de referencia del
-proyecto y de la CI es Python 3.11. La repeticion local completa debe hacerse
-con 3.11 para comparar resultados.
+proyecto y de la CI es Python 3.11. Django 5.2.17 y Psycopg 3.3.5 admiten
+Python 3.14, por lo que esto no bloquea la repeticion local. Registrar la
+version usada para compararla con CI.
 
 ## Pendientes para el cierre
 
-- [ ] Restaurar WSL2/virtualizacion o disponer de otra instancia PostgreSQL 17
-  de prueba; disponer de Python 3.11 y repetir migraciones, controles y suite
-  completa en el entorno local.
+- [ ] Restaurar WSL2/virtualizacion para Podman o instalar PostgreSQL 17 nativo
+  para pruebas; repetir migraciones, controles y suite completa en el entorno local.
 - [ ] Franco ejecuta y registra el recorrido de formularios, decisiones,
   historial y mensajes H4 con las cuatro cuentas sinteticas.
 - [ ] Matias prepara sus cuentas y reproduce el recorrido de forma independiente,
