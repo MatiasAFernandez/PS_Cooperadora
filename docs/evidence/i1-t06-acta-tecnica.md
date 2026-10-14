@@ -52,7 +52,8 @@ PostgreSQL 17. La consulta SQL final registro `#1 aceptada` version 2,
 - [x] Matias preparo las cuentas sinteticas y reprodujo el recorrido de forma
   independiente, comprobando el contrato de identidad en gastos y las
   denegaciones por objeto.
-- [x] Adjuntar y organizar capturas sinteticas aportadas por Franco, con indice.
+- [x] Adjuntar y organizar capturas sinteticas aportadas por Franco, con indice;
+  identificar por separado las comprobaciones visuales tecnicas complementarias.
 - [ ] Ambos acuerdan la seleccion final de evidencia de sus reproducciones.
 - [ ] Anotar defectos encontrados, su correccion y nueva prueba, o mantener la
   Issue abierta si afectan criterios de aceptacion.
@@ -107,6 +108,10 @@ temporal unica. No contiene claves, cookies, datos reales ni rutas personales.
 Una imagen respalda lo que muestra; el actor y la recarga se acreditan con el
 relato directo de Franco y las comprobaciones correspondientes, no se infieren
 solo por ausencia de botones.
+
+El indice agrega dos capturas tecnicas posteriores de B: login real en navegador,
+listado sin solicitudes ajenas y 404 por las URLs de #1/#2, sin modificar datos.
+Se identifican como T01/T02 y no como capturas manuales originales de Franco.
 
 Se registro un mensaje de validacion duplicado y la oferta de Postergar cuando
 ese estado no admite otra postergacion segun el recorte actual. Son observaciones

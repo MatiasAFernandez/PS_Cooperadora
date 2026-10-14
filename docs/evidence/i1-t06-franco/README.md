@@ -16,6 +16,8 @@ siete imagenes extraidas del PDF, sin alterar sus pixeles. Los PNG con pestanas
 del entorno privado, los accesos sin valor adicional y capturas redundantes no
 se publican. Los originales se conservaron sin cambios fuera de Git.
 El [manifiesto](manifest.json) identifica pagina, imagen fuente y SHA-256.
+Adicionalmente se incorporan dos capturas tecnicas posteriores de una sesion real
+de B, identificadas como T01/T02; no se atribuyen a la captura manual original.
 
 | ID | Contenido visible | Fuente en PDF | Limite |
 |---|---|---|---|
@@ -36,7 +38,14 @@ casos nuevos distintos. Los detalles de la recuperacion estan en el acta.
 El relato directo de Franco tambien registra recargas, consulta de A, listado de B
 sin gastos ajenos y Not Found por las URLs de #1 y #2. El conjunto recibido no
 contiene capturas de esos Not Found ni del mensaje de validacion duplicado.
-No se inventan ni se sustituyen por imagenes recreadas.
+No se inventan ni se presentan imagenes posteriores como capturas originales.
+
+La [comprobacion visual complementaria de B](verificacion-tecnica-b.json) se hizo
+despues, en navegador Chromium con login real: listado 200 sin solicitudes ajenas
+y detalles #1/#2 con 404. No envio decisiones ni modifico solicitudes/historial.
+T01 muestra el listado vacio; T02 muestra la respuesta generica 404. Las dos URLs
+produjeron imagenes identicas y se publica una sola, con ambos resultados HTTP
+registrados. Esta evidencia es tecnica, distinta del recorrido manual de Franco.
 
 La denegacion HTTP 403 a L con sesion y CSRF validos y la ausencia de cambios
 fueron verificadas tecnicamente en #3; no son una captura manual de Franco.
@@ -73,3 +82,11 @@ pendientes. Este paquete no cierra #8 ni valida H1-H4 ante Cooperadora (#9).
 ### E07 - Consulta de una solicitud abierta
 
 ![E07: presentada sin panel de decision](07-consulta-solicitud-abierta.png)
+
+### T01 - Comprobacion tecnica posterior: listado de B
+
+![T01: listado de B sin solicitudes ajenas](08-b-listado-vacio.png)
+
+### T02 - Comprobacion tecnica posterior: respuesta generica a objeto ajeno
+
+![T02: Not Found sin datos del gasto](09-b-detalle-no-encontrado.png)
