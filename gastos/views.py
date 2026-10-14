@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views import View
 
 from gastos.auth import has_capability, resolve_actor
-from gastos.forms import DecisionGastoForm, SolicitudGastoForm
+from gastos.forms import DecisionGastoForm, FiltroEstadoGastoForm, SolicitudGastoForm
 from gastos.models import EstadoSolicitud
 from gastos.queries import visible_expenses
 from gastos.services import (
@@ -100,10 +100,20 @@ class SolicitudGastoListView(View):
         actor = result
 
         solicitudes = visible_expenses(actor)
+        filtro_form = FiltroEstadoGastoForm(request.GET)
+        if filtro_form.is_valid():
+            estado = filtro_form.cleaned_data["estado"]
+            if estado:
+                solicitudes = solicitudes.filter(estado=estado)
+            concepto = filtro_form.cleaned_data["q"]
+            if concepto:
+                solicitudes = solicitudes.filter(concepto__icontains=concepto)
+        else:
+            solicitudes = solicitudes.none()
         return render(
             request,
             "gastos/solicitud_list.html",
-            {"solicitudes": solicitudes, "actor": actor},
+            {"solicitudes": solicitudes, "actor": actor, "filtro_form": filtro_form},
         )
 
 
