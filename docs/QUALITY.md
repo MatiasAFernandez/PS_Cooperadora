@@ -60,11 +60,16 @@ Mantener ambos tipos de pendientes diferenciados para priorizar con fundamento.
 
 ## Uso por distintas herramientas
 
+Cada integrante elige sus herramientas, modelos y forma de organizar el trabajo.
+Estos criterios no exigen un orquestador, múltiples agentes ni un ejecutor
+determinado. Los roles de implementación y revisión describen responsabilidades
+del trabajo; no fijan una cantidad o tipo de agentes.
+
 `AGENTS.md` dirige a este documento y a las fuentes de cada tarea. En el encargo
 inicial a cualquier herramienta incluir: «Leé AGENTS.md, CONTRIBUTING.md,
 docs/WORKFLOW.md y docs/QUALITY.md; después la Issue y sus specs/contratos.
 Aplicá los criterios pertinentes al plan, implementación y revisión».
 
 No asumir que todas las herramientas descubren instrucciones de la misma forma.
-El coordinador confirma la lectura al delegar; las fuentes comunes viven en Git,
+Quien inicie o delegue la tarea asegura la lectura; las fuentes comunes viven en Git,
 sin duplicarlas en skills o configuraciones personales.

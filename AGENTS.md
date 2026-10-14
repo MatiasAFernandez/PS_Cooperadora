@@ -10,3 +10,4 @@
 - Usar datos sintéticos. No mostrar ni versionar secretos, `.env`, bases, credenciales o respuestas reales de formularios.
 - `.local/` es coordinación privada y no se versiona. No convertir rutas personales, herramientas particulares o preferencias de aprendizaje en dependencias del producto o reglas comunes.
 - No se requieren skills nuevas para aplicar estos criterios. Los encargos a herramientas que no lean automáticamente este archivo deben exigir su lectura y la de `docs/QUALITY.md` antes de comenzar.
+- Cada integrante elige herramientas, modelos y organización. Estas instrucciones no exigen orquestación, múltiples agentes ni el flujo particular de otro integrante.
