@@ -1,0 +1,58 @@
+{
+  "fecha": "2026-10-14",
+  "fuente": "PDF de capturas aportado por Franco; seis paginas",
+  "sha256_pdf_original": "456efeafd2ff5190a602a53e7cf028d8cb48e3ed436378ef3fe1e268ad577070",
+  "version_recorrida": "60f21f156c2d30ce7240cb10ce0308071f80daa1",
+  "tratamiento": "Imagenes extraidas del PDF, sin alterar pixeles; originales preservados fuera de Git.",
+  "evidencias": [
+    {
+      "id": "E01",
+      "archivo": "01-solicitud-presentada.png",
+      "fuente": "PDF-01-01",
+      "pagina_pdf": 1,
+      "sha256": "24d410b97e61ea5860567c72b9494b8dcafc84c9f404594e724881f9dbd8412b"
+    },
+    {
+      "id": "E02",
+      "archivo": "02-respaldo-inicial-historial.png",
+      "fuente": "PDF-01-02",
+      "pagina_pdf": 1,
+      "sha256": "6fc6aa2984c5aadada99dbc79d1ef82197499d0643f68e9c869c5b3bfdae6186"
+    },
+    {
+      "id": "E03",
+      "archivo": "03-postergacion-historial.png",
+      "fuente": "PDF-03-01",
+      "pagina_pdf": 3,
+      "sha256": "61b61577de4a2dc1dc8856ece01212041df2318dfb25ec8bd1224e1474aaa760"
+    },
+    {
+      "id": "E04",
+      "archivo": "04-aceptacion-historial-respaldo.png",
+      "fuente": "PDF-03-02",
+      "pagina_pdf": 3,
+      "sha256": "91602354725aed8a0b9143dd9497ae36cc92b03903faf055a3f51536d53cab33"
+    },
+    {
+      "id": "E05",
+      "archivo": "05-rechazo-historial.png",
+      "fuente": "PDF-05-01",
+      "pagina_pdf": 5,
+      "sha256": "a9018cedfb17f4d0d959bd2aa150aeee14bf291faf72f1392fa0327206fa64f4"
+    },
+    {
+      "id": "E06",
+      "archivo": "06-listado-consulta.png",
+      "fuente": "PDF-05-02",
+      "pagina_pdf": 5,
+      "sha256": "1679c7b38754b067deb8b0d394cbb79fb7bcb716414958fdd5edf104c64dd37e"
+    },
+    {
+      "id": "E07",
+      "archivo": "07-consulta-solicitud-abierta.png",
+      "fuente": "PDF-06-01",
+      "pagina_pdf": 6,
+      "sha256": "0bc69b16eec9113f4ef25fdb4ce57a5d16a14e4c296e80e756bcc6a595b828fe"
+    }
+  ]
+}
