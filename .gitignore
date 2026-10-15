@@ -32,3 +32,4 @@ Thumbs.db
 
 # Fuentes locales de relevamiento y contexto
 docs/fuentes/
+.local/
