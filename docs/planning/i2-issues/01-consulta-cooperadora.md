@@ -5,6 +5,12 @@ reglas de implementación. En cada respuesta registrar fecha, cargo de quien la
 confirma, regla vigente, excepción y un ejemplo anonimizado. No solicitar
 planillas completas ni datos personales o financieros reales por GitHub.
 
+Actualización del 15/10/2026: Matías comunicó las
+[decisiones aceptadas para esta etapa](01-decisiones-recibidas.md), indicó como
+validador al director del proyecto y confirmó el acuerdo de contratos A01–A05
+con Franco. Las tablas de abajo conservan las preguntas originales; el registro
+enlazado distingue respuestas y detalles diferidos a Issues dependientes.
+
 El [relevamiento inicial](01-relevamiento-fuentes.md) distingue lo observado en
 los formularios y la entrevista de lo comprometido por el Plan de Trabajo. Las
 preguntas P01-P15 son necesarias para un recorrido verificable de facturación;
