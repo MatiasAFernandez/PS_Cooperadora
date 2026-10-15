@@ -1,6 +1,8 @@
 # SPEC-009 — Contratos e integración de los dos circuitos
 
-- Estado: borrador; fuentes iniciales relevadas, pendiente de revisión conjunta con Franco.
+- Estado: decisiones de facturación recibidas; Franco confirmó el acuerdo técnico
+  A01–A05 para la demo sobre la versión indicada en la Issue #20. El nuevo
+  registro de decisiones requiere revisión de su diff.
 - Autor y responsable principal: Matías Alejandro Fernández por su aporte de
   estructura, identidad y documentos compartidos.
 - Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
@@ -13,6 +15,19 @@
 - Validadores: Franco y Matías para interfaces; Cooperadora para el recorrido
   integrado; tutor técnico cuando afecte arquitectura institucional.
 - Plan: I01-I05 y RF-001/RF-004/RF-006 compartidos.
+
+## Avance de #20 recibido el 15/10/2026
+
+El [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md)
+recoge reglas de facturación y el
+[acuerdo A01–A05 de Franco](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20#issuecomment-6196767849)
+para la demo. La referencia lógica combina módulo e identificador, pero su
+representación física debe proteger relaciones con FK y rechazarlas cuando sean
+cruzadas o inexistentes. Cada circuito conserva sus estados y eventos; no se
+impone un enum ni una tabla genérica de historial. Franco revisó los contratos
+versionados que enlazó en su comentario, no el nuevo registro aún no publicado.
+Los detalles de modelo, capacidades y pruebas corresponden a #19/#21/#22/#28;
+las reglas funcionales de gastos siguen bajo la responsabilidad de Franco.
 
 ## Problema y valor
 
@@ -56,9 +71,10 @@ duplicar reglas contradictorias.
 - Un contrato compartido se acuerda con ejemplos de ambos circuitos antes de
   cambiar modelos o interfaces que dependan de él.
 - El [relevamiento de #20](../planning/i2-issues/01-relevamiento-fuentes.md)
-  distingue los datos observados de facturación y transferencia. Los acuerdos
-  [A01-A05](../planning/i2-issues/01-consulta-cooperadora.md) siguen pendientes
-  de revisión cruzada; los formularios no fijan por sí solos interfaces Django.
+  distingue los datos observados de facturación y transferencia. Matías confirmó
+  el acuerdo con Franco sobre [A01-A05](../planning/i2-issues/01-decisiones-recibidas.md)
+  el 15/10/2026; los detalles físicos, códigos y pruebas se concretan en #21 y
+  #22. Los formularios no fijan por sí solos interfaces Django.
 - La integración se verifica con datos sintéticos y casos permitidos/denegados;
   la devolución de Cooperadora se registra por separado.
 
@@ -111,3 +127,4 @@ duplicar reglas contradictorias.
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido y división registrada en README | Una aplicación Django modular con propiedad vertical y componentes compartidos. | Los contratos se acuerdan con Franco antes de implementarlos. |
 | 2026-10-09 | Formularios y primera entrevista | Inventariar datos y actores de ambos circuitos como evidencia para el acuerdo. | Identificadores, capacidades, documento y evento compartidos siguen sin aprobación de Franco. |
+| 2026-10-15 | [Comentario de Franco en #20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20#issuecomment-6196767849) sobre `1962b63c5024e935e86de261cfdebad5085611e4` | Acordar A01–A05 para la demo con referencia por módulo e identificador, capacidades separadas, versiones documentales y eventos propios por circuito. | Los detalles físicos quedan en #19/#21/#22/#28; este nuevo documento requiere revisión de su diff y el acuerdo no valida reglas de Cooperadora. |
