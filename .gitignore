@@ -33,3 +33,6 @@ Thumbs.db
 # Fuentes locales de relevamiento y contexto
 docs/fuentes/
 .local/
+
+# Respaldo privado de prueba de #19
+private_documents/

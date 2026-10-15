@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "identidad",
     "gastos",
+    "documentos",
 ]
 
 MIDDLEWARE = [
@@ -95,6 +96,10 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Archivos de #19: directorio privado, sin URL estática.
+DOCUMENT_STORAGE_ROOT = Path(os.getenv("DOCUMENT_STORAGE_ROOT", BASE_DIR / "private_documents"))
+DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10000000"))
 
 LOGIN_URL = "identidad:login"
 LOGIN_REDIRECT_URL = "identidad:inicio"

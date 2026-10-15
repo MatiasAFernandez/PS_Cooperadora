@@ -10,6 +10,9 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
     "demo_solicitante": frozenset({"gastos.presentar", "gastos.consultar_propias"}),
     "demo_operadora": frozenset({"gastos.consultar_todas", "gastos.decidir"}),
     "demo_lectura": frozenset({"gastos.consultar_todas"}),
+    "demo_documentos_aporte": frozenset({"documentos.incorporar"}),
+    "demo_documentos_metadatos": frozenset({"documentos.ver_metadatos"}),
+    "demo_documentos_descarga": frozenset({"documentos.descargar"}),
 }
 KNOWN_CAPABILITIES = frozenset().union(*GROUP_CAPABILITIES.values())
 
