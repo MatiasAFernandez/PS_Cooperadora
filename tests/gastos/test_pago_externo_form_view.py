@@ -8,15 +8,23 @@ actores y dobles sintéticos de prueba.
 
 from datetime import date
 from decimal import Decimal
+from threading import Event, Thread
 from typing import Any
 
 import pytest
+from django.db import connections
 from django.test import Client
 from django.urls import reverse
 
+from gastos import views as gastos_views
 from gastos.contracts import DocumentVerificationError, OpcionDocumental
 from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
-from gastos.payments import PaymentInvalidExpenseStateError, registrar_pago_externo
+from gastos.payments import (
+    PaymentConflictError,
+    PaymentInvalidExpenseStateError,
+    registrar_pago_externo,
+)
+from identidad.services import Actor
 
 CAPS_PAGO_UI = (
     "gastos.consultar_todas",
@@ -784,3 +792,558 @@ def test_detalle_no_ofrece_accion_si_ya_existe_pago(
     assert response.status_code == 200
     assert response.context["puede_registrar_pago"] is False
     assert _url_pagar(solicitud).encode() not in response.content
+
+
+# --------------------------------------------------------------------------- #
+# B1: permisos, visibilidad y entrada malformada afectados por el reenvío
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_post_ajena_o_inexistente_retorna_404_sin_invocar_proveedor(
+    actor_factory: Any,
+    monkeypatch: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    user, actor = actor_factory(
+        ("gastos.consultar_propias", "gastos.registrar_pago", "documentos.ver_metadatos")
+    )
+    monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor)
+    solicitud_ajena = solicitud_factory(estado=EstadoSolicitud.ACEPTADA)
+    client, token = csrf_auth_client(user, actor)
+
+    response = client.post(
+        _url_pagar(solicitud_ajena),
+        {**_payload_pago(), "csrfmiddlewaretoken": token},
+    )
+
+    assert response.status_code == 404
+    assert provider_pago.llamadas_listado == []
+    assert provider_pago.llamadas == []
+    assert PagoExterno.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_post_sin_permiso_registrar_pago_precede_al_pago_ya_existente(
+    actor_factory: Any,
+    monkeypatch: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    opcion_pago: OpcionDocumental,
+    capacidad_registrar_pago: Any,
+) -> None:
+    """La capacidad independiente de pago no se sustituye por detectar el pago."""
+    user, actor_completo = actor_factory(CAPS_PAGO_UI)
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    _registrar_pago_previo(
+        actor_completo, solicitud, fake_document_provider(opciones=[opcion_pago])
+    )
+    espia = fake_document_provider(
+        opciones=[opcion_pago],
+        error_listado=RuntimeError("no debe listarse"),
+    )
+    settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = espia
+    actor_sin_pago = Actor(
+        subject_id=user.pk,
+        capabilities=frozenset(("gastos.consultar_todas", "documentos.ver_metadatos")),
+    )
+    monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor_sin_pago)
+    client, token = csrf_auth_client(user, actor_sin_pago)
+
+    response = client.post(
+        _url_pagar(solicitud),
+        {**_payload_pago(), "csrfmiddlewaretoken": token},
+    )
+
+    assert response.status_code == 403
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1
+    assert espia.llamadas_listado == []
+    assert espia.llamadas == []
+
+
+@pytest.mark.django_db
+def test_post_sin_permiso_metadatos_retorna_403_para_alta_nueva(
+    actor_factory: Any,
+    monkeypatch: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    user, actor = actor_factory(("gastos.consultar_todas", "gastos.registrar_pago"))
+    monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor)
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    response = client.post(
+        _url_pagar(solicitud),
+        {**_payload_pago(), "csrfmiddlewaretoken": token},
+    )
+
+    assert response.status_code == 403
+    assert provider_pago.llamadas_listado == []
+    assert PagoExterno.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_post_reenvio_de_pago_existente_no_exige_metadatos(
+    actor_factory: Any,
+    monkeypatch: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    fake_document_provider: Any,
+    opcion_pago: OpcionDocumental,
+    capacidad_registrar_pago: Any,
+) -> None:
+    """Un reenvío ya persistido sólo reautoriza `gastos.registrar_pago`."""
+    user, actor_completo = actor_factory(CAPS_PAGO_UI)
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    _registrar_pago_previo(
+        actor_completo, solicitud, fake_document_provider(opciones=[opcion_pago])
+    )
+    actor_replay = Actor(
+        subject_id=user.pk,
+        capabilities=frozenset(("gastos.consultar_todas", "gastos.registrar_pago")),
+    )
+    monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor_replay)
+    client, token = csrf_auth_client(user, actor_replay)
+
+    response = client.post(
+        _url_pagar(solicitud),
+        {**_payload_pago(), "csrfmiddlewaretoken": token},
+    )
+
+    assert response.status_code == 302
+    assert response.url == _url_detalle(solicitud)
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_post_sin_pago_previo_y_listado_con_error_conserva_503_sin_alta(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    """Sin pago confirmado, el fallo del listado no habilita ningún alta nueva."""
+    settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = fake_document_provider(
+        error_listado=RuntimeError("listado sintético no disponible")
+    )
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    response = client.post(
+        _url_pagar(solicitud),
+        {**_payload_pago(), "csrfmiddlewaretoken": token},
+    )
+
+    assert response.status_code == 503
+    assert PagoExterno.objects.count() == 0
+    assert EventoPagoExterno.objects.count() == 0
+
+
+# --------------------------------------------------------------------------- #
+# B1: ventana real A/B con C03 en otra conexión PostgreSQL
+# --------------------------------------------------------------------------- #
+
+_TIMEOUT_VENTANA = 15.0
+
+
+class _ProveedorListadoEnVentana:
+    """Doble documental que sincroniza la ventana de reenvío concurrente.
+
+    La vista de B sólo invoca el listado después de comprobar ausencia de pago.
+    El doble registra esa ausencia, libera al hilo de A y espera su commit con un
+    timeout acotado antes de comprobar que el pago ya es visible para B. Recién
+    entonces falla el listado o devuelve un catálogo sin la versión enviada.
+    """
+
+    def __init__(
+        self,
+        *,
+        b_en_listado: Event,
+        a_commit: Event,
+        modo: str,
+        opciones: list[OpcionDocumental],
+        registro: dict[str, Any],
+        timeout: float,
+    ) -> None:
+        self._b_en_listado = b_en_listado
+        self._a_commit = a_commit
+        self._modo = modo
+        self._opciones = opciones
+        self._registro = registro
+        self._timeout = timeout
+        self.llamadas_listado: list[dict[str, Any]] = []
+        self.llamadas: list[dict[str, Any]] = []
+
+    def listar_opciones_para_pago(
+        self, *, actor: Any, gasto: Any, tipos_admitidos: Any = None
+    ) -> list[OpcionDocumental]:
+        self.llamadas_listado.append(
+            {
+                "actor_id": actor.subject_id,
+                "gasto_id": gasto.pk,
+                "tipos_admitidos": tuple(tipos_admitidos or ()),
+            }
+        )
+        self._registro["b_ausencia_inicial"] = not PagoExterno.objects.filter(
+            solicitud_id=gasto.pk
+        ).exists()
+        self._b_en_listado.set()
+        self._registro["a_commit_visto_por_b"] = self._a_commit.wait(timeout=self._timeout)
+        self._registro["pago_visible_para_b"] = PagoExterno.objects.filter(
+            solicitud_id=gasto.pk
+        ).exists()
+        if self._modo == "falla":
+            raise RuntimeError("listado documental sintético no disponible")
+        return list(self._opciones)
+
+    def verificar_y_bloquear_documento(self, **kwargs: Any) -> Any:
+        self.llamadas.append(kwargs)
+        raise AssertionError("Un reenvío no debe verificar ni bloquear el documento.")
+
+
+def _ejecutar_ventana_reenvio(
+    *,
+    modo: str,
+    payload: dict[str, str],
+    solicitud: Any,
+    actor: Any,
+    user: Any,
+    csrf_auth_client: Any,
+    fake_document_provider: Any,
+    monkeypatch: Any,
+    settings: Any,
+) -> tuple[Any, dict[str, Any], _ProveedorListadoEnVentana]:
+    """Ejecuta A en otra conexión y B por HTTP real, detenida tras la consulta.
+
+    A usa el servicio C03 real con su propio proveedor sintético. B recorre la
+    vista con CSRF válido; su listado queda bloqueado hasta que A confirmó. El
+    registro devuelto conserva la evidencia de ausencia inicial, del commit
+    visible y de las decisiones reales alcanzadas por B.
+    """
+    registro: dict[str, Any] = {}
+    b_en_listado = Event()
+    a_commit = Event()
+    proveedor_b = _ProveedorListadoEnVentana(
+        b_en_listado=b_en_listado,
+        a_commit=a_commit,
+        modo=modo,
+        opciones=[
+            OpcionDocumental(
+                referencia_documental="doc-opaco-9",
+                tipo_documento="factura",
+                etiqueta="Factura sintética posterior",
+            )
+        ],
+        registro=registro,
+        timeout=_TIMEOUT_VENTANA,
+    )
+    settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = proveedor_b
+    proveedor_a = fake_document_provider(
+        opciones=[
+            OpcionDocumental(
+                referencia_documental="doc-opaco-1",
+                tipo_documento="factura",
+                etiqueta="Factura sintética 1",
+            )
+        ]
+    )
+
+    decisiones_helper: list[bool] = []
+    helper_real = gastos_views._pago_externo_registrado
+
+    def _helper_instrumentado(solicitud_consultada: Any) -> bool:
+        resultado = helper_real(solicitud_consultada)
+        decisiones_helper.append(resultado)
+        return resultado
+
+    monkeypatch.setattr("gastos.views._pago_externo_registrado", _helper_instrumentado)
+
+    llamadas_c03: list[dict[str, Any]] = []
+    servicio_real = gastos_views.registrar_pago_externo
+
+    def _servicio_instrumentado(**kwargs: Any) -> Any:
+        try:
+            resultado = servicio_real(**kwargs)
+        except Exception as exc:
+            llamadas_c03.append(
+                {
+                    "resultado": "error",
+                    "tipo": type(exc).__name__,
+                    "sin_proveedor": kwargs.get("document_provider") is None,
+                }
+            )
+            raise
+        llamadas_c03.append(
+            {
+                "resultado": "ok",
+                "pago_pk": resultado.pk,
+                "sin_proveedor": kwargs.get("document_provider") is None,
+            }
+        )
+        return resultado
+
+    monkeypatch.setattr("gastos.views.registrar_pago_externo", _servicio_instrumentado)
+
+    def _hilo_a() -> None:
+        connections.close_all()
+        try:
+            if not b_en_listado.wait(timeout=_TIMEOUT_VENTANA):
+                raise AssertionError("B no alcanzó el listado dentro del timeout.")
+            registro["a_ausencia_inicial"] = not PagoExterno.objects.filter(
+                solicitud_id=solicitud.pk
+            ).exists()
+            pago = registrar_pago_externo(
+                actor=actor,
+                solicitud_id=solicitud.pk,
+                importe="825.40",
+                fecha_pago="2026-10-14",
+                referencia_externa="ref-sintetica-001",
+                referencia_documental="doc-opaco-1",
+                document_provider=proveedor_a,
+            )
+            registro["a_pago_pk"] = pago.pk
+        except Exception as exc:
+            registro["a_error"] = exc
+        finally:
+            a_commit.set()
+            connections.close_all()
+
+    hilo_a = Thread(target=_hilo_a, daemon=True)
+    hilo_a.start()
+
+    client, token = csrf_auth_client(user, actor)
+    try:
+        response = client.post(
+            _url_pagar(solicitud),
+            {**payload, "csrfmiddlewaretoken": token},
+        )
+    finally:
+        # Red de seguridad para no dejar el hilo de A esperando ante un fallo de B.
+        b_en_listado.set()
+        a_commit.set()
+        hilo_a.join(timeout=_TIMEOUT_VENTANA)
+
+    assert not hilo_a.is_alive(), "El hilo de A quedó bloqueado."
+    registro["decisiones_helper"] = decisiones_helper
+    registro["llamadas_c03"] = llamadas_c03
+    return response, registro, proveedor_b
+
+
+def _asegurar_evidencia_ventana(
+    registro: dict[str, Any], proveedor_b: _ProveedorListadoEnVentana
+) -> None:
+    """Comprueba la evidencia común exigida a la ventana concurrente."""
+    assert "a_error" not in registro, registro.get("a_error")
+    assert registro["a_ausencia_inicial"] is True
+    assert registro["b_ausencia_inicial"] is True
+    assert registro["a_commit_visto_por_b"] is True
+    assert registro["pago_visible_para_b"] is True
+    assert registro["decisiones_helper"] == [False, True]
+    assert len(proveedor_b.llamadas_listado) == 1
+    assert proveedor_b.llamadas == []
+
+
+@pytest.mark.django_db(transaction=True)
+def test_ventana_listado_falla_identico_redirige_al_pago_confirmado_por_a(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+    monkeypatch: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    response, registro, proveedor_b = _ejecutar_ventana_reenvio(
+        modo="falla",
+        payload=_payload_pago(),
+        solicitud=solicitud,
+        actor=actor,
+        user=user,
+        csrf_auth_client=csrf_auth_client,
+        fake_document_provider=fake_document_provider,
+        monkeypatch=monkeypatch,
+        settings=settings,
+    )
+
+    _asegurar_evidencia_ventana(registro, proveedor_b)
+    assert registro["llamadas_c03"] == [
+        {
+            "resultado": "ok",
+            "pago_pk": registro["a_pago_pk"],
+            "sin_proveedor": True,
+        }
+    ]
+    assert response.status_code == 302
+    assert response.url == _url_detalle(solicitud)
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1
+    assert PagoExterno.objects.get().pk == registro["a_pago_pk"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_ventana_listado_falla_distinto_retorna_409_sin_escrituras(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+    monkeypatch: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    response, registro, proveedor_b = _ejecutar_ventana_reenvio(
+        modo="falla",
+        payload={**_payload_pago(), "importe": "826.40"},
+        solicitud=solicitud,
+        actor=actor,
+        user=user,
+        csrf_auth_client=csrf_auth_client,
+        fake_document_provider=fake_document_provider,
+        monkeypatch=monkeypatch,
+        settings=settings,
+    )
+
+    _asegurar_evidencia_ventana(registro, proveedor_b)
+    assert registro["llamadas_c03"] == [
+        {
+            "resultado": "error",
+            "tipo": PaymentConflictError.__name__,
+            "sin_proveedor": True,
+        }
+    ]
+    assert response.status_code == 409
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1
+    assert PagoExterno.objects.get().importe == Decimal("825.40")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_ventana_version_ausente_identico_redirige_al_pago_confirmado_por_a(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+    monkeypatch: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    response, registro, proveedor_b = _ejecutar_ventana_reenvio(
+        modo="sin_version",
+        payload=_payload_pago(),
+        solicitud=solicitud,
+        actor=actor,
+        user=user,
+        csrf_auth_client=csrf_auth_client,
+        fake_document_provider=fake_document_provider,
+        monkeypatch=monkeypatch,
+        settings=settings,
+    )
+
+    _asegurar_evidencia_ventana(registro, proveedor_b)
+    assert registro["llamadas_c03"] == [
+        {
+            "resultado": "ok",
+            "pago_pk": registro["a_pago_pk"],
+            "sin_proveedor": True,
+        }
+    ]
+    assert response.status_code == 302
+    assert response.url == _url_detalle(solicitud)
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1
+    assert PagoExterno.objects.get().pk == registro["a_pago_pk"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_ventana_version_ausente_distinto_retorna_409_sin_escrituras(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+    monkeypatch: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    response, registro, proveedor_b = _ejecutar_ventana_reenvio(
+        modo="sin_version",
+        payload={**_payload_pago(), "importe": "826.40"},
+        solicitud=solicitud,
+        actor=actor,
+        user=user,
+        csrf_auth_client=csrf_auth_client,
+        fake_document_provider=fake_document_provider,
+        monkeypatch=monkeypatch,
+        settings=settings,
+    )
+
+    _asegurar_evidencia_ventana(registro, proveedor_b)
+    assert registro["llamadas_c03"] == [
+        {
+            "resultado": "error",
+            "tipo": PaymentConflictError.__name__,
+            "sin_proveedor": True,
+        }
+    ]
+    assert response.status_code == 409
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1
+    assert PagoExterno.objects.get().importe == Decimal("825.40")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_ventana_payload_malformado_no_crea_ni_duplica_escrituras(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+    monkeypatch: Any,
+) -> None:
+    """La existencia habilita C03, pero un payload inválido sigue siendo 400."""
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    response, registro, proveedor_b = _ejecutar_ventana_reenvio(
+        modo="falla",
+        payload={**_payload_pago(), "importe": "no-es-un-importe"},
+        solicitud=solicitud,
+        actor=actor,
+        user=user,
+        csrf_auth_client=csrf_auth_client,
+        fake_document_provider=fake_document_provider,
+        monkeypatch=monkeypatch,
+        settings=settings,
+    )
+
+    _asegurar_evidencia_ventana(registro, proveedor_b)
+    assert registro["llamadas_c03"] == [
+        {
+            "resultado": "error",
+            "tipo": "PaymentInvalidInputError",
+            "sin_proveedor": True,
+        }
+    ]
+    assert response.status_code == 400
+    assert response.context["error_pago"]
+    assert PagoExterno.objects.count() == 1
+    assert EventoPagoExterno.objects.count() == 1

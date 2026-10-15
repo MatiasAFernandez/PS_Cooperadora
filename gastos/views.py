@@ -362,8 +362,12 @@ class SolicitudGastoPagoView(View):
        sin listar ni leer metadatos y sin exigir proveedor disponible.
     5. Para alta nueva: capacidad `documentos.ver_metadatos` (403) antes de
        invocar al proveedor o a su listado.
-    6. Proveedor o listado ausente/con error: 503 genérico (fail-closed).
-    7. Entrada inválida: 400 con formulario y contexto conservados.
+    6. Proveedor o listado ausente/con error, o selector sin la versión enviada:
+       antes de cerrar con 503/400 se reconsulta el pago. Si en la ventana otra
+       petición ya confirmó el pago, el reenvío se resuelve con C03 sin proveedor
+       (idéntico 302, distinto 409). Sin pago confirmado se conserva el cierre
+       fail-closed (503/400).
+    7. Entrada inválida sin pago confirmado: 400 con formulario y contexto.
     8. Estado o contenido conflictivo: 409. Fallo documental: 409 genérico.
     9. Éxito: redirección al detalle.
 
@@ -443,11 +447,20 @@ class SolicitudGastoPagoView(View):
 
         carga = _cargar_opciones_documentales(actor, solicitud)
         if carga is None:
+            reenvio = self._reenviar_si_aparecio_pago(request, actor, solicitud)
+            if reenvio is not None:
+                return reenvio
             return _servicio_pago_no_disponible()
         proveedor, opciones = carga
 
         form = PagoExternoForm(request.POST, opciones_documentales=opciones)
         if not form.is_valid():
+            # La opción puede haber desaparecido del catálogo vigente. Antes de
+            # cerrar con 400 se reconsulta el pago: una confirmación concurrente
+            # se resuelve por C03 y nunca convierte la sola existencia en éxito.
+            reenvio = self._reenviar_si_aparecio_pago(request, actor, solicitud)
+            if reenvio is not None:
+                return reenvio
             return render(
                 request,
                 self.template_name,
@@ -562,6 +575,23 @@ class SolicitudGastoPagoView(View):
             )
 
         return redirect(reverse("gastos:detalle", kwargs={"pk": solicitud.pk}))
+
+    def _reenviar_si_aparecio_pago(
+        self, request: HttpRequest, actor: Any, solicitud: Any
+    ) -> HttpResponse | None:
+        """Reconoce un pago confirmado durante la ventana de una salida preliminar.
+
+        La vista decide una sola vez al inicio; otra petición puede confirmar el
+        pago mientras se carga el listado documental o el selector. Antes de
+        cerrar por proveedor/selector se reconsulta la persistencia: la sola
+        existencia habilita *intentar* C03, que conserva la normalización, la
+        comparación autoritativa de campos y huella, la reautorización y la
+        ausencia de escrituras duplicadas. Sin pago confirmado devuelve `None`
+        para conservar el cierre fail-closed de un alta nueva.
+        """
+        if not _pago_externo_registrado(solicitud):
+            return None
+        return self._reenviar_pago_existente(request, actor, solicitud)
 
     @staticmethod
     def _contexto_pago(
