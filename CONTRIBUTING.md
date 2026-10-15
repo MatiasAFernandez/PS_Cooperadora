@@ -53,6 +53,15 @@ La especificación describe el problema y el comportamiento verificable antes de
 elegir detalles de implementación. Se usa la plantilla de
 [`docs/specs/_template.md`](docs/specs/_template.md).
 
+## Calidad de planes, implementación y revisión
+
+Aplicar los [criterios de calidad](docs/QUALITY.md) pertinentes al cambio desde
+el plan hasta la revisión: mantenibilidad, seguridad, consistencia, experiencia
+de usuario y rendimiento proporcionado. `AGENTS.md` indica su lectura a los
+agentes; los encargos a otras herramientas deben referenciar las mismas fuentes.
+No duplicar estas reglas en configuraciones personales ni exigir controles ajenos
+al alcance. Las preferencias de aprendizaje de cada integrante son individuales.
+
 ## Pull Requests
 
 Las Pull Requests deben ser pequeñas y explicar:
