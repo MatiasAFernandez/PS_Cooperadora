@@ -2,6 +2,7 @@
 
 import secrets
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -10,6 +11,8 @@ from django.contrib.auth.models import Group
 from django.middleware.csrf import _get_new_csrf_string, _mask_cipher_secret
 from django.test import Client
 
+from gastos.contracts import DocumentoVerificado
+from gastos.models import EstadoSolicitud, SolicitudGasto
 from identidad.services import GROUP_CAPABILITIES, Actor
 
 User = get_user_model()
@@ -103,3 +106,112 @@ def csrf_auth_client() -> Callable[[Any, Any], tuple[Client, str]]:
         return client, token
 
     return _factory
+
+
+class FakeDocumentVerificationPort:
+    """Doble de prueba local del puerto documental (nunca fuera de tests).
+
+    Registra cada invocación, comprueba que se ejecuta dentro de la transacción
+    atómica del servicio y devuelve una evidencia `DocumentoVerificado` coherente
+    por defecto o el resultado/error explícito recibido.
+    """
+
+    def __init__(
+        self,
+        *,
+        resultado: DocumentoVerificado | None = None,
+        error: Exception | None = None,
+        tipo_documento: str = "factura",
+    ) -> None:
+        self.resultado = resultado
+        self.error = error
+        self.tipo_documento = tipo_documento
+        self.llamadas: list[dict[str, Any]] = []
+        self.llamado_en_atomic: bool | None = None
+
+    def verificar_y_bloquear_documento(
+        self,
+        *,
+        actor: Any,
+        gasto: SolicitudGasto,
+        referencia_documental: str,
+        tipos_admitidos: Any = ("factura", "presupuesto", "proforma"),
+    ) -> DocumentoVerificado:
+        from django.db import transaction
+
+        self.llamado_en_atomic = transaction.get_connection().in_atomic_block
+        self.llamadas.append(
+            {
+                "actor_id": actor.subject_id,
+                "gasto_id": gasto.pk,
+                "referencia_documental": referencia_documental,
+                "tipos_admitidos": tuple(tipos_admitidos),
+            }
+        )
+        if self.error is not None:
+            raise self.error
+        if self.resultado is not None:
+            return self.resultado
+        return DocumentoVerificado(
+            solicitud_id=gasto.pk,
+            referencia_documental=referencia_documental,
+            tipo_documento=self.tipo_documento,
+        )
+
+
+@pytest.fixture
+def fake_document_provider() -> Callable[..., FakeDocumentVerificationPort]:
+    """Fábrica del doble de prueba del puerto documental."""
+
+    def _factory(**kwargs: Any) -> FakeDocumentVerificationPort:
+        return FakeDocumentVerificationPort(**kwargs)
+
+    return _factory
+
+
+@pytest.fixture
+def solicitud_factory(db: Any) -> Callable[..., SolicitudGasto]:
+    """Crea solicitudes sintéticas con solicitante propio y estado configurable."""
+
+    def _factory(
+        *,
+        estado: str = EstadoSolicitud.ACEPTADA,
+        solicitante: Any = None,
+        monto: str = "1000.00",
+    ) -> SolicitudGasto:
+        if solicitante is None:
+            solicitante = User.objects.create_user(username=f"sol_{secrets.token_hex(4)}")
+        return SolicitudGasto.objects.create(
+            concepto="Gasto sintético para pago externo",
+            monto_estimado=Decimal(monto),
+            unidad_requirente="Unidad sintética",
+            solicitante=solicitante,
+            estado=estado,
+        )
+
+    return _factory
+
+
+@pytest.fixture
+def actor_factory(db: Any) -> Callable[..., tuple[Any, Actor]]:
+    """Crea usuarios reales y su Actor con el conjunto exacto de capacidades indicado."""
+
+    def _factory(capabilities: Any = ()) -> tuple[Any, Actor]:
+        user = User.objects.create_user(username=f"actor_{secrets.token_hex(4)}")
+        actor = Actor(subject_id=user.pk, capabilities=frozenset(capabilities))
+        return user, actor
+
+    return _factory
+
+
+@pytest.fixture
+def capacidad_registrar_pago(monkeypatch: Any) -> None:
+    """Simula la capacidad 'gastos.registrar_pago' sin alterar el módulo identidad.
+
+    La extensión de identidad (#21/#28) aún no conoce ese código; el servicio lo
+    verifica y aquí se sustituye por la comprobación directa sobre el Actor.
+    """
+    monkeypatch.setattr(
+        "gastos.payments.has_capability",
+        lambda actor, code: code in getattr(actor, "capabilities", frozenset()),
+    )
