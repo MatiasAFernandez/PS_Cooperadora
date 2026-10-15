@@ -1,7 +1,7 @@
 # SPEC-003 — Documentos protegidos de los trámites
 
-- Estado: para validar; consistente con el Plan de Trabajo actual y pendiente de
-  validación operativa con Cooperadora y de revisión de interfaz con Franco.
+- Estado: decisiones de política recibidas para I2; faltan reglas por etapa,
+  trazabilidad de validación y revisión de interfaz con Franco.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19)
   para DOC-R01–R03, [#24](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/24)
@@ -13,6 +13,16 @@
   para el contrato común.
 - Plan: RF-004, RNF-001, RNF-004, M-E04 e I03. RNF-002 se aplica como control
   transversal cuando una operación documental falla.
+
+## Avance de #20 recibido el 15/10/2026
+
+El [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md)
+comunica almacenamiento privado, descarga autorizada, límite de 10 MB y formatos
+PDF/JPEG/PNG. Una revisión puede quedar pendiente, aceptada u observada; un
+reemplazo conserva el archivo anterior y su trazabilidad. Falta precisar qué
+documento se exige en cada etapa, la cantidad por tipo, quién puede aportarlo y
+revisarlo, y el contrato común con Franco. La política recibida no define el
+almacenamiento institucional definitivo.
 
 ## Validación contra el Plan de Trabajo actual
 
@@ -66,8 +76,9 @@ acceso controlado y una referencia clara a su procedencia.
 
 ## Reglas de negocio
 
-- La política de tipos, tamaño máximo, versiones y revisión queda pendiente de
-  validación; los límites técnicos concretos se fijarán antes de implementar la carga.
+- Para I2 se comunicó una política de PDF/JPEG/PNG hasta 10 MB y conservación de
+  versiones y revisión. La cantidad, los tipos exigidos por etapa y las reglas
+  concretas de aceptación siguen pendientes antes de implementar cada circuito.
 - La autorización se comprueba en cada descarga y consulta, no sólo al mostrar
   enlaces en la interfaz. También se aplica en el servidor al incorporar, listar,
   consultar metadatos y registrar una revisión.
@@ -155,9 +166,8 @@ sin afirmar que toda SPEC-003 ni I03 están resueltas.
 
 ## Preguntas abiertas
 
-- ¿Qué tipos documentales y tamaños se permiten en cada circuito?
-- ¿Quién puede aportar, reemplazar, revisar o rechazar documentos? ¿Se guardan
-  versiones?
+- ¿Qué tipos se exigen en cada etapa y cuántos documentos admite cada tipo?
+- ¿Quién puede aportar, reemplazar, revisar o rechazar cada tipo documental?
 - ¿Qué criterios hacen que un documento satisfaga un pendiente?
 - ¿Dónde se alojarán los archivos en el entorno institucional de prueba?
 
