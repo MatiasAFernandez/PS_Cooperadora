@@ -1,7 +1,7 @@
 # I2-C01 — Frontera documental del gasto: decisiones abiertas y casos de revisión
 
 **Fecha:** 08/10/2026.
-**Estado:** Borrador de revisión técnica preparatoria para S1. **No es contrato acordado, no habilita paso a Ready ni implementación, y no reemplaza las tareas humanas pendientes de I1 (T06/[#8](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/8) y T07/[#9](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/9)).**
+**Estado:** Antecedente histórico de la propuesta del 08/10. Las referencias a decisiones y aceptaciones pendientes describen aquel momento; fueron reemplazadas por C01 A–D, acordado técnicamente para la demo. El estado vigente está en [SPEC-011](../specs/011-franco-seguimiento-pago-externo.md), el [plan I2](i2-tareas.md) y el [contrato de pago externo](../contracts/i2-pago-externo.md). No reabre esos acuerdos ni acredita integración documental o validación institucional. T06/#8 está cerrada; T07/#9 sigue reprogramada.
 **Marco metodológico:** [WORKFLOW](../WORKFLOW.md) y ciclo SDD en [docs/specs/README.md](../specs/README.md). Trazado al plan [i2-tareas.md](i2-tareas.md) (ficha I2-C01 / S1) y [SPEC-011](../specs/011-franco-seguimiento-pago-externo.md).
 **Límites:** No presupone acuerdos cerrados, proveedor documental de Matías implementado ([Issue #19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19)), ni validación institucional de Cooperadora. No repite el prototipo ni los casos sintéticos ya existentes de C02 en `.local/`.
 

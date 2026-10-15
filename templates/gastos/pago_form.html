@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Pago Externo — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a></p>
+
+<h3>Registrar Pago Externo</h3>
+
+<p>
+    Solicitud <strong>#{{ solicitud.pk }}</strong> — {{ solicitud.concepto }}
+    ({{ solicitud.get_estado_display }}).
+</p>
+
+{% if form.non_field_errors %}
+<div class="alert-error" role="alert" id="pago-errores-generales">
+    <strong>No se pudo registrar el pago:</strong>
+    <ul>
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<form id="pago-externo-form" method="post" action="{% url 'gastos:pagar' pk=solicitud.pk %}">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="{{ form.importe.id_for_label }}">{{ form.importe.label }}:</label>
+        {{ form.importe }}
+        {% if form.importe.errors %}
+            <div class="alert-error" role="alert" id="error-importe">
+                {{ form.importe.errors|join:", " }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.fecha_pago.id_for_label }}">{{ form.fecha_pago.label }}:</label>
+        {{ form.fecha_pago }}
+        <p id="ayuda-fecha-pago" style="margin: 0.25rem 0 0; font-size: 0.9em;">
+            Use el formato ISO <code>AAAA-MM-DD</code> (por ejemplo, <code>2026-10-14</code>).
+        </p>
+        {% if form.fecha_pago.errors %}
+            <div class="alert-error" role="alert" id="error-fecha-pago">
+                {{ form.fecha_pago.errors|join:", " }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.referencia_externa.id_for_label }}">{{ form.referencia_externa.label }}:</label>
+        {{ form.referencia_externa }}
+        <p id="ayuda-referencia-externa" style="margin: 0.25rem 0 0; font-size: 0.9em;">
+            Comprobante o transacción bancaria/comercial informada a Cooperadora.
+        </p>
+        {% if form.referencia_externa.errors %}
+            <div class="alert-error" role="alert" id="error-referencia-externa">
+                {{ form.referencia_externa.errors|join:", " }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.referencia_documental.id_for_label }}">{{ form.referencia_documental.label }}:</label>
+        {{ form.referencia_documental }}
+        {% if not opciones_documentales and formulario_habilitado %}
+            <p role="note" style="margin: 0.25rem 0 0; font-size: 0.9em;">
+                No hay opciones documentales disponibles para este gasto.
+            </p>
+        {% elif not formulario_habilitado %}
+            <p role="note" style="margin: 0.25rem 0 0; font-size: 0.9em;">
+                La solicitud ya no admite el registro de un pago. Consulte su estado en el detalle.
+            </p>
+        {% endif %}
+        {% if form.referencia_documental.errors %}
+            <div class="alert-error" role="alert" id="error-referencia-documental">
+                {{ form.referencia_documental.errors|join:", " }}
+            </div>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="btn" {% if not opciones_documentales or not formulario_habilitado %}disabled aria-disabled="true"{% endif %}>Registrar Pago</button>
+</form>
+
+<script>
+    document.getElementById("pago-externo-form").addEventListener("submit", function () {
+        const boton = this.querySelector('button[type="submit"]');
+        if (boton) {
+            boton.disabled = true;
+            boton.textContent = "Registrando pago…";
+        }
+    });
+</script>
+
+<p role="note" style="margin-top: 1.5rem;">
+    El servidor normaliza y valida el importe, la fecha y las referencias al registrar el pago.
+    Este formulario no confirma el cierre del gasto ni la aprobación documental.
+</p>
+{% endblock %}

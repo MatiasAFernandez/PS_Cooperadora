@@ -11,7 +11,7 @@ from django.contrib.auth.models import Group
 from django.middleware.csrf import _get_new_csrf_string, _mask_cipher_secret
 from django.test import Client
 
-from gastos.contracts import DocumentoVerificado
+from gastos.contracts import DocumentoVerificado, OpcionDocumental
 from gastos.models import EstadoSolicitud, SolicitudGasto
 from identidad.services import GROUP_CAPABILITIES, Actor
 
@@ -113,7 +113,8 @@ class FakeDocumentVerificationPort:
 
     Registra cada invocación, comprueba que se ejecuta dentro de la transacción
     atómica del servicio y devuelve una evidencia `DocumentoVerificado` coherente
-    por defecto o el resultado/error explícito recibido.
+    por defecto o el resultado/error explícito recibido. También implementa el
+    listado provisional de opciones para el selector del formulario.
     """
 
     def __init__(
@@ -122,11 +123,16 @@ class FakeDocumentVerificationPort:
         resultado: DocumentoVerificado | None = None,
         error: Exception | None = None,
         tipo_documento: str = "factura",
+        opciones: Any = None,
+        error_listado: Exception | None = None,
     ) -> None:
         self.resultado = resultado
         self.error = error
         self.tipo_documento = tipo_documento
+        self.opciones = list(opciones) if opciones is not None else []
+        self.error_listado = error_listado
         self.llamadas: list[dict[str, Any]] = []
+        self.llamadas_listado: list[dict[str, Any]] = []
         self.llamado_en_atomic: bool | None = None
 
     def verificar_y_bloquear_documento(
@@ -157,6 +163,24 @@ class FakeDocumentVerificationPort:
             referencia_documental=referencia_documental,
             tipo_documento=self.tipo_documento,
         )
+
+    def listar_opciones_para_pago(
+        self,
+        *,
+        actor: Any,
+        gasto: SolicitudGasto,
+        tipos_admitidos: Any = ("factura", "presupuesto", "proforma"),
+    ) -> list[OpcionDocumental]:
+        self.llamadas_listado.append(
+            {
+                "actor_id": actor.subject_id,
+                "gasto_id": gasto.pk,
+                "tipos_admitidos": tuple(tipos_admitidos),
+            }
+        )
+        if self.error_listado is not None:
+            raise self.error_listado
+        return list(self.opciones)
 
 
 @pytest.fixture
@@ -206,12 +230,17 @@ def actor_factory(db: Any) -> Callable[..., tuple[Any, Actor]]:
 
 @pytest.fixture
 def capacidad_registrar_pago(monkeypatch: Any) -> None:
-    """Simula la capacidad 'gastos.registrar_pago' sin alterar el módulo identidad.
+    """Simula las capacidades del circuito de pago sin alterar el módulo identidad.
 
-    La extensión de identidad (#21/#28) aún no conoce ese código; el servicio lo
-    verifica y aquí se sustituye por la comprobación directa sobre el Actor.
+    La extensión de identidad (#21/#28) aún no conoce los códigos
+    `gastos.registrar_pago` ni `documentos.ver_metadatos`; tanto el servicio de
+    pagos como las vistas los verifican y aquí se sustituyen por la comprobación
+    directa sobre el Actor. Se parchean ambos módulos para que la vista y el
+    servicio compartan el mismo doble.
     """
-    monkeypatch.setattr(
-        "gastos.payments.has_capability",
-        lambda actor, code: code in getattr(actor, "capabilities", frozenset()),
-    )
+
+    def _tiene_capacidad(actor: Any, code: str) -> bool:
+        return code in getattr(actor, "capabilities", frozenset())
+
+    monkeypatch.setattr("gastos.payments.has_capability", _tiene_capacidad)
+    monkeypatch.setattr("gastos.views.has_capability", _tiene_capacidad)
