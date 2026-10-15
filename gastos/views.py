@@ -17,7 +17,12 @@ from gastos.contracts import (
     OpcionDocumental,
 )
 from gastos.document_provider import cargar_proveedor_documental
-from gastos.forms import DecisionGastoForm, PagoExternoForm, SolicitudGastoForm
+from gastos.forms import (
+    DecisionGastoForm,
+    FiltroEstadoGastoForm,
+    PagoExternoForm,
+    SolicitudGastoForm,
+)
 from gastos.models import EstadoSolicitud, PagoExterno
 from gastos.payments import (
     PaymentConflictError,
@@ -184,10 +189,20 @@ class SolicitudGastoListView(View):
         actor = result
 
         solicitudes = visible_expenses(actor)
+        filtro_form = FiltroEstadoGastoForm(request.GET)
+        if filtro_form.is_valid():
+            estado = filtro_form.cleaned_data["estado"]
+            if estado:
+                solicitudes = solicitudes.filter(estado=estado)
+            concepto = filtro_form.cleaned_data["q"]
+            if concepto:
+                solicitudes = solicitudes.filter(concepto__icontains=concepto)
+        else:
+            solicitudes = solicitudes.none()
         return render(
             request,
             "gastos/solicitud_list.html",
-            {"solicitudes": solicitudes, "actor": actor},
+            {"solicitudes": solicitudes, "actor": actor, "filtro_form": filtro_form},
         )
 
 
