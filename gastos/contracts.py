@@ -1,7 +1,8 @@
 """Contratos y puertos de integración para el módulo de gastos.
 
 Define los contratos exigidos por gastos hacia otros módulos o proveedores externos,
-en particular el puerto consumidor de verificación y bloqueo documental según SPEC-011.
+en particular el puerto consumidor de listado de opciones, verificación y bloqueo
+documental según SPEC-011.
 """
 
 from collections.abc import Collection
@@ -45,6 +46,27 @@ class DocumentoVerificado:
         return self.solicitud_id
 
 
+@dataclass(frozen=True, slots=True)
+class OpcionDocumental:
+    """Opción documental segura para el selector de pago externo.
+
+    Es un DTO de presentación provisional: expone exclusivamente la referencia
+    opaca que gastos envía luego al proveedor, el tipo documental declarado y una
+    etiqueta legible para la persona usuaria.
+
+    Deliberadamente NO incluye archivo, ruta, contenido binario, hash de
+    contenido, número de revisión ni estado de revisión. Tampoco implica que el
+    documento esté aprobado: la única validación autoritativa de pertenencia,
+    tipo, vigencia y bloqueo ocurre en
+    `DocumentVerificationPort.verificar_y_bloquear_documento` dentro de la
+    transacción de registro de pago.
+    """
+
+    referencia_documental: str
+    tipo_documento: str
+    etiqueta: str
+
+
 @runtime_checkable
 class DocumentVerificationPort(Protocol):
     """Puerto consumidor de verificación y bloqueo de versión documental.
@@ -73,11 +95,48 @@ class DocumentVerificationPort(Protocol):
        técnico, pero no se presenta como aprobación ni como cumplimiento de una factura
        definitiva pendiente. Las reglas institucionales de revisión siguen pendientes.
 
+    El puerto declara un segundo método provisional de sólo lectura
+    (`listar_opciones_para_pago`) usado exclusivamente para poblar el selector del
+    formulario. Ese listado NO autoriza el registro: la revalidación transaccional
+    obligatoria sigue siendo `verificar_y_bloquear_documento`.
+
     NOTA DE ARQUITECTURA:
     No se proporciona ningún proveedor por defecto, stub productivo ni modelo duplicado.
     El servicio de registro de pago exige este puerto como argumento obligatorio.
-    Los dobles de prueba sólo deben existir dentro de las suites de prueba.
+    El proveedor se carga únicamente desde la configuración de servidor; nunca desde
+    datos enviados por el cliente. Los dobles de prueba sólo deben existir dentro de
+    las suites de prueba.
     """
+
+    def listar_opciones_para_pago(
+        self,
+        *,
+        actor: Any,
+        gasto: SolicitudGasto,
+        tipos_admitidos: Collection[str] = TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
+    ) -> Collection[OpcionDocumental]:
+        """Lista opciones documentales vigentes y pertenecientes al gasto (sólo lectura).
+
+        Garantías exigidas:
+        - Consulta pura y sin efectos secundarios ni bloqueos persistentes.
+        - Sólo devuelve documentos que pertenecen al gasto indicado y cuyo tipo
+          está en `tipos_admitidos`; no reutiliza documentos de otros gastos.
+        - Cada opción expone únicamente referencia opaca, tipo y etiqueta.
+        - No sustituye la verificación transaccional: el servicio vuelve a validar
+          pertenencia, tipo, vigencia y bloqueo dentro de la transacción.
+
+        Parámetros:
+        - actor: Sujeto autenticado que consulta las opciones.
+        - gasto: Solicitud de gasto a la que deben pertenecer los documentos.
+        - tipos_admitidos: Colección de tipos de documento válidos para el pago.
+
+        Retorna:
+        - Colección de `OpcionDocumental` (posiblemente vacía).
+
+        Lanza:
+        - DocumentVerificationError: si el listado no puede resolverse de forma segura.
+        """
+        ...
 
     def verificar_y_bloquear_documento(
         self,

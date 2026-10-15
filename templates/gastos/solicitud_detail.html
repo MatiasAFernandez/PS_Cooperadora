@@ -92,6 +92,33 @@
     {% endif %}
 </div>
 
+{% if error_pago %}
+<div role="alert" style="color: red; margin-top: 20px; max-width: 600px;">
+    <strong>Error:</strong> {{ error_pago }}
+</div>
+{% endif %}
+
+{% if mostrar_estado_registro_pago %}
+<div id="accion-pago-externo" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
+    <h4 style="margin-top: 0;">Registrar pago externo</h4>
+    {% if not pago_permiso_registrar %}
+        <p role="note" style="margin: 0 0 10px;">Acción no disponible: falta el permiso para registrar pagos.</p>
+        <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+    {% elif not pago_permiso_metadatos %}
+        <p role="note" style="margin: 0 0 10px;">Acción no disponible: falta el permiso para consultar metadatos documentales.</p>
+        <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+    {% elif pago_provider_configurado %}
+        <p style="margin-top: 0;">La solicitud está aceptada y todavía no registra un pago.</p>
+        <a class="btn" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago externo</a>
+    {% else %}
+        <p role="note" style="margin: 0 0 10px;">
+            Registro de pago no disponible: no hay un proveedor documental configurado en el servidor.
+        </p>
+        <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+    {% endif %}
+</div>
+{% endif %}
+
 {% if error_decision %}
 <div role="alert" style="color: red; margin-top: 20px; max-width: 600px;">
     <strong>Error:</strong> {{ error_decision }}

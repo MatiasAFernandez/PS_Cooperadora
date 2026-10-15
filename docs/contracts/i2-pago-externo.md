@@ -1,8 +1,8 @@
-# Contrato de Pago Externo (C03 Backend)
+# Contrato de Pago Externo (C03 y formulario parcial)
 
-Este documento formaliza el contrato técnico de demostración y la propuesta de
-interfaz Python para la persistencia del pago externo en el módulo de gastos
-(Issue #15, corte técnico C03).
+Este documento formaliza el contrato técnico de demostración, la interfaz Python
+de persistencia del pago externo y el consumidor web parcial en el módulo de gastos
+(Issue #15, cortes C03 y S3 parcial).
 
 > [!IMPORTANT]
 > **Estado del acuerdo**: Reglas técnicas para esta demostración definidas sobre la base de
@@ -22,17 +22,28 @@ interfaz Python para la persistencia del pago externo en el módulo de gastos
   - Normalización estricta de importes, cálculo determinista de huella SHA-256 canónica e idempotencia.
   - No altera el estado del gasto (no cierra la solicitud) ni modifica `monto_estimado`.
   - No implementa pagos parciales, transferencias bancarias, retenciones ni imputaciones contables.
-  - No provee vistas, rutas HTTP ni formularios de carga en este corte (la UI depende de la
-    disponibilidad de selector documental y capacidades de identidad).
+  - Incluye una interfaz web parcial para registrar el pago de un gasto aceptado: consulta de
+    opciones documentales seguras y envío al servicio transaccional C03. La ruta vuelve a validar
+    visibilidad, permisos, estado, idempotencia y documento vigente en servidor.
+  - Esta interfaz no reemplaza las integraciones documental ni de identidad: sin proveedor o
+    permisos, la acción queda deshabilitada o devuelve un error explícito.
 
 - **Gestión Documental ([Issue #19](../planning/i2-issues/05-documentos.md) - Integración real pendiente)**:
   - La app y el proveedor documental real no forman parte de este checkout ni se han
     implementado aquí.
   - El módulo de gastos define un puerto consumidor (`DocumentVerificationPort` en
-    [`gastos/contracts.py`](../../gastos/contracts.py)) con garantías contractuales estrictas.
+    [`gastos/contracts.py`](../../gastos/contracts.py)) con dos operaciones: listado de opciones
+    de sólo lectura para el selector y verificación/bloqueo transaccional para el registro.
+    El listado es provisional y nunca sustituye la comprobación autoritativa al guardar.
+  - El puerto de listado devuelve referencia opaca, tipo y etiqueta segura. El proveedor debe
+    limitar las opciones al gasto concreto y a los tipos admitidos; el servicio valida nuevamente
+    pertenencia, tipo y vigencia dentro de la transacción.
+  - El proveedor se resuelve desde `settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER`; no se acepta su
+    selección desde el formulario. Si no está configurado o falla, el circuito falla cerrado.
   - No se implementa ningún proveedor documental productivo por defecto ni stubs tolerantes.
     Los dobles de prueba residen exclusivamente en los tests unitarios.
-  - El registro del pago no devuelve ni descarga archivos; gastos no almacena binarios ni metadatos.
+  - El registro del pago no devuelve ni descarga archivos. Gastos conserva únicamente la referencia
+    documental opaca y no almacena binarios ni metadatos descriptivos del documento.
 
 - **Identidad y Permisos ([Issue #21](../planning/i2-issues/02-identidad-facturacion.md) / [#28](../planning/i2-issues/09-integracion-circuitos.md) - Integración pendiente)**:
   - La extensión de identidad debe incorporar capacidades independientes:
@@ -45,6 +56,9 @@ interfaz Python para la persistencia del pago externo en el módulo de gastos
   - La visibilidad de gastos se sigue resolviendo con las capacidades existentes
     `gastos.consultar_propias`/`gastos.consultar_todas` según SPEC-002, siempre sobre
     la solicitud concreta.
+  - Para iniciar un registro nuevo, la vista exige por separado `gastos.registrar_pago` y
+    `documentos.ver_metadatos` sobre el gasto visible. Un reenvío de un pago existente sólo necesita
+    volver a autorizar `gastos.registrar_pago`; no lista documentos ni consulta metadatos.
   - `gastos.decidir` **no concede** `gastos.registrar_pago`. Registrar un pago tampoco
     concede `documentos.ver_metadatos` ni `documentos.descargar`; cada operación requiere
     su capacidad y autorización propia sobre el gasto/documento correspondiente.
@@ -128,6 +142,15 @@ El módulo de gastos define en [`gastos/contracts.py`](../../gastos/contracts.py
 
 ```python
 class DocumentVerificationPort(Protocol):
+    def listar_opciones_para_pago(
+        self,
+        *,
+        actor: Any,
+        gasto: SolicitudGasto,
+        tipos_admitidos: Collection[str] = ("factura", "presupuesto", "proforma"),
+    ) -> Collection[OpcionDocumental]:
+        ...
+
     def verificar_y_bloquear_documento(
         self,
         *,
@@ -138,6 +161,11 @@ class DocumentVerificationPort(Protocol):
     ) -> DocumentoVerificado:
         ...
 ```
+
+El selector no incluye archivos, rutas, hash ni estado de revisión. El listado debe ser puro y
+devolver sólo documentos del gasto consultado; la ruta de pago no trata ese listado como una
+autorización definitiva. Al enviar el formulario, el servicio revalida y bloquea la versión
+vigente dentro de la misma transacción que crea pago e historial.
 
 ### Exigencias al proveedor de documentos ([Issue #19](../planning/i2-issues/05-documentos.md))
 - Debe operar dentro de la transacción activa de Django iniciada por el servicio de pago.
@@ -194,6 +222,19 @@ def consultar_pago_externo(
 - **Comportamiento ante solicitudes ajenas o sin pago**: Retorna `None` de forma segura sin
   revelar existencia a terceros.
 
+### 5.3. Interfaz web parcial de registro
+
+- `GET /gastos/<id>/pagar/` lista las opciones sólo después de resolver la visibilidad del gasto
+  y exigir `gastos.registrar_pago` y `documentos.ver_metadatos`.
+- `POST` conserva los valores ingresados ante errores de validación o de verificación documental.
+  El error documental es genérico y no expone detalles del proveedor.
+- Si ya hay un pago, el reenvío llega al servicio C03 sin listar ni verificar documentos:
+  contenido idéntico retorna el registro existente; contenido diferente responde conflicto.
+- El detalle comunica si la acción está disponible por permisos y configuración. El formulario
+  desactiva el botón mientras envía; la idempotencia de C03 cubre reintentos del servidor.
+- El formulario no descarga ni muestra archivos. El proveedor documental productivo y las nuevas
+  capacidades en el catálogo de identidad siguen pendientes; las pruebas usan dobles sintéticos.
+
 ---
 
 ## 6. Cuestiones institucionales pendientes (Q1–Q5)
@@ -219,7 +260,8 @@ resolverse antes del paso a producción:
 > [!NOTE]
 > Los límites técnicos de la demostración **no validan** Q1–Q5. Este corte
 > tampoco implementa SSO, pagos bancarios, cierres, pagos parciales, retenciones ni
-> supuestos institucionales, y no agrega vistas, formularios, rutas ni plantillas.
+> supuestos institucionales. La interfaz web parcial sólo captura los datos mínimos de la demo y
+> depende del proveedor documental y de las capacidades que aún deben integrarse.
 > El proveedor documental ([#19](../planning/i2-issues/05-documentos.md)) y la extensión
 > de identidad ([#21](../planning/i2-issues/02-identidad-facturacion.md) /
 > [#28](../planning/i2-issues/09-integracion-circuitos.md)) permanecen pendientes.
