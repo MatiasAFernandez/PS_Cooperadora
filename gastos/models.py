@@ -1,10 +1,12 @@
 """Modelos para el circuito de gastos."""
 
 from decimal import Decimal
+from typing import Any
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import IntegrityError, models
 from django.db.models import Q
 
 
@@ -136,3 +138,263 @@ class DecisionGasto(models.Model):
 
     def __str__(self) -> str:
         return f"Decisión #{self.pk} sobre Solicitud #{self.solicitud_id}: {self.estado_resultante}"
+
+
+class PagoExternoQuerySet(models.QuerySet):
+    """QuerySet para PagoExterno que impide la reasignación de vínculos por update()."""
+
+    def update(self, **kwargs: Any) -> int:
+        restringidos = {"solicitud", "solicitud_id", "referencia_documental"}
+        if restringidos.intersection(kwargs):
+            raise IntegrityError(
+                "No se permite reasignar solicitud ni referencia_documental "
+                "en PagoExterno existente."
+            )
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        restringidos = {"solicitud", "solicitud_id", "referencia_documental"}
+        if restringidos.intersection(fields):
+            raise IntegrityError(
+                "No se permite reasignar solicitud ni referencia_documental "
+                "en PagoExterno existente."
+            )
+        return super().bulk_update(objs, fields, **kwargs)
+
+
+_EVENTO_PAGO_EXTERNO_CAMPOS_INMUTABLES = {
+    "pago",
+    "pago_id",
+    "tipo_evento",
+    "actor",
+    "actor_id",
+    "fecha_hora",
+    "id",
+    "pk",
+}
+_EVENTO_PAGO_EXTERNO_ATRIBUTOS_AUDITABLES = {
+    "pago": "pago_id",
+    "tipo_evento": "tipo_evento",
+    "actor": "actor_id",
+    "fecha_hora": "fecha_hora",
+}
+
+
+class EventoPagoExternoQuerySet(models.QuerySet):
+    """QuerySet que impide modificar o borrar el evento auditable."""
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar un EventoPagoExterno existente.")
+
+    def update(self, **kwargs: Any) -> int:
+        if _EVENTO_PAGO_EXTERNO_CAMPOS_INMUTABLES.intersection(kwargs):
+            raise IntegrityError(
+                "No se permite modificar un EventoPagoExterno existente."
+            )
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        if _EVENTO_PAGO_EXTERNO_CAMPOS_INMUTABLES.intersection(fields):
+            raise IntegrityError(
+                "No se permite modificar un EventoPagoExterno existente."
+            )
+        return super().bulk_update(objs, fields, **kwargs)
+
+
+class PagoExterno(models.Model):
+    """Registro de pago propio de gastos asociado a una solicitud aceptada.
+
+    Límite acordado para esta demo técnica:
+    - Relación OneToOne protegida hacia SolicitudGasto (a lo sumo un pago por gasto).
+      Esto refleja el límite acordado para la demostración, no una regla institucional definitiva.
+    - on_delete=PROTECT en solicitud para retener historial ante borrados accidentales.
+    - Moneda fija en ARS e importe estrictamente positivo con restricciones en base de datos.
+    - Referencia documental inmutable y opaca provista por el proveedor documental.
+    - Inmutabilidad estricta de vínculos: solicitud y referencia_documental quedan congeladas
+      tras la creación y no pueden reasignarse.
+    """
+
+    solicitud = models.OneToOneField(
+        SolicitudGasto,
+        on_delete=models.PROTECT,
+        related_name="pago_externo",
+        help_text="Solicitud de gasto a la que aplica el pago (límite demo: 1 pago por gasto).",
+    )
+    importe = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text="Importe efectivamente pagado en ARS.",
+    )
+    moneda = models.CharField(
+        max_length=3,
+        default="ARS",
+        help_text="Moneda del pago (fijo en ARS para esta demo).",
+    )
+    fecha_pago = models.DateField(
+        help_text="Fecha en que se produjo el hecho del pago.",
+    )
+    referencia_externa = models.CharField(
+        max_length=128,
+        help_text="Referencia externa del comprobante o transacción bancaria/comercial.",
+    )
+    referencia_documental = models.CharField(
+        max_length=255,
+        help_text=(
+            "Referencia opaca e inmutable a la versión documental bloqueada por el proveedor."
+        ),
+    )
+    huella_idempotencia = models.CharField(
+        max_length=64,
+        help_text=(
+            "Huella SHA-256 de valores normalizados para detección de "
+            "reenvíos idénticos o conflictos."
+        ),
+    )
+
+    objects = PagoExternoQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Pago externo"
+        verbose_name_plural = "Pagos externos"
+        ordering = ["-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(importe__gt=0),
+                name="pago_externo_importe_positivo",
+            ),
+            models.CheckConstraint(
+                condition=Q(moneda="ARS"),
+                name="pago_externo_moneda_ars",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.pk is not None and not self._state.adding:
+            original = (
+                PagoExterno.objects.filter(pk=self.pk)
+                .values("solicitud_id", "referencia_documental")
+                .first()
+            )
+            if original is not None:
+                if self.solicitud_id != original["solicitud_id"]:
+                    raise ValidationError(
+                        {
+                            "solicitud": (
+                                "No se permite reasignar la solicitud de un pago externo existente."
+                            )
+                        }
+                    )
+                if self.referencia_documental != original["referencia_documental"]:
+                    raise ValidationError(
+                        {
+                            "referencia_documental": (
+                                "No se permite reasignar la referencia documental "
+                                "de un pago externo existente."
+                            )
+                        }
+                    )
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.pk is not None and not self._state.adding:
+            original = (
+                PagoExterno.objects.filter(pk=self.pk)
+                .values("solicitud_id", "referencia_documental")
+                .first()
+            )
+            if original is not None:
+                if self.solicitud_id != original["solicitud_id"]:
+                    raise IntegrityError(
+                        "No se permite reasignar la solicitud de un pago externo existente."
+                    )
+                if self.referencia_documental != original["referencia_documental"]:
+                    raise IntegrityError(
+                        "No se permite reasignar la referencia documental "
+                        "de un pago externo existente."
+                    )
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"Pago #{self.pk} de Solicitud #{self.solicitud_id} (${self.importe} {self.moneda})"
+
+
+class EventoPagoExterno(models.Model):
+    """Evento auditable e inmutable del registro de un pago externo.
+
+    Garantiza atomicidad separada de auditoría sin JSON/historial genérico
+    ni campos duplicados innecesarios. No utiliza DecisionGasto.
+    Evento de auditoría inmutable: vínculo, actor, tipo y hora quedan fijados al crear.
+    """
+
+    pago = models.OneToOneField(
+        PagoExterno,
+        on_delete=models.PROTECT,
+        related_name="evento",
+        help_text="Pago externo asociado. Límite de demo: exactamente un evento por pago.",
+    )
+    tipo_evento = models.CharField(
+        max_length=50,
+        default="pago_externo_registrado",
+        help_text="Tipo de evento registrado (por defecto: pago_externo_registrado).",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="eventos_pago_externo",
+        help_text="Actor del servidor que ejecutó el registro.",
+    )
+    fecha_hora = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora exactas fijadas por el servidor al momento del registro.",
+    )
+
+    objects = EventoPagoExternoQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Evento de pago externo"
+        verbose_name_plural = "Eventos de pago externo"
+        ordering = ["-fecha_hora", "-id"]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.pk is not None and not self._state.adding:
+            original = (
+                EventoPagoExterno.objects.filter(pk=self.pk)
+                .values(*_EVENTO_PAGO_EXTERNO_ATRIBUTOS_AUDITABLES.values())
+                .first()
+            )
+            if original is not None:
+                cambios = {
+                    campo: "No se permite modificar un evento de pago externo existente."
+                    for campo, atributo in _EVENTO_PAGO_EXTERNO_ATRIBUTOS_AUDITABLES.items()
+                    if getattr(self, atributo) != original[atributo]
+                }
+                if cambios:
+                    raise ValidationError(cambios)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.pk is not None and not self._state.adding:
+            original = (
+                EventoPagoExterno.objects.filter(pk=self.pk)
+                .values(*_EVENTO_PAGO_EXTERNO_ATRIBUTOS_AUDITABLES.values())
+                .first()
+            )
+            if original is not None:
+                cambios = [
+                    campo
+                    for campo, atributo in _EVENTO_PAGO_EXTERNO_ATRIBUTOS_AUDITABLES.items()
+                    if getattr(self, atributo) != original[atributo]
+                ]
+                if cambios:
+                    raise IntegrityError(
+                        "No se permite modificar un EventoPagoExterno existente: "
+                        + ", ".join(cambios)
+                    )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar un EventoPagoExterno existente.")
+
+    def __str__(self) -> str:
+        return f"Evento #{self.pk} - {self.tipo_evento} sobre Pago #{self.pago_id}"
