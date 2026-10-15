@@ -1,22 +1,22 @@
 # I2 — seguimiento del gasto aceptado y pago externo
 
-Fecha: 06/10/2026. Responsable de gastos/pagos: Franco Damián Sánchez. Preparación y revisión documental asistidas por Codex, con insumos de Gemini. **Plan compartido para revisión; no I2 completo ni aprobación de contratos reales.**
+Fecha inicial: 06/10/2026. Estado actualizado: 15/10/2026. Responsable de gastos/pagos: Franco Damián Sánchez. **Plan compartido; C01 técnico y C03 avanzados para la demo, sin completar I2 ni aprobar reglas institucionales.**
 
 ## Fuentes y revisión del plan
 
 Comportamiento y aceptación: [SPEC-011](../specs/011-franco-seguimiento-pago-externo.md). Consulta de apoyo: [SPEC-010](../specs/010-franco-consulta-gastos.md). Formato de tareas: [I1](i1-tareas.md). Método: [ciclo SDD](../specs/README.md) y [CONTRIBUTING](../../CONTRIBUTING.md). No se sustituye el Plan de Trabajo académico ni se instala otra metodología.
 
-La revisión del 06/10 cotejó RF/RNF y actividades con la copia revisada del 13/09 del plan individual de Franco, y el alcance con las specs actuales. El [Plan de Trabajo compartido](https://docs.google.com/document/d/1W435Jlo6K-54DpCbqokJBdcfWaFOydkMNHgNvem1Oz4/edit) conserva su función académica; este cotejo no certifica que aquella copia sea la última versión presentada o aprobada por la cátedra. No se publica la copia con datos personales ni se acreditan sus horas estimadas como ejecutadas.
+La revisión del 06/10 cotejó RF/RNF y actividades con la copia revisada del 13/09 del plan individual de Franco, y el alcance con las specs vigentes en ese momento. El [Plan de Trabajo compartido](https://docs.google.com/document/d/1W435Jlo6K-54DpCbqokJBdcfWaFOydkMNHgNvem1Oz4/edit) conserva su función académica; este cotejo no certifica que aquella copia sea la última versión presentada o aprobada por la cátedra. No se publica la copia con datos personales ni se acreditan sus horas estimadas como ejecutadas.
 
-**Veredicto documental:** coherente para revisar y preparar los tramos S1/S2 con hipótesis visibles. S3 conserva decisiones materiales antes de esquema, permisos y registro persistente. La aprobación técnica de una demo no acredita acuerdo de Matías, reglas de Cooperadora, implementación integrada ni cierre institucional.
+**Estado al 15/10:** C01 A–D está acordado para esta demo como contrato técnico, y el costo de rehacer la persistencia fue aceptado explícitamente. C03 backend está implementado en PR #42; la pantalla de consulta S2 está en PR #43. Estas decisiones no son reglas institucionales ni acreditan integración documental, identidad real, cierre de I2 o validación de Cooperadora.
 
 ## Estado y orden de trabajo
 
 - I1 T02–T05 están integrados. T06/[#8](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/8) conserva recorrido manual, reproducción independiente y acta; su guía está en [PR #14, Draft](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/14). T07/[#9](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/9) conserva devolución H1–H4. No se cierran por avanzar I2.
-- S0: I2-T01/T02 (estado y concepto) están implementadas en [PR #17, Draft](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/17), para revisión e integración; son apoyo RF-007/F-E09, no el núcleo completo de I2.
-- S1: preparar casos y contrato consumidor; revisión de ID/capacidades/documentos/repetición con Matías por acuerdo. No asumir que el contrato está acordado.
-- S2: existe una demo sintética local de proyección, fuera de la aplicación y de este PR: siete pruebas y tres invariantes focales aprobados por Codex. No implementa pago, permisos de servidor o integración documental.
-- S3: persistencia del hecho externo e integración del proveedor real. Requiere decisiones técnicas y supuestos pertinentes; no migrar por intuición.
+- S0: I2-T01/T02 (estado y concepto) están implementadas en la PR de consulta de gastos; son apoyo RF-007/F-E09, no el núcleo completo de I2.
+- S1: C01 A–D fue acordado como contrato técnico de demo. La referencia compuesta por módulo e identificador distingue trámites; cada documento se vincula a un solo trámite con FK protegida, sin reasignación ni borrado del trámite mientras haya vínculos; las capacidades se separan por operación; el pago apunta al gasto y a una versión documental inmutable; la restricción de un pago positivo ARS por gasto aceptado y el tratamiento de reenvíos quedaron definidos. Q1–Q5 institucionales permanecen pendientes.
+- S2: el detalle de gasto muestra resumen de pago y cronología en [PR #43](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/43), con datos sintéticos y en modo de solo lectura. No incluye alta de pago, selector documental, revisión ni proveedor real. La suite combinada registró 250 pruebas aprobadas; la evidencia manual quedó en el handoff privado.
+- S3: persistencia C03 implementada en [PR #42](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/42), con migración, servicio, evento atómico e idempotencia. El puerto fija el contrato esperado del proveedor; no hay proveedor documental real ni integración ejecutable de las capacidades de identidad (#19/#21/#28).
 - S4: convergencia técnica y devolución operativa, con evidencias separadas.
 
 [Issue #15](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/15) sigue el incremento central; [#16](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/16), las consultas. [SPEC-003](../specs/003-matias-documentos.md) se integró como documentación mediante PR #18; [Issue #19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19), asignada a Matías, prepara DOC-R01–03. DOC-R04 e integración I03 no se dan por implementados. Trabajo privado de Matías desconocido.
@@ -29,29 +29,29 @@ Los IDs I2-C01…C06 siguientes son candidatos de planificación, no Issues crea
 - Responsable/revisión: Franco prepara; Matías revisa las interfaces pertinentes por acuerdo.
 - Requisitos/Plan: GP-01–06 como diseño; RF-003/004/005 parcial/006 y RF-001; F-E02, C01 e I01/I02/I03 en el alcance del consumidor.
 - Dependencias: SPEC-002/003/009 y delimitación de #19; no exige proveedor terminado para preparar una propuesta.
-- Cierre: ambas partes de cada interfaz acuerdan entradas/salidas/errores y casos permitidos/denegados; S-H1–5 confirmados o diferidos con punto/coste. No fijar cardinalidad, transporte o política institucional por defecto.
+- Cierre: reglas C01 A–D acordadas para esta demo; el contrato del puerto documenta entradas/garantías exigidas al proveedor. La integración de #19 aún debe validar la interfaz implementada; Q1–Q5 y cualquier política institucional siguen pendientes.
 - Pruebas/evidencia: aceptación sin pago; documento ausente/ajeno/unknown; consulta sin capacidad de registro; actor falsificado; reenvío idéntico/distinto; fallo parcial; cronología. Revisión del contrato y registro de acuerdo, no tests del servidor inexistente.
-- Estado: candidato parcial; preparación disponible, acuerdo no acreditado.
+- Estado: reglas técnicas A–D acordadas para la demo; proveedor documental e identidad ejecutables no integrados. Q1–Q5 siguen pendientes como validación institucional.
 
-## I2-C02 — proyección sintética de seguimiento (S2)
+## I2-C02 — resumen de seguimiento (S2)
 
-- Resultado: detalle/política pura que distinga aceptación, hecho de pago, aporte documental y revisión, sin persistencia nueva.
+- Resultado: detalle de solo lectura que muestra decisión y pago persistido por C03 como dimensiones separadas; la situación documental pendiente se distingue sin simular una revisión real.
 - Responsable/revisión: Franco; revisión técnica y de interfaces pertinentes, sin sustituir al proveedor de Matías.
 - Requisitos/Plan: GP-01/05 y preparación GP-02/06; RF-003/004/005 parcial/006, F-E04/F-E08 parciales y F-E10.
-- Dependencias: casos C01 suficientes para esta demo, supuestos S-H visibles y plan técnico revisado antes de implementar; proveedor real no requerido para prototipo aislado.
+- Dependencias: contrato C01 de demo; el proveedor real no se requiere para mostrar el resumen del pago, pero sí para acreditar respaldo, pertenencia y estado documental.
 - Cierre: aceptación no equivale a pago/cierre; proforma mantiene pendiente; factura aportada con revisión unknown no implica conformidad; sin mutar EstadoSolicitud, identidad o revisión documental.
 - Pruebas/evidencia: casos propios/ajenos, pago/no pago, aporte/revisión, denegación sin exposición, determinismo y ausencia de mutaciones/efectos. Datos ficticios y resultado marcado como demo.
-- Estado: demo local producida; aplicación real e interfaces siguen pendientes. No GP integrados ni Ready inferidos.
+- Estado: resumen y cronología de solo lectura implementados en [PR #43](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/43) y revisión manual sintética registrada. GP-01/06 son parciales; el detalle no prueba proveedor documental, revisión ni alta de pago.
 
 ## I2-C03 — persistencia del hecho externo (S3)
 
 - Resultado: registro autorizado de un pago efectuado fuera del sistema, con actor/fecha de registro del servidor, fecha del hecho, importe/moneda y referencias; registro y evento atómicos.
 - Responsable/revisión: Franco; revisión de esquema, autoridad, repetición e interfaces compartidas con Matías por acuerdo.
 - Requisitos/Plan: GP-03/04; RF-003/006, RNF-002/003, F-E07 parcial, F-E10 e I05.
-- Dependencias: C01 resuelto técnicamente, alcance S-H1–4 elegido y plan de datos revisado; Q1/Q2 para autoridad, Q3 para cardinalidad/correcciones, Q4 para respaldo. Demo persistida aislada sólo con alcance y coste de rehacer explícitamente aceptados, sin uso real.
+- Dependencias: C01 resuelto técnicamente y alcance/costo de rehacer aceptados para esta demo; Q1/Q2 para autoridad real, Q3 para cardinalidad/correcciones, Q4 para respaldo institucional. La demo persistida es aislada/sintética y no habilita uso real.
 - Cierre: permiso por objeto, importes precisos, actor independiente del formulario, fallo sin parcial; identidad de operación y conflicto de payload tratados según contrato. Importe/fecha no son por sí solos identidad única.
 - Pruebas/evidencia: PostgreSQL de prueba, acceso directo denegado, precisión, recarga, fallo provocado, repetición y concurrencia proporcional; diff y comandos reales.
-- Estado: candidato; sin migración, registro real ni implementación aprobada por este documento.
+- Estado: implementado y probado en PR #42 sobre PostgreSQL aislado; pendiente de integración con el proveedor documental real y capacidades ejecutables. La implementación técnica no determina reglas institucionales.
 
 ## I2-C04 — consumidor documental real (S3)
 
@@ -87,4 +87,4 @@ Los IDs I2-C01…C06 siguientes son candidatos de planificación, no Issues crea
 
 F-E07 también exige comprobantes/retenciones, y F-E08 incluye cierre: este I2 recortado no los completa. F-E09 incluye resúmenes/totales además de filtros: S0 cubre sólo parte. I03 contempla integración documental real, no un doble. I06 contempla revisión mutua, no sólo revisión IA. I2-C01/C02 son IDs de tareas locales diferentes de C01/C02 académicos.
 
-Próximo paso compartido: revisar C01 con Matías para ID, capacidades, documentos y repetición; conservar demo C02 como evidencia de presentación con supuestos. Puede avanzarse en preparación reversible mientras T06/T07 siguen abiertos. No iniciar C03/C04 ni cerrar contratos por la publicación de este plan; cada tramo necesita alcance suficiente y autorización vigente. No cambios automáticos en Issues/Project ni compromisos asignados al compañero.
+Próximo paso: revisar las PR #42 y #43, mantenerlas abiertas hasta decisión explícita y continuar únicamente con las integraciones documentales/de identidad de las Issues #19/#21/#28 cuando estén disponibles. No volver a solicitar el acuerdo técnico C01; Q1–Q5 siguen abiertos para validación institucional. T06/T07 y la convergencia GP-01–06 permanecen pendientes. No se agregan cambios automáticos en Issues/Project ni compromisos al compañero.
