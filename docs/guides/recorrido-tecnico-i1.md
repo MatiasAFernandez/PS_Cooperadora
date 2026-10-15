@@ -110,6 +110,7 @@ No debe aparecer un error 500 sin controlar. Registrar commit, sistema, version
 de Python y PostgreSQL, comandos/resultados, identificadores sinteticos,
 capturas sin secretos, defectos y responsable de corregirlos. Franco y Matias
 deben completar recorridos independientes antes de acordar el acta tecnica.
-El recorrido de Matias quedo registrado en el acta el 2026-10-12; el de Franco
-continua pendiente.
+Los recorridos de Matias (2026-10-12) y Franco (2026-10-14) estan registrados
+en el acta tecnica. No se requiere repetirlos para consolidar esta evidencia;
+queda pendiente la conformidad final de ambos con el acta.
 La validacion de H1-H4 con Cooperadora corresponde a la Issue #9.

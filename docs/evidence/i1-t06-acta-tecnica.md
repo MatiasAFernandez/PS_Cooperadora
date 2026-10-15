@@ -1,4 +1,4 @@
-# Acta tecnica I1-T06: verificacion en curso
+# Acta tecnica I1-T06: recorridos completados
 
 - Issue: [#8](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/8).
 - Fecha del registro de Matias: 2026-10-12; ampliacion de Franco: 2026-10-14.
@@ -55,8 +55,8 @@ PostgreSQL 17. La consulta SQL final registro `#1 aceptada` version 2,
 - [x] Adjuntar y organizar capturas sinteticas aportadas por Franco, con indice;
   identificar por separado las comprobaciones visuales tecnicas complementarias.
 - [ ] Ambos acuerdan la seleccion final de evidencia de sus reproducciones.
-- [ ] Anotar defectos encontrados, su correccion y nueva prueba, o mantener la
-  Issue abierta si afectan criterios de aceptacion.
+- [x] Registrar observaciones de interfaz y necesidades futuras, con sus limites;
+  no se identificaron bloqueos materiales de los criterios tecnicos de T06.
 - [ ] Ambos revisan y acuerdan este acta, consignando limitaciones y preguntas
   para Cooperadora. La validacion operativa se realiza en #9.
 
@@ -122,7 +122,10 @@ criterios propios antes de implementarse. Rectificar una decision por error es
 otra necesidad registrada, todavia por definir. Ninguna se incorpora ni se declara
 resuelta por estas capturas.
 
-La guia/acta anterior de #14 conserva evidencia historica y detalles de escenarios;
-no se elimina ni se integra automaticamente junto con #37. Este aporte completa
-el acta de #37 para revision conjunta. No cierra #8 ni acredita la devolucion
-institucional de H1-H4, que sigue en #9.
+La guia/acta anterior de #14 conserva evidencia historica y detalles de escenarios
+en Git. La guia y el acta actuales de #37/#39 la reemplazan como referencia del
+recorrido; no se mantienen dos actas activas con pendientes contradictorios.
+La integracion de esta evidencia no atribuye conformidad final a Matias ni cierra
+#8 automaticamente. La devolucion institucional de H1-H4 sigue pendiente en #9,
+reprogramada sin bloquear el desarrollo de la demo I2 bajo supuestos explicitos
+y con el riesgo de cambios aceptado por Franco.
