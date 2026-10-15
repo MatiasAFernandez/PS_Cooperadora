@@ -5,7 +5,27 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 
-from gastos.models import SolicitudGasto
+from gastos.models import EstadoSolicitud, SolicitudGasto
+
+
+class FiltroEstadoGastoForm(forms.Form):
+    """Filtros de sólo lectura sobre las solicitudes visibles de la demo."""
+
+    estado = forms.ChoiceField(
+        label="Estado",
+        required=False,
+        choices=[("", "Todos los estados"), *EstadoSolicitud.choices],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        error_messages={"invalid_choice": "Seleccione un estado válido."},
+    )
+    q = forms.CharField(
+        label="Buscar en concepto",
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"type": "search", "class": "form-control", "placeholder": "Texto del concepto"}
+        ),
+    )
 
 
 class SolicitudGastoForm(forms.ModelForm):
