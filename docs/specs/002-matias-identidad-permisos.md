@@ -1,8 +1,9 @@
 # SPEC-002 — Identidad recibida y permisos internos
 
 - Estado: tramo de demo I1 implementado con identidad sintética; revisión técnica
-  y validación institucional pendientes. El consumo desde facturación y la matriz
-  de ambos circuitos siguen en borrador. Actualizado: 09/10/2026.
+  y validación institucional pendientes. Se recibieron decisiones para
+  facturación, pero la matriz compartida sigue en borrador. Actualizado:
+  15/10/2026.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#21](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/21)
   para facturación y [#28](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/28)
@@ -13,6 +14,18 @@
 - Validadores: Franco y Matías para el contrato; Cooperadora para capacidades y
   pertenencia; tutor técnico/Sistemas para la identidad institucional.
 - Plan: RF-001, RNF-001, M-E03 e I02.
+
+## Avance de #20 recibido el 15/10/2026
+
+El [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md)
+comunica visibilidad de trámites propios para el solicitante; presentación,
+consulta y corrección de los observados; y observación, registro de comprobantes
+y revisión documental por personal de Cooperadora. La vista por área, la
+delegación y la capacidad concreta de cierre siguen abiertas. El documento
+propone perfiles operativos, pero el esquema y los códigos de capacidades deben
+acordarse con Franco antes de implementarlos. El adaptador I1 sólo entrega
+`subject_id` y capacidades; también queda por definir cómo recibirá el correo
+autenticado que requiere el formulario.
 
 ## Problema y valor
 
@@ -72,9 +85,9 @@ completa toda SPEC-002.
 - La pertenencia a una unidad no concede por sí sola acceso a todos sus trámites;
   cualquier excepción requiere validación funcional.
 - Los códigos y asignaciones sintéticas de I1 están propuestos en el contrato.
-  El alcance real por persona/unidad, las delegaciones y la matriz completa de
-  permisos siguen pendientes de validación; la visibilidad propia/global es sólo
-  una parte de la autorización del producto.
+  Para facturación se comunicó acceso a trámites propios y acciones por función;
+  la vista por unidad, delegaciones, facultad concreta de cierre y códigos de
+  capacidad se precisan antes de implementarse.
 
 ## Criterios de aceptación
 

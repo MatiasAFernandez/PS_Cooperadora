@@ -1,6 +1,7 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
-- Estado: borrador; formulario inventariado, pendiente de validar campos y recorrido.
+- Estado: decisiones condicionales y de acceso recibidas; faltan campos,
+  transiciones y trazabilidad de la validación.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
   para validación y [#23](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/23)
@@ -8,6 +9,19 @@
 - Rol de Franco: revisar navegación compartida y contrato de historial y acceso.
 - Validador: personal de Cooperadora para campos, actores y observaciones.
 - Plan: RF-002, M-E01, M-E02 y M-E05.
+
+## Avance de #20 recibido el 15/10/2026
+
+Según el [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md),
+fecha, número de operación y archivo son obligatorios al declarar un pago ya
+presentado por banco o Mercado Pago; quedan opcionales si no se presentó o se
+elige cuenta corriente. Se comunicaron CUIT de 11 dígitos con verificador,
+importe positivo de dos decimales y validación del correo destinatario. El
+solicitante consulta sólo sus trámites y corrige los observados. Un pago
+declarado en el alta sólo crea información preliminar pendiente de verificación.
+Falta confirmar si las otras 13 preguntas del formulario actual conservan su
+obligatoriedad, los catálogos y las transiciones de observación, corrección y
+rechazo.
 
 ## Problema y valor
 
@@ -47,9 +61,10 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 - El [relevamiento inicial](../planning/i2-issues/01-relevamiento-fuentes.md)
   identifica 13 preguntas marcadas como obligatorias en la primera página del
   formulario actual. Fecha, número de operación y archivo de la sección de
-  comprobante no llevan `*`. Las condiciones de esa sección, las validaciones
-  para el nuevo sistema, la facultad de observar/corregir y el mapa de estados
-  se definirán con Cooperadora antes de pasar a `listo`.
+  comprobante no llevan `*`. Para I2, los tres campos son obligatorios cuando
+  se declara un pago ya presentado por banco o Mercado Pago. Falta confirmar
+  qué exigencias se conservan para las otras 13 preguntas y completar las
+  transiciones y facultades de observación/corrección.
 - Una corrección no borra el historial de lo presentado ni la observación.
 - La protección de acceso se aplica a listas, detalle y acciones del servidor.
 
@@ -95,12 +110,9 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 
 ## Preguntas abiertas
 
-- ¿Se mantienen los campos obligatorios del formulario actual y cuándo se exige
-  la sección de comprobante, especialmente si se respondió `No` o se indicó
-  cuenta corriente aún no cobrada? ¿Qué formatos se validan?
-- ¿Quién puede observar y corregir, cuántas rondas se permiten y qué historial
-  queda visible?
-- ¿Cuáles son los estados, motivos y plazos del recorrido real? Ver preguntas
+- ¿Se mantienen las 13 exigencias del formulario actual y qué catálogos se usan?
+- ¿Cuántas rondas de observación/corrección se permiten y qué motivo se exige?
+- ¿Qué transiciones, motivos y plazos completan los estados base? Ver preguntas
   [P01-P10 y P15](../planning/i2-issues/01-consulta-cooperadora.md).
 
 ## Decisiones

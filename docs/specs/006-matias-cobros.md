@@ -1,11 +1,23 @@
 # SPEC-006 — Registro de cobros y comprobantes de ingreso
 
-- Estado: borrador; pendiente de validar el circuito de ingreso.
+- Estado: parcialidad y datos básicos recibidos; imputación y verificación
+  necesitan precisión antes de implementar.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#26](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/26).
 - Rol de Franco: revisar precisión monetaria y vínculos documentales compartidos.
 - Validador: personal de Cooperadora para datos, conciliación y asociaciones.
 - Plan: RF-002, RNF-002, RNF-003, M-E07 e I03.
+
+## Avance de #20 recibido el 15/10/2026
+
+El [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md)
+comunica fecha, medio, número de operación, importe decimal, descuentos y
+comprobante protegido. Se admiten varios cobros parciales de una solicitud y se
+excluye imputar uno a varias solicitudes en I2. Un cobro aportado por el
+solicitante queda pendiente de verificación de Cooperadora; no se cuenta como
+ingreso confirmado por el mero alta. Falta precisar moneda, anticipos, vínculos
+con varias facturas de una misma solicitud, retenciones/comisiones y diferencias
+con ejemplos, además de la referencia externa única.
 
 ## Problema y valor
 
@@ -26,7 +38,7 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 
 - Ejecutar cobros bancarios o conciliar automáticamente extractos.
 - Integración directa por API con bancos, Exubio o ATP.
-- Presuponer pago total, parcial o reglas de imputación sin validación.
+- Imputar un cobro a solicitudes diferentes durante I2.
 
 ## Requisitos verificables
 
@@ -41,8 +53,9 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 
 ## Reglas de negocio
 
-- La moneda, campos externos, pagos parciales, múltiples facturas por cobro y
-  ajustes quedan pendientes de validación.
+- Se admiten cobros parciales de una solicitud. Moneda, anticipos, distribución
+  entre facturas de esa solicitud y tratamiento de ajustes se precisan antes de
+  implementar la imputación.
 - El registro del cobro informa una operación externa; no mueve dinero.
 - El estado de cancelación se determina conforme a SPEC-007, con reglas por acordar.
 
@@ -85,7 +98,7 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 ## Preguntas abiertas
 
 - ¿Qué identifica de forma única un cobro y qué respaldo exige Cooperadora?
-- ¿Se admiten cobros parciales, anticipos o un cobro para varias facturas?
+- ¿Se admiten anticipos y un cobro para varias facturas de la misma solicitud?
 - ¿Qué moneda y tratamiento de ajustes, retenciones o diferencias corresponde?
 
 ## Decisiones

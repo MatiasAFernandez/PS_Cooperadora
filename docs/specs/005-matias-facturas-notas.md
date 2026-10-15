@@ -1,11 +1,23 @@
 # SPEC-005 — Registro de facturas y notas emitidas externamente
 
-- Estado: borrador; pendiente de validar datos y procedencia.
+- Estado: datos y cálculo propuestos en las decisiones recibidas; cardinalidad y
+  unicidad aún requieren precisión.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#25](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/25).
 - Rol de Franco: revisar vínculos con documentos y modelo compartido.
 - Validador: personal de Cooperadora para tipos, datos y asociaciones.
 - Plan: RF-002, M-E06 e I01/I03.
+
+## Avance de #20 recibido el 15/10/2026
+
+El [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md)
+comunica carga manual de facturas y notas de crédito/débito de Exubio con punto
+de venta, número, fecha, importe y PDF protegido. El neto propuesto suma
+facturas y notas de débito y resta notas de crédito. Se debe precisar la
+cardinalidad: el documento dice `1:N`, pero también describe una factura y,
+eventualmente, una nota por solicitud. Falta acordar emisor y alcance de la
+clave única, vínculo de cada nota con su comprobante original y ejemplos de
+ajuste. Registrar una factura sigue sin acreditar un cobro.
 
 ## Problema y valor
 
@@ -27,7 +39,7 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
 
 - Emitir, numerar, anular fiscalmente o enviar facturas/notas desde la aplicación.
 - Integración directa con Exubio, ATP u otros sistemas externos.
-- Definir todavía cómo una nota ajusta importes o cancelación.
+- Efectuar emisión o anulación fiscal de comprobantes externos.
 
 ## Requisitos verificables
 
@@ -42,10 +54,11 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
 
 ## Reglas de negocio
 
-- Los campos identificatorios y la unicidad de comprobantes deben validarse con
-  Cooperadora antes de implementar.
+- Se comunicaron tipo, punto de venta, número, fecha, importe y PDF; el alcance
+  de la clave única y su emisor se precisan antes de implementar.
 - El registro refleja una operación externa; por sí solo no acredita un cobro.
-- El efecto de notas de crédito/débito sobre importes y estados queda pendiente.
+- El neto suma facturas y débitos y resta créditos; la transición de estado y el
+  vínculo de una nota con la factura de origen se precisan en #27 y #25.
 
 ## Criterios de aceptación
 
@@ -84,9 +97,10 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
 
 ## Preguntas abiertas
 
-- ¿Qué comprobantes y campos se toman de Exubio u otras fuentes?
-- ¿Puede haber varias facturas o notas por solicitud? ¿Cómo se detectan duplicados?
-- ¿Qué efecto tiene cada clase de nota sobre el importe a cobrar o la cancelación?
+- ¿Se admiten varias facturas o notas por solicitud y cómo se vincula cada nota?
+- ¿La clave de duplicados incluye emisor y otros datos además de tipo, punto de
+  venta y número?
+- ¿Qué transición produce una nota de crédito que deja el neto en cero?
 
 ## Decisiones
 
