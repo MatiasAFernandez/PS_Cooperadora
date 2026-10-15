@@ -1,11 +1,24 @@
 # SPEC-007 — Estados, historial, pendientes y cierre de facturación
 
-- Estado: borrador; pendiente de validar transiciones y cierre.
+- Estado: recorrido y condición de cierre recibidos; faltan transiciones,
+  facultad de cierre y ejemplos de conciliación.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#27](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/27).
 - Rol de Franco: acordar contrato de eventos y presentación del historial común.
 - Validador: personal de Cooperadora para decisiones, pendientes y cancelación.
 - Plan: RF-002, RF-006, RNF-002 y M-E08.
+
+## Avance de #20 recibido el 15/10/2026
+
+El [registro de decisiones](../planning/i2-issues/01-decisiones-recibidas.md)
+comunica estados `PRESENTADA`, `OBSERVADA`, `FACTURADA_PENDIENTE_COBRO`,
+`COBRADA_EN_REVISION`, `CERRADA` y `ANULADA`, sin reapertura de estados
+terminales. Para cerrar se exige factura, neto cubierto por cobros verificados o
+nota de crédito total, y comprobantes de cobro aceptados. Falta precisar el
+estado tras corrección, rechazo, cobros parciales y notas, los motivos exigidos,
+el rol que autoriza cierre o anulación y el tratamiento verificable de
+retenciones/comisiones. Los eventos y estados se persisten juntos o no se
+persisten.
 
 ## Problema y valor
 
@@ -26,8 +39,7 @@ de cancelación y documentación, sin perder observaciones ni operaciones previa
 
 - Definir aquí la regla de deuda documental tras un pago de gastos (RF-005), que
   pertenece al circuito de Franco y requiere integración posterior.
-- Cerrar automáticamente una solicitud al registrar una factura o un cobro sin
-  una regla aprobada.
+- Cerrar automáticamente una solicitud al registrar una factura o un cobro.
 - Borrar o reescribir eventos históricos para corregir un trámite.
 
 ## Requisitos verificables
@@ -44,8 +56,9 @@ de cancelación y documentación, sin perder observaciones ni operaciones previa
 
 ## Reglas de negocio
 
-- El mapa exacto de estados, cancelación, reapertura y condiciones de cierre
-  requiere validación con Cooperadora.
+- Se comunicó un mapa base sin reapertura de estados terminales y cierre con
+  factura, neto cubierto y comprobantes aceptados. Faltan las transiciones de
+  rechazo, corrección, cobros parciales y anulación, además del rol de cierre.
 - Una acción y su evento se guardan juntos o no se guardan.
 - El historial conserva la secuencia de decisiones y operaciones sin permitir
   que un usuario ajeno lea el trámite.
@@ -88,10 +101,9 @@ de cancelación y documentación, sin perder observaciones ni operaciones previa
 
 ## Preguntas abiertas
 
-- ¿Cuáles son los estados y transiciones oficiales del circuito?
-- ¿Qué significa cancelación: cobro total, decisión manual u otra condición?
-- ¿Qué documentos y revisiones impiden cerrar? ¿Se puede reabrir y quién lo hace?
-- ¿Qué motivos son obligatorios para observar, cancelar o cerrar?
+- ¿Qué transición corresponde a corrección, rechazo, cobro parcial y anulación?
+- ¿Quién autoriza el cierre o anulación y qué motivos se exigen en cada acción?
+- ¿Cómo se acredita el neto cubierto con retenciones, comisiones o diferencias?
 
 ## Decisiones
 
