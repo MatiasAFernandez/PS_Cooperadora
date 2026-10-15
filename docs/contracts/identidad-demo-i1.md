@@ -1,6 +1,7 @@
 # Contrato de identidad y autorización — demo I1
 
-Estado: propuesta técnica concreta para revisión; no implementada. Fecha: 17/09/2026.
+Estado: contrato de demo con componente sintético implementado en `identidad`;
+revisión conjunta y validación operativa pendientes. Definido: 17/09/2026.
 Responsable del componente: Matías Alejandro Fernández. Consumidor de gastos:
 Franco Damián Sánchez. Diseño preparado con asistencia de IA; no acredita revisión
 de los alumnos ni validación de Cooperadora.
@@ -18,13 +19,13 @@ La IA propone el diseño y las tareas; los alumnos revisan y comprenden el resul
 Cooperadora valida autoridad y reglas operativas; Sistemas confirma la interfaz
 institucional. No se les pide a las operadoras diseñar interfaces de programación.
 
-## Decisiones técnicas para implementar después de la revisión
+## Decisiones técnicas de la demo
 
 - Mantener Django, PostgreSQL, plantillas y el usuario Django existente. Referir
   usuarios mediante la configuración de usuario de Django, sin crear ahora otro
   modelo de usuario ni un proveedor externo de autenticación.
-- Matías implementará un componente `identidad`; Franco, un componente `gastos`.
-  Los nombres indican ubicaciones futuras, no aplicaciones ya creadas.
+- Matías implementó el componente `identidad`; Franco es responsable del
+  componente `gastos` y de sus reglas por objeto.
 - Para la demo, usar vistas estándar de entrada/salida de Django con una plantilla
   mínima y cuentas sintéticas. No crear registro público ni recuperación propia
   de contraseñas. Django Admin sirve para preparación técnica, no para decidir gastos.
@@ -37,7 +38,8 @@ institucional. No se les pide a las operadoras diseñar interfaces de programaci
 
 ## Interfaz interna v1
 
-Las siguientes firmas son una especificación, no código implementado.
+`resolve_actor`, `Actor` y `has_capability` ya existen en `identidad` para I1.
+Las operaciones de gastos describen el contrato que deberá consumir Franco.
 
 | Operación | Entrada | Salida y garantía |
 |---|---|---|
@@ -122,7 +124,9 @@ provisional de H2, no una política institucional de aprobación de gastos propi
 
 ## Casos compartidos de aceptación
 
-Son pruebas por implementar; no resultados ya obtenidos.
+CT-01 a CT-03 tienen pruebas del componente de identidad. CT-04 a CT-08 y la
+comprobación conjunta se verifican al integrar el recorrido de gastos; la tabla
+describe resultados esperados, no acredita su ejecución.
 
 | ID | Caso | Resultado esperado | Autor principal de la prueba |
 |---|---|---|---|

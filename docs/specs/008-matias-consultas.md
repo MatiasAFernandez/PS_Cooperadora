@@ -2,7 +2,8 @@
 
 - Estado: borrador; capacidad SHOULD, pendiente de priorización y validación.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear.
+- Issue I2: [#30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/30),
+  en Backlog SHOULD hasta confirmar su prioridad.
 - Rol de Franco: acordar filtros y presentación operativa que deban ser comunes.
 - Validador: personal de Cooperadora para necesidades y definiciones de totales.
 - Plan: RF-007, RNF-003 y M-E09.

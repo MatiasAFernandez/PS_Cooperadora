@@ -13,6 +13,7 @@ from django.views import View
 from gastos.auth import has_capability, resolve_actor
 from gastos.forms import DecisionGastoForm, FiltroEstadoGastoForm, SolicitudGastoForm
 from gastos.models import EstadoSolicitud
+from gastos.payments import consultar_pago_externo
 from gastos.queries import visible_expenses
 from gastos.services import (
     ConcurrencyConflictError,
@@ -117,6 +118,68 @@ class SolicitudGastoListView(View):
         )
 
 
+def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
+    """Construye el contexto compartido por el detalle y sus errores de decisión."""
+    decisiones = solicitud.decisiones.select_related("autor").all()
+    pago_consulta = consultar_pago_externo(actor=actor, solicitud_id=solicitud.pk)
+    cronologia: list[dict[str, Any]] = []
+    for decision in decisiones:
+        estado_anterior = decision.get_estado_anterior_display()
+        estado_resultante = decision.get_estado_resultante_display()
+        detalle = f"Estado: {estado_anterior} → {estado_resultante}"
+        if decision.motivo:
+            detalle += f" — {decision.motivo}"
+        cronologia.append(
+            {
+                "fecha": decision.fecha,
+                "tipo": "decision",
+                "titulo": f"Decisión: {estado_resultante}",
+                "actor": decision.autor.username,
+                "detalle": detalle,
+            }
+        )
+
+    if pago_consulta is not None:
+        cronologia.append(
+            {
+                "fecha": pago_consulta.fecha_registro,
+                "tipo": "pago",
+                "titulo": "Pago externo registrado",
+                "actor": (
+                    f"Usuario #{pago_consulta.actor_id}"
+                    if pago_consulta.actor_id is not None
+                    else "No disponible"
+                ),
+                "importe": pago_consulta.importe,
+                "moneda": pago_consulta.moneda,
+                "fecha_pago": pago_consulta.fecha_pago,
+                "referencia_externa": pago_consulta.referencia_externa,
+            }
+        )
+    cronologia.sort(
+        key=lambda movimiento: (movimiento["fecha"] is None, movimiento["fecha"])
+    )
+
+    can_decide = any(
+        can_decide_expense(actor, solicitud, act)
+        for act in ("aceptar", "postergar", "rechazar")
+    )
+    decision_form = (
+        DecisionGastoForm(initial={"version": solicitud.version}) if can_decide else None
+    )
+    return {
+        "solicitud": solicitud,
+        "actor": actor,
+        "tramite_id": f"gastos:{solicitud.pk}",
+        "decisiones": decisiones,
+        "pago_consulta": pago_consulta,
+        "cronologia": cronologia,
+        "can_decide": can_decide,
+        "decision_form": decision_form,
+        "mensaje_respaldo": solicitud.mensaje_respaldo,
+    }
+
+
 class SolicitudGastoDetailView(View):
     """Detalle de una solicitud de gasto visible para el actor."""
 
@@ -128,28 +191,10 @@ class SolicitudGastoDetailView(View):
 
         # Aislamiento estricto: 404 para inexistentes o ajenas no visibles
         solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
-        decisiones = solicitud.decisiones.select_related("autor").all()
-        can_decide = any(
-            can_decide_expense(actor, solicitud, act)
-            for act in ("aceptar", "postergar", "rechazar")
-        )
-        decision_form = (
-            DecisionGastoForm(initial={"version": solicitud.version})
-            if can_decide
-            else None
-        )
-
         return render(
             request,
             "gastos/solicitud_detail.html",
-            {
-                "solicitud": solicitud,
-                "actor": actor,
-                "decisiones": decisiones,
-                "can_decide": can_decide,
-                "decision_form": decision_form,
-                "mensaje_respaldo": solicitud.mensaje_respaldo,
-            },
+            _solicitud_detail_context(actor, solicitud),
         )
 
 
@@ -182,26 +227,20 @@ class SolicitudGastoDecidirView(View):
         except InvalidDecisionInputError as exc:
             solicitud = visible_expenses(actor).filter(pk=pk).first()
             if solicitud:
-                decisiones = solicitud.decisiones.select_related("autor").all()
-                can_decide = any(
-                    can_decide_expense(actor, solicitud, act)
-                    for act in ("aceptar", "postergar", "rechazar")
-                )
                 form = DecisionGastoForm(data=request.POST)
                 form.is_valid()
                 form.add_error("motivo" if "motivo" in str(exc).lower() else None, str(exc))
+                context = _solicitud_detail_context(actor, solicitud)
+                context.update(
+                    {
+                        "decision_form": form,
+                        "error_decision": str(exc),
+                    }
+                )
                 return render(
                     request,
                     "gastos/solicitud_detail.html",
-                    {
-                        "solicitud": solicitud,
-                        "actor": actor,
-                        "decisiones": decisiones,
-                        "can_decide": can_decide,
-                        "decision_form": form,
-                        "error_decision": str(exc),
-                        "mensaje_respaldo": solicitud.mensaje_respaldo,
-                    },
+                    context,
                     status=400,
                 )
             return HttpResponse(str(exc), status=400)

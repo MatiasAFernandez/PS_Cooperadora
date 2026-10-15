@@ -176,6 +176,8 @@ def test_aislamiento_consultas_propias_a_y_b(create_actor: Any, auth_client: Any
     solicitudes_a = list(resp_list_a.context["solicitudes"])
     assert solicitud_a in solicitudes_a
     assert solicitud_b not in solicitudes_a
+    assert b"Presentar Solicitud" in resp_list_a.content
+    assert b"Nueva Solicitud" in resp_list_a.content
 
     # Listado para B
     resp_list_b = client_b.get(reverse("gastos:lista"))
@@ -226,8 +228,11 @@ def test_consulta_global_operadora_y_lectura(create_actor: Any, auth_client: Any
     solicitudes_o = list(resp_o.context["solicitudes"])
     assert solicitud_a in solicitudes_o
     assert solicitud_b in solicitudes_o
+    assert b"Presentar Solicitud" not in resp_o.content
+    assert b"Nueva Solicitud" not in resp_o.content
     assert client_o.get(reverse("gastos:detalle", kwargs={"pk": solicitud_a.pk})).status_code == 200
     assert client_o.get(reverse("gastos:detalle", kwargs={"pk": solicitud_b.pk})).status_code == 200
+    assert client_o.get(reverse("gastos:presentar")).status_code == 403
 
     # Cuenta L
     resp_l = client_l.get(reverse("gastos:lista"))
@@ -235,8 +240,11 @@ def test_consulta_global_operadora_y_lectura(create_actor: Any, auth_client: Any
     solicitudes_l = list(resp_l.context["solicitudes"])
     assert solicitud_a in solicitudes_l
     assert solicitud_b in solicitudes_l
+    assert b"Presentar Solicitud" not in resp_l.content
+    assert b"Nueva Solicitud" not in resp_l.content
     assert client_l.get(reverse("gastos:detalle", kwargs={"pk": solicitud_a.pk})).status_code == 200
     assert client_l.get(reverse("gastos:detalle", kwargs={"pk": solicitud_b.pk})).status_code == 200
+    assert client_l.get(reverse("gastos:presentar")).status_code == 403
 
 
 @pytest.mark.django_db

@@ -2,7 +2,7 @@
 
 - Estado: borrador; pendiente de validar transiciones y cierre.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear.
+- Issue I2: [#27](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/27).
 - Rol de Franco: acordar contrato de eventos y presentación del historial común.
 - Validador: personal de Cooperadora para decisiones, pendientes y cancelación.
 - Plan: RF-002, RF-006, RNF-002 y M-E08.

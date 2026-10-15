@@ -1,0 +1,36 @@
+{
+  "fecha_utc": "2026-10-14T20:32:36.166Z",
+  "metodo": "Navegador Chromium local con sesion real B; comprobacion tecnica posterior, no captura manual de Franco",
+  "version": "60f21f156c2d30ce7240cb10ce0308071f80daa1",
+  "resultados": [
+    {
+      "archivo": "08-b-listado-vacio.png",
+      "ruta": "/gastos/",
+      "http": 200,
+      "resultado": "Listado sin solicitudes de A"
+    },
+    {
+      "archivo": "09-b-detalle-1-no-encontrado.png",
+      "ruta": "/gastos/1/",
+      "http": 404,
+      "resultado": "Not Found sin datos del gasto"
+    },
+    {
+      "archivo": "10-b-detalle-2-no-encontrado.png",
+      "ruta": "/gastos/2/",
+      "http": 404,
+      "resultado": "Not Found sin datos del gasto"
+    }
+  ],
+  "capturas_publicadas": [
+    {
+      "archivo": "08-b-listado-vacio.png",
+      "sha256": "258d8502171820bd801574b25fb9a6798d0058963d0e83182ccc3f44060bb0ec"
+    },
+    {
+      "archivo": "09-b-detalle-no-encontrado.png",
+      "sha256": "a9b8e8f85991fa2318d71a2f14444a2a1abd0af8419b45c353debf7883e99523"
+    }
+  ],
+  "nota": "Las capturas de 404 para1 y2 eran pixel a pixel identicas; se publica una sola, y se conservan ambos resultados HTTP en este registro."
+}

@@ -3,8 +3,10 @@
 - Estado: para validar; consistente con el Plan de Trabajo actual y pendiente de
   validación operativa con Cooperadora y de revisión de interfaz con Franco.
 - Autor y responsable principal: Matías Alejandro Fernández.
-- Issue: pendiente de crear; el primer tramo derivable está preparado al final de
-  esta especificación para registrarlo inicialmente en Backlog.
+- Issues I2: [#19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19)
+  para DOC-R01–R03, [#24](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/24)
+  para DOC-R04 y [#28](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/28)
+  para la integración I03.
 - Rol de Franco: acordar tipos y momentos documentales del circuito de gastos y
   revisar la integración de acceso.
 - Validadores: Cooperadora para documentos y política de archivos; Franco y Matías
@@ -111,10 +113,10 @@ acceso controlado y una referencia clara a su procedencia.
 - Demostración o evidencia: archivo ficticio asociado al trámite y recuperación
   permitida sólo desde una identidad autorizada.
 
-## Primer tramo preparado para Issue
+## Primer tramo registrado en Issue #19
 
-Este tramo puede registrarse en Backlog sin afirmar que toda SPEC-003 ni I03 están
-resueltas.
+Este tramo se registró en [#19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19)
+sin afirmar que toda SPEC-003 ni I03 están resueltas.
 
 - Título propuesto: `M-E04 — Componente común de documentos protegidos`.
 - Resultado: un usuario autorizado incorpora y recupera un archivo ficticio ligado

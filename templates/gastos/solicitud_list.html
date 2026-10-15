@@ -5,7 +5,9 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center;">
     <h3>Solicitudes de Gasto</h3>
+    {% if actor and "gastos.presentar" in actor.capabilities %}
     <a href="{% url 'gastos:presentar' %}" class="btn">Nueva Solicitud</a>
+    {% endif %}
 </div>
 
 <form method="get" action="{% url 'gastos:lista' %}">
