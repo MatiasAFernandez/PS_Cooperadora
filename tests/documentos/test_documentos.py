@@ -8,7 +8,8 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
+from django.db import IntegrityError, connection, transaction
+from django.db.models.deletion import ProtectedError
 from django.test import Client
 from django.urls import reverse
 
@@ -207,3 +208,41 @@ def test_csrf_protege_incorporacion(escenario):
     cliente.force_login(a)
     assert incorporar(cliente, gasto).status_code == 403
     assert not Documento.objects.exists()
+
+
+def test_fk_no_se_puede_reasignar_por_orm_ni_sql(escenario):
+    _, b, gasto, otro, cliente_a, _ = escenario
+    for nombre in ("demo_documentos_metadatos", "demo_documentos_descarga"):
+        b.groups.add(Group.objects.get(name=nombre))
+    cliente_b = Client()
+    cliente_b.force_login(b)
+    assert incorporar(cliente_a, gasto).status_code == 201
+    documento = Documento.objects.get()
+    url_archivo = reverse("documentos:archivo", args=[documento.pk])
+    assert cliente_b.get(url_archivo).status_code == 404
+
+    def sql_update():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE documentos_documento SET solicitud_gasto_id = %s WHERE id = %s",
+                [otro.pk, documento.pk],
+            )
+
+    intentos = (
+        lambda: Documento.objects.filter(pk=documento.pk).update(solicitud_gasto=otro),
+        sql_update,
+    )
+    documento.solicitud_gasto = otro
+    with pytest.raises(IntegrityError), transaction.atomic():
+        documento.save(update_fields=["solicitud_gasto"])
+    for intento in intentos:
+        with pytest.raises(IntegrityError), transaction.atomic():
+            intento()
+        documento.refresh_from_db()
+        assert documento.solicitud_gasto_id == gasto.pk
+        assert cliente_b.get(url_archivo).status_code == 404
+        assert b"".join(cliente_a.get(url_archivo).streaming_content) == PDF
+
+    with pytest.raises(ProtectedError):
+        gasto.delete()
+    assert Documento.objects.filter(pk=documento.pk, solicitud_gasto=gasto).exists()
