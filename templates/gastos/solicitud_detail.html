@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}Detalle de Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
 
@@ -10,7 +11,7 @@
 <table style="max-width: 600px;">
     <tr>
         <th>Identificador</th>
-        <td>#{{ solicitud.pk }}</td>
+        <td>{{ tramite_id }}</td>
     </tr>
     <tr>
         <th>Concepto</th>
@@ -38,19 +39,68 @@
     </tr>
 </table>
 
+{% if pago_consulta %}
+<section id="pago-externo" aria-labelledby="pago-externo-heading" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
+    <h4 id="pago-externo-heading" style="margin-top: 0;">Pago externo registrado</h4>
+    <table style="max-width: 600px; width: 100%;">
+        <caption>Datos informativos del pago</caption>
+        <tbody>
+            <tr>
+                <th scope="row">Importe</th>
+                <td>{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</td>
+            </tr>
+            <tr>
+                <th scope="row">Fecha del hecho</th>
+                <td>{{ pago_consulta.fecha_pago|date:"d/m/Y" }}</td>
+            </tr>
+            <tr>
+                <th scope="row">Referencia externa</th>
+                <td>{{ pago_consulta.referencia_externa }}</td>
+            </tr>
+            <tr>
+                <th scope="row">Registrado el</th>
+                <td>
+                    {% if pago_consulta.fecha_registro %}
+                        {{ pago_consulta.fecha_registro|date:"d/m/Y H:i:s" }}
+                    {% else %}
+                        No disponible
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Actor</th>
+                <td>
+                    {% if pago_consulta.actor_id != None %}
+                        Usuario #{{ pago_consulta.actor_id }}
+                    {% else %}
+                        No disponible
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <p role="note" style="margin-bottom: 0;">Registro informativo de la demo. No cambia el estado ni el importe estimado, y no confirma que el importe estimado esté saldado.</p>
+</section>
+{% endif %}
+
 <div id="respaldo-documental" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
     <h4 style="margin-top: 0; margin-bottom: 8px;">Documentación de Respaldo</h4>
-    <p style="margin: 0;">{{ mensaje_respaldo|default:solicitud.mensaje_respaldo }}</p>
+    {% if pago_consulta %}
+        <p style="margin: 0;">Esta vista no muestra metadatos ni estado de revisión del comprobante. El registro de pago no equivale a aprobación documental ni acredita la factura definitiva pendiente.</p>
+    {% else %}
+        <p style="margin: 0;">{{ mensaje_respaldo|default:solicitud.mensaje_respaldo }}</p>
+    {% endif %}
 </div>
+
+{% if error_decision %}
+<div role="alert" style="color: red; margin-top: 20px; max-width: 600px;">
+    <strong>Error:</strong> {{ error_decision }}
+</div>
+{% endif %}
 
 {% if can_decide %}
 <div style="margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 4px; max-width: 600px;">
     <h4>Registrar Decisión Humana</h4>
-    {% if error_decision %}
-        <div style="color: red; margin-bottom: 15px;">
-            <strong>Error:</strong> {{ error_decision }}
-        </div>
-    {% endif %}
     <form method="post" action="{% url 'gastos:decidir' pk=solicitud.pk %}">
         {% csrf_token %}
         <input type="hidden" name="version" value="{{ solicitud.version }}">
@@ -72,31 +122,44 @@
 </div>
 {% endif %}
 
-<h4 style="margin-top: 30px;">Historial de Decisiones</h4>
-{% if decisiones %}
+<h4 style="margin-top: 30px;">Historial de Decisiones y Pagos</h4>
+{% if cronologia %}
     <table style="max-width: 700px; width: 100%; margin-top: 10px;">
+        <caption>Decisiones y pagos registrados</caption>
         <thead>
             <tr>
-                <th>Fecha y Hora</th>
-                <th>Autor</th>
-                <th>Estado Anterior</th>
-                <th>Estado Resultante</th>
-                <th>Motivo</th>
+                <th scope="col">Fecha y hora</th>
+                <th scope="col">Hito</th>
+                <th scope="col">Actor</th>
+                <th scope="col">Detalle</th>
             </tr>
         </thead>
         <tbody>
-            {% for d in decisiones %}
+            {% for movimiento in cronologia %}
                 <tr>
-                    <td>{{ d.fecha|date:"d/m/Y H:i:s" }}</td>
-                    <td>{{ d.autor.username }}</td>
-                    <td>{{ d.get_estado_anterior_display }}</td>
-                    <td><span class="badge">{{ d.get_estado_resultante_display }}</span></td>
-                    <td>{{ d.motivo|default:"—" }}</td>
+                    <td>
+                        {% if movimiento.fecha %}
+                            {{ movimiento.fecha|date:"d/m/Y H:i:s" }}
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </td>
+                    <td><span class="badge">{{ movimiento.titulo }}</span></td>
+                    <td>{{ movimiento.actor }}</td>
+                    <td>
+                        {% if movimiento.tipo == "pago" %}
+                            Importe: {{ movimiento.importe|localize }} {{ movimiento.moneda }}.
+                            Fecha del hecho: {{ movimiento.fecha_pago|date:"d/m/Y" }}.
+                            Referencia externa: {{ movimiento.referencia_externa }}.
+                        {% else %}
+                            {{ movimiento.detalle }}
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
 {% else %}
-    <p>Sin decisiones registradas para esta solicitud.</p>
+    <p>Sin decisiones ni pagos registrados para esta solicitud.</p>
 {% endif %}
 {% endblock %}
