@@ -1,6 +1,6 @@
 # SPEC-011 — I2: seguimiento del gasto aceptado y pago externo
 
-- Estado al 15/10/2026: las decisiones técnicas A–D para la demo fueron acordadas; el backend C03 está implementado en PR #42 y el resumen/cronología de consulta en PR #43. La integración del proveedor documental y las capacidades reales de identidad siguen pendientes; I2 no está completo ni validado institucionalmente.
+- Estado al 15/10/2026: las decisiones técnicas A–D para la demo fueron acordadas; el backend C03 y el resumen/cronología están integrados mediante PR #42/#43. La PR #45 implementa el formulario consumidor y el selector contractual, con cierre seguro si faltan proveedor o permisos. La integración del proveedor documental y las capacidades reales de identidad siguen pendientes; I2 no está completo ni validado institucionalmente.
 - Fecha inicial: 03/10/2026. Actualización de estado: 15/10/2026. Ubicación: `docs/specs/011-franco-seguimiento-pago-externo.md`.
 - Responsable principal: Franco Damián Sánchez, gastos/pagos.
 - Aporte de Matías Alejandro Fernández: identidad/capacidades y componente documental de SPEC-003; revisión de interfaces e integración. Esta propuesta no le asigna trabajo sin acuerdo.
