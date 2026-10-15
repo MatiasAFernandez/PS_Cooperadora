@@ -5,17 +5,17 @@ interfaz Python para la persistencia del pago externo en el módulo de gastos
 (Issue #15, corte técnico C03).
 
 > [!IMPORTANT]
-> **Estado del acuerdo**: Reglas técnicas para demostración convenidas entre Franco y
-> Matías sobre la base de SPEC-011 y las decisiones A–D. Este corte no constituye una regla
+> **Estado del acuerdo**: Reglas técnicas para esta demostración definidas sobre la base de
+> SPEC-011 y las decisiones A–D. Este corte no constituye una regla
 > institucional definitiva: las preguntas Q1–Q5 permanecen pendientes de validación
-> con la operadora de Cooperadora. Franco asume el costo de rehacer la persistencia si
-> la validación institucional difiere de este modelo de demo.
+> con la operadora de Cooperadora. La demostración contempla rehacer la persistencia si
+> la validación institucional difiere de este modelo técnico.
 
 ---
 
 ## 1. División de responsabilidades y límites de alcance
 
-- **Gastos y Pagos (Franco, vertical propia)**:
+- **Gastos y Pagos (alcance de este corte C03)**:
   - Persistencia de `PagoExterno` y `EventoPagoExterno`.
   - Validación de visibilidad de gastos y de la capacidad `gastos.registrar_pago`.
   - Transaccionalidad atómica y bloqueo pesimista de la fila de gasto.
@@ -25,9 +25,9 @@ interfaz Python para la persistencia del pago externo en el módulo de gastos
   - No provee vistas, rutas HTTP ni formularios de carga en este corte (la UI depende de la
     disponibilidad de selector documental y capacidades de identidad).
 
-- **Gestión Documental (Matías, [Issue #19](../planning/i2-issues/05-documentos.md) - Integración real pendiente)**:
-  - La app y el proveedor documental de Matías **no existen en este checkout** y no han sido
-    implementados aquí.
+- **Gestión Documental ([Issue #19](../planning/i2-issues/05-documentos.md) - Integración real pendiente)**:
+  - La app y el proveedor documental real no forman parte de este checkout ni se han
+    implementado aquí.
   - El módulo de gastos define un puerto consumidor (`DocumentVerificationPort` en
     [`gastos/contracts.py`](../../gastos/contracts.py)) con garantías contractuales estrictas.
   - No se implementa ningún proveedor documental productivo por defecto ni stubs tolerantes.
@@ -217,7 +217,7 @@ resolverse antes del paso a producción:
   factura y criterios formales de cierre administrativo y contable de los trámites de gasto.
 
 > [!NOTE]
-> Los límites de la demostración aceptados por Franco **no validan** Q1–Q5. Este corte
+> Los límites técnicos de la demostración **no validan** Q1–Q5. Este corte
 > tampoco implementa SSO, pagos bancarios, cierres, pagos parciales, retenciones ni
 > supuestos institucionales, y no agrega vistas, formularios, rutas ni plantillas.
 > El proveedor documental ([#19](../planning/i2-issues/05-documentos.md)) y la extensión
