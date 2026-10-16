@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='documento',
             name='tipo',
-            field=models.CharField(choices=[('PRESUPUESTO', 'Presupuesto o proforma'), ('FACTURA_PROVEEDOR', 'Factura o ticket de proveedor'), ('COMPROBANTE_PAGO', 'Comprobante de pago'), ('CONSTANCIA_RETENCION_ATP', 'Constancia ATP'), ('FACTURA_EMITIDA', 'Factura emitida'), ('NOTA_CREDITO', 'Nota de crédito'), ('NOTA_DEBITO', 'Nota de débito'), ('COMPROBANTE_COBRO', 'Comprobante de cobro')], max_length=64),
+            field=models.CharField(choices=[('PRESUPUESTO', 'Presupuesto o proforma'), ('FACTURA_PROVEEDOR', 'Factura de proveedor'), ('TICKET_PROVEEDOR', 'Ticket de proveedor'), ('COMPROBANTE_PAGO', 'Comprobante de pago'), ('CONSTANCIA_RETENCION_ATP', 'Constancia ATP'), ('FACTURA_EMITIDA', 'Factura emitida'), ('NOTA_CREDITO', 'Nota de crédito'), ('NOTA_DEBITO', 'Nota de débito'), ('COMPROBANTE_COBRO', 'Comprobante de cobro')], max_length=64),
         ),
     ]

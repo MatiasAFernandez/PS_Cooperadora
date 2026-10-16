@@ -31,6 +31,7 @@ matriz del servicio restringen las nuevas incorporaciones:
 |---|---|---|---|
 | Gastos | `PRESUPUESTO` | `SOLICITANTE` | 0 a N |
 | Gastos | `FACTURA_PROVEEDOR` | `SOLICITANTE`, `INTERNO_COOPERADORA` | 1 a N al cierre F-E08 |
+| Gastos | `TICKET_PROVEEDOR` | `SOLICITANTE`, `INTERNO_COOPERADORA` | 0 a N; respaldo adicional |
 | Gastos | `COMPROBANTE_PAGO` | `EXTERNO_BANCO` | 1 a N, por ejecución F-E07 |
 | Gastos | `CONSTANCIA_RETENCION_ATP` | `EXTERNO_ATP` | 0 a N, condicional |
 | Facturación | `FACTURA_EMITIDA` | `EXTERNO_XUBIO` | 1 a N en M-E06 |
@@ -42,6 +43,13 @@ cada circuito, cuando existan; la carga común no convierte por sí sola un
 documento en aprobado ni cierra un trámite. El catálogo de facturación queda
 definido, pero su escritura no se habilita hasta que exista su resolver y su
 relación protegida con la solicitud.
+
+La revisión de Franco en la PR #48 precisó la clasificación de la fila original
+«factura / ticket» para respetar C01: `FACTURA_PROVEEDOR` designa sólo facturas;
+`TICKET_PROVEEDOR` conserva tickets como documentos adicionales, pero queda
+fuera de las opciones elegibles para registrar un pago. El mínimo de factura
+para F-E08 no se satisface con un ticket. El proveedor C01 real aún no existe;
+su implementación y verificación corresponden a #22/#28.
 
 ## Trámite y permisos
 

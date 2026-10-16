@@ -7,7 +7,8 @@ from django.db import models
 class Documento(models.Model):
     class Tipo(models.TextChoices):
         PRESUPUESTO = "PRESUPUESTO", "Presupuesto o proforma"
-        FACTURA_PROVEEDOR = "FACTURA_PROVEEDOR", "Factura o ticket de proveedor"
+        FACTURA_PROVEEDOR = "FACTURA_PROVEEDOR", "Factura de proveedor"
+        TICKET_PROVEEDOR = "TICKET_PROVEEDOR", "Ticket de proveedor"
         COMPROBANTE_PAGO = "COMPROBANTE_PAGO", "Comprobante de pago"
         CONSTANCIA_RETENCION_ATP = "CONSTANCIA_RETENCION_ATP", "Constancia ATP"
         FACTURA_EMITIDA = "FACTURA_EMITIDA", "Factura emitida"

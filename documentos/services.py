@@ -22,6 +22,10 @@ TIPOS_POR_CIRCUITO = {
             Documento.Procedencia.SOLICITANTE,
             Documento.Procedencia.INTERNO_COOPERADORA,
         },
+        Documento.Tipo.TICKET_PROVEEDOR: {
+            Documento.Procedencia.SOLICITANTE,
+            Documento.Procedencia.INTERNO_COOPERADORA,
+        },
         Documento.Tipo.COMPROBANTE_PAGO: {Documento.Procedencia.EXTERNO_BANCO},
         Documento.Tipo.CONSTANCIA_RETENCION_ATP: {Documento.Procedencia.EXTERNO_ATP},
     },
@@ -39,8 +43,17 @@ TIPOS_POR_CIRCUITO = {
 TIPOS_APORTABLES_SOLICITANTE = {
     Documento.Tipo.PRESUPUESTO,
     Documento.Tipo.FACTURA_PROVEEDOR,
+    Documento.Tipo.TICKET_PROVEEDOR,
     Documento.Tipo.COMPROBANTE_COBRO,
 }
+
+# El puerto C01 de gastos admite factura, presupuesto y proforma como respaldo
+# de pago. Un ticket puede conservarse en el trámite, pero no ofrece una opción
+# elegible para ese puerto. El adaptador real se incorporará en #22/#28.
+TIPOS_ELEGIBLES_PAGO_GASTOS = frozenset({
+    Documento.Tipo.FACTURA_PROVEEDOR,
+    Documento.Tipo.PRESUPUESTO,
+})
 
 
 class DocumentoNoVisible(LookupError):

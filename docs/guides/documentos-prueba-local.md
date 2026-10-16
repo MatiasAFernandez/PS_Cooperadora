@@ -37,6 +37,10 @@ los metadatos, sin la ruta física. `GET` a esa misma URL lista los documentos;
 `GET /documentos/<documento_id>/` devuelve metadatos y
 `GET /documentos/<documento_id>/archivo/` descarga el archivo.
 
+Para un ticket se usa `tipo=TICKET_PROVEEDOR`; permanece como respaldo del
+trámite, pero no es elegible para el contrato de registro de pago C01 de gastos.
+`FACTURA_PROVEEDOR` identifica únicamente facturas.
+
 Repetir las consultas con otra cuenta solicitante: recibe 404 para el trámite
 ajeno y para los identificadores directos. Quitar cada grupo documental por
 separado verifica que las capacidades no se sustituyen entre sí. La suite usa

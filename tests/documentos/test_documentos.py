@@ -15,7 +15,7 @@ from django.urls import reverse
 
 from documentos.models import Documento
 from documentos.policy import ArchivoInvalido, validar_archivo
-from documentos.services import almacenamiento
+from documentos.services import TIPOS_ELEGIBLES_PAGO_GASTOS, almacenamiento
 from gastos.models import SolicitudGasto
 
 PDF = b"%PDF-1.7\nArchivo sintetico\n%%EOF"
@@ -152,6 +152,17 @@ def test_catalogos_y_procedencia_del_solicitante_se_validan_antes_de_escribir(es
     assert incorporar(cliente, gasto, procedencia="desconocida").status_code == 400
     assert not Documento.objects.exists()
     assert not raiz.exists() or not any(p.is_file() for p in raiz.rglob("*"))
+
+
+def test_factura_y_ticket_se_clasifican_distintos_para_el_contrato_c01(escenario):
+    _, _, gasto, _, cliente, _ = escenario
+    assert incorporar(cliente, gasto, tipo=Documento.Tipo.FACTURA_PROVEEDOR).status_code == 201
+    assert incorporar(cliente, gasto, tipo=Documento.Tipo.TICKET_PROVEEDOR).status_code == 201
+    factura, ticket = Documento.objects.filter(solicitud_gasto=gasto).order_by("id")
+    assert factura.tipo == Documento.Tipo.FACTURA_PROVEEDOR
+    assert ticket.tipo == Documento.Tipo.TICKET_PROVEEDOR
+    assert factura.tipo in TIPOS_ELEGIBLES_PAGO_GASTOS
+    assert ticket.tipo not in TIPOS_ELEGIBLES_PAGO_GASTOS
 
 
 def test_personal_aporta_procedencias_admitidas_y_admite_multiples_versiones(escenario):
