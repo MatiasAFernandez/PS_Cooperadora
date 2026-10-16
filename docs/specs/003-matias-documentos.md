@@ -1,7 +1,8 @@
 # SPEC-003 — Documentos protegidos de los trámites
 
-- Estado: decisiones de política recibidas para I2; faltan reglas por etapa,
-  trazabilidad de validación y revisión de interfaz con Franco.
+- Estado: decisiones técnicas de #19 confirmadas el 16/10/2026 y primer tramo
+  de gastos integrado mediante PR #47; extensión a facturación, revisión
+  documental e integración de ambos circuitos siguen en sus Issues.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19)
   para DOC-R01–R03, [#24](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/24)
@@ -9,8 +10,9 @@
   para la integración I03.
 - Rol de Franco: acordar tipos y momentos documentales del circuito de gastos y
   revisar la integración de acceso.
-- Validadores: Cooperadora para documentos y política de archivos; Franco y Matías
-  para el contrato común.
+- Decisiones técnicas: equipo de desarrollo; Matías implementa el componente y
+  Franco revisa el contrato común. Cooperadora aporta necesidades operativas y
+  valida el recorrido, que puede motivar reformulaciones técnicas.
 - Plan: RF-004, RNF-001, RNF-004, M-E04 e I03. RNF-002 se aplica como control
   transversal cuando una operación documental falla.
 
@@ -21,8 +23,10 @@ comunica almacenamiento privado, descarga autorizada, límite de 10 MB y formato
 PDF/JPEG/PNG. Una revisión puede quedar pendiente, aceptada u observada; un
 reemplazo conserva el archivo anterior y su trazabilidad. Falta precisar qué
 documento se exige en cada etapa, la cantidad por tipo, quién puede aportarlo y
-revisarlo, y el contrato común con Franco. La política recibida no define el
-almacenamiento institucional definitivo.
+revisarlo, y el contrato común con Franco. El
+[acuerdo técnico posterior para #19](../decisions/0002-documentos-issue-19.md)
+precisa 10 MiB, catálogos, matriz de tipos/procedencias y capacidades del primer
+tramo. La política no define el almacenamiento institucional definitivo.
 
 ## Validación contra el Plan de Trabajo actual
 
@@ -76,9 +80,10 @@ acceso controlado y una referencia clara a su procedencia.
 
 ## Reglas de negocio
 
-- Para I2 se comunicó una política de PDF/JPEG/PNG hasta 10 MB y conservación de
-  versiones y revisión. La cantidad, los tipos exigidos por etapa y las reglas
-  concretas de aceptación siguen pendientes antes de implementar cada circuito.
+- Para I2 se aprobó PDF/JPEG/PNG hasta 10 MiB exactos por archivo y la matriz de
+  tipos, procedencias y cantidades esperadas del registro técnico de #19. Los
+  mínimos por etapa y la revisión se aplican al implementar las operaciones
+  correspondientes de cada circuito, no al incorporar un archivo.
 - La autorización se comprueba en cada descarga y consulta, no sólo al mostrar
   enlaces en la interfaz. También se aplica en el servidor al incorporar, listar,
   consultar metadatos y registrar una revisión.
@@ -166,8 +171,8 @@ sin afirmar que toda SPEC-003 ni I03 están resueltas.
 
 ## Preguntas abiertas
 
-- ¿Qué tipos se exigen en cada etapa y cuántos documentos admite cada tipo?
-- ¿Quién puede aportar, reemplazar, revisar o rechazar cada tipo documental?
+- ¿Cómo se aplican los mínimos aprobados en cada transición de gastos y facturación?
+- ¿Quién puede revisar o rechazar cada tipo documental en DOC-R04?
 - ¿Qué criterios hacen que un documento satisfaga un pendiente?
 - ¿Dónde se alojarán los archivos en el entorno institucional de prueba?
 
@@ -177,4 +182,5 @@ sin afirmar que toda SPEC-003 ni I03 están resueltas.
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido | Documentos comunes con almacenamiento configurable y acceso controlado. | La política concreta y los tipos se validan antes de implementar. |
 | 2026-10-05 | Plan de Trabajo actual, RF-004, RNF-001, RNF-004, M-E04 e I03 | La spec es consistente con el alcance académico; M-E04 e I03 se preparan como trabajos separados. | Puede crearse una Issue de Backlog para el componente común sin declarar completa la integración de ambos circuitos. |
+| 2026-10-16 | Matías confirmó `Decisiones Issue #19.md` como decisiones técnicas aprobadas | 10 MiB exactos, catálogos, matriz por circuito, capacidades por acción y acceso al trámite; FK protegida en el primer consumidor. | Actualizar el primer tramo de PR #47 y preparar la cabecera compartida de I01/#22 sin atribuir estas elecciones técnicas a Cooperadora. |
 

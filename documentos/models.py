@@ -5,6 +5,24 @@ from django.db import models
 
 
 class Documento(models.Model):
+    class Tipo(models.TextChoices):
+        PRESUPUESTO = "PRESUPUESTO", "Presupuesto o proforma"
+        FACTURA_PROVEEDOR = "FACTURA_PROVEEDOR", "Factura de proveedor"
+        TICKET_PROVEEDOR = "TICKET_PROVEEDOR", "Ticket de proveedor"
+        COMPROBANTE_PAGO = "COMPROBANTE_PAGO", "Comprobante de pago"
+        CONSTANCIA_RETENCION_ATP = "CONSTANCIA_RETENCION_ATP", "Constancia ATP"
+        FACTURA_EMITIDA = "FACTURA_EMITIDA", "Factura emitida"
+        NOTA_CREDITO = "NOTA_CREDITO", "Nota de crédito"
+        NOTA_DEBITO = "NOTA_DEBITO", "Nota de débito"
+        COMPROBANTE_COBRO = "COMPROBANTE_COBRO", "Comprobante de cobro"
+
+    class Procedencia(models.TextChoices):
+        SOLICITANTE = "SOLICITANTE", "Solicitante"
+        EXTERNO_XUBIO = "EXTERNO_XUBIO", "Xubio"
+        EXTERNO_BANCO = "EXTERNO_BANCO", "Banco"
+        EXTERNO_ATP = "EXTERNO_ATP", "ATP"
+        INTERNO_COOPERADORA = "INTERNO_COOPERADORA", "Cooperadora"
+
     # La FK concreta protege el primer consumidor. Facturación añadirá su FK
     # cuando exista el modelo de trámite; no se usa una GenericForeignKey sin FK.
     solicitud_gasto = models.ForeignKey(
@@ -12,8 +30,8 @@ class Documento(models.Model):
         on_delete=models.PROTECT,
         related_name="documentos",
     )
-    tipo = models.CharField(max_length=64)
-    procedencia = models.CharField(max_length=64)
+    tipo = models.CharField(max_length=64, choices=Tipo.choices)
+    procedencia = models.CharField(max_length=64, choices=Procedencia.choices)
     archivo = models.CharField(max_length=255, unique=True)
     nombre_original = models.CharField(max_length=255)
     formato = models.CharField(max_length=32)

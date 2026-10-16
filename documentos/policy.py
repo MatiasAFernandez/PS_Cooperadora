@@ -30,9 +30,9 @@ def _formato(contenido: bytes) -> str | None:
 
 
 def validar_archivo(archivo: object) -> ArchivoValidado:
-    maximo = settings.DOCUMENT_MAX_BYTES
+    maximo = settings.DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES
     if not isinstance(maximo, int) or maximo < 1:
-        raise ValueError("DOCUMENT_MAX_BYTES debe ser positivo.")
+        raise ValueError("DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES debe ser positivo.")
     nombre = str(getattr(archivo, "name", "")).replace("\\", "/")
     nombre = PurePath(nombre).name
     if not nombre or len(nombre) > 255 or any(ord(c) < 32 for c in nombre):
@@ -51,4 +51,7 @@ def validar_archivo(archivo: object) -> ArchivoValidado:
     }
     if formato is None or extension not in extensiones[formato]:
         raise ArchivoInvalido("Tipo o extensión no permitidos.")
+    declarado = getattr(archivo, "content_type", None)
+    if declarado != formato:
+        raise ArchivoInvalido("El tipo MIME declarado no coincide con el contenido.")
     return ArchivoValidado(contenido, formato, nombre, hashlib.sha256(contenido).hexdigest())

@@ -59,7 +59,8 @@ def documentos_tramite(request, modulo: str, tramite_id: int):
 def documento_detalle(request, documento_id: int):
     try:
         documento = obtener(
-            actor=_actor(request), documento_id=documento_id, capacidad="documentos.ver_metadatos"
+            actor=_actor(request), documento_id=documento_id,
+            capacidad="documentos.consultar_metadatos"
         )
     except DocumentoNoVisible as exc:
         raise Http404(str(exc)) from exc
@@ -72,7 +73,8 @@ def documento_detalle(request, documento_id: int):
 def documento_archivo(request, documento_id: int):
     try:
         documento = obtener(
-            actor=_actor(request), documento_id=documento_id, capacidad="documentos.descargar"
+            actor=_actor(request), documento_id=documento_id,
+            capacidad="documentos.recuperar_contenido"
         )
     except DocumentoNoVisible as exc:
         raise Http404(str(exc)) from exc
