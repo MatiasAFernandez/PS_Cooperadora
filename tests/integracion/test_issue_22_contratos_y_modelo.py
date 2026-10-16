@@ -136,14 +136,17 @@ def test_eventos_facturacion_append_only_con_dto_cronologico(escenario_comun):
 def test_evento_y_cambio_se_revierten_juntos(escenario_comun):
     e = escenario_comun
     with pytest.raises(RuntimeError), transaction.atomic():
-        SolicitudFacturacion.objects.filter(pk=e.factura.pk).update(estado="EJEMPLO_CONTRATO")
+        # #23 ya restringe estados; cambiar versión prueba el mismo rollback
+        # sin introducir un estado ajeno al catálogo operativo.
+        SolicitudFacturacion.objects.filter(pk=e.factura.pk).update(version_concurrencia=2)
         EventoFacturacion.objects.create(
             solicitud=e.factura,
             tipo_evento="PRUEBA",
             actor=e.b,
-            estado_resultante="EJEMPLO_CONTRATO",
+            estado_resultante="BORRADOR_TECNICO",
         )
         raise RuntimeError("Fallo sintético posterior")
     e.factura.refresh_from_db()
     assert e.factura.estado == "BORRADOR_TECNICO"
+    assert e.factura.version_concurrencia == 1
     assert not e.factura.eventos.exists()

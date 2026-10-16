@@ -1,0 +1,33 @@
+{% extends "facturacion/base.html" %}
+{% block content %}<h2>Solicitud {{ solicitud.pk }}</h2>
+<p><strong>{{ solicitud.get_estado_display }}</strong> — versión {{ solicitud.version_concurrencia }}</p>
+<dl><dt>Presentación</dt><dd>{{ solicitud.fecha_presentacion }} — {{ solicitud.correo_solicitante }}</dd>
+<dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd>
+<dt>Receptor</dt><dd>{{ solicitud.nombre_receptor }} — CUIT {{ solicitud.cuit_receptor }}</dd>
+<dt>Condición IVA</dt><dd>{{ solicitud.get_condicion_iva_display }}</dd>
+<dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd>
+<dt>Detalle</dt><dd>{{ solicitud.detalle_factura|linebreaksbr }}</dd>
+<dt>Importe solicitado</dt><dd>{{ solicitud.importe_factura }}</dd>
+<dt>Producto/servicio</dt><dd>{{ solicitud.get_producto_servicio_display }}</dd>
+<dt>Centro de costo</dt><dd>{{ solicitud.centro_costo }}</dd>
+<dt>Modalidad</dt><dd>{{ solicitud.get_modalidad_cobro_display }}</dd>
+<dt>Comprobante declarado</dt><dd>{{ solicitud.presento_comprobante_pago|yesno:"Sí,No" }}. Pendiente de verificación.</dd>
+<dt>Operación declarada</dt><dd>{{ solicitud.fecha_operacion_declarada|default_if_none:"—" }} — {{ solicitud.numero_operacion_declarado|default:"—" }}</dd>
+<dt>Observaciones del solicitante</dt><dd>{{ solicitud.observaciones|linebreaksbr }}</dd></dl>
+{% if solicitud.documento_comprobante_inicial_id and puede_descargar %}
+<p><a href="{% url 'documentos:archivo' solicitud.documento_comprobante_inicial_id %}">Descargar respaldo vigente</a></p>{% endif %}
+{% if solicitud.observacion_vigente %}<p class="notice"><strong>Observación pendiente:</strong> {{ solicitud.observacion_vigente }}</p>{% endif %}
+{% if puede_corregir %}<p><a href="{% url 'facturacion:corregir' solicitud.pk %}">Corregir solicitud</a></p>{% endif %}
+{% if puede_observar %}<h3>Observar solicitud</h3><form method="post" action="{% url 'facturacion:observar' solicitud.pk %}">{% csrf_token %}
+<input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">
+<label for="motivo">Motivo de observación</label><textarea id="motivo" name="motivo" required></textarea>
+<button type="submit">Registrar observación</button></form>{% endif %}
+<h3>Historial</h3>{% include "facturacion/historial.html" %}
+{% if puede_descargar %}<h3>Respaldos conservados</h3><ul>
+{% for documento in respaldos %}<li><a href="{% url 'documentos:archivo' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a>
+— {{ documento.fecha_incorporacion }}</li>{% empty %}<li>Sin archivos.</li>{% endfor %}
+</ul>{% endif %}
+<h3>Versiones conservadas</h3>{% for version in versiones %}<details><summary>{{ version.tipo }} — {{ version.fecha }}</summary>
+{% if version.antes %}<h4>Antes</h4><dl>{% for etiqueta, valor in version.antes %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>{% endif %}
+<h4>Después</h4><dl>{% for etiqueta, valor in version.despues %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>
+</details>{% endfor %}{% endblock %}

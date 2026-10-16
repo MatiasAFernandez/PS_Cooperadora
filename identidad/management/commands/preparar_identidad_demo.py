@@ -19,6 +19,9 @@ DEMO_USERS = {
 class Command(BaseCommand):
     help = "Crea los cuatro usuarios de demo sin contraseñas; se establecen con changepassword."
 
+    def add_arguments(self, parser):
+        parser.add_argument("--facturacion", action="store_true")
+
     @transaction.atomic
     def handle(self, *args: object, **options: object) -> None:
         if not settings.DEMO_IDENTITY_ENABLED:
@@ -41,7 +44,38 @@ class Command(BaseCommand):
                 raise CommandError(
                     f"La cuenta {username} ya existe con otra configuración; revisala manualmente."
                 )
-            user.groups.set([groups[group_name]])
+            if options.get("facturacion"):
+                perfil = (
+                    "demo_facturacion_solicitante"
+                    if username in {"demo_a", "demo_b"}
+                    else "demo_facturacion_operadora"
+                    if username == "demo_o"
+                    else "demo_facturacion_lectura"
+                )
+                correo = {
+                    "demo_a": "solicitante.a@example.invalid",
+                    "demo_b": "solicitante.b@example.invalid",
+                    "demo_o": "operador.o@example.invalid",
+                    "demo_l": "lectura.l@example.invalid",
+                }[username]
+                if user.email and user.email != correo:
+                    raise CommandError(f"La cuenta {username} ya tiene otro correo; revisala.")
+                user.email = correo
+                user.save(update_fields=["email"])
+                user.groups.add(groups[perfil])
+                if username != "demo_l":
+                    user.groups.add(
+                        *(
+                            groups[g]
+                            for g in (
+                                "demo_documentos_aporte",
+                                "demo_documentos_metadatos",
+                                "demo_documentos_descarga",
+                            )
+                        )
+                    )
+            # Preparar un circuito no revoca grupos conocidos de otro.
+            user.groups.add(groups[group_name])
 
         self.stdout.write(self.style.SUCCESS("Grupos y cuentas sintéticas preparados."))
         self.stdout.write("Asigná una contraseña local a cada cuenta con changepassword.")

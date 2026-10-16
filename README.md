@@ -6,9 +6,12 @@ Resistencia.
 
 ## Estado
 
-Base técnica para el primer incremento de demostración, todavía sin funcionalidad
-de negocio. Franco y Matías acordaron la propiedad vertical: gastos/pagos para
-Franco y facturación/cobros para Matías.
+Demostración local con los recorridos de gastos y de presentación, observación
+y corrección de solicitudes de facturación. Franco mantiene gastos/pagos;
+Matías mantiene facturación/cobros y los componentes comunes acordados.
+La [guía de facturación #21/#23](docs/guides/recorrido-facturacion-i2.md)
+describe cuentas, permisos, documentos y recuperación con datos sintéticos.
+Los perfiles provisionales de demo no constituyen reglas institucionales.
 
 La [especificación de I1](docs/specs/001-demostracion-gastos.md) define el recorrido
 propuesto, sus hipótesis de demostración y las consultas pendientes. El reparto

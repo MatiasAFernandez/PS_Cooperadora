@@ -1,5 +1,25 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
+## Corte de implementación #23 — 16/10/2026
+
+Se concreta el recorrido de demo PRESENTADA → OBSERVADA → PRESENTADA:
+solo una persona con observar y acceso registra motivo no vacío; el titular con
+corregir subsana lo observado conservando antes/después y observación atendida.
+La nota adicional de corrección es opcional. Las transiciones son decisiones
+técnicas del incremento, no una aprobación institucional nueva.
+
+Se conserva D01: fecha/operación/archivo obligatorios con Sí y banco/Mercado
+Pago; opcionales con No o cuenta corriente. No se rechaza Sí con cuenta corriente
+ni un respaldo opcional parcial; se valida todo dato suministrado. No se confirma
+cobro. La marca de obligatoriedad de los campos restantes, incluida observaciones,
+es perfil provisional de demo pendiente de confirmación operativa.
+
+El [plan consolidado](../planning/plan-21-23-consolidado.md) fija campos,
+catálogos, capacidades, conflictos, migraciones y recuperación de almacenamiento.
+La [guía](../guides/recorrido-facturacion-i2.md) permite reproducir el recorrido.
+Los pendientes históricos siguientes siguen sujetos a validación; no implican
+que este corte haya agregado rechazo definitivo, cierre o revisión documental.
+
 - Estado: decisiones condicionales y de acceso recibidas; faltan campos,
   transiciones y trazabilidad de la validación.
 - Autor y responsable principal: Matías Alejandro Fernández.

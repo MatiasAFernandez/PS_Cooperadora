@@ -1,0 +1,15 @@
+{% extends "facturacion/base.html" %}
+{% block content %}<h2>{{ titulo }}</h2>
+<p class="notice">Perfil provisional de demostración con datos sintéticos. Un pago declarado queda pendiente de verificación y no acredita un cobro.</p>
+{% if solicitud %}<p><strong>Observación:</strong> {{ solicitud.observacion_vigente }}</p>
+{% if solicitud.documento_comprobante_inicial_id %}<p>El respaldo vigente se conserva si no adjuntás uno nuevo. Un reemplazo conserva la versión anterior.</p>{% endif %}{% endif %}
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+{% if token %}<input type="hidden" name="token_presentacion" value="{{ token }}">{% endif %}
+{% if solicitud %}<input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">{% endif %}
+{{ form.as_p }}
+<p>Si declarás pago presentado por banco o Mercado Pago, completá fecha, número y archivo. PDF, JPEG o PNG, hasta 10 MiB.</p>
+{% if form.errors %}<p>Si habías seleccionado un archivo nuevo, volvé a seleccionarlo antes de reenviar.</p>{% endif %}
+{% if solicitud %}<p><label for="nota_correccion">Nota de corrección (opcional)</label>
+<textarea id="nota_correccion" name="nota_correccion">{{ request.POST.nota_correccion }}</textarea></p>{% endif %}
+<button type="submit">Guardar y presentar</button>
+</form>{% endblock %}
