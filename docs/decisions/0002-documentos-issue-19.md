@@ -1,5 +1,10 @@
 # Decisiones técnicas aprobadas para el primer tramo de #19
 
+La evolución de cabecera, catálogos y versiones se describe en el
+[contrato de #22/#28](../contracts/i2-tramites-provider-matias.md), que explicita
+el mapeo al puerto C01 y las responsabilidades pendientes de Franco. Las tablas
+de este documento conservan la decisión histórica del primer tramo.
+
 - Fecha de confirmación: 16/10/2026.
 - Fuente: `Decisiones Issue #19.md`, aportado por Matías y confirmado como
   decisiones aprobadas en la conversación de trabajo.

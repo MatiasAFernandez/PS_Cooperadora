@@ -10,6 +10,16 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
     "demo_solicitante": frozenset({"gastos.presentar", "gastos.consultar_propias"}),
     "demo_operadora": frozenset({"gastos.consultar_todas", "gastos.decidir"}),
     "demo_lectura": frozenset({"gastos.consultar_todas"}),
+    "demo_gastos_pago": frozenset({"gastos.registrar_pago"}),
+    "demo_facturacion_solicitante": frozenset({
+        "facturacion.presentar", "facturacion.consultar_propias", "facturacion.corregir",
+    }),
+    "demo_facturacion_lectura": frozenset({"facturacion.consultar_todas"}),
+    "demo_facturacion_operadora": frozenset({
+        "facturacion.consultar_todas", "facturacion.observar",
+        "facturacion.registrar_factura_externa", "facturacion.registrar_cobro",
+        "facturacion.cerrar",
+    }),
     "demo_documentos_aporte": frozenset({"documentos.incorporar"}),
     "demo_documentos_metadatos": frozenset({
         "documentos.consultar_metadatos", "documentos.ver_metadatos"

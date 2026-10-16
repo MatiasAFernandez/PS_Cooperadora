@@ -145,7 +145,7 @@ def test_catalogos_y_procedencia_del_solicitante_se_validan_antes_de_escribir(es
         procedencia=Documento.Procedencia.EXTERNO_BANCO,
     ).status_code == 403
     assert incorporar(
-        cliente, gasto, tipo=Documento.Tipo.FACTURA_EMITIDA,
+        cliente, gasto, tipo=Documento.Tipo.FACTURA_EMITIDA_XUBIO,
         procedencia=Documento.Procedencia.SOLICITANTE,
     ).status_code == 403
     assert incorporar(cliente, gasto, tipo="respaldo").status_code == 400
@@ -157,10 +157,10 @@ def test_catalogos_y_procedencia_del_solicitante_se_validan_antes_de_escribir(es
 def test_factura_y_ticket_se_clasifican_distintos_para_el_contrato_c01(escenario):
     _, _, gasto, _, cliente, _ = escenario
     assert incorporar(cliente, gasto, tipo=Documento.Tipo.FACTURA_PROVEEDOR).status_code == 201
-    assert incorporar(cliente, gasto, tipo=Documento.Tipo.TICKET_PROVEEDOR).status_code == 201
+    assert incorporar(cliente, gasto, tipo=Documento.Tipo.TICKET_NO_FISCAL).status_code == 201
     factura, ticket = Documento.objects.filter(solicitud_gasto=gasto).order_by("id")
     assert factura.tipo == Documento.Tipo.FACTURA_PROVEEDOR
-    assert ticket.tipo == Documento.Tipo.TICKET_PROVEEDOR
+    assert ticket.tipo == Documento.Tipo.TICKET_NO_FISCAL
     assert factura.tipo in TIPOS_ELEGIBLES_PAGO_GASTOS
     assert ticket.tipo not in TIPOS_ELEGIBLES_PAGO_GASTOS
 

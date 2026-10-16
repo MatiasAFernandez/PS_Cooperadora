@@ -2,8 +2,11 @@
 
 Este primer tramo usa archivos ficticios y el adaptador de identidad de demo.
 Implementa el proveedor documental para solicitudes de gastos existentes; el
-consumidor de facturación y la integración de ambos circuitos se completan en
-#22/#28. No representa una configuración institucional.
+modelo técnico de facturación se agrega en el tramo de Matías de #22/#28.
+Los recorridos funcionales y la integración final siguen pendientes. Véase el
+[contrato de cabecera y proveedor C01](../contracts/i2-tramites-provider-matias.md)
+para migraciones, tipos y responsabilidades de Franco. No representa una
+configuración institucional.
 
 ## Configuración
 
@@ -37,7 +40,8 @@ los metadatos, sin la ruta física. `GET` a esa misma URL lista los documentos;
 `GET /documentos/<documento_id>/` devuelve metadatos y
 `GET /documentos/<documento_id>/archivo/` descarga el archivo.
 
-Para un ticket se usa `tipo=TICKET_PROVEEDOR`; permanece como respaldo del
+Para un ticket se usa `tipo=TICKET_NO_FISCAL` (alias previo: `TICKET_PROVEEDOR`);
+permanece como respaldo del
 trámite, pero no es elegible para el contrato de registro de pago C01 de gastos.
 `FACTURA_PROVEEDOR` identifica únicamente facturas.
 
@@ -53,8 +57,9 @@ python -m pytest tests/documentos -q
 Un fallo de escritura o de base limpia el archivo guardado durante la
 incorporación y no deja metadatos utilizables. La matriz aprobada establece
 tipos, procedencias y cantidades esperadas por circuito; los mínimos por etapa
-se verificarán en las operaciones de cada circuito. Facturación aún no puede
-incorporar archivos porque falta su modelo y resolver (#22/#28). La elección
+se verificarán en las operaciones de cada circuito. El modelo técnico de
+facturación ya permite probar documentos con su cabecera y resolver; los
+formularios y operaciones funcionales se implementarán en #23–#27. La elección
 del almacenamiento institucional y la revisión documental (#24) siguen
 separadas. Una reversión posterior de una transacción exterior requiere un
 mecanismo adicional de limpieza antes de integrar incorporaciones anidadas.
