@@ -86,7 +86,13 @@
 <div id="respaldo-documental" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
     <h4 style="margin-top: 0; margin-bottom: 8px;">Documentación de Respaldo</h4>
     {% if pago_consulta %}
-        <p style="margin: 0;">Esta vista no muestra metadatos ni estado de revisión del comprobante. El registro de pago no equivale a aprobación documental ni acredita la factura definitiva pendiente.</p>
+        {% if respaldo_categoria == "factura" %}
+            <p style="margin: 0;">Respaldo documental registrado: factura. Un estado de revisión desconocido no equivale a aprobación documental ni satisface por sí sola el pendiente de factura definitiva.</p>
+        {% elif respaldo_categoria == "presupuesto" %}
+            <p style="margin: 0;">Respaldo documental registrado: presupuesto/proforma. Falta aportar factura definitiva y un estado de revisión desconocido no implica aprobación documental.</p>
+        {% else %}
+            <p style="margin: 0;">Esta vista no muestra metadatos ni estado de revisión del comprobante. El registro de pago no equivale a aprobación documental ni acredita la factura definitiva pendiente.</p>
+        {% endif %}
     {% else %}
         <p style="margin: 0;">{{ mensaje_respaldo|default:solicitud.mensaje_respaldo }}</p>
     {% endif %}
