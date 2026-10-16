@@ -267,6 +267,32 @@ def test_http_formulario_errores_metadatos_y_csrf(escenario, datos):
     assert EventoFacturacion.objects.count() == 1
 
 
+@pytest.mark.parametrize("correccion", [False, True])
+def test_cuit_invalido_muestra_un_solo_error_y_conserva_datos(escenario, datos, correccion):
+    e = escenario
+    c = cliente(e.usuarios["a"])
+    if correccion:
+        solicitud = presentar(e, datos)
+        observar(e, solicitud)
+        url = reverse("facturacion:corregir", args=[solicitud.pk])
+        controles = {"version_esperada": 2}
+    else:
+        url = reverse("facturacion:presentar")
+        controles = {"token_presentacion": c.get(url).context["token"]}
+    eventos_antes = EventoFacturacion.objects.count()
+    solicitudes_antes = SolicitudFacturacion.objects.count()
+    respuesta = c.post(url, dict(datos, cuit_receptor="30712345679", **controles))
+    mensaje = "El dígito verificador del CUIT no es válido."
+    assert respuesta.status_code == 400
+    assert respuesta.content.decode().count(mensaje) == 1
+    assert respuesta.context["form"]["detalle_factura"].value() == datos["detalle_factura"]
+    assert EventoFacturacion.objects.count() == eventos_antes
+    assert SolicitudFacturacion.objects.count() == solicitudes_antes
+    if correccion:
+        solicitud.refresh_from_db()
+        assert solicitud.estado == "OBSERVADA" and solicitud.version_concurrencia == 2
+
+
 def test_preparacion_compatible_revocacion_y_actor_sin_correo(escenario, datos):
     e = escenario
     user = e.usuarios["a"]

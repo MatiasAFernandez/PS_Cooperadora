@@ -63,3 +63,24 @@ gastos; Matías presenta este recorrido para validación funcional.
 
 Consultar la guía docs/guides/recorrido-facturacion-i2.md para preparar cuentas
 sin contraseñas publicadas y recuperar archivos con aplicación detenida.
+
+## Actualización: recorrido interactivo y error de CUIT
+
+Posteriormente se ejecutó en navegador el tramo de cuenta corriente sin adjunto:
+demo_a presenta, demo_o observa y demo_a corrige; resultado PRESENTADA versión 3.
+Se comprobaron el historial antes/después, lista vacía y 404 para demo_b, y consulta
+sin acciones de modificación para demo_l. Un contraste de solo lectura confirmó
+una solicitud, tres eventos con los actores correctos e importe decimal 100.25.
+No se atribuyen a esta prueba interactiva los casos de adjuntos ni una auditoría
+completa de accesibilidad; tampoco sustituye la validación de Cooperadora.
+
+Se detectó que el mensaje de CUIT inválido se agregaba dos veces al combinar la
+validación del formulario y la del servicio. La corrección combina los mensajes
+por campo sin repetir los ya presentes, conservando los errores distintos.
+Dos casos de regresión reproducen el fallo en alta y corrección, y comprueban una
+única aparición, datos ingresados conservados y ausencia de cambios persistidos.
+
+Verificación puntual tras el ajuste: ruff aprobado y 35 pruebas de facturación
+aprobadas en PostgreSQL temporal (13.18s). El resultado de 402 pruebas de la tabla
+anterior corresponde al corte inicial; no se presenta como una nueva ejecución
+completa después de esta corrección.

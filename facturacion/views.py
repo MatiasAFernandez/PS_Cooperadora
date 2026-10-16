@@ -4,7 +4,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import DatabaseError
 from django.http import Http404
@@ -87,11 +87,18 @@ def _version_post(request):
 
 
 def _errores(form, exc):
+    """Combina errores del servicio sin repetir los que ya produjo el formulario."""
     if hasattr(exc, "message_dict"):
-        for field, messages in exc.message_dict.items():
-            form.add_error(field if field in form.fields else None, messages)
+        errores = exc.message_dict
     else:
-        form.add_error(None, exc.messages if isinstance(exc, ValidationError) else str(exc))
+        errores = {
+            NON_FIELD_ERRORS: exc.messages if isinstance(exc, ValidationError) else [str(exc)]
+        }
+    for field, messages in errores.items():
+        destino = field if field in form.fields else None
+        for mensaje in messages:
+            if mensaje not in form.errors.get(destino or NON_FIELD_ERRORS, []):
+                form.add_error(destino, mensaje)
 
 
 def _version_visible(datos):
