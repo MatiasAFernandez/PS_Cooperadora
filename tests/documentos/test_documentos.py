@@ -21,8 +21,13 @@ from gastos.models import SolicitudGasto
 PDF = b"%PDF-1.7\nArchivo sintetico\n%%EOF"
 
 
-def subida(contenido=PDF, nombre="prueba.pdf"):
-    return SimpleUploadedFile(nombre, contenido, content_type="application/pdf")
+def subida(contenido=PDF, nombre="prueba.pdf", content_type=None):
+    if content_type is None:
+        content_type = {
+            ".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".png": "image/png",
+        }.get(Path(nombre).suffix, "application/octet-stream")
+    return SimpleUploadedFile(nombre, contenido, content_type=content_type)
 
 
 @pytest.fixture
@@ -56,10 +61,14 @@ def ruta(gasto):
     return reverse("documentos:tramite", kwargs={"modulo": "gastos", "tramite_id": gasto.pk})
 
 
-def incorporar(cliente, gasto, archivo=None):
+def incorporar(
+    cliente, gasto, archivo=None,
+    tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+    procedencia=Documento.Procedencia.SOLICITANTE,
+):
     return cliente.post(
         ruta(gasto),
-        {"archivo": archivo or subida(), "tipo": "respaldo", "procedencia": "solicitante"},
+        {"archivo": archivo or subida(), "tipo": tipo, "procedencia": procedencia},
     )
 
 
@@ -72,8 +81,8 @@ def test_alta_metadatos_y_descarga_privada(escenario):
     assert documento.autor_id == a.pk
     assert documento.referencia_tramite == f"gastos:{gasto.pk}"
     assert documento.formato == "application/pdf"
-    assert documento.tipo == "respaldo"
-    assert documento.procedencia == "solicitante"
+    assert documento.tipo == Documento.Tipo.FACTURA_PROVEEDOR
+    assert documento.procedencia == Documento.Procedencia.SOLICITANTE
     assert documento.fecha_incorporacion is not None
     assert (raiz / documento.archivo).read_bytes() == PDF
     assert "archivo" not in respuesta.json()
@@ -106,10 +115,11 @@ def test_archivo_invalido_no_deja_registro_ni_bytes(escenario, contenido, nombre
 
 
 def test_limite_exacto_y_exceso(settings):
-    settings.DOCUMENT_MAX_BYTES = len(PDF)
-    assert validar_archivo(subida()).contenido == PDF
+    assert settings.DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES == 10 * 1024 * 1024
+    contenido = b"%PDF-" + b"x" * (settings.DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES - 5)
+    assert validar_archivo(subida(contenido)).contenido == contenido
     with pytest.raises(ArchivoInvalido):
-        validar_archivo(subida(PDF + b"x"))
+        validar_archivo(subida(contenido + b"x"))
 
 
 @pytest.mark.parametrize(
@@ -121,6 +131,51 @@ def test_limite_exacto_y_exceso(settings):
 )
 def test_formatos_de_imagen_admitidos(settings, contenido, nombre, formato):
     assert validar_archivo(subida(contenido, nombre)).formato == formato
+
+
+def test_mime_declarado_debe_coincidir_con_firma():
+    with pytest.raises(ArchivoInvalido):
+        validar_archivo(subida(PDF, content_type="image/png"))
+
+
+def test_catalogos_y_procedencia_del_solicitante_se_validan_antes_de_escribir(escenario):
+    _, _, gasto, _, cliente, raiz = escenario
+    assert incorporar(
+        cliente, gasto, tipo=Documento.Tipo.COMPROBANTE_PAGO,
+        procedencia=Documento.Procedencia.EXTERNO_BANCO,
+    ).status_code == 403
+    assert incorporar(
+        cliente, gasto, tipo=Documento.Tipo.FACTURA_EMITIDA,
+        procedencia=Documento.Procedencia.SOLICITANTE,
+    ).status_code == 403
+    assert incorporar(cliente, gasto, tipo="respaldo").status_code == 400
+    assert incorporar(cliente, gasto, procedencia="desconocida").status_code == 400
+    assert not Documento.objects.exists()
+    assert not raiz.exists() or not any(p.is_file() for p in raiz.rglob("*"))
+
+
+def test_personal_aporta_procedencias_admitidas_y_admite_multiples_versiones(escenario):
+    usuario, _, gasto, otro, cliente, _ = escenario
+    usuario.groups.add(Group.objects.get_or_create(name="demo_operadora")[0])
+    assert incorporar(
+        cliente, gasto, tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+        procedencia=Documento.Procedencia.INTERNO_COOPERADORA,
+    ).status_code == 201
+    assert incorporar(
+        cliente, gasto, tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+        procedencia=Documento.Procedencia.INTERNO_COOPERADORA,
+    ).status_code == 201
+    assert incorporar(
+        cliente, otro, tipo=Documento.Tipo.COMPROBANTE_PAGO,
+        procedencia=Documento.Procedencia.EXTERNO_BANCO,
+    ).status_code == 201
+    assert incorporar(
+        cliente, gasto, tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+        procedencia=Documento.Procedencia.EXTERNO_BANCO,
+    ).status_code == 400
+    assert incorporar(cliente, gasto).status_code == 403
+    assert Documento.objects.filter(solicitud_gasto=gasto).count() == 2
+    assert Documento.objects.filter(solicitud_gasto=otro).count() == 1
 
 
 def test_no_permite_almacenar_bajo_archivos_estaticos(settings):
@@ -136,6 +191,8 @@ def test_ajeno_y_referencia_cruzada_no_revelan_documentos(escenario):
     assert cliente.get(referencia_cruzada).status_code == 404
     assert incorporar(cliente, gasto).status_code == 201
     documento = Documento.objects.get()
+    for nombre in ("demo_documentos_metadatos", "demo_documentos_descarga"):
+        b.groups.add(Group.objects.get(name=nombre))
     ajeno = Client()
     ajeno.force_login(b)
     assert ajeno.get(ruta(gasto)).status_code == 404
@@ -154,11 +211,11 @@ def test_capacidades_documentales_independientes_y_sesion(escenario):
     documento = Documento.objects.get()
     Group.objects.get(name="demo_documentos_descarga").user_set.remove(a)
     assert cliente.get(reverse("documentos:detalle", args=[documento.pk])).status_code == 200
-    assert cliente.get(reverse("documentos:archivo", args=[documento.pk])).status_code == 404
+    assert cliente.get(reverse("documentos:archivo", args=[documento.pk])).status_code == 403
     Group.objects.get(name="demo_documentos_metadatos").user_set.remove(a)
-    assert cliente.get(reverse("documentos:detalle", args=[documento.pk])).status_code == 404
+    assert cliente.get(reverse("documentos:detalle", args=[documento.pk])).status_code == 403
     Group.objects.get(name="demo_documentos_aporte").user_set.remove(a)
-    assert incorporar(cliente, gasto).status_code == 404
+    assert incorporar(cliente, gasto).status_code == 403
     assert Documento.objects.count() == 1
     assert Client().get(reverse("documentos:detalle", args=[documento.pk])).status_code == 403
 
