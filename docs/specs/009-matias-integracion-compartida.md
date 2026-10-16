@@ -31,6 +31,14 @@ las reglas funcionales de gastos siguen bajo la responsabilidad de Franco.
 
 ## Problema y valor
 
+El tramo de Matías preparado el 16/10/2026 se detalla en el
+[contrato de cabecera y proveedor C01](../contracts/i2-tramites-provider-matias.md).
+Incluye cabecera, versiones inmutables, proveedor transaccional real, catálogo
+sintético de capacidades y modelo técnico de facturación. La FK de la solicitud
+de gastos, la adaptación de sus eventos, el consumidor de pago y la navegación
+son entregas de Franco. #22/#28 siguen abiertas hasta completar y revisar esos
+aportes y los recorridos de cada circuito.
+
 Los módulos de gastos y facturación forman una sola aplicación. La identidad,
 documentos, relaciones e historial deben comportarse de forma coherente para que
 el usuario pueda seguir ambos circuitos y el equipo pueda integrarlos sin
