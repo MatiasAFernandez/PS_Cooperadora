@@ -997,14 +997,15 @@ class _ProveedorListadoEnVentana:
                 "tipos_admitidos": tuple(tipos_admitidos or ()),
             }
         )
-        self._registro["b_ausencia_inicial"] = not PagoExterno.objects.filter(
-            solicitud_id=gasto.pk
-        ).exists()
-        self._b_en_listado.set()
-        self._registro["a_commit_visto_por_b"] = self._a_commit.wait(timeout=self._timeout)
-        self._registro["pago_visible_para_b"] = PagoExterno.objects.filter(
-            solicitud_id=gasto.pk
-        ).exists()
+        if len(self.llamadas_listado) == 1:
+            self._registro["b_ausencia_inicial"] = not PagoExterno.objects.filter(
+                solicitud_id=gasto.pk
+            ).exists()
+            self._b_en_listado.set()
+            self._registro["a_commit_visto_por_b"] = self._a_commit.wait(timeout=self._timeout)
+            self._registro["pago_visible_para_b"] = PagoExterno.objects.filter(
+                solicitud_id=gasto.pk
+            ).exists()
         if self._modo == "falla":
             raise RuntimeError("listado documental sintético no disponible")
         return list(self._opciones)
@@ -1143,7 +1144,9 @@ def _ejecutar_ventana_reenvio(
 
 
 def _asegurar_evidencia_ventana(
-    registro: dict[str, Any], proveedor_b: _ProveedorListadoEnVentana
+    registro: dict[str, Any],
+    proveedor_b: _ProveedorListadoEnVentana,
+    llamadas_listado_esperadas: int = 1,
 ) -> None:
     """Comprueba la evidencia común exigida a la ventana concurrente."""
     assert "a_error" not in registro, registro.get("a_error")
@@ -1152,7 +1155,7 @@ def _asegurar_evidencia_ventana(
     assert registro["a_commit_visto_por_b"] is True
     assert registro["pago_visible_para_b"] is True
     assert registro["decisiones_helper"] == [False, True]
-    assert len(proveedor_b.llamadas_listado) == 1
+    assert len(proveedor_b.llamadas_listado) == llamadas_listado_esperadas
     assert proveedor_b.llamadas == []
 
 
@@ -1335,7 +1338,9 @@ def test_ventana_payload_malformado_no_crea_ni_duplica_escrituras(
         settings=settings,
     )
 
-    _asegurar_evidencia_ventana(registro, proveedor_b)
+    _asegurar_evidencia_ventana(
+        registro, proveedor_b, llamadas_listado_esperadas=2
+    )
     assert registro["llamadas_c03"] == [
         {
             "resultado": "error",
@@ -1345,5 +1350,6 @@ def test_ventana_payload_malformado_no_crea_ni_duplica_escrituras(
     ]
     assert response.status_code == 400
     assert response.context["error_pago"]
+    assert response.context["respaldo_categoria"] is None
     assert PagoExterno.objects.count() == 1
     assert EventoPagoExterno.objects.count() == 1

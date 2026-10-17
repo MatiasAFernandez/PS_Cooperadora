@@ -22,6 +22,14 @@ def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def env_optional_str(name: str) -> str | None:
+    """Texto de entorno sin espacios laterales; `None` si falta o queda vacío."""
+    value = os.getenv(name)
+    if value is None:
+        return None
+    return value.strip() or None
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-development-key")
 DEBUG = env_bool("DJANGO_DEBUG", default=True)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
@@ -104,6 +112,11 @@ DOCUMENT_STORAGE_ROOT = Path(os.getenv("DOCUMENT_STORAGE_ROOT", BASE_DIR / "priv
 DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES = int(
     os.getenv("DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES", "10485760")
 )
+
+# Integración gastos/documentos: ruta punteada opcional al proveedor real de
+# `gastos.contracts.DocumentVerificationPort`. No se importa ni se instancia
+# aquí; gastos la resuelve en tiempo de uso y falla cerrado (503) cuando falta.
+GASTOS_PAYMENT_DOCUMENT_PROVIDER = env_optional_str("GASTOS_PAYMENT_DOCUMENT_PROVIDER")
 
 LOGIN_URL = "identidad:login"
 LOGIN_REDIRECT_URL = "identidad:inicio"

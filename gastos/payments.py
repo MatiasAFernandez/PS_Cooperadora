@@ -425,3 +425,34 @@ def consultar_pago_externo(
         fecha_registro=fecha_reg,
         actor_id=actor_id,
     )
+
+
+def derivar_categoria_respaldo(
+    referencia_documental: str | None,
+    opciones_documentales: Any,
+) -> str | None:
+    """Deriva categoría 'factura' o 'presupuesto' por igualdad exacta con opciones vigentes.
+
+    Regla pura y desacoplada:
+    - Compara por igualdad exacta la referencia documental opaca persistida en PagoExterno
+      con OpcionDocumental.referencia_documental de las opciones vigentes ya validadas.
+    - Si coincide con una opción cuyo tipo es 'factura', devuelve 'factura'.
+    - Si coincide con una opción cuyo tipo es 'presupuesto' o 'proforma', devuelve 'presupuesto'.
+    - Si no hay coincidencia exacta o el tipo no es admisible, devuelve None.
+    - No recorta, normaliza ni expone la referencia.
+    """
+    if not isinstance(referencia_documental, str) or not referencia_documental:
+        return None
+    if not opciones_documentales:
+        return None
+
+    for opcion in opciones_documentales:
+        op_ref = getattr(opcion, "referencia_documental", None)
+        if op_ref == referencia_documental:
+            tipo = getattr(opcion, "tipo_documento", None)
+            if tipo == "factura":
+                return "factura"
+            if tipo in ("presupuesto", "proforma"):
+                return "presupuesto"
+            return None
+    return None
