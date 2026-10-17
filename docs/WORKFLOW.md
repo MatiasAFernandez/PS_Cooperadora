@@ -24,15 +24,33 @@ La terminación técnica y la validación con Cooperadora se siguen por separado
 T06 demuestra técnicamente el recorrido y T07 registra la devolución operativa
 en el paquete local. Si hay un bloqueo, registrar causa y responsable.
 
-## Coordinación semanal
+## Fuentes y actualización documental
 
-Una conversación breve entre Franco y Matías debería resolver:
+| Fuente | Contenido |
+|---|---|
+| Issues/PR/Project | Estado operativo, responsables, próximos pasos y dependencias. |
+| Specs y contratos | Comportamiento, aceptación, interfaces y garantías vigentes. |
+| Planificación | Desglose y secuencia del trabajo, con enlaces al seguimiento operativo. |
+| Guías y evidencia | Uso reproducible; versión, comprobaciones, resultados y límites de cada corte. |
 
-- qué resultados pasan a `Ready`;
-- quién es responsable principal de cada uno;
-- qué interfaces necesitan acuerdo previo;
-- qué bloqueos requieren a Marcos, al tutor técnico o a la cátedra;
-- qué evidencia debe conservarse para las horas individuales.
+Antes de proponer una PR, contrastar el cambio con sus documentos afectados y
+corregir contradicciones. Tras integrar, actualizar el estado confirmado en su
+fuente; no copiar el historial de PR ni el backlog completo en cada documento.
+La evidencia histórica conserva su versión y resultado, sin presentarse como
+estado actual. Un agente con foco documental se justifica si hay varias fuentes
+o contratos afectados; un cambio menor puede comprobarlo el revisor existente.
+
+Redactar actividades, decisiones y resultados con fuentes pertinentes, sin
+juicios personales, conversaciones privadas ni descargos repetidos ajenos al
+propósito del documento. Registrar la contribución de cada responsable y el
+alcance concreto de una comprobación pendiente.
+
+## Coordinación entre integrantes
+
+Resolver por Issues, contratos y PR los resultados listos, responsables,
+interfaces, bloqueos y evidencia necesaria. Proponer una conversación cuando
+resuelva una decisión o ambigüedad concreta; no exigir disponibilidad simultánea
+o reuniones periódicas para avanzar.
 
 ## Integración entre módulos
 

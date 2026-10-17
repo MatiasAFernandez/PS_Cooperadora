@@ -27,6 +27,31 @@ de concurrencia; una escritura financiera no se aprueba sólo por verse bien.
 Los checks verdes aportan evidencia, pero no prueban por sí solos usabilidad,
 coherencia del alcance ni comprensión de las decisiones.
 
+## Proporcionalidad y escenarios de fallo
+
+En el plan o la PR existentes, indicar brevemente qué fallos relevantes cubre
+el cambio y qué límites conserva. No crear otra plantilla o fase de aprobación.
+Elegir la solución directa que satisfaga los criterios acordados y justificar
+una capa adicional por el escenario que resuelve y su costo de mantenimiento.
+
+Permisos, entradas inválidas, reenvíos, concurrencia y rollback se comprueban
+cuando afectan el recorrido. Caídas abruptas del proceso, commits inciertos,
+reconciliación de archivos y recuperación operativa no se agregan por defecto:
+requieren una necesidad concreta dentro del alcance. Si esa garantía ya forma
+parte de un contrato aceptado, cambiarla exige revisar ese contrato y sus
+consumidores; una simplificación no autoriza debilitarlo unilateralmente.
+
+Una transacción SQL no revierte archivos. Tampoco una validación de servicio
+protege automáticamente escrituras por otras vías. Evaluar qué garantías cubren
+servicios, constraints y triggers antes de agregar o retirar alguno. La repetición
+de una comprobación en dos capas no demuestra por sí sola que sea innecesaria.
+
+Al modificar vistas, reutilizar el layout, estilos y componentes compartidos
+disponibles. Comprobar coherencia de navegación, formularios, mensajes y formato
+visible con el otro circuito. Si falta una base común, delimitar el ajuste mínimo
+o su tarea de integración, sin resolver cada pantalla como un diseño independiente
+ni bloquear una entrega funcional por un rediseño general.
+
 ## Aplicación al flujo existente
 
 **Plan:** señalar resultado, componentes afectados, decisiones relevantes,
@@ -43,6 +68,9 @@ el pulido visual puede evolucionar progresivamente.
 entregada. Comunicar juntos los defectos materiales con escenario, impacto y
 condición de corrección; separar sugerencias opcionales. No reimplementar el
 producto, exigir preferencias personales ni abrir ciclos cosméticos indefinidos.
+Una mejora opcional debe explicar su beneficio concreto; la conformidad sin
+modificaciones también es un resultado válido. Al corregir, verificar el delta y
+sus efectos pertinentes; ampliar la revisión sólo por riesgo o evidencia nuevos.
 
 **Entrega:** explicar qué cambió, por qué, cómo se verificó y qué sigue pendiente.
 La enseñanza o producción de tutoriales no es una obligación del implementador.
