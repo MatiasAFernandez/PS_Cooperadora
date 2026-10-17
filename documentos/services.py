@@ -15,7 +15,7 @@ from identidad.services import Actor, has_capability
 
 from .acceso import DocumentoNoVisible, destino_visible, documentos_visibles
 from .models import Documento
-from .policy import ArchivoInvalido, validar_archivo
+from .policy import ArchivoInvalido, ArchivoValidado, validar_archivo
 
 TIPOS_POR_CIRCUITO = {
     Circuito.GASTO: {
@@ -104,6 +104,7 @@ def incorporar(
     tipo: str,
     procedencia: str,
     reemplaza_id: int | None = None,
+    _escrituras=None,
 ) -> Documento:
     """Valida antes de escribir y compensa fallos internos de BD/almacenamiento.
 
@@ -114,7 +115,7 @@ def incorporar(
     _exigir(actor, "documentos.incorporar")
     tipo = TIPOS_ANTERIORES.get(tipo, tipo)
     _validar_clasificacion(actor, destino.ref.circuito, tipo, procedencia)
-    validado = validar_archivo(archivo)
+    validado = archivo if isinstance(archivo, ArchivoValidado) else validar_archivo(archivo)
     ruta = f"documentos/{uuid.uuid4().hex}"
     storage = almacenamiento()
     guardado = None
@@ -133,7 +134,11 @@ def incorporar(
                 bloquear_serie(anterior)
                 if Documento.objects.filter(reemplaza=anterior).exists():
                     raise ArchivoInvalido("La versión ya fue reemplazada.")
+            if _escrituras is not None:
+                _escrituras.registrar(storage, ruta)
             guardado = storage.save(ruta, ContentFile(validado.contenido))
+            if _escrituras is not None:
+                _escrituras.registrar(storage, guardado)
             return Documento.objects.create(
                 solicitud_gasto=destino.gasto,
                 tramite_base=base,
@@ -150,6 +155,9 @@ def incorporar(
                 reemplaza=anterior,
             )
     except Exception as exc:
+        if _escrituras is not None:
+            # La operación exterior conserva la excepción y compensa tras rollback.
+            raise
         for nombre in {ruta, guardado} - {None}:
             try:
                 storage.delete(nombre)

@@ -1,5 +1,22 @@
 # SPEC-002 — Identidad recibida y permisos internos
 
+## Corte de implementación #21/#23 — 16/10/2026
+
+La rama de trabajo extiende Actor de forma compatible con email_registrado
+opcional; mantiene subject_id/capabilities, sesiones y revocación por petición.
+El correo local no acredita verificación institucional. Solo presentar
+facturación exige correo configurado; consultas/correcciones conservan el contrato.
+El comando preparar_identidad_demo --facturacion agrega grupos explícitos a
+demo_a/b/o/l sin revocar gastos ni contraseñas. L no recibe descargas globales.
+No se agregan anulación ni revisión documental de #24/#27 en este corte.
+
+Las políticas de lista, detalle y acciones de facturación están en su módulo;
+gastos conserva las suyas. La matriz completa y pruebas se describen en el
+[plan consolidado](../planning/plan-21-23-consolidado.md) y la
+[guía del recorrido](../guides/recorrido-facturacion-i2.md).
+La implementación no acredita revisión de Franco ni identidad institucional.
+Los apartados históricos siguientes conservan el contexto de validación.
+
 - Estado: tramo de demo I1 implementado con identidad sintética; revisión técnica
   y validación institucional pendientes. Se recibieron decisiones para
   facturación, pero la matriz compartida sigue en borrador. Actualizado:

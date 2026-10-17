@@ -1,5 +1,15 @@
 # Cabecera común y proveedor C01: entrega de Matías para #22/#28
 
+Actualización #21/#23 (16/10/2026): el corte de facturación consume la cabecera,
+documentos y DTO sin modificar el consumidor de gastos. Agrega servicios de
+presentación/observación/corrección y snapshots; conserva la fábrica técnica.
+La compensación exterior se ofrece mediante documentos.operaciones y un registro
+interno de escrituras en incorporar. Presentación/corrección son dueñas de su
+transacción; el commit incierto se conserva para reconciliación con aplicación
+detenida. Este mecanismo no conecta ni cambia el proveedor C01 de Franco.
+Los límites históricos que siguen describen el corte #22 anterior; la
+[guía del nuevo recorrido](../guides/recorrido-facturacion-i2.md) explica recuperación.
+
 Base: `#22-#28.md`, aportado por Matías el 16/10/2026, con las resoluciones
 confirmadas en la conversación. También se incorporan los requisitos que
 Franco comunicó para conectar su consumidor. Este contrato describe la entrega

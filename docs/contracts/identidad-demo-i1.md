@@ -1,5 +1,14 @@
 # Contrato de identidad y autorización — demo I1
 
+Extensión compatible #21/#23 (16/10/2026): Actor conserva subject_id y capabilities
+como primeros argumentos; agrega email_registrado opcional, por defecto None.
+resolve_actor lo obtiene de user.email, sin afirmar verificación institucional.
+Gastos no necesita ese atributo. Facturación lo exige solo en presentación y
+conserva una copia histórica; el correo no cambia titularidad ni permisos.
+preparar_identidad_demo --facturacion agrega los perfiles de ese circuito sin
+revocar grupos de gastos ni contraseñas; sin opción conserva la preparación I1.
+La garantía de revocación sigue siendo por nueva resolución del actor.
+
 Estado: contrato de demo con componente sintético implementado en `identidad`;
 revisión conjunta y validación operativa pendientes. Definido: 17/09/2026.
 Responsable del componente: Matías Alejandro Fernández. Consumidor de gastos:
