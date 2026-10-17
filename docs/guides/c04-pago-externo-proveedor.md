@@ -374,8 +374,9 @@ Esta matriz distingue estrictamente lo verificado por la prueba de integración 
 - **Límites de diseño DOC-R04 y preguntas Q1–Q5 (en especial Q4)**:
   - DOC-R04: La revisión formal de documentos y los criterios sobre documentos definitivos no están implementados; los estados desconocidos sólo posibilitan la navegación técnica en demo.
   - Decisiones Q1–Q5: Criterios institucionales pendientes de validación con la administración de Cooperadora (incluyendo Q4 sobre requisitos documentales y comprobantes válidos).
-- **Pendientes para tramos posteriores (#22 / #28 / #50)**:
-  - Vínculo formal OneToOne `SolicitudGasto.tramite_base` (#22).
-  - Adaptación de eventos existentes a `EventoHistorialDTO` (#22 / #28).
-  - Parcial de navegación común y localización/búsqueda del trámite (#28); se mantienen fuera de las afirmaciones de cobertura de esta rama.
+- **Identidad del trámite integrada**: el vínculo OneToOne `SolicitudGasto.tramite_base` está disponible en main mediante PR #56 (#53 cerrada).
+- **Pendientes para tramos posteriores (#22 / #28 / #50 / #54)**:
+  - Adaptación de eventos existentes a `EventoHistorialDTO` (#54, #22 / #28; pendiente).
+  - Navegación común y localización/búsqueda del trámite (#28, #54; pendientes y fuera de las afirmaciones de cobertura de esta rama).
+  - Integración conjunta de ambos circuitos (#22 / #28) y consolidación de recorrido y evidencia final (#50).
   - Validación de preguntas de negocio institucionales Q1–Q5 con la administración de Cooperadora.
