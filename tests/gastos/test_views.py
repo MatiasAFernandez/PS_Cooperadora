@@ -8,7 +8,9 @@ from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
+from comunes.models import Circuito, TramiteBase
 from gastos.models import EstadoSolicitud, SolicitudGasto
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -41,6 +43,13 @@ def test_alta_solicitud_valida(create_actor: Any, csrf_auth_client: Any) -> None
     assert solicitud.estado == EstadoSolicitud.PRESENTADA
     assert solicitud.version == 0
     assert solicitud.fecha_creacion is not None
+    assert TramiteBase.objects.count() == 1
+    base = TramiteBase.objects.get()
+    assert solicitud.tramite_base_id == base.pk
+    assert base.circuito == Circuito.GASTO
+    assert base.numero_publico == solicitud.pk
+    assert base.solicitante_actor_id == str(user.pk)
+    assert base.centro_costo_codigo is None
 
 
 @pytest.mark.django_db
@@ -80,6 +89,7 @@ def test_alta_solicitud_campos_invalidos_no_crea(create_actor: Any, auth_client:
     assert resp4.status_code == 200
     assert "monto_estimado" in resp4.context["form"].errors
     assert SolicitudGasto.objects.count() == 0
+    assert not TramiteBase.objects.exists()
 
 
 @pytest.mark.django_db
@@ -114,6 +124,10 @@ def test_ct06_manipulacion_payload_solicitante_estado_version_y_fecha(
     assert solicitud.version == 0
     # Verificación de que la fecha fue asignada por el servidor y no la inyectada
     assert solicitud.fecha_creacion.strftime("%Y-%m-%d") != "2020-01-01"
+    assert solicitud.tramite_base.circuito == Circuito.GASTO
+    assert solicitud.tramite_base.numero_publico == solicitud.pk
+    assert solicitud.tramite_base.solicitante_actor_id == str(user.pk)
+    assert solicitud.tramite_base.solicitante_actor_id != str(otro_user.pk)
 
 
 @pytest.mark.django_db
@@ -154,13 +168,13 @@ def test_aislamiento_consultas_propias_a_y_b(create_actor: Any, auth_client: Any
         "solicitante_b", ["gastos.presentar", "gastos.consultar_propias"]
     )
 
-    solicitud_a = SolicitudGasto.objects.create(
+    solicitud_a = crear_gasto_sintetico(
         concepto="Gasto exclusivo de A",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Unidad A",
         solicitante=user_a,
     )
-    solicitud_b = SolicitudGasto.objects.create(
+    solicitud_b = crear_gasto_sintetico(
         concepto="Gasto exclusivo de B",
         monto_estimado=Decimal("8000.00"),
         unidad_requirente="Unidad B",
@@ -206,13 +220,13 @@ def test_consulta_global_operadora_y_lectura(create_actor: Any, auth_client: Any
     user_o, actor_o = create_actor("operadora_o", ["gastos.consultar_todas", "gastos.decidir"])
     user_l, actor_l = create_actor("cuenta_l", ["gastos.consultar_todas"])
 
-    solicitud_a = SolicitudGasto.objects.create(
+    solicitud_a = crear_gasto_sintetico(
         concepto="Gasto de A",
         monto_estimado=Decimal("1000.00"),
         unidad_requirente="Unidad A",
         solicitante=user_a,
     )
-    solicitud_b = SolicitudGasto.objects.create(
+    solicitud_b = crear_gasto_sintetico(
         concepto="Gasto de B",
         monto_estimado=Decimal("2000.00"),
         unidad_requirente="Unidad B",
@@ -251,7 +265,7 @@ def test_consulta_global_operadora_y_lectura(create_actor: Any, auth_client: Any
 def test_usuario_autenticado_sin_capacidades(create_actor: Any, auth_client: Any) -> None:
     """Usuario sin grupos ni capacidades de gastos no ve ninguna solicitud."""
     user_a, _ = create_actor("solicitante_a", ["gastos.presentar", "gastos.consultar_propias"])
-    solicitud_a = SolicitudGasto.objects.create(
+    solicitud_a = crear_gasto_sintetico(
         concepto="Gasto de A",
         monto_estimado=Decimal("1000.00"),
         unidad_requirente="Unidad A",
@@ -319,7 +333,7 @@ def test_denegacion_presentacion_sin_permiso_con_sesion_y_csrf_validos(
 def test_ausencia_actor_alta_lista_detalle(settings: Any) -> None:
     """Sin actor: demo habilitada redirige a login; demo deshabilitada retorna 403."""
     user = User.objects.create_user("solicitante_base")
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto de prueba",
         monto_estimado=Decimal("500.00"),
         unidad_requirente="Unidad",

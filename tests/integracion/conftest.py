@@ -7,8 +7,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
 from facturacion.services import crear_solicitud_tecnica
-from gastos.models import SolicitudGasto
 from identidad.services import GROUP_CAPABILITIES, Actor
+from tests.soporte_gastos import crear_gasto_sintetico
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def escenario_comun(db, settings, tmp_path):
     )
     factura = crear_solicitud_tecnica(actor=actor_b)
     # Forzar la colisión pública demuestra que los circuitos permanecen distintos.
-    gasto = SolicitudGasto.objects.create(
+    gasto = crear_gasto_sintetico(
         pk=factura.pk,
         concepto="Prueba",
         monto_estimado="1.00",

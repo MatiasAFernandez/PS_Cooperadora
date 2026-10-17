@@ -2,8 +2,10 @@
 
 from typing import Any
 
-from django.db import transaction
+from django.core.exceptions import PermissionDenied
+from django.db import connection, transaction
 
+from comunes.models import Circuito, TramiteBase
 from gastos.auth import has_capability
 from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
 from gastos.queries import visible_expenses
@@ -216,3 +218,62 @@ def decide_expense(
     )
 
     return solicitud
+
+
+def _reservar_numero_solicitud_gasto() -> int:
+    """Reserva un número libre y avanza la secuencia propia de gastos.
+
+    PostgreSQL entrega valores únicos por transacción concurrente. Si la
+    secuencia quedó detrás de números históricos cargados explícitamente, se
+    descarta el valor ocupado y se solicita el siguiente; nunca se reutiliza una
+    cabecera huérfana.
+    """
+    with connection.cursor() as cursor:
+        while True:
+            cursor.execute(
+                "SELECT nextval(pg_get_serial_sequence('gastos_solicitudgasto', 'id'))"
+            )
+            numero = cursor.fetchone()[0]
+            ocupado = SolicitudGasto.objects.filter(pk=numero).exists() or (
+                TramiteBase.objects.filter(
+                    circuito=Circuito.GASTO, numero_publico=numero
+                ).exists()
+            )
+            if not ocupado:
+                return numero
+
+
+@transaction.atomic
+def crear_solicitud_gasto(
+    *,
+    actor: Any,
+    concepto: str,
+    monto_estimado: Any,
+    unidad_requirente: str,
+) -> SolicitudGasto:
+    """Crea cabecera y solicitud juntas con valores fijados por el servidor.
+
+    La capacidad se revalida dentro del servicio, el número público se reserva
+    con la secuencia de PostgreSQL y el centro de costo queda NULL: la unidad
+    requirente no acredita un centro de costo.
+    """
+    if not has_capability(actor, "gastos.presentar"):
+        raise PermissionDenied("El actor no posee la capacidad 'gastos.presentar'.")
+
+    numero = _reservar_numero_solicitud_gasto()
+    base = TramiteBase.objects.create(
+        circuito=Circuito.GASTO,
+        numero_publico=numero,
+        solicitante_actor_id=str(actor.subject_id),
+        centro_costo_codigo=None,
+    )
+    return SolicitudGasto.objects.create(
+        pk=numero,
+        tramite_base=base,
+        concepto=concepto,
+        monto_estimado=monto_estimado,
+        unidad_requirente=unidad_requirente,
+        solicitante_id=actor.subject_id,
+        estado=EstadoSolicitud.PRESENTADA,
+        version=0,
+    )

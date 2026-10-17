@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 
 from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -17,7 +18,7 @@ User = get_user_model()
 def test_creacion_solicitud_valida() -> None:
     """I1-R01: Alta válida con campos requeridos y valores asignados por servidor."""
     solicitante = User.objects.create_user(username="solicitante_a")
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos de laboratorio de física",
         monto_estimado=Decimal("15000.50"),
         unidad_requirente="Laboratorio de Física",
@@ -39,7 +40,7 @@ def test_restriccion_monto_estimado_positivo() -> None:
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            SolicitudGasto.objects.create(
+            crear_gasto_sintetico(
                 concepto="Gasto importe cero",
                 monto_estimado=Decimal("0.00"),
                 unidad_requirente="Electrónica",
@@ -48,7 +49,7 @@ def test_restriccion_monto_estimado_positivo() -> None:
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            SolicitudGasto.objects.create(
+            crear_gasto_sintetico(
                 concepto="Gasto importe negativo",
                 monto_estimado=Decimal("-500.00"),
                 unidad_requirente="Electrónica",
@@ -75,7 +76,7 @@ def test_validador_modelo_monto_estimado() -> None:
 def test_proteccion_eliminacion_usuario_solicitante() -> None:
     """El solicitante no puede eliminarse si tiene solicitudes asociadas (PROTECT)."""
     solicitante = User.objects.create_user(username="solicitante_protegido")
-    SolicitudGasto.objects.create(
+    crear_gasto_sintetico(
         concepto="Gasto protegido",
         monto_estimado=Decimal("1000.00"),
         unidad_requirente="Biblioteca",
@@ -91,7 +92,7 @@ def test_creacion_decision_gasto_valida() -> None:
     """I1-R03: Alta válida de evento DecisionGasto asociado a SolicitudGasto."""
     solicitante = User.objects.create_user(username="solicitante_dec")
     autor = User.objects.create_user(username="operador_dec")
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos varios",
         monto_estimado=Decimal("8000.00"),
         unidad_requirente="Taller",
@@ -120,7 +121,7 @@ def test_decision_gasto_eliminacion_cascada_solicitud() -> None:
     """Al eliminar una solicitud, sus eventos de decisión se eliminan en cascada (CASCADE)."""
     solicitante = User.objects.create_user(username="sol_cascada")
     autor = User.objects.create_user(username="op_cascada")
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto a eliminar",
         monto_estimado=Decimal("3000.00"),
         unidad_requirente="Informática",
@@ -144,7 +145,7 @@ def test_decision_gasto_proteccion_eliminacion_autor() -> None:
     """El autor de una decisión no puede eliminarse si tiene decisiones asociadas (PROTECT)."""
     solicitante = User.objects.create_user(username="sol_autor_prot")
     autor = User.objects.create_user(username="op_autor_prot")
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto autor protegido",
         monto_estimado=Decimal("4500.00"),
         unidad_requirente="Laboratorio",
@@ -166,7 +167,7 @@ def test_decision_gasto_proteccion_eliminacion_autor() -> None:
 def test_solicitud_mensaje_respaldo_h4() -> None:
     """I1-R05 / H4: Comprobar mensaje de respaldo según estado en SolicitudGasto."""
     solicitante = User.objects.create_user(username="sol_respaldo_model")
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto de prueba respaldo",
         monto_estimado=Decimal("2000.00"),
         unidad_requirente="Electrónica",

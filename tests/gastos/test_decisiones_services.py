@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 from django.contrib.auth import get_user_model
 
-from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
+from gastos.models import DecisionGasto, EstadoSolicitud
 from gastos.services import (
     ExpenseNotFoundError,
     ExpensePermissionDeniedError,
@@ -29,6 +29,7 @@ from gastos.services import (
     validate_decision_content,
 )
 from identidad.services import Actor
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -42,7 +43,7 @@ def test_can_decide_expense_actor_o_accion_invalida(
     user_a = accounts["demo_a"]
     user_o = accounts["demo_o"]
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -66,7 +67,7 @@ def test_can_decide_expense_sin_capacidad(demo_accounts: tuple[dict[str, Any], s
     user_a = accounts["demo_a"]
     user_l = accounts["demo_l"]
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -87,7 +88,7 @@ def test_can_decide_expense_prohibicion_auto_decision_h2(
     accounts, _ = demo_accounts
     user_o = accounts["demo_o"]
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos propios",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -113,7 +114,7 @@ def test_can_decide_expense_solicitud_no_visible(
     user_a = accounts["demo_a"]
     user_b = accounts["demo_b"]
 
-    solicitud_b = SolicitudGasto.objects.create(
+    solicitud_b = crear_gasto_sintetico(
         concepto="Insumos B",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -139,7 +140,7 @@ def test_can_decide_expense_matriz_transiciones(demo_accounts: tuple[dict[str, A
         capabilities=frozenset({"gastos.decidir", "gastos.consultar_todas"}),
     )
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -287,7 +288,7 @@ def test_t04_27_servicio_motivo_vacio_rechazado(demo_accounts: tuple[dict[str, A
         capabilities=frozenset({"gastos.decidir", "gastos.consultar_todas"}),
     )
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -328,7 +329,7 @@ def test_t04_28_servicio_version_invalida_rechazada(
         capabilities=frozenset({"gastos.decidir", "gastos.consultar_todas"}),
     )
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -409,7 +410,7 @@ def test_t04_servicio_motivo_con_caracter_nul_rechazado(
         capabilities=frozenset({"gastos.decidir", "gastos.consultar_todas"}),
     )
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos con NUL",
         monto_estimado=Decimal("5000.00"),
         unidad_requirente="Laboratorio",
@@ -451,7 +452,7 @@ def test_t04_29_servicio_precedencia_visibilidad_y_permisos_sobre_contenido(
     user_b = accounts["demo_b"]
     user_l = accounts["demo_l"]
 
-    solicitud_b = SolicitudGasto.objects.create(
+    solicitud_b = crear_gasto_sintetico(
         concepto="Insumos de B",
         monto_estimado=Decimal("7000.00"),
         unidad_requirente="Biblioteca",

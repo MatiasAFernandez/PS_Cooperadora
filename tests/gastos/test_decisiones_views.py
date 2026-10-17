@@ -28,6 +28,7 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 
 from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -36,7 +37,7 @@ User = get_user_model()
 def solicitud_a(demo_accounts: tuple[dict[str, Any], str]) -> SolicitudGasto:
     """Crea una solicitud de gasto presentada por la cuenta sintética A."""
     accounts, _ = demo_accounts
-    return SolicitudGasto.objects.create(
+    return crear_gasto_sintetico(
         concepto="Insumos de prueba para laboratorio",
         monto_estimado=Decimal("12000.00"),
         unidad_requirente="Laboratorio de Química",
@@ -496,7 +497,7 @@ def test_t04_12_objeto_ajeno_con_contenido_invalido_retorna_404(
     accounts, _ = demo_accounts
     user_b = accounts["demo_b"]
 
-    solicitud_b = SolicitudGasto.objects.create(
+    solicitud_b = crear_gasto_sintetico(
         concepto="Insumos exclusivos de B",
         monto_estimado=Decimal("3000.00"),
         unidad_requirente="Laboratorio B",
