@@ -27,6 +27,7 @@ from gastos.models import (
     SolicitudGasto,
     get_mensaje_respaldo,
 )
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -45,7 +46,7 @@ def solicitud_factory(
         concepto: str = "Insumos para demostración H4",
         version: int = 0,
     ) -> SolicitudGasto:
-        return SolicitudGasto.objects.create(
+        return crear_gasto_sintetico(
             concepto=concepto,
             monto_estimado=Decimal("15000.00"),
             unidad_requirente="Laboratorio de Informática",

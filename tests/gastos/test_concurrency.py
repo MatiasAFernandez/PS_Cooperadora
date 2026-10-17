@@ -19,9 +19,10 @@ from django.db import connections
 from django.test import Client
 from django.urls import reverse
 
-from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
+from gastos.models import DecisionGasto, EstadoSolicitud
 from gastos.services import decide_expense
 from identidad.services import Actor
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -42,7 +43,7 @@ def test_t04_21_concurrencia_simultanea_real_postgresql(
     user_a = accounts["demo_a"]
     user_o = accounts["demo_o"]
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Servidor de cómputo para cálculo numérico",
         monto_estimado=Decimal("85000.00"),
         unidad_requirente="Cálculo Científico",
@@ -120,7 +121,7 @@ def test_t04_22_reversion_atomica_ante_fallo_guardar_evento(
     user_a = accounts["demo_a"]
     user_o = accounts["demo_o"]
 
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Insumos con fallo de auditoría",
         monto_estimado=Decimal("15000.00"),
         unidad_requirente="Laboratorio Central",

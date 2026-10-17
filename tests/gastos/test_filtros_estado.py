@@ -12,6 +12,7 @@ from django.utils.html import escape
 from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
 from gastos.services import decide_expense
 from identidad.services import Actor
+from tests.soporte_gastos import crear_gasto_sintetico
 
 pytestmark = pytest.mark.django_db
 
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.django_db
 def gastos_por_estado(demo_accounts: Any) -> dict[tuple[str, str], SolicitudGasto]:
     accounts, _ = demo_accounts
     return {
-        (username, estado): SolicitudGasto.objects.create(
+        (username, estado): crear_gasto_sintetico(
             concepto=f"Ejemplo {username} {estado}",
             monto_estimado="125.50",
             unidad_requirente="Unidad sintética",
@@ -112,7 +113,7 @@ def test_parametros_invalidos_y_repetidos(
 
 def test_sin_coincidencias_no_muestra_tramites_ajenos(demo_accounts: Any) -> None:
     accounts, _ = demo_accounts
-    SolicitudGasto.objects.create(
+    crear_gasto_sintetico(
         concepto="Gasto aceptado ajeno",
         monto_estimado="10.00",
         unidad_requirente="Unidad sintética",
