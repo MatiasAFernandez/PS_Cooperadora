@@ -10,7 +10,9 @@ Se cotejó además con `main` y con el borrador I2 de Franco en
 [Issue #19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19) para el
 primer tramo de SPEC-003 (DOC-R01–R03), y [#15](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/15)
 y [#16](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/16) para I2 de
-gastos. Este paquete no los recrea ni supone que estén terminados.
+gastos. #19 cerró tras integrar el primer tramo mediante PR #47 y aplicar las
+decisiones técnicas en PR #48; #16 está cerrada y #15 sigue abierta. Este paquete
+no recrea esas Issues y distingue su estado del registro original de la propuesta.
 
 El Plan de Trabajo define una entrega incremental, pero no fija el contenido de
 un incremento llamado I2. Este paquete propone I2 como el recorrido de
@@ -23,7 +25,7 @@ propuesta técnica del equipo.
 | Spec | Cobertura del plan | Resultado de la revisión |
 |---|---|---|
 | [002](../../specs/002-matias-identidad-permisos.md) | RF-001, RNF-001, M-E03, I02 | Alineada. El adaptador sintético de I1 ya existe en `identidad`; I2 debe ampliar capacidades y probar el consumidor facturación, sin rehacer T02 ni prometer autenticación institucional. |
-| [003](../../specs/003-matias-documentos.md) | RF-004, RNF-001/004, M-E04, I03 | Alineada. En `origin/main`, el primer tramo DOC-R01–R03 ya está preparado para #19; I2-05 cubre DOC-R04 sin duplicarlo. Política de revisión y ubicación de prueba siguen sin validar. RF-005 sobre deuda tras un pago de gastos corresponde a Franco. |
+| [003](../../specs/003-matias-documentos.md) | RF-004, RNF-001/004, M-E04, I03 | Alineada. El primer tramo DOC-R01–R03 está integrado en main mediante PR #47 y las decisiones técnicas se aplicaron en PR #48; #19 está cerrada. I2-05 aborda DOC-R04 en #24; la política de revisión y la ubicación de prueba siguen por validar. RF-005 sobre deuda tras un pago de gastos corresponde a Franco. |
 | [004](../../specs/004-matias-solicitudes-facturacion.md) | RF-002, M-E01/02/05 | Alineada. El formulario y la entrevista ya están inventariados para #20; falta confirmar obligatoriedad, actores, observaciones y transiciones antes de fijar reglas de implementación. |
 | [005](../../specs/005-matias-facturas-notas.md) | RF-002, M-E06, I01/03 | Alineada. Se registran operaciones externas; no se emiten comprobantes ni se integra Exubio por API. Falta validar campos, unicidad y efecto de notas. |
 | [006](../../specs/006-matias-cobros.md) | RF-002, RNF-002/003, M-E07, I03 | Alineada. Faltan imputación, cobros parciales y moneda; las pruebas deben cubrir precisión y atomicidad. |
@@ -53,13 +55,14 @@ porque éstas reagrupan resultados y no hay horas ejecutadas acreditadas.
 | 10 | [#29](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/29) ([I2-10](10-verificacion-entrega.md)) Verificar, documentar y demostrar el circuito integrado | 009 (apoyo) | #28; validación funcional separada | Medio-alto; regresión y reproducción | MUST; Backlog |
 | 11 | [#30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/30) ([I2-11](11-consultas.md)) Agregar filtros y resúmenes operativos de facturación | 008 | #25 a #27; priorización confirmada | Medio; permisos y totales decimales | SHOULD; Backlog opcional |
 
-Los órdenes 2 y 3 pueden avanzar en paralelo tras I2-01. La Issue #19 puede
-avanzar después del identificador y las capacidades documentales acordadas, sin
-esperar la revisión DOC-R04. I2-04 puede entregar
-primero el alta y consulta, pero la Issue se cierra sólo con observación,
-corrección e historial de esos eventos. El contrato de I2-05 puede prepararse
-junto a I2-04; su implementación espera el proveedor de #19. I2-06 no
-presupone cobro; I2-07 no presupone cancelación. I2-08
+Los órdenes 2 y 3 pueden avanzar en paralelo tras I2-01. La Issue #19 está
+cerrada y su proveedor documental está disponible en main. La Issue #24 continúa
+abierta para DOC-R04 y conserva sus dependencias de #21/#22 y de la regla de
+revisión de #20. I2-04 puede entregar primero el alta y consulta, pero la Issue
+se cierra sólo con observación, corrección e historial de esos eventos. El
+contrato de I2-05 puede prepararse junto a I2-04; el consumidor de gastos ya
+integra el proveedor real mediante PR #55 y #28 conserva la integración conjunta
+de ambos circuitos. I2-06 no presupone cobro; I2-07 no presupone cancelación. I2-08
 completa esas reglas después de verificar los datos vinculados. I2-11 puede
 desarrollarse antes de la demostración final si Cooperadora confirma su prioridad;
 no bloquea el cierre del recorrido MUST.
