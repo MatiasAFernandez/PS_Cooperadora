@@ -532,7 +532,7 @@ class EventoPagoExterno(models.Model):
         """Adapta el hecho del pago sin exponer referencias o metadatos documentales."""
         pago = self.pago
         detalle = (
-            f"Importe: {localize(pago.importe)} {pago.moneda}. "
+            f"Importe: {localize(Decimal(pago.importe))} {pago.moneda}. "
             f"Fecha del hecho: {date_format(pago.fecha_pago, 'd/m/Y')}. "
             f"Referencia externa: {pago.referencia_externa}."
         )
