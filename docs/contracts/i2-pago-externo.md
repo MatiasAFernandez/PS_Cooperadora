@@ -271,8 +271,8 @@ resolverse antes del paso a producción:
 > [!NOTE]
 > Los límites técnicos de la demostración **no validan** Q1–Q5. Este corte
 > tampoco implementa SSO, pagos bancarios, cierres, pagos parciales, retenciones ni
-> supuestos institucionales. La interfaz web parcial sólo captura los datos mínimos de la demo y
-> depende del proveedor documental y de las capacidades que aún deben integrarse.
-> El proveedor documental ([#19](../planning/i2-issues/05-documentos.md)) y la extensión
-> de identidad ([#21](../planning/i2-issues/02-identidad-facturacion.md) /
-> [#28](../planning/i2-issues/09-integracion-circuitos.md)) permanecen pendientes.
+> supuestos institucionales. La interfaz web parcial de C04 consume el proveedor C01 real y
+> las capacidades del adaptador de demo disponibles en la base integrada. Esto no equivale a
+> autenticación productiva, SSO ni autorización institucional. La revisión formal DOC-R04/Q4,
+> la identidad productiva y la integración común de [#21](../planning/i2-issues/02-identidad-facturacion.md)
+> y [#28](../planning/i2-issues/09-integracion-circuitos.md) permanecen pendientes.
