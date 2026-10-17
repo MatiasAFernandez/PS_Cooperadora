@@ -284,13 +284,17 @@ $env:GASTOS_PAYMENT_DOCUMENT_PROVIDER = "documentos.c01.ProveedorDocumentalGasto
 ## 4. Comandos de reproducción y verificación
 
 > [!NOTE]
-> **Resultados de validación obtenidos el 2026-10-16**:
+> **Resultados reportados el 2026-10-16 sobre el código `9cab2fd79580755e3e349fbcb49a4862d75272c7` (base `d65beda83e2bc056800c87778224c7fe23d06287`)**:
 > Todas las ejecuciones de prueba utilizaron datos sintéticos y la instancia aislada de PostgreSQL 17 I2. Corresponden puntualmente a los comandos acotados listados a continuación, no a la suite de pruebas completa del repositorio:
 > - Ruff: `ruff check --no-cache .` — sin hallazgos.
 > - Django: `python manage.py check` — sin incidencias.
 > - Migrations: `python manage.py makemigrations --check --dry-run` — sin cambios.
 > - Focused integration: `python -m pytest tests/integracion/test_c04_pago_real_proyeccion.py -v` — 1 aprobada.
 > - Regression: `python -m pytest tests/gastos tests/documentos tests/integracion/test_issue_28_proveedor_y_accesos.py -q` — 344 aprobadas en aproximadamente 58 s.
+>
+> **Comprobaciones focales adicionales ejecutadas el 2026-10-17 sobre ese mismo código:**
+> - Configuración del proveedor: `python -m pytest tests/test_environment_configuration.py -q --tb=short` — 11 aprobadas; ejecución aislada, sin PostgreSQL.
+> - Bloqueo PostgreSQL: `python -m pytest tests/integracion/test_bloqueo_documental.py -q --tb=short` — 1 aprobada en PostgreSQL 17 aislado. Se ejecutó por separado, por lo que no está incluida en las 344 regresiones ni en la prueba C04.
 
 ### 4.1. Verificación estática con Ruff y verificación de Django
 
@@ -321,6 +325,31 @@ Ejecutar las suites de módulos vinculados, incluyendo el archivo de integració
 python -m pytest tests/gastos tests/documentos tests/integracion/test_issue_28_proveedor_y_accesos.py -q
 ```
 
+### 4.4. Verificación focal de la configuración opcional del proveedor
+
+La prueba carga copias aisladas de `settings.py` y comprueba ausencia, prioridad y limpieza
+de valores en `.env` sintético y variables de proceso. No requiere PostgreSQL.
+
+```powershell
+python -m pytest tests/test_environment_configuration.py -q --tb=short
+```
+
+Resultado adicional del 2026-10-17 sobre `9cab2fd79580755e3e349fbcb49a4862d75272c7`:
+11 pruebas aprobadas.
+
+### 4.5. Verificación focal del bloqueo de versión en PostgreSQL
+
+Esta prueba usa una conexión independiente para comprobar que el reemplazo de una versión
+queda bloqueado hasta el commit de C01 y puede continuar después. Es adicional a la regresión
+de 344 pruebas descrita arriba.
+
+```powershell
+python -m pytest tests/integracion/test_bloqueo_documental.py -q --tb=short
+```
+
+Resultado adicional del 2026-10-17 sobre `9cab2fd79580755e3e349fbcb49a4862d75272c7`, con
+PostgreSQL 17 aislado: 1 aprobada.
+
 ---
 
 ## 5. Matriz de evidencia: Criterios GP-01 a GP-06 (SPEC-011)
@@ -331,7 +360,7 @@ Esta matriz distingue estrictamente lo verificado por la prueba de integración 
 |---|---|---|
 | **GP-01** — Separación de dimensiones | Verifica la consulta pre-pago (la cual no invoca las operaciones de listado ni de verificación del proveedor ni proyecta un pago; no se afirma que no se instancie un objeto proveedor) y post-pago, asegurando que `solicitud.estado == EstadoSolicitud.ACEPTADA` y `monto_estimado` se mantienen inalterados tras el registro. | En `tests/gastos/test_pago_externo_services.py`: `test_solo_gasto_aceptado_admite_pago` (exige estado aceptado), `test_decidir_no_concede_registrar_pago`, `test_gasto_visible_sin_permiso_da_403`, `test_consulta_sin_pago_retorna_none`. |
 | **GP-02** — Vínculo documental y selector | Formulario GET `gastos:pagar` invoca `ProveedorDocumentalGastos.listar_opciones_para_pago` mediante spy real y expone en el selector la opción documental vigente tipada (`factura`). | En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_c01_traduce_catalogo_y_excluye_ticket` (excluye tickets del catálogo y rechaza pago con ticket), `test_c01_rechaza_una_factura_valida_de_otro_gasto` (rechaza factura de otra solicitud), `test_c01_rechaza_documento_facturacion_y_referencia_inexistente`. En `tests/gastos/test_pago_externo_services.py`: `test_evidencia_con_gasto_distinto_es_rechazada`, `test_evidencia_con_tipo_no_admitido_es_rechazada`, `test_evidencia_con_referencia_distinta_es_rechazada`. |
-| **GP-03** — Registro atómico del hecho externo | En recorrido HTTP exitoso, registra atómicamente exactamente un `PagoExterno` y un `EventoPagoExterno`. Mediante spy real demuestra que `verificar_y_bloquear_documento` es invocado en el primer POST.<br>*Límite*: `test_c04` no verifica por sí solo rollbacks ante excepciones. | En `tests/gastos/test_pago_externo_services.py`: `test_rollback_completo_si_falla_la_creacion_del_evento` (garantiza rollback atómico completo si falla el evento), `test_fallo_del_proveedor_no_deja_escrituras` (ausencia de escrituras ante fallo documental). En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_c01_sin_transaccion_exterior_se_deniega`. |
+| **GP-03** — Registro atómico del hecho externo | En recorrido HTTP exitoso, registra atómicamente exactamente un `PagoExterno` y un `EventoPagoExterno`. Mediante spy real demuestra que `verificar_y_bloquear_documento` es invocado en el primer POST.<br>*Límite*: `test_c04` no verifica por sí solo rollbacks ni el bloqueo concurrente. | En `tests/gastos/test_pago_externo_services.py`: `test_rollback_completo_si_falla_la_creacion_del_evento` (garantiza rollback atómico completo si falla el evento), `test_fallo_del_proveedor_no_deja_escrituras` (ausencia de escrituras ante fallo documental). En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_c01_sin_transaccion_exterior_se_deniega`. En `tests/integracion/test_bloqueo_documental.py`: `test_verificacion_c01_bloquea_incluso_un_reemplazo_por_sql` verifica el bloqueo con una conexión independiente; se ejecutó por separado el 2026-10-17 sobre el código `9cab2fd79580755e3e349fbcb49a4862d75272c7` y aprobó (1 prueba), no incluida en las 344 regresiones reportadas. |
 | **GP-04** — Idempotencia y conflicto | Reenvío idéntico produce redirección 302 sin duplicar pago ni evento. Reenvío con payload conflictivo (importe modificado) retorna HTTP 409 Conflicto sin crear pagos ni eventos adicionales (comprueba que los conteos de filas no aumentan). Demuestra mediante spy que ni el reenvío idéntico ni el conflictivo re-ejecutan `verificar_y_bloquear_documento` ni `listar_opciones_para_pago`. | En `tests/gastos/test_pago_externo_services.py`: `test_contenido_distinto_genera_conflicto` (comprueba mediante `refresh_from_db()` que el importe persistido permanece inalterado tras el conflicto, además de verificar los conteos de filas de pago y evento), `test_reenvio_identico_retorna_mismo_pago_sin_evento_nuevo`, `test_reenvio_identico_no_reconsulta_documento_ni_provider`, `test_huella_igual_pero_campo_distinto_no_es_idempotente`. |
 | **GP-05** — Distinción de categoría y límites de revisión | Factura proyecta categoría factual advirtiendo que revisión desconocida no equivale a aprobación ni acredita factura definitiva. Presupuesto proyecta advertencia de falta de factura definitiva. Tras reemplazo documental, la consulta posterior lista el proveedor actual pero la categoría del pago se degrada a neutro (`None`). | En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_reemplazo_conserva_archivos_y_rechaza_version_obsoleta` (demuestra preservación de archivos y rechazo al intentar pagar con versión obsoleta). |
 | **GP-06** — Cronología, privacidad y degradación segura *(Cobertura parcial: localización de trámite pendiente)* | Verifica aserciones negativas en HTML (no filtración de UUID de versión, serie ni huella de idempotencia) y en `pago_consulta` (carece de `referencia_documental`). Verifica degradación a neutro sin llamar a `listar_opciones_para_pago` cuando el actor carece de `documentos.ver_metadatos` o si el proveedor está desconfigurado.<br>*Brecha y límites*: Cobertura parcial frente al requisito de SPEC-011 ("localizar el trámite"). `test_c04` comprueba privacidad y degradación segura, pero no prueba por sí solo el orden estricto de la cronología ni cubre la navegación común o la localización/búsqueda del trámite. La navegación común (#28) e integración de historial (#22) corresponden a trabajo futuro y quedan fuera de las afirmaciones de esta rama. | En `tests/gastos/test_pago_externo_services.py`: `test_consulta_pura_omite_referencia_documental` (demuestra que la consulta pura de servicio omite la referencia documental). En `tests/gastos/test_pago_externo_view.py`: `test_detalle_muestra_pago_y_cronologia_sin_referencia_documental` (comprueba la lista ordenada de hitos en `context["cronologia"]`: `["decision", "pago"]`), `test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle`. En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_capacidad_pago_independiente_y_revocacion_en_consumidor_existente`, `test_descarga_directa_ajena_y_revocacion_facturacion`.<br>*Límite*: la prueba de vista citada acredita la cronología en el detalle, pero no prueba la navegación común ni la localización/búsqueda del trámite. |
