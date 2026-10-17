@@ -31,6 +31,7 @@ from gastos.payments import (
     PaymentInvalidInputError,
     PaymentPermissionDeniedError,
     consultar_pago_externo,
+    derivar_categoria_respaldo,
     registrar_pago_externo,
 )
 from gastos.queries import visible_expenses
@@ -277,6 +278,19 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
     pago_provider_configurado = (
         cargar_proveedor_documental() is not None if puede_registrar_pago else False
     )
+
+    respaldo_categoria = None
+    if pago_consulta is not None and has_capability(actor, "documentos.ver_metadatos"):
+        carga = _cargar_opciones_documentales(actor, solicitud)
+        if carga is not None:
+            _, opciones = carga
+            referencia_doc = (
+                PagoExterno.objects.filter(solicitud=solicitud)
+                .values_list("referencia_documental", flat=True)
+                .first()
+            )
+            respaldo_categoria = derivar_categoria_respaldo(referencia_doc, opciones)
+
     return {
         "solicitud": solicitud,
         "actor": actor,
@@ -292,6 +306,7 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
         "pago_permiso_metadatos": pago_permiso_metadatos,
         "pago_provider_configurado": pago_provider_configurado,
         "mensaje_respaldo": solicitud.mensaje_respaldo,
+        "respaldo_categoria": respaldo_categoria,
     }
 
 
@@ -552,11 +567,18 @@ class SolicitudGastoPagoView(View):
     def _reenviar_pago_existente(
         self, request: HttpRequest, actor: Any, solicitud: Any
     ) -> HttpResponse:
-        """Reenvía un alta ya persistida sin proveedor ni listado documental.
+        """Reenvía un alta ya persistida sin proveedor ni listado documental para C03.
 
-        C03 compara la huella y todos los campos normalizados: un reenvío idéntico
-        redirige al detalle sin nuevo evento ni proveedor, y un contenido distinto
-        responde 409. No se lee ni muestra la referencia documental guardada.
+        La llamada al servicio C03 recibe document_provider=None y no lista ni
+        verifica documentos para la resolución del reenvío: compara la huella y
+        todos los campos normalizados; un reenvío idéntico redirige al detalle
+        sin nuevo evento ni proveedor, y un contenido distinto responde 409.
+        Ante un error por entrada malformada (PaymentInvalidInputError) se
+        renderiza el detalle del gasto pagado, donde C04 puede realizar una
+        consulta separada al listado vigente ante el proveedor si el actor posee
+        la capacidad documentos.ver_metadatos; esta consulta deriva una
+        categoría factual de visualización, nunca expone la referencia documental
+        almacenada y no autoriza ni muta el pago.
         """
         try:
             registrar_pago_externo(

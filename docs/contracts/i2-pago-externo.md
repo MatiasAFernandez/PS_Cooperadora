@@ -28,9 +28,10 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
   - Esta interfaz no reemplaza las integraciones documental ni de identidad: sin proveedor o
     permisos, la acción queda deshabilitada o devuelve un error explícito.
 
-- **Gestión Documental ([Issue #19](../planning/i2-issues/05-documentos.md) - Integración real pendiente)**:
-  - La app y el proveedor documental real no forman parte de este checkout ni se han
-    implementado aquí.
+- **Gestión Documental ([Issue #19](../planning/i2-issues/05-documentos.md) - proveedor real integrado en [PR #51](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/51))**:
+  - La aplicación documental y `documentos.c01.ProveedorDocumentalGastos` forman parte
+    de la base integrada. C04 consume ese proveedor; este corte no implementa ni modifica
+    el componente documental.
   - El módulo de gastos define un puerto consumidor (`DocumentVerificationPort` en
     [`gastos/contracts.py`](../../gastos/contracts.py)) con dos operaciones: listado de opciones
     de sólo lectura para el selector y verificación/bloqueo transaccional para el registro.
@@ -40,25 +41,29 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
     pertenencia, tipo y vigencia dentro de la transacción.
   - El proveedor se resuelve desde `settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER`; no se acepta su
     selección desde el formulario. Si no está configurado o falla, el circuito falla cerrado.
-  - No se implementa ningún proveedor documental productivo por defecto ni stubs tolerantes.
-    Los dobles de prueba residen exclusivamente en los tests unitarios.
+  - No se configura un proveedor por defecto ni se admiten stubs en producción. C04 consume
+    el proveedor real disponible en la base; los dobles se reservan a las suites unitarias.
   - El registro del pago no devuelve ni descarga archivos. Gastos conserva únicamente la referencia
     documental opaca y no almacena binarios ni metadatos descriptivos del documento.
 
-- **Identidad y Permisos ([Issue #21](../planning/i2-issues/02-identidad-facturacion.md) / [#28](../planning/i2-issues/09-integracion-circuitos.md) - Integración pendiente)**:
-  - La extensión de identidad debe incorporar capacidades independientes:
-    `documentos.incorporar`, `documentos.ver_metadatos`, `documentos.descargar` y
-    `gastos.registrar_pago`. Aún no existen todas en el catálogo del adaptador de demo;
-    este corte no modifica `identidad`.
-  - El servicio de pagos verifica el código `gastos.registrar_pago` y, mientras la
-    extensión no esté implementada, la autorización se simula en las pruebas sin
-    alterar `identidad`.
+- **Identidad y Permisos ([Issue #21](../planning/i2-issues/02-identidad-facturacion.md) / [#28](../planning/i2-issues/09-integracion-circuitos.md) - adaptador de demo disponible; integración productiva y conjunta pendiente)**:
+  - El adaptador de demo existente en `identidad.services.GROUP_CAPABILITIES` define
+    capacidades independientes para pago y documentos, incluidas `gastos.registrar_pago`,
+    `documentos.incorporar`, `documentos.ver_metadatos` y `documentos.descargar`. C04 usa
+    esos grupos; esta rama no modifica `identidad` ni incorpora autenticación productiva o SSO.
+  - El servicio de pagos verifica `gastos.registrar_pago`. La integración C04 usa sesiones
+    Django y el adaptador de demo existente; las pruebas unitarias conservan sus fixtures y
+    dobles controlados. Esto no acredita autorización institucional ni completa #21/#28.
   - La visibilidad de gastos se sigue resolviendo con las capacidades existentes
     `gastos.consultar_propias`/`gastos.consultar_todas` según SPEC-002, siempre sobre
     la solicitud concreta.
   - Para iniciar un registro nuevo, la vista exige por separado `gastos.registrar_pago` y
-    `documentos.ver_metadatos` sobre el gasto visible. Un reenvío de un pago existente sólo necesita
-    volver a autorizar `gastos.registrar_pago`; no lista documentos ni consulta metadatos.
+    `documentos.ver_metadatos` sobre el gasto visible. La resolución del reenvío en el servicio
+    C03 en sí no recibe proveedor y no lista ni verifica documentos, necesitando únicamente
+    reautorizar `gastos.registrar_pago`. Si una respuesta por entrada malformada renderiza el
+    detalle del gasto ya pagado, C04 puede realizar un listado separado para la proyección
+    factual de categoría bajo la capacidad `documentos.ver_metadatos`, manteniendo privada la
+    referencia almacenada e inalterada la autorización del registro.
   - `gastos.decidir` **no concede** `gastos.registrar_pago`. Registrar un pago tampoco
     concede `documentos.ver_metadatos` ni `documentos.descargar`; cada operación requiere
     su capacidad y autorización propia sobre el gasto/documento correspondiente.
@@ -228,12 +233,18 @@ def consultar_pago_externo(
   y exigir `gastos.registrar_pago` y `documentos.ver_metadatos`.
 - `POST` conserva los valores ingresados ante errores de validación o de verificación documental.
   El error documental es genérico y no expone detalles del proveedor.
-- Si ya hay un pago, el reenvío llega al servicio C03 sin listar ni verificar documentos:
-  contenido idéntico retorna el registro existente; contenido diferente responde conflicto.
+- Si ya hay un pago, la resolución del servicio C03 en sí no recibe proveedor y no lista ni
+  verifica documentos: contenido idéntico retorna el registro existente y contenido diferente
+  responde conflicto. No obstante, una respuesta por entrada malformada que renderiza el
+  detalle de un pago existente puede realizar un listado separado en C04 para proyectar la
+  categoría factual bajo la capacidad `documentos.ver_metadatos`, conservando privada la
+  referencia documental guardada y sin alterar la autorización del registro.
 - El detalle comunica si la acción está disponible por permisos y configuración. El formulario
   desactiva el botón mientras envía; la idempotencia de C03 cubre reintentos del servidor.
-- El formulario no descarga ni muestra archivos. El proveedor documental productivo y las nuevas
-  capacidades en el catálogo de identidad siguen pendientes; las pruebas usan dobles sintéticos.
+- El formulario no descarga ni muestra archivos. El proveedor C01 real y los grupos de
+  capacidades del adaptador de demo están disponibles en la base integrada; C04 los consume
+  con configuración de servidor y no cambia identidad. No se incluye autenticación productiva,
+  SSO ni validación institucional.
 
 ---
 
@@ -260,8 +271,8 @@ resolverse antes del paso a producción:
 > [!NOTE]
 > Los límites técnicos de la demostración **no validan** Q1–Q5. Este corte
 > tampoco implementa SSO, pagos bancarios, cierres, pagos parciales, retenciones ni
-> supuestos institucionales. La interfaz web parcial sólo captura los datos mínimos de la demo y
-> depende del proveedor documental y de las capacidades que aún deben integrarse.
-> El proveedor documental ([#19](../planning/i2-issues/05-documentos.md)) y la extensión
-> de identidad ([#21](../planning/i2-issues/02-identidad-facturacion.md) /
-> [#28](../planning/i2-issues/09-integracion-circuitos.md)) permanecen pendientes.
+> supuestos institucionales. La interfaz web parcial de C04 consume el proveedor C01 real y
+> las capacidades del adaptador de demo disponibles en la base integrada. Esto no equivale a
+> autenticación productiva, SSO ni autorización institucional. La revisión formal DOC-R04/Q4,
+> la identidad productiva y la integración común de [#21](../planning/i2-issues/02-identidad-facturacion.md)
+> y [#28](../planning/i2-issues/09-integracion-circuitos.md) permanecen pendientes.

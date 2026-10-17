@@ -96,9 +96,11 @@ class DocumentVerificationPort(Protocol):
        definitiva pendiente. Las reglas institucionales de revisión siguen pendientes.
 
     El puerto declara un segundo método provisional de sólo lectura
-    (`listar_opciones_para_pago`) usado exclusivamente para poblar el selector del
-    formulario. Ese listado NO autoriza el registro: la revalidación transaccional
-    obligatoria sigue siendo `verificar_y_bloquear_documento`.
+    (`listar_opciones_para_pago`) utilizado tanto para poblar el selector del
+    formulario como para la proyección de categoría en el detalle del gasto
+    pagado en C04, condicionada por `documentos.ver_metadatos`. Dicho listado es
+    de sólo lectura y nunca sustituye la verificación transaccional obligatoria
+    `verificar_y_bloquear_documento` al momento del registro.
 
     NOTA DE ARQUITECTURA:
     No se proporciona ningún proveedor por defecto, stub productivo ni modelo duplicado.
