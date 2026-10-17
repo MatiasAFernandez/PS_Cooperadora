@@ -21,6 +21,7 @@ from gastos.models import (
     PagoExterno,
     SolicitudGasto,
 )
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -28,7 +29,7 @@ pytestmark = pytest.mark.django_db
 
 
 def _solicitud(solicitante, estado: str = EstadoSolicitud.ACEPTADA) -> SolicitudGasto:
-    return SolicitudGasto.objects.create(
+    return crear_gasto_sintetico(
         concepto="Gasto sintético para pago externo",
         monto_estimado=Decimal("1000.00"),
         unidad_requirente="Unidad sintética",

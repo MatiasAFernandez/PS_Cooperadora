@@ -12,8 +12,9 @@ from documentos.c01 import TIPOS_C01, ProveedorDocumentalGastos
 from documentos.models import Documento
 from documentos.services import TIPOS_ELEGIBLES_PAGO_GASTOS, incorporar
 from gastos.contracts import DocumentVerificationError
-from gastos.models import EventoPagoExterno, PagoExterno, SolicitudGasto
+from gastos.models import EventoPagoExterno, PagoExterno
 from gastos.payments import registrar_pago_externo
+from tests.soporte_gastos import crear_gasto_sintetico
 
 from .helpers import archivo_pdf
 
@@ -139,7 +140,7 @@ def test_c01_rechaza_documento_facturacion_y_referencia_inexistente(escenario_co
 
 def test_c01_rechaza_una_factura_valida_de_otro_gasto(escenario_comun):
     e = escenario_comun
-    otro_gasto = SolicitudGasto.objects.create(
+    otro_gasto = crear_gasto_sintetico(
         pk=e.gasto.pk + 100000,
         solicitante=e.a,
         concepto="Otro",

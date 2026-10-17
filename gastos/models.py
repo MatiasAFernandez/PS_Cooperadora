@@ -9,6 +9,8 @@ from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models
 from django.db.models import Q
 
+from comunes.models import Circuito, TramiteBase
+
 
 class EstadoSolicitud(models.TextChoices):
     PRESENTADA = "presentada", "Presentada"
@@ -28,9 +30,46 @@ def get_mensaje_respaldo(estado: str) -> str:
     return MENSAJE_RESPALDO_OTRAS
 
 
+_SOLICITUD_GASTO_CAMPOS_INMUTABLES = {
+    "id",
+    "pk",
+    "tramite_base",
+    "tramite_base_id",
+    "solicitante",
+    "solicitante_id",
+}
+
+
+class SolicitudGastoQuerySet(models.QuerySet):
+    """QuerySet que impide reasignar la identidad de una solicitud existente."""
+
+    def update(self, **kwargs: Any) -> int:
+        if _SOLICITUD_GASTO_CAMPOS_INMUTABLES.intersection(kwargs):
+            raise IntegrityError(
+                "No se permite reasignar id, tramite_base ni solicitante "
+                "en una SolicitudGasto existente."
+            )
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        if _SOLICITUD_GASTO_CAMPOS_INMUTABLES.intersection(fields):
+            raise IntegrityError(
+                "No se permite reasignar id, tramite_base ni solicitante "
+                "en una SolicitudGasto existente."
+            )
+        return super().bulk_update(objs, fields, **kwargs)
+
+
 class SolicitudGasto(models.Model):
     """Solicitud de gasto presentada ante Cooperadora."""
 
+    tramite_base = models.OneToOneField(
+        "comunes.TramiteBase",
+        on_delete=models.PROTECT,
+        related_name="solicitud_gasto",
+        editable=False,
+        help_text="Cabecera común protegida; número y titular coinciden con la solicitud.",
+    )
     concepto = models.CharField(
         max_length=255,
         help_text="Descripción o concepto de la necesidad de gasto.",
@@ -66,6 +105,8 @@ class SolicitudGasto(models.Model):
         help_text="Versión para control de concurrencia e historial (inicial: 0).",
     )
 
+    objects = SolicitudGastoQuerySet.as_manager()
+
     class Meta:
         verbose_name = "Solicitud de gasto"
         verbose_name_plural = "Solicitudes de gasto"
@@ -80,6 +121,72 @@ class SolicitudGasto(models.Model):
                 name="solicitud_version_no_negativa",
             ),
         ]
+
+    @classmethod
+    def from_db(cls, db: str, field_names: Any, values: Any) -> "SolicitudGasto":
+        """Conserva la identidad leída sin forzar campos diferidos."""
+        instancia = super().from_db(db, field_names, values)
+        cargados = dict(zip(field_names, values, strict=False))
+        if {"id", "tramite_base_id", "solicitante_id"} <= cargados.keys():
+            instancia._identidad_original = (
+                cargados["id"],
+                cargados["tramite_base_id"],
+                cargados["solicitante_id"],
+            )
+        else:
+            instancia._identidad_original = None
+        return instancia
+
+    def _validar_tramite_base(self) -> None:
+        """Comprueba en ORM la relación protegida antes de escribir."""
+        if self.tramite_base_id is None:
+            raise IntegrityError(
+                "La solicitud de gasto requiere una cabecera de trámite."
+            )
+        base = (
+            TramiteBase.objects.filter(pk=self.tramite_base_id)
+            .values("circuito", "numero_publico", "solicitante_actor_id")
+            .first()
+        )
+        if base is None:
+            raise IntegrityError("La cabecera de trámite no existe.")
+        if (
+            base["circuito"] != Circuito.GASTO
+            or base["numero_publico"] != self.pk
+            or base["solicitante_actor_id"] != str(self.solicitante_id)
+        ):
+            raise IntegrityError(
+                "La cabecera debe pertenecer al circuito GASTO, compartir el número "
+                "público y acreditar al solicitante de la solicitud."
+            )
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        identidad = (self.pk, self.tramite_base_id, self.solicitante_id)
+        if self._state.adding:
+            if self.pk is None:
+                raise IntegrityError(
+                    "El número público de la solicitud debe reservarse antes del alta."
+                )
+            self._validar_tramite_base()
+        else:
+            original = getattr(self, "_identidad_original", None)
+            if original is None:
+                original = (
+                    type(self)
+                    .objects.filter(pk=self.pk)
+                    .values_list("id", "tramite_base_id", "solicitante_id")
+                    .first()
+                )
+            if original is None:
+                raise IntegrityError("La solicitud de gasto no existe.")
+            if identidad != original:
+                raise IntegrityError(
+                    "No se permite reasignar id, tramite_base ni solicitante "
+                    "en una SolicitudGasto existente."
+                )
+            self._validar_tramite_base()
+        super().save(*args, **kwargs)
+        self._identidad_original = identidad
 
     def __str__(self) -> str:
         return f"Solicitud #{self.pk} - {self.concepto} (${self.monto_estimado})"

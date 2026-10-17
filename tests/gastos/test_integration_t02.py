@@ -12,6 +12,7 @@ from django.urls import reverse
 from gastos.auth import has_capability, resolve_actor
 from gastos.models import SolicitudGasto
 from gastos.queries import visible_expenses
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -203,13 +204,13 @@ def test_visible_expenses_con_actores_reales(demo_accounts: Any) -> None:
     user_a = accounts["demo_a"]
     user_b = accounts["demo_b"]
 
-    s_a = SolicitudGasto.objects.create(
+    s_a = crear_gasto_sintetico(
         concepto="Solicitud de A",
         monto_estimado=Decimal("1000.00"),
         unidad_requirente="Unidad A",
         solicitante=user_a,
     )
-    s_b = SolicitudGasto.objects.create(
+    s_b = crear_gasto_sintetico(
         concepto="Solicitud de B",
         monto_estimado=Decimal("2000.00"),
         unidad_requirente="Unidad B",

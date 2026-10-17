@@ -9,6 +9,7 @@ from django.urls import reverse
 from gastos.models import DecisionGasto, SolicitudGasto
 from gastos.services import decide_expense
 from identidad.services import Actor
+from tests.soporte_gastos import crear_gasto_sintetico
 
 pytestmark = pytest.mark.django_db
 
@@ -24,7 +25,7 @@ def gastos_busqueda(demo_accounts: Any) -> dict[str, SolicitudGasto]:
         "b_presentada": ("demo_b", "presentada", "Concepto exclusivamente ajeno"),
     }
     return {
-        name: SolicitudGasto.objects.create(
+        name: crear_gasto_sintetico(
             solicitante=accounts[owner],
             estado=estado,
             concepto=concepto,
@@ -98,7 +99,7 @@ def test_porcentaje_y_guion_bajo_son_literales(
 ) -> None:
     accounts, _ = demo_accounts
     literals = {
-        name: SolicitudGasto.objects.create(
+        name: crear_gasto_sintetico(
             concepto=f"Referencia {character} literal",
             monto_estimado="10.00",
             unidad_requirente="Unidad sintética",
@@ -115,7 +116,7 @@ def test_limite_coincide_con_longitud_del_concepto(
     demo_accounts: Any, length: int, valid: bool
 ) -> None:
     accounts, _ = demo_accounts
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="x" * 255,
         monto_estimado="10.00",
         unidad_requirente="Unidad sintética",

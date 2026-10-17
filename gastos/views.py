@@ -41,6 +41,7 @@ from gastos.services import (
     InvalidDecisionInputError,
     InvalidTransitionError,
     can_decide_expense,
+    crear_solicitud_gasto,
     decide_expense,
 )
 
@@ -169,12 +170,12 @@ class SolicitudGastoCreateView(View):
                 status=200,
             )
 
-        solicitud = form.save(commit=False)
-        # Valores estrictamente fijados por el servidor (CT-06)
-        solicitud.solicitante_id = actor.subject_id
-        solicitud.estado = EstadoSolicitud.PRESENTADA
-        solicitud.version = 0
-        solicitud.save()
+        solicitud = crear_solicitud_gasto(
+            actor=actor,
+            concepto=form.cleaned_data["concepto"],
+            monto_estimado=form.cleaned_data["monto_estimado"],
+            unidad_requirente=form.cleaned_data["unidad_requirente"],
+        )
 
         return redirect(reverse("gastos:detalle", kwargs={"pk": solicitud.pk}))
 

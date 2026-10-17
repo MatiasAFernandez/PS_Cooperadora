@@ -8,7 +8,9 @@ from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
+from comunes.models import TramiteBase
 from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -23,6 +25,7 @@ def test_ct08_get_presentar_no_crea_solicitudes(create_actor: Any, auth_client: 
     assert response.status_code == 200
     assert "form" in response.context
     assert not SolicitudGasto.objects.exists()
+    assert not TramiteBase.objects.exists()
 
 
 @pytest.mark.django_db
@@ -59,7 +62,7 @@ def test_t04_23_post_decision_con_csrf_valido_exitoso(
     HTTP 302 Found al detalle. Transacción confirmada en BD.
     """
     accounts, _ = demo_accounts
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto para verificar CSRF válido",
         monto_estimado=Decimal("1500.00"),
         unidad_requirente="Laboratorio",
@@ -100,7 +103,7 @@ def test_t04_24_post_decision_sin_token_csrf_rechazado_con_403(
     HTTP 403 Forbidden estricto por CSRF middleware. 0 escrituras en BD (no redirige a login).
     """
     accounts, _ = demo_accounts
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto para verificar rechazo CSRF",
         monto_estimado=Decimal("2500.00"),
         unidad_requirente="Laboratorio",
@@ -146,7 +149,7 @@ def test_t04_25_get_decidir_metodo_no_permitido(
     HTTP 405 Method Not Allowed. 0 modificaciones en BD.
     """
     accounts, _ = demo_accounts
-    solicitud = SolicitudGasto.objects.create(
+    solicitud = crear_gasto_sintetico(
         concepto="Gasto para verificar método GET en endpoint de decisión",
         monto_estimado=Decimal("4000.00"),
         unidad_requirente="Laboratorio",

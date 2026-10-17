@@ -14,6 +14,7 @@ from django.test import Client
 from gastos.contracts import DocumentoVerificado, OpcionDocumental
 from gastos.models import EstadoSolicitud, SolicitudGasto
 from identidad.services import GROUP_CAPABILITIES, Actor
+from tests.soporte_gastos import crear_gasto_sintetico
 
 User = get_user_model()
 
@@ -205,7 +206,7 @@ def solicitud_factory(db: Any) -> Callable[..., SolicitudGasto]:
     ) -> SolicitudGasto:
         if solicitante is None:
             solicitante = User.objects.create_user(username=f"sol_{secrets.token_hex(4)}")
-        return SolicitudGasto.objects.create(
+        return crear_gasto_sintetico(
             concepto="Gasto sintético para pago externo",
             monto_estimado=Decimal(monto),
             unidad_requirente="Unidad sintética",

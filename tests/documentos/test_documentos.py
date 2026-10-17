@@ -13,10 +13,11 @@ from django.db.models.deletion import ProtectedError
 from django.test import Client
 from django.urls import reverse
 
+from comunes.models import Circuito, TramiteBase
 from documentos.models import Documento
 from documentos.policy import ArchivoInvalido, validar_archivo
 from documentos.services import TIPOS_ELEGIBLES_PAGO_GASTOS, almacenamiento
-from gastos.models import SolicitudGasto
+from tests.soporte_gastos import crear_gasto_sintetico
 
 PDF = b"%PDF-1.7\nArchivo sintetico\n%%EOF"
 
@@ -46,10 +47,10 @@ def escenario(db, settings, tmp_path):
     for nombre in grupos:
         a.groups.add(Group.objects.get_or_create(name=nombre)[0])
     b.groups.add(Group.objects.get_or_create(name="demo_solicitante")[0])
-    gasto = SolicitudGasto.objects.create(
+    gasto = crear_gasto_sintetico(
         concepto="Ejemplo", monto_estimado="1.00", unidad_requirente="Prueba", solicitante=a
     )
-    otro = SolicitudGasto.objects.create(
+    otro = crear_gasto_sintetico(
         concepto="Ajeno", monto_estimado="1.00", unidad_requirente="Prueba", solicitante=b
     )
     cliente = Client()
@@ -80,6 +81,11 @@ def test_alta_metadatos_y_descarga_privada(escenario):
     assert documento.solicitud_gasto_id == gasto.pk
     assert documento.autor_id == a.pk
     assert documento.referencia_tramite == f"gastos:{gasto.pk}"
+    assert documento.tramite_base_id == gasto.tramite_base_id
+    assert TramiteBase.objects.count() == 2
+    assert TramiteBase.objects.filter(
+        circuito=Circuito.GASTO, numero_publico=gasto.pk
+    ).count() == 1
     assert documento.formato == "application/pdf"
     assert documento.tipo == Documento.Tipo.FACTURA_PROVEEDOR
     assert documento.procedencia == Documento.Procedencia.SOLICITANTE
