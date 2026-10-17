@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models
 from django.db.models import Q
+from django.utils.formats import date_format, localize
 
 from comunes.contracts import EventoHistorialDTO
 from comunes.models import Circuito, TramiteBase
@@ -531,8 +532,8 @@ class EventoPagoExterno(models.Model):
         """Adapta el hecho del pago sin exponer referencias o metadatos documentales."""
         pago = self.pago
         detalle = (
-            f"Importe: {pago.importe} {pago.moneda}. "
-            f"Fecha del hecho: {pago.fecha_pago.isoformat()}. "
+            f"Importe: {localize(pago.importe)} {pago.moneda}. "
+            f"Fecha del hecho: {date_format(pago.fecha_pago, 'd/m/Y')}. "
             f"Referencia externa: {pago.referencia_externa}."
         )
         return EventoHistorialDTO(

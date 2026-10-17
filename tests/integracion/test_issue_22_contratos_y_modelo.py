@@ -193,8 +193,8 @@ def test_eventos_de_gasto_y_facturacion_se_adaptan_al_dto_comun(escenario_comun)
     assert pago_dto.actor_id == str(e.staff.pk)
     assert pago_dto.fecha_hora == evento_pago.fecha_hora
     assert pago_dto.estado_resultante == EstadoSolicitud.ACEPTADA
-    assert "Importe: 825.40 ARS" in pago_dto.motivo_o_detalle
-    assert "Fecha del hecho: 2026-10-14" in pago_dto.motivo_o_detalle
+    assert "Importe: 825,40 ARS" in pago_dto.motivo_o_detalle
+    assert "Fecha del hecho: 14/10/2026" in pago_dto.motivo_o_detalle
     assert "Referencia externa: ref-prueba-sintetica-54" in pago_dto.motivo_o_detalle
     assert e.gasto.estado == EstadoSolicitud.ACEPTADA
 

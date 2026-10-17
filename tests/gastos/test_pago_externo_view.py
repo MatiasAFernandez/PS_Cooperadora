@@ -82,8 +82,8 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     assert "Compra autorizada para la demo." in cronologia[0].motivo_o_detalle
     assert cronologia[1].actor_id == str(user.pk)
     assert cronologia[1].estado_resultante == solicitud.estado
-    assert "Importe: 825.40 ARS" in cronologia[1].motivo_o_detalle
-    assert "Fecha del hecho: 2026-10-14" in cronologia[1].motivo_o_detalle
+    assert "Importe: 825,40 ARS" in cronologia[1].motivo_o_detalle
+    assert "Fecha del hecho: 14/10/2026" in cronologia[1].motivo_o_detalle
     assert "Referencia externa: ref-sintetica-001" in cronologia[1].motivo_o_detalle
     assert [evento.fecha_hora for evento in cronologia] == sorted(
         evento.fecha_hora for evento in cronologia
@@ -98,7 +98,8 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     assert b"ref-sintetica-001" in content
     assert b"Compra autorizada para la demo." in content
     assert b"Estado anterior: Presentada" in content
-    assert b"Importe: 825.40 ARS" in content
+    assert b"Importe: 825,40 ARS" in content
+    assert b"Fecha del hecho: 14/10/2026" in content
     assert f"Usuario #{user.pk}".encode() in content
     assert b"no confirma que el importe estimado est\xc3\xa9 saldado" in content
     assert b"no equivale a aprobaci\xc3\xb3n documental" in content

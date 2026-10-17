@@ -85,7 +85,10 @@ def test_parcial_comun_renderiza_campos_del_dto_y_escapa_el_detalle() -> None:
         actor_id="28",
         fecha_hora=datetime(2026, 10, 17, 15, 30, tzinfo=UTC),
         estado_resultante="aceptada",
-        motivo_o_detalle="Referencia externa: <script>falso</script>",
+        motivo_o_detalle=(
+            "Importe: 825,40 ARS. Fecha del hecho: 14/10/2026. "
+            "Referencia externa: <script>falso</script>"
+        ),
     )
 
     html = render_to_string("comunes/historial_eventos.html", {"historial": [evento]})
@@ -94,5 +97,7 @@ def test_parcial_comun_renderiza_campos_del_dto_y_escapa_el_detalle() -> None:
     assert "gastos:17" in html
     assert "actor #28" in html
     assert "estado del trámite: aceptada" in html
+    assert "Importe: 825,40 ARS" in html
+    assert "Fecha del hecho: 14/10/2026" in html
     assert "&lt;script&gt;falso&lt;/script&gt;" in html
     assert "<script>falso</script>" not in html
