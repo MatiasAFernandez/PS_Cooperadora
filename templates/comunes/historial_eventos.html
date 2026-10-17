@@ -1,0 +1,28 @@
+{% if historial %}
+<ol>
+    {% for evento in historial %}
+        <li>
+            <strong>
+                {% if evento.tipo_evento == "decision_gasto" %}
+                    Decisión de gasto
+                {% elif evento.tipo_evento == "pago_externo_registrado" %}
+                    Pago externo registrado
+                {% else %}
+                    {{ evento.tipo_evento }}
+                {% endif %}
+            </strong>
+            — {{ evento.fecha_hora|date:"d/m/Y H:i:s" }}
+            — trámite {{ evento.tramite_ref }}
+            — actor #{{ evento.actor_id }}
+            — estado del trámite: {{ evento.estado_resultante }}
+            {% if evento.motivo_o_detalle %}
+                <p>{{ evento.motivo_o_detalle }}</p>
+            {% endif %}
+        </li>
+    {% empty %}
+        <li>Sin eventos.</li>
+    {% endfor %}
+</ol>
+{% else %}
+<p>Sin eventos para este trámite.</p>
+{% endif %}

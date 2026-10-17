@@ -9,6 +9,7 @@ from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models
 from django.db.models import Q
 
+from comunes.contracts import EventoHistorialDTO
 from comunes.models import Circuito, TramiteBase
 
 
@@ -245,6 +246,26 @@ class DecisionGasto(models.Model):
 
     def __str__(self) -> str:
         return f"Decisión #{self.pk} sobre Solicitud #{self.solicitud_id}: {self.estado_resultante}"
+
+    def como_historial(self) -> EventoHistorialDTO:
+        """Adapta la decisión al contrato de lectura común sin incluir otros datos."""
+        estado_anterior = self.get_estado_anterior_display()
+        estado_resultante = self.get_estado_resultante_display()
+        detalle = (
+            f"Estado anterior: {estado_anterior}. "
+            f"Estado resultante: {estado_resultante}."
+        )
+        if self.motivo:
+            detalle += f" Motivo: {self.motivo}"
+        return EventoHistorialDTO(
+            evento_id=self.pk,
+            tramite_ref=f"gastos:{self.solicitud_id}",
+            tipo_evento="decision_gasto",
+            actor_id=str(self.autor_id),
+            fecha_hora=self.fecha,
+            estado_resultante=self.estado_resultante,
+            motivo_o_detalle=detalle,
+        )
 
 
 class PagoExternoQuerySet(models.QuerySet):
@@ -505,3 +526,21 @@ class EventoPagoExterno(models.Model):
 
     def __str__(self) -> str:
         return f"Evento #{self.pk} - {self.tipo_evento} sobre Pago #{self.pago_id}"
+
+    def como_historial(self) -> EventoHistorialDTO:
+        """Adapta el hecho del pago sin exponer referencias o metadatos documentales."""
+        pago = self.pago
+        detalle = (
+            f"Importe: {pago.importe} {pago.moneda}. "
+            f"Fecha del hecho: {pago.fecha_pago.isoformat()}. "
+            f"Referencia externa: {pago.referencia_externa}."
+        )
+        return EventoHistorialDTO(
+            evento_id=self.pk,
+            tramite_ref=f"gastos:{pago.solicitud_id}",
+            tipo_evento=self.tipo_evento,
+            actor_id=str(self.actor_id),
+            fecha_hora=self.fecha_hora,
+            estado_resultante=pago.solicitud.estado,
+            motivo_o_detalle=detalle,
+        )

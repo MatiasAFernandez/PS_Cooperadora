@@ -1,0 +1,20 @@
+<nav aria-label="Navegación de trámites">
+    <ul style="display: flex; gap: 1rem; flex-wrap: wrap; list-style: none; margin: 0; padding: 0;">
+        {% if actor %}
+            {% if "gastos.consultar_propias" in actor.capabilities or "gastos.consultar_todas" in actor.capabilities %}
+                <li><a href="{% url 'gastos:lista' %}">Consultar gastos</a></li>
+            {% endif %}
+        {% endif %}
+        {% if actor and "gastos.presentar" in actor.capabilities %}
+            <li><a href="{% url 'gastos:presentar' %}">Presentar gasto</a></li>
+        {% endif %}
+        {% if actor %}
+            {% if "facturacion.consultar_propias" in actor.capabilities or "facturacion.consultar_todas" in actor.capabilities %}
+                <li><a href="{% url 'facturacion:lista' %}">Consultar facturación</a></li>
+            {% endif %}
+        {% endif %}
+        {% if actor and "facturacion.presentar" in actor.capabilities %}
+            <li><a href="{% url 'facturacion:presentar' %}">Presentar facturación</a></li>
+        {% endif %}
+    </ul>
+</nav>

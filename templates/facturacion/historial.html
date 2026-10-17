@@ -1,4 +1,1 @@
-<ol>{% for evento in historial %}<li><strong>{{ evento.tipo_evento }}</strong>
-— {{ evento.fecha_hora }} — actor {{ evento.actor_id }} — {{ evento.estado_resultante }}
-{% if evento.motivo_o_detalle %}<p>{{ evento.motivo_o_detalle }}</p>{% endif %}</li>
-{% empty %}<li>Sin eventos.</li>{% endfor %}</ol>
+{% include "comunes/historial_eventos.html" %}

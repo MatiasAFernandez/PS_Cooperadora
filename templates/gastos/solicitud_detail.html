@@ -156,43 +156,5 @@
 {% endif %}
 
 <h4 style="margin-top: 30px;">Historial de Decisiones y Pagos</h4>
-{% if cronologia %}
-    <table style="max-width: 700px; width: 100%; margin-top: 10px;">
-        <caption>Decisiones y pagos registrados</caption>
-        <thead>
-            <tr>
-                <th scope="col">Fecha y hora</th>
-                <th scope="col">Hito</th>
-                <th scope="col">Actor</th>
-                <th scope="col">Detalle</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for movimiento in cronologia %}
-                <tr>
-                    <td>
-                        {% if movimiento.fecha %}
-                            {{ movimiento.fecha|date:"d/m/Y H:i:s" }}
-                        {% else %}
-                            No disponible
-                        {% endif %}
-                    </td>
-                    <td><span class="badge">{{ movimiento.titulo }}</span></td>
-                    <td>{{ movimiento.actor }}</td>
-                    <td>
-                        {% if movimiento.tipo == "pago" %}
-                            Importe: {{ movimiento.importe|localize }} {{ movimiento.moneda }}.
-                            Fecha del hecho: {{ movimiento.fecha_pago|date:"d/m/Y" }}.
-                            Referencia externa: {{ movimiento.referencia_externa }}.
-                        {% else %}
-                            {{ movimiento.detalle }}
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>Sin decisiones ni pagos registrados para esta solicitud.</p>
-{% endif %}
+{% include "comunes/historial_eventos.html" with historial=cronologia %}
 {% endblock %}

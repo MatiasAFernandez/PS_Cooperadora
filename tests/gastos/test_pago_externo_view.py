@@ -8,6 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from comunes.contracts import EventoHistorialDTO
 from gastos.models import DecisionGasto, EstadoSolicitud
 from gastos.payments import registrar_pago_externo
 from identidad.services import Actor
@@ -65,10 +66,29 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     assert response.context["tramite_id"] == f"gastos:{solicitud.pk}"
     assert response.context["pago_consulta"].importe == Decimal("825.40")
     assert not hasattr(response.context["pago_consulta"], "referencia_documental")
-    assert [item["tipo"] for item in response.context["cronologia"]] == [
-        "decision",
-        "pago",
+    cronologia = response.context["cronologia"]
+    assert all(isinstance(evento, EventoHistorialDTO) for evento in cronologia)
+    assert [evento.tipo_evento for evento in cronologia] == [
+        "decision_gasto",
+        "pago_externo_registrado",
     ]
+    assert [evento.tramite_ref for evento in cronologia] == [
+        f"gastos:{solicitud.pk}",
+        f"gastos:{solicitud.pk}",
+    ]
+    assert cronologia[0].actor_id == str(decision_author.pk)
+    assert cronologia[0].estado_resultante == EstadoSolicitud.ACEPTADA
+    assert "Estado anterior: Presentada" in cronologia[0].motivo_o_detalle
+    assert "Compra autorizada para la demo." in cronologia[0].motivo_o_detalle
+    assert cronologia[1].actor_id == str(user.pk)
+    assert cronologia[1].estado_resultante == solicitud.estado
+    assert "Importe: 825.40 ARS" in cronologia[1].motivo_o_detalle
+    assert "Fecha del hecho: 2026-10-14" in cronologia[1].motivo_o_detalle
+    assert "Referencia externa: ref-sintetica-001" in cronologia[1].motivo_o_detalle
+    assert [evento.fecha_hora for evento in cronologia] == sorted(
+        evento.fecha_hora for evento in cronologia
+    )
+    assert not hasattr(cronologia[1], "referencia_documental")
 
     content = response.content
     assert b"Pago externo registrado" in content
@@ -77,6 +97,8 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     assert b"14/10/2026" in content
     assert b"ref-sintetica-001" in content
     assert b"Compra autorizada para la demo." in content
+    assert b"Estado anterior: Presentada" in content
+    assert b"Importe: 825.40 ARS" in content
     assert f"Usuario #{user.pk}".encode() in content
     assert b"no confirma que el importe estimado est\xc3\xa9 saldado" in content
     assert b"no equivale a aprobaci\xc3\xb3n documental" in content
@@ -129,9 +151,9 @@ def test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle(
     assert response.status_code == 400
     assert response.context["tramite_id"] == f"gastos:{solicitud.pk}"
     assert response.context["pago_consulta"].importe == Decimal("825.40")
-    assert [item["tipo"] for item in response.context["cronologia"]] == [
-        "decision",
-        "pago",
+    assert [evento.tipo_evento for evento in response.context["cronologia"]] == [
+        "decision_gasto",
+        "pago_externo_registrado",
     ]
     assert b"Acci\xc3\xb3n de decisi\xc3\xb3n desconocida" in response.content
     assert b"825,40 ARS" in response.content
