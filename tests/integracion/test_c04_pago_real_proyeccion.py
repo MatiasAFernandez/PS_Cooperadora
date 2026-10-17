@@ -28,6 +28,7 @@ from django.contrib.auth.models import Group
 from django.test import Client
 from django.urls import reverse
 
+from comunes.models import Circuito, TramiteBase
 from documentos.c01 import ProveedorDocumentalGastos
 from documentos.models import Documento
 from documentos.services import incorporar
@@ -257,15 +258,26 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert str(doc_reemplazo.referencia_version) not in contenido_reemplazo
 
     # 11. Escenario con presupuesto/proforma: comprueba texto distinto
-    # escenario_comun inserta un gasto con pk fija y no avanza la secuencia de PostgreSQL.
-    gasto_presupuesto = SolicitudGasto.objects.create(
-        pk=e.gasto.pk + 100000,
-        concepto="Gasto con presupuesto ficticio",
-        monto_estimado=Decimal("50.00"),
-        unidad_requirente="Unidad presupuesto",
-        solicitante=e.a,
-        estado=EstadoSolicitud.ACEPTADA,
+    # El pk fijo no avanza la secuencia de gastos. Crear la cabecera explícita
+    # conserva el puente en la base de #55 y permite enlazarla cuando corre con #53.
+    numero_gasto_presupuesto = e.gasto.pk + 100000
+    cabecera_presupuesto = TramiteBase.objects.create(
+        circuito=Circuito.GASTO,
+        numero_publico=numero_gasto_presupuesto,
+        solicitante_actor_id=str(e.actor_a.subject_id),
+        centro_costo_codigo=None,
     )
+    datos_gasto_presupuesto = {
+        "pk": numero_gasto_presupuesto,
+        "concepto": "Gasto con presupuesto ficticio",
+        "monto_estimado": Decimal("50.00"),
+        "unidad_requirente": "Unidad presupuesto",
+        "solicitante": e.a,
+        "estado": EstadoSolicitud.ACEPTADA,
+    }
+    if any(field.name == "tramite_base" for field in SolicitudGasto._meta.local_fields):
+        datos_gasto_presupuesto["tramite_base"] = cabecera_presupuesto
+    gasto_presupuesto = SolicitudGasto.objects.create(**datos_gasto_presupuesto)
     doc_presupuesto = incorporar(
         actor=e.actor_a,
         referencia=f"gastos:{gasto_presupuesto.pk}",
