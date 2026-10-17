@@ -1,0 +1,3 @@
+{% extends "facturacion/base.html" %}{% block content %}
+<h2>No se pudo completar la acción</h2><p role="alert">{{ error }}</p>
+<p><a href="{% url 'facturacion:lista' %}">Volver a solicitudes</a></p>{% endblock %}

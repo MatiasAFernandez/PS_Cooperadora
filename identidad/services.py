@@ -11,22 +11,30 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
     "demo_operadora": frozenset({"gastos.consultar_todas", "gastos.decidir"}),
     "demo_lectura": frozenset({"gastos.consultar_todas"}),
     "demo_gastos_pago": frozenset({"gastos.registrar_pago"}),
-    "demo_facturacion_solicitante": frozenset({
-        "facturacion.presentar", "facturacion.consultar_propias", "facturacion.corregir",
-    }),
+    "demo_facturacion_solicitante": frozenset(
+        {
+            "facturacion.presentar",
+            "facturacion.consultar_propias",
+            "facturacion.corregir",
+        }
+    ),
     "demo_facturacion_lectura": frozenset({"facturacion.consultar_todas"}),
-    "demo_facturacion_operadora": frozenset({
-        "facturacion.consultar_todas", "facturacion.observar",
-        "facturacion.registrar_factura_externa", "facturacion.registrar_cobro",
-        "facturacion.cerrar",
-    }),
+    "demo_facturacion_operadora": frozenset(
+        {
+            "facturacion.consultar_todas",
+            "facturacion.observar",
+            "facturacion.registrar_factura_externa",
+            "facturacion.registrar_cobro",
+            "facturacion.cerrar",
+        }
+    ),
     "demo_documentos_aporte": frozenset({"documentos.incorporar"}),
-    "demo_documentos_metadatos": frozenset({
-        "documentos.consultar_metadatos", "documentos.ver_metadatos"
-    }),
-    "demo_documentos_descarga": frozenset({
-        "documentos.recuperar_contenido", "documentos.descargar"
-    }),
+    "demo_documentos_metadatos": frozenset(
+        {"documentos.consultar_metadatos", "documentos.ver_metadatos"}
+    ),
+    "demo_documentos_descarga": frozenset(
+        {"documentos.recuperar_contenido", "documentos.descargar"}
+    ),
 }
 KNOWN_CAPABILITIES = frozenset().union(*GROUP_CAPABILITIES.values())
 
@@ -37,6 +45,7 @@ class Actor:
 
     subject_id: int
     capabilities: frozenset[str]
+    email_registrado: str | None = None
 
 
 def resolve_actor(request: HttpRequest) -> Actor | None:
@@ -56,7 +65,11 @@ def resolve_actor(request: HttpRequest) -> Actor | None:
     capabilities = frozenset().union(
         *(GROUP_CAPABILITIES[name] for name in group_names if name in GROUP_CAPABILITIES)
     )
-    return Actor(subject_id=user.pk, capabilities=capabilities)
+    return Actor(
+        subject_id=user.pk,
+        capabilities=capabilities,
+        email_registrado=user.email.strip() or None,
+    )
 
 
 def has_capability(actor: Actor | None, code: str) -> bool:
