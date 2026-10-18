@@ -87,16 +87,54 @@
     <h4 style="margin-top: 0; margin-bottom: 8px;">Documentación de Respaldo</h4>
     {% if pago_consulta %}
         {% if respaldo_categoria == "factura" %}
-            <p style="margin: 0;">Respaldo documental registrado: factura. Un estado de revisión desconocido no equivale a aprobación documental ni satisface por sí sola el pendiente de factura definitiva.</p>
+            <p style="margin: 0;">Respaldo documental registrado: factura. {% if puede_ver_documentos %}El resultado de revisión de cada versión figura en «Versiones y revisión documental».{% endif %}</p>
         {% elif respaldo_categoria == "presupuesto" %}
-            <p style="margin: 0;">Respaldo documental registrado: presupuesto/proforma. Falta aportar factura definitiva y un estado de revisión desconocido no implica aprobación documental.</p>
+            <p style="margin: 0;">Respaldo documental registrado: presupuesto/proforma. {% if puede_ver_documentos %}El resultado de revisión de cada versión figura en «Versiones y revisión documental».{% endif %}</p>
+        {% elif puede_ver_documentos %}
+            <p style="margin: 0;">La categoría del respaldo no surge por sí sola del registro de pago. El resultado de revisión de cada versión figura en «Versiones y revisión documental».</p>
         {% else %}
-            <p style="margin: 0;">Esta vista no muestra metadatos ni estado de revisión del comprobante. El registro de pago no equivale a aprobación documental ni acredita la factura definitiva pendiente.</p>
+            <p style="margin: 0;">Esta vista no muestra los metadatos ni el estado de revisión del comprobante. El pago no equivale a aprobación documental ni determina la revisión o suficiencia documental.</p>
         {% endif %}
     {% else %}
         <p style="margin: 0;">{{ mensaje_respaldo|default:solicitud.mensaje_respaldo }}</p>
     {% endif %}
 </div>
+
+{% if puede_ver_documentos %}
+<div id="documentos-gasto" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
+    <h4 style="margin-top: 0;">Versiones y revisión documental</h4>
+    {% if versiones_documentales %}
+        <ul style="list-style: none; padding-left: 0;">
+            {% for version in versiones_documentales %}
+                <li style="margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #dee2e6;">
+                    <strong>{{ version.tipo_mostrado }}</strong> — {{ version.nombre }} — versión {{ version.version }}
+                    <span class="badge">{% if version.vigente %}Vigente{% else %}Reemplazada{% endif %}</span>
+                    — <a href="{% url 'documentos:revision' version.documento_id %}">Ver revisión</a>
+                    <p style="margin: 4px 0;">Aportado por Usuario #{{ version.actor_id }} el {{ version.fecha_incorporacion|date:"d/m/Y H:i:s" }}.</p>
+                    {% if version.revision_actual %}
+                        <p style="margin: 4px 0;">Último resultado: <strong>{{ version.revision_actual.resultado_mostrado }}</strong>.</p>
+                    {% else %}
+                        <p style="margin: 4px 0;"><strong>PENDIENTE</strong> — sin acto de revisión registrado.</p>
+                    {% endif %}
+                    {% if version.revisiones %}
+                        <ul>
+                            {% for revision in version.revisiones %}
+                                <li>
+                                    <strong>{{ revision.resultado_mostrado }}</strong> — Usuario #{{ revision.actor_id }} — {{ revision.fecha|date:"d/m/Y H:i:s" }}
+                                    {% if revision.motivo %}<p style="margin: 2px 0;">{{ revision.motivo }}</p>{% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p style="margin: 0;">No hay versiones documentales visibles para este gasto.</p>
+    {% endif %}
+    <p role="note" style="margin-bottom: 0;">Las versiones observadas o rechazadas no se ofrecen para nuevos pagos; siguen existiendo y conservan su historial. El tipo documental y su resultado de revisión se muestran por separado. Esta vista no determina si el documento satisface un requisito del trámite.</p>
+</div>
+{% endif %}
 
 {% if error_pago %}
 <div role="alert" style="color: red; margin-top: 20px; max-width: 600px;">
@@ -155,6 +193,6 @@
 </div>
 {% endif %}
 
-<h4 style="margin-top: 30px;">Historial de Decisiones y Pagos</h4>
+<h4 style="margin-top: 30px;">Historial de Decisiones, Pagos y Documentos</h4>
 {% include "comunes/historial_eventos.html" with historial=cronologia %}
 {% endblock %}
