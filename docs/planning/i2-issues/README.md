@@ -65,11 +65,8 @@ cerrada y su proveedor documental está disponible en main.
 
 #22 y #23 se cerraron mediante PR #60/#61. La Issue #24 continúa abierta para
 DOC-R04 y conserva la dependencia de #21 y la regla de revisión registrada en
-#20; PR #62 es una propuesta abierta con CI quality aprobada, pendiente de
-revisión de Franco e integración. #28 sigue abierta para la integración conjunta.
-DOC-R04 y conserva como dependencias pendientes #21 y la regla de revisión de
-#20; PR #62 es una propuesta abierta con CI quality aprobada, pendiente de
-revisión de Franco e integración. #28 sigue abierta para la integración conjunta.
+#20. PR #62 es una propuesta abierta con CI quality aprobada, pendiente de
+revisión de Franco e integración; #28 sigue abierta para la integración conjunta.
 
 I2-04 puede entregar primero el alta y consulta, pero la Issue se cierra sólo
 con observación, corrección e historial de esos eventos. El contrato de I2-05
