@@ -17,8 +17,13 @@ no recrea esas Issues y distingue su estado del registro original de la propuest
 El Plan de Trabajo define una entrega incremental, pero no fija el contenido de
 un incremento llamado I2. Este paquete propone I2 como el recorrido de
 facturación y cobros de Matías, sus componentes comunes y la integración
-necesaria. La prioridad MUST/SHOULD proviene del plan; el orden de Issues es una
-propuesta técnica del equipo.
+necesaria. La prioridad MUST/SHOULD proviene del plan; el orden de Issues es
+una propuesta técnica del equipo.
+
+Estado operativo al 18/10/2026: #22 y #23 están cerradas tras PR #60/#61; #24
+sigue abierta y PR #62 propone cambios con CI quality aprobada, pendiente de
+revisión de Franco e integración. #28 continúa abierta. La última columna de la
+tabla conserva el estado inicial de cada propuesta.
 
 ## Validación de las specs contra el plan
 
@@ -56,16 +61,24 @@ porque éstas reagrupan resultados y no hay horas ejecutadas acreditadas.
 | 11 | [#30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/30) ([I2-11](11-consultas.md)) Agregar filtros y resúmenes operativos de facturación | 008 | #25 a #27; priorización confirmada | Medio; permisos y totales decimales | SHOULD; Backlog opcional |
 
 Los órdenes 2 y 3 pueden avanzar en paralelo tras I2-01. La Issue #19 está
-cerrada y su proveedor documental está disponible en main. La Issue #24 continúa
-abierta para DOC-R04 y conserva sus dependencias de #21/#22 y de la regla de
-revisión de #20. I2-04 puede entregar primero el alta y consulta, pero la Issue
-se cierra sólo con observación, corrección e historial de esos eventos. El
-contrato de I2-05 puede prepararse junto a I2-04; el consumidor de gastos ya
-integra el proveedor real mediante PR #55 y #28 conserva la integración conjunta
-de ambos circuitos. I2-06 no presupone cobro; I2-07 no presupone cancelación. I2-08
-completa esas reglas después de verificar los datos vinculados. I2-11 puede
-desarrollarse antes de la demostración final si Cooperadora confirma su prioridad;
-no bloquea el cierre del recorrido MUST.
+cerrada y su proveedor documental está disponible en main.
+
+#22 y #23 se cerraron mediante PR #60/#61. La Issue #24 continúa abierta para
+DOC-R04 y conserva la dependencia de #21 y la regla de revisión registrada en
+#20; PR #62 es una propuesta abierta con CI quality aprobada, pendiente de
+revisión de Franco e integración. #28 sigue abierta para la integración conjunta.
+DOC-R04 y conserva como dependencias pendientes #21 y la regla de revisión de
+#20; PR #62 es una propuesta abierta con CI quality aprobada, pendiente de
+revisión de Franco e integración. #28 sigue abierta para la integración conjunta.
+
+I2-04 puede entregar primero el alta y consulta, pero la Issue se cierra sólo
+con observación, corrección e historial de esos eventos. El contrato de I2-05
+puede prepararse junto a I2-04; el consumidor de gastos ya integra el proveedor
+real mediante PR #55. #28 conserva la integración conjunta de ambos circuitos.
+I2-06 no presupone cobro; I2-07 no presupone cancelación. I2-08 completa esas
+reglas después de verificar los datos vinculados. I2-11 puede desarrollarse
+antes de la demostración final si Cooperadora confirma su prioridad; no bloquea
+el cierre del recorrido MUST.
 
 ## Seguimiento e integración
 
