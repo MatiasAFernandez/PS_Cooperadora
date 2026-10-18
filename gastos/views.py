@@ -23,7 +23,7 @@ from gastos.forms import (
     PagoExternoForm,
     SolicitudGastoForm,
 )
-from gastos.models import EstadoSolicitud, PagoExterno
+from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
 from gastos.payments import (
     PaymentConflictError,
     PaymentExpenseNotFoundError,
@@ -210,44 +210,24 @@ class SolicitudGastoListView(View):
 
 def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
     """Construye el contexto compartido por el detalle y sus errores de decisión."""
-    decisiones = solicitud.decisiones.select_related("autor").all()
+    decisiones = solicitud.decisiones.all()
     pago_consulta = consultar_pago_externo(actor=actor, solicitud_id=solicitud.pk)
-    cronologia: list[dict[str, Any]] = []
-    for decision in decisiones:
-        estado_anterior = decision.get_estado_anterior_display()
-        estado_resultante = decision.get_estado_resultante_display()
-        detalle = f"Estado: {estado_anterior} → {estado_resultante}"
-        if decision.motivo:
-            detalle += f" — {decision.motivo}"
-        cronologia.append(
-            {
-                "fecha": decision.fecha,
-                "tipo": "decision",
-                "titulo": f"Decisión: {estado_resultante}",
-                "actor": decision.autor.username,
-                "detalle": detalle,
-            }
-        )
-
+    cronologia = [decision.como_historial() for decision in decisiones]
     if pago_consulta is not None:
-        cronologia.append(
-            {
-                "fecha": pago_consulta.fecha_registro,
-                "tipo": "pago",
-                "titulo": "Pago externo registrado",
-                "actor": (
-                    f"Usuario #{pago_consulta.actor_id}"
-                    if pago_consulta.actor_id is not None
-                    else "No disponible"
-                ),
-                "importe": pago_consulta.importe,
-                "moneda": pago_consulta.moneda,
-                "fecha_pago": pago_consulta.fecha_pago,
-                "referencia_externa": pago_consulta.referencia_externa,
-            }
+        evento_pago = (
+            EventoPagoExterno.objects.filter(pago_id=pago_consulta.id)
+            .select_related("pago__solicitud")
+            .defer("pago__referencia_documental", "pago__huella_idempotencia")
+            .first()
         )
+        if evento_pago is not None:
+            cronologia.append(evento_pago.como_historial())
     cronologia.sort(
-        key=lambda movimiento: (movimiento["fecha"] is None, movimiento["fecha"])
+        key=lambda evento: (
+            evento.fecha_hora is None,
+            evento.fecha_hora,
+            evento.evento_id,
+        )
     )
 
     can_decide = any(

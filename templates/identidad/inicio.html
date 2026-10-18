@@ -7,9 +7,7 @@
 <body>
   <h1>Sesión de demostración activa</h1>
   <p>Sujeto local: {{ actor.subject_id }}</p>
-  {% if "facturacion.consultar_propias" in actor.capabilities or "facturacion.consultar_todas" in actor.capabilities %}
-  <p><a href="{% url 'facturacion:lista' %}">Consultar solicitudes de facturación</a></p>
-  {% endif %}
+  {% include "comunes/navegacion_tramites.html" %}
   <form method="post" action="{% url 'identidad:logout' %}">
     {% csrf_token %}
     <button type="submit">Salir</button>

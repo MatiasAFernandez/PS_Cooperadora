@@ -11,8 +11,7 @@ button{background:#164fc4;color:white;border:0;border-radius:.3rem;cursor:pointe
 .notice{background:#edf3fb;padding:1rem}dt{font-weight:600}dd{margin-bottom:1rem;overflow-wrap:anywhere}
 :focus-visible{outline:3px solid #d78d00;outline-offset:2px}
 </style></head><body>
-<header><h1>Facturación — Cooperadora</h1><nav aria-label="Facturación">
-<a href="{% url 'facturacion:lista' %}">Solicitudes</a>
-{% if "facturacion.presentar" in actor.capabilities %}<a href="{% url 'facturacion:presentar' %}">Nueva solicitud</a>{% endif %}
-<a href="{% url 'identidad:inicio' %}">Inicio de demo</a>
-</nav></header><main>{% block content %}{% endblock %}</main></body></html>
+<header><h1>Facturación — Cooperadora</h1>
+{% include "comunes/navegacion_tramites.html" %}
+<p><a href="{% url 'identidad:inicio' %}">Inicio de demo</a></p>
+</header><main>{% block content %}{% endblock %}</main></body></html>

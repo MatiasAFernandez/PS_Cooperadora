@@ -1,15 +1,23 @@
 """Integridad real y contrato común del tramo de Matías en #22."""
 
+from datetime import date
+
 import pytest
 from django.db import IntegrityError, connection, transaction
 
-from comunes.contracts import ReferenciaCruzadaError, TramiteNoDisponible, TramiteRef
+from comunes.contracts import (
+    EventoHistorialDTO,
+    ReferenciaCruzadaError,
+    TramiteNoDisponible,
+    TramiteRef,
+)
 from comunes.models import Circuito, TramiteBase
 from comunes.services import registrar_cabecera_gasto, resolver_tramite_base
 from documentos.models import Documento
 from documentos.policy import ArchivoInvalido
 from documentos.services import incorporar
 from facturacion.models import EventoFacturacion, SolicitudFacturacion
+from gastos.models import DecisionGasto, EstadoSolicitud, EventoPagoExterno, PagoExterno
 
 from .helpers import archivo_pdf
 
@@ -131,6 +139,90 @@ def test_eventos_facturacion_append_only_con_dto_cronologico(escenario_comun):
         eventos[0].save()
     with pytest.raises(IntegrityError):
         eventos[0].delete()
+
+
+def test_eventos_de_gasto_y_facturacion_se_adaptan_al_dto_comun(escenario_comun):
+    e = escenario_comun
+    assert e.gasto.pk == e.factura.pk
+
+    decision = DecisionGasto.objects.create(
+        solicitud=e.gasto,
+        autor=e.staff,
+        motivo="Compra sintética autorizada.",
+        estado_anterior=EstadoSolicitud.PRESENTADA,
+        estado_resultante=EstadoSolicitud.ACEPTADA,
+    )
+    pago = PagoExterno.objects.create(
+        solicitud=e.gasto,
+        importe="825.40",
+        moneda="ARS",
+        fecha_pago=date(2026, 10, 14),
+        referencia_externa="ref-prueba-sintetica-54",
+        referencia_documental="doc-privado-sintetico-54",
+        huella_idempotencia="a" * 64,
+    )
+    evento_pago = EventoPagoExterno.objects.create(pago=pago, actor=e.staff)
+    evento_factura = EventoFacturacion.objects.create(
+        solicitud=e.factura,
+        tipo_evento="PRESENTACION",
+        actor=e.b,
+        estado_resultante=e.factura.estado,
+        motivo_o_detalle="Solicitud sintética presentada.",
+        snapshot_datos={"dato_privado": "no se proyecta al DTO"},
+    )
+
+    decision_dto = decision.como_historial()
+    pago_dto = evento_pago.como_historial()
+    factura_dto = evento_factura.como_historial()
+
+    assert all(
+        isinstance(evento, EventoHistorialDTO)
+        for evento in (decision_dto, pago_dto, factura_dto)
+    )
+    assert decision_dto.tramite_ref == pago_dto.tramite_ref == f"gastos:{e.gasto.pk}"
+    assert factura_dto.tramite_ref == f"facturacion:{e.factura.pk}"
+    assert decision_dto.tramite_ref != factura_dto.tramite_ref
+    assert decision_dto.tipo_evento == "decision_gasto"
+    assert decision_dto.actor_id == str(e.staff.pk)
+    assert decision_dto.fecha_hora == decision.fecha
+    assert decision_dto.estado_resultante == EstadoSolicitud.ACEPTADA
+    assert "Estado anterior: Presentada" in decision_dto.motivo_o_detalle
+    assert "Compra sintética autorizada." in decision_dto.motivo_o_detalle
+
+    assert pago_dto.tipo_evento == "pago_externo_registrado"
+    assert pago_dto.actor_id == str(e.staff.pk)
+    assert pago_dto.fecha_hora == evento_pago.fecha_hora
+    assert pago_dto.estado_resultante == EstadoSolicitud.ACEPTADA
+    assert "Importe: 825,40 ARS" in pago_dto.motivo_o_detalle
+    assert "Fecha del hecho: 14/10/2026" in pago_dto.motivo_o_detalle
+    assert "Referencia externa: ref-prueba-sintetica-54" in pago_dto.motivo_o_detalle
+    assert e.gasto.estado == EstadoSolicitud.ACEPTADA
+
+    assert factura_dto.tipo_evento == evento_factura.tipo_evento
+    assert factura_dto.actor_id == str(e.b.pk)
+    assert factura_dto.fecha_hora == evento_factura.fecha_hora
+    assert factura_dto.estado_resultante == evento_factura.estado_resultante
+    assert factura_dto.motivo_o_detalle == evento_factura.motivo_o_detalle
+
+    for dto in (decision_dto, pago_dto, factura_dto):
+        assert not hasattr(dto, "referencia_documental")
+        assert not hasattr(dto, "huella_idempotencia")
+        assert not hasattr(dto, "snapshot_datos")
+    datos_pago = " ".join(
+        str(getattr(pago_dto, campo))
+        for campo in (
+            "evento_id",
+            "tramite_ref",
+            "tipo_evento",
+            "actor_id",
+            "fecha_hora",
+            "estado_resultante",
+            "motivo_o_detalle",
+        )
+    )
+    assert "doc-privado-sintetico-54" not in datos_pago
+    assert "huella" not in datos_pago
+    assert "dato_privado" not in str(factura_dto)
 
 
 def test_evento_y_cambio_se_revierten_juntos(escenario_comun):

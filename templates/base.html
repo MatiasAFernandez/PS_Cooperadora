@@ -24,12 +24,7 @@
 <body>
     <header>
         <h2>PS Cooperadora — Circuito de Gastos</h2>
-        <nav>
-            <a href="{% url 'gastos:lista' %}">Mis Solicitudes</a>
-            {% if actor and "gastos.presentar" in actor.capabilities %}
-            <a href="{% url 'gastos:presentar' %}">Presentar Solicitud</a>
-            {% endif %}
-        </nav>
+        {% include "comunes/navegacion_tramites.html" %}
     </header>
 
     <main>

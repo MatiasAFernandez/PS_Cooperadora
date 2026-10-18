@@ -1,5 +1,18 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
+## Verificación técnica de #23 — 18/10/2026
+
+El recorrido de demo se integró en #52 con revisión de Franco. La verificación
+de cierre comprueba FAC-R01–R04, incluyendo el ciclo HTTP con CSRF real, reenvíos,
+versiones incompatibles, propiedad, actores/fechas e historial común de #59.
+La [matriz de evidencia](../evidence/i2-23-cierre-solicitudes.md) relaciona cada
+criterio con pruebas y revisión. No fue necesario cambiar el comportamiento.
+
+El cierre técnico usa el perfil provisional de demo descrito abajo. Conforme al
+alcance ajustado de #20, Matías recoge la validación de Cooperadora después de
+la demostración en #29; registra campos, catálogos, actores y excepciones que se
+confirmen o cambien. No se declara esa validación completada por cerrar #23.
+
 ## Corte de implementación #23 — 16/10/2026
 
 Se concreta el recorrido de demo PRESENTADA → OBSERVADA → PRESENTADA:
@@ -20,8 +33,9 @@ La [guía](../guides/recorrido-facturacion-i2.md) permite reproducir el recorrid
 Los pendientes históricos siguientes siguen sujetos a validación; no implican
 que este corte haya agregado rechazo definitivo, cierre o revisión documental.
 
-- Estado: decisiones condicionales y de acceso recibidas; faltan campos,
-  transiciones y trazabilidad de la validación.
+- Alcance técnico: presentación, consulta, observación y corrección de demo
+  implementadas y verificadas. La confirmación operativa de campos, catálogos
+  y transiciones se registra después de presentar la demo.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
   para validación y [#23](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/23)
@@ -107,8 +121,11 @@ debe poder revisarla, observarla y recibir una corrección trazable.
   sección de comprobante son visibles pero no llevan `*`. Su necesidad por
   estado y validación en el nuevo sistema siguen abiertas. El trámite agrega
   identificador, presentador, fechas, estado e historial.
-- Roles autorizados: solicitante y personal de Cooperadora con capacidades de
-  presentación, revisión o corrección por validar.
+- Capacidades del perfil de demo: facturacion.presentar y consulta propia para
+  el solicitante; facturacion.observar y consulta global para la operadora;
+  facturacion.corregir exige también titularidad y estado OBSERVADA. La consulta
+  global de lectura no concede acciones. Su asignación a cargos reales queda
+  sujeta a confirmación operativa.
 - Datos sintéticos o anonimizados para pruebas: dos solicitantes, solicitudes y
   observaciones ficticias.
 
@@ -125,8 +142,9 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 - Pruebas unitarias: validación de datos y acciones permitidas por estado.
 - Pruebas de integración: presentación, observación, corrección, acceso ajeno y
   petición desde estado desactualizado.
-- Demostración o evidencia: recorrido solicitante → Cooperadora → solicitante con
-  información sintética y devolución registrada.
+- Evidencia técnica: recorrido sintético solicitante → operadora → solicitante,
+  historial, permisos y pruebas. La devolución de Cooperadora se registra en
+  #29, con responsable Matías, después de presentar la demo.
 
 ## Preguntas abiertas
 
@@ -142,3 +160,4 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 | 2026-09-17 | Plan de Trabajo corregido | Matías desarrolla el recorrido completo de solicitudes de facturación. | Los campos y reglas quedan en borrador hasta el relevamiento y la validación. |
 | 2026-10-09 | Formulario de factura y primera entrevista | Registrar el inventario y separar el proceso actual de propuestas para el nuevo sistema. | La spec sigue en borrador; no se aprueban todavía obligatoriedades ni transiciones para el nuevo sistema. |
 | 2026-10-09 | Corrección del formulario de factura por el usuario | Registrar 13 marcas de obligatoriedad en la primera página y ninguna en los tres campos de comprobante. | P02 queda parcialmente respondida; las condiciones y validaciones para el nuevo sistema siguen sin confirmar. |
+| 2026-10-18 | #52 revisada por Franco, #22 cerrada y aceptación HTTP de #23 | Verificar el perfil de demo PRESENTADA → OBSERVADA → PRESENTADA con historial, permisos y rechazo de reenvíos sin efectos. | Cierre técnico FAC-R01–R04; validación operativa posterior en #29, sin adelantar revisión documental, facturas, cobros ni cierre. |
