@@ -363,6 +363,11 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     assert "Revisión posterior" in contenido
     assert "No hay versiones documentales visibles" not in contenido
     assert "OBSERVADO" in contenido
+    assert (
+        "Las versiones cuyo último resultado de revisión sea observado o rechazado "
+        "no se ofrecen para nuevos pagos; siguen existiendo y conservan su historial."
+        in contenido
+    )
     assert "La categoría del respaldo no surge por sí sola del registro de pago." in contenido
     assert (
         "El resultado de revisión de cada versión figura en "

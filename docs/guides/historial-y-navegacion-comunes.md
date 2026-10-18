@@ -24,8 +24,12 @@ circuito siguen siendo independientes.
 - #24 agrega el hecho `revision_documental` desde `RevisionDocumento` al mismo
   `EventoHistorialDTO`. Conserva resultado, motivo, actor y fecha por versión;
   se consulta en la pantalla autorizada del documento y reutiliza el parcial
-  común. Su resultado documental se rotula por separado del estado del trámite;
-  no se incorpora automáticamente a la cronología de decisiones/pagos.
+  común. Su resultado documental se rotula por separado del estado del trámite.
+- La rama local #49 extiende la cronología del detalle de gastos con eventos
+  `aporte_documental` y revisiones para actores con
+  `documentos.consultar_metadatos`, ordenados por fecha y sin exposición a
+  actores que carecen de esa capacidad. #49 permanece local y su prueba
+  PostgreSQL aún no se ejecutó.
 - `templates/comunes/historial_eventos.html` consume el DTO en ambos detalles.
   La cronología se ordena por hora del evento y usa el identificador del evento
   para desempatar.
