@@ -1,8 +1,19 @@
 # SPEC-003 — Documentos protegidos de los trámites
 
-- Estado: decisiones técnicas de #19 confirmadas el 16/10/2026 y primer tramo
-  de gastos integrado mediante PR #47; extensión a facturación, revisión
-  documental e integración de ambos circuitos siguen en sus Issues.
+## Propuesta de implementación DOC-R04 — 18/10/2026
+
+El [contrato de revisión](../contracts/revision-documental-i2.md) concreta el
+perfil de demo de #24: capacidad independiente, revisiones inmutables por versión,
+resultados ACEPTADO/OBSERVADO/RECHAZADO y ausencia de revisión PENDIENTE. Matías
+eligió agregar RECHAZADO al perfil propuesto; observar y rechazar exigen motivo.
+Reemplazar conserva la revisión anterior y empieza pendiente en la versión nueva.
+La propuesta incluye autorización, historial y rechazo atómico de repeticiones y
+conflictos. No calcula deuda ni cierre automático. Requiere revisión de Franco
+antes de integrarse; Cooperadora valida roles y requisitos por etapa después.
+
+- Alcance integrado: carga protegida y versiones de ambos circuitos (#19/#51/#52).
+  Revisión documental de #24 preparada para revisión cruzada; integración
+  completa de ambos consumidores en #28.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issues I2: [#19](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/19)
   para DOC-R01–R03, [#24](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/24)
@@ -173,6 +184,8 @@ sin afirmar que toda SPEC-003 ni I03 están resueltas.
 
 - ¿Cómo se aplican los mínimos aprobados en cada transición de gastos y facturación?
 - ¿Quién puede revisar o rechazar cada tipo documental en DOC-R04?
+  Para la demo se propone capacidad explícita y acceso por objeto; asignación a
+  cargos y restricciones específicas por tipo requieren confirmación operativa.
 - ¿Qué criterios hacen que un documento satisfaga un pendiente?
 - ¿Dónde se alojarán los archivos en el entorno institucional de prueba?
 

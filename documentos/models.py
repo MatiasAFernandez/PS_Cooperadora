@@ -25,7 +25,7 @@ class Documento(models.Model):
         EXTERNO_ATP = "EXTERNO_ATP", "ATP"
         INTERNO_COOPERADORA = "INTERNO_COOPERADORA", "Cooperadora"
 
-    # Puente protegido de gastos hasta que Franco incorpore su OneToOne.
+    # Puente documental protegido de gastos, conservado por compatibilidad.
     solicitud_gasto = models.ForeignKey(
         "gastos.SolicitudGasto",
         on_delete=models.PROTECT,
@@ -81,3 +81,55 @@ class Documento(models.Model):
     @property
     def referencia_tramite(self) -> str:
         return str(self.tramite_base.referencia)
+
+
+class RevisionDocumento(models.Model):
+    """Hecho inmutable de revisión de una versión; no cambia el documento ni el trámite."""
+
+    class Resultado(models.TextChoices):
+        ACEPTADO = "ACEPTADO", "Aceptado"
+        OBSERVADO = "OBSERVADO", "Observado"
+        RECHAZADO = "RECHAZADO", "Rechazado"
+
+    documento = models.ForeignKey(Documento, on_delete=models.PROTECT, related_name="revisiones")
+    resultado = models.CharField(max_length=16, choices=Resultado.choices)
+    motivo = models.TextField(blank=True, max_length=2000)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["fecha", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(resultado__in=["ACEPTADO", "OBSERVADO", "RECHAZADO"]),
+                name="ck_revision_resultado",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(resultado="ACEPTADO") | ~models.Q(motivo=""),
+                name="ck_revision_motivo",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise IntegrityError("La revisión documental es inmutable.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise IntegrityError("La revisión documental es inmutable.")
+
+    def como_historial(self):
+        from comunes.contracts import EventoHistorialDTO
+
+        return EventoHistorialDTO(
+            evento_id=self.pk,
+            tramite_ref=self.documento.referencia_tramite,
+            tipo_evento="revision_documental",
+            actor_id=str(self.actor_id),
+            fecha_hora=self.fecha,
+            estado_resultante=self.resultado,
+            motivo_o_detalle=(
+                f"{self.documento.get_tipo_display()} — versión {self.documento.version}: "
+                f"{self.get_resultado_display()}. {self.motivo}"
+            ).strip(),
+        )

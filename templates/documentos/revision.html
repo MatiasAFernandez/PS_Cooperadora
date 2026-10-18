@@ -1,0 +1,16 @@
+{% extends "facturacion/base.html" %}
+{% block titulo_modulo %}Documentos — Cooperadora{% endblock %}
+{% block content %}
+<h2>Revisión documental</h2>
+<p>{{ documento.get_tipo_display }} — {{ documento.nombre_original }} — versión {{ documento.version }}</p>
+<p>Trámite {{ documento.referencia_tramite }}.</p>
+<p>Resultado: <strong>{% if actual %}{{ actual.get_resultado_display }}{% else %}Pendiente{% endif %}</strong>.</p>
+{% if not vigente %}<p class="notice">Versión reemplazada. Se conserva su historial; la nueva versión requiere su propia revisión.</p>{% endif %}
+{% if puede_descargar %}<p><a href="{% url 'documentos:archivo' documento.pk %}">Descargar esta versión</a></p>{% endif %}
+<p class="notice">Una carga o una revisión no cierra por sí sola pendientes, pagos ni trámites.</p>
+{% if puede_revisar %}
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Registrar revisión</button></form>
+{% elif form.errors %}{{ form.non_field_errors }}{% endif %}
+<h3>Historial de esta versión</h3>
+{% include "comunes/historial_eventos.html" %}
+{% endblock %}

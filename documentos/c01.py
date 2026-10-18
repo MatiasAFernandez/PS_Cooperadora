@@ -11,6 +11,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from django.db import connection
+from django.db.models import OuterRef, Q, Subquery
 
 from gastos.contracts import (
     TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
@@ -23,7 +24,7 @@ from gastos.queries import visible_expenses
 from identidad.services import Actor, has_capability
 
 from .acceso import documentos_visibles
-from .models import Documento
+from .models import Documento, RevisionDocumento
 from .services import bloquear_serie
 
 # Presupuesto/proforma tiene un único tipo persistido. Se representa como
@@ -35,7 +36,7 @@ TIPOS_C01 = {
 
 
 class ProveedorDocumentalGastos:
-    """Implementación real optativa; Franco conectará su consumidor en #28."""
+    """Implementación real optativa del puerto consumidor de gastos."""
 
     @staticmethod
     def _autorizar(actor: Actor | None, gasto: SolicitudGasto, *, pago: bool = False) -> None:
@@ -63,11 +64,16 @@ class ProveedorDocumentalGastos:
         self._autorizar(actor, gasto)
         documentos = (
             documentos_visibles(actor)
+            .annotate(ultima_revision=Subquery(
+                RevisionDocumento.objects.filter(documento_id=OuterRef("pk"))
+                .order_by("-id").values("resultado")[:1]
+            ))
             .filter(
                 solicitud_gasto=gasto,
                 sucesor__isnull=True,
                 tipo__in=self._tipos(tipos_admitidos),
             )
+            .filter(Q(ultima_revision__isnull=True) | Q(ultima_revision="ACEPTADO"))
             .order_by("id")
         )
         return [
@@ -112,6 +118,9 @@ class ProveedorDocumentalGastos:
             raise DocumentVerificationError("Respaldo documental no disponible.")
         bloquear_serie(documento)
         if Documento.objects.filter(reemplaza=documento).exists():
+            raise DocumentVerificationError("Respaldo documental no disponible.")
+        revision = documento.revisiones.order_by("-id").first()
+        if revision and revision.resultado != RevisionDocumento.Resultado.ACEPTADO:
             raise DocumentVerificationError("Respaldo documental no disponible.")
         # La fila raíz serializa también los reemplazos: ningún sucesor puede
         # aparecer entre esta comprobación y el commit del pago exterior.

@@ -18,9 +18,14 @@ circuito siguen siendo independientes.
   estado resultante y motivo. Los pagos conservan actor, hora autoritativa de
   registro, importe, moneda, fecha del hecho y referencia externa. Su estado
   resultante es el estado del gasto al registrarse; el pago no cambia ese estado.
-- La referencia documental opaca, la huella de idempotencia, los metadatos y la
-  revisión documental no forman parte del DTO. Un evento de pago y una decisión
-  son hechos distintos; ninguno representa aprobación documental.
+- El DTO de decisiones/pagos no expone referencia documental opaca, huella de
+  idempotencia ni metadatos privados. Un pago o una decisión no representa una
+  revisión documental.
+- #24 agrega el hecho `revision_documental` desde `RevisionDocumento` al mismo
+  `EventoHistorialDTO`. Conserva resultado, motivo, actor y fecha por versión;
+  se consulta en la pantalla autorizada del documento y reutiliza el parcial
+  común. Su resultado documental se rotula por separado del estado del trámite;
+  no se incorpora automáticamente a la cronología de decisiones/pagos.
 - `templates/comunes/historial_eventos.html` consume el DTO en ambos detalles.
   La cronología se ordena por hora del evento y usa el identificador del evento
   para desempatar.
@@ -46,10 +51,13 @@ La ausencia del enlace no cambia el comportamiento de las vistas o servicios.
 
 ## Alcance y límites
 
-La vista no unifica estados, transiciones, pagos, decisiones ni revisión
-documental. El historial es de lectura. La referencia externa del pago se muestra
-como parte del hecho de pago ya consultable; la referencia documental no se
-presenta. La facturación conserva sus DTO y eventos existentes.
+Se comparte la proyección y presentación de hechos, incluidos los de revisión,
+sin unificar estados ni transiciones de los circuitos. El historial es de lectura.
+La referencia externa del pago se muestra como parte del hecho de pago ya
+consultable; la referencia documental no se presenta. La facturación conserva
+sus eventos existentes. Aceptar, observar o rechazar un documento no cierra pagos,
+deudas ni trámites. El [recorrido de revisión](recorrido-facturacion-i2.md)
+explica acceso, permisos e historial por versión.
 
 Las plantillas y pruebas automatizadas acreditan el contrato de presentación,
 pero no una aprobación documental, una verificación de cobro ni aceptación de

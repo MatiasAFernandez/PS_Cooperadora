@@ -6,12 +6,12 @@ Las obligatoriedades del formulario relevado son perfil provisional de demo.
 
 ## Preparación
 
-Desde una versión integrada que incluya #52/#59, con el entorno Python activado,
-dependencias instaladas y PostgreSQL local configurado en .env (ver README):
+Desde una versión con #52/#59 y el cambio #24 de la PR #62, con el entorno Python
+activado, dependencias instaladas y PostgreSQL local configurado en .env (ver README):
 
 ```powershell
 python manage.py migrate
-python manage.py preparar_identidad_demo --facturacion
+python manage.py preparar_identidad_demo --facturacion --revision-documental
 python manage.py changepassword demo_a
 python manage.py changepassword demo_b
 python manage.py changepassword demo_o
@@ -23,6 +23,9 @@ Habilitar DEMO_IDENTITY_ENABLED=true solo en el entorno local. El comando no
 publica ni establece contraseñas reutilizables. Si encuentra otro correo o una
 configuración peligrosa de una cuenta, informa colisión; no reemplazarla a ciegas.
 Sin --facturacion se mantiene la preparación I1; repetir no quita grupos conocidos.
+`--revision-documental` habilita de forma optativa la revisión para demo_o y le
+asigna metadatos/descarga. Omitirlo conserva el recorrido de facturación sin
+ampliar esa capacidad; no revoca un grupo ya asignado. No otorga permiso de pago.
 
 ## Recorrido
 
@@ -43,10 +46,36 @@ Sin --facturacion se mantiene la preparación I1; repetir no quita grupos conoci
 8. Comprobar teclado, etiquetas, mensajes y datos conservados ante errores.
    Si el formulario falla tras seleccionar un archivo, volver a seleccionarlo.
 
-El pago declarado queda pendiente de verificación. No hay acciones de revisión
-documental, registro de factura/cobro formal, cierre o anulación en estas pantallas.
+El pago declarado queda pendiente de verificación. La revisión documental se abre
+desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
+No hay registro de factura/cobro formal, cierre o anulación en estas pantallas.
 Ambos circuitos usan la navegación y el parcial de historial comunes de #59.
 Cada módulo conserva sus reglas de estado y permisos por objeto.
+
+## Revisión documental
+
+1. Presentar como demo_a una solicitud sintética con respaldo. En el detalle,
+   abrir **Revisión de respaldos** y el enlace de la versión. A puede consultar
+   el historial con metadatos y acceso a su trámite; no recibe permiso de revisión.
+2. Entrar como demo_o, preparado con `--revision-documental`, y abrir ese mismo
+   enlace. La página exige acceso al trámite y metadatos; para registrar exige
+   además `documentos.revisar`. La descarga mantiene su capacidad independiente.
+3. Sin revisiones aparece **Pendiente**. Seleccionar **Aceptado**, **Observado**
+   o **Rechazado**; observar/rechazar exige un motivo con texto. Guardar conserva
+   resultado, actor y fecha. El historial autorizado muestra los hechos anteriores.
+4. Un reenvío o una revisión desde una versión desactualizada devuelve conflicto;
+   recargar antes de volver a operar. Una revisión sin permiso o sin CSRF no cambia
+   nada. Un documento ajeno o inexistente no se revela por URL directa.
+5. Observar la solicitud y corregirla como A con otro archivo conserva la versión
+   anterior y sus revisiones. El reemplazo empieza **Pendiente**; no hereda la
+   conformidad anterior. La versión reemplazada conserva historial de consulta,
+   pero ya no admite nuevas revisiones.
+
+Revisar no verifica el ingreso declarado ni cierra pagos, deudas o trámites.
+En el proveedor de gastos, Observado/Rechazado se omite del selector y se deniega
+al registrar; un pago ya registrado no se modifica. La tolerancia de demo para
+documentos aún sin revisión no acredita conformidad ni cumplimiento documental.
+El [contrato](../contracts/revision-documental-i2.md) precisa esa separación.
 
 ## Fallos y recuperación
 

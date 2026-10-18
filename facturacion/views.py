@@ -210,6 +210,7 @@ class DetalleSolicitudView(FacturacionView):
                 and solicitud.tramite_base.solicitante_actor_id == str(self.actor.subject_id)
                 and solicitud.estado == Estado.OBSERVADA,
                 "puede_descargar": has_capability(self.actor, "documentos.recuperar_contenido"),
+                "puede_ver_revision": has_capability(self.actor, "documentos.consultar_metadatos"),
             },
         )
 

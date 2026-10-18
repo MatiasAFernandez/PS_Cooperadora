@@ -29,6 +29,7 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
         }
     ),
     "demo_documentos_aporte": frozenset({"documentos.incorporar"}),
+    "demo_documentos_revision": frozenset({"documentos.revisar"}),
     "demo_documentos_metadatos": frozenset(
         {"documentos.consultar_metadatos", "documentos.ver_metadatos"}
     ),
