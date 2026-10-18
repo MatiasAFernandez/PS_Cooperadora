@@ -23,9 +23,9 @@ implementada; su revisión cruzada no se da por realizada.
 | `documentos/`: migraciones, versiones, acceso y proveedor C01 | Matías; revisión de Franco | Implementada |
 | Modelo mínimo y eventos propios de `facturacion/` | Matías | Infraestructura de #22; recorrido funcional en #23–#27 |
 | Catálogo sintético de capacidades, incluido `gastos.registrar_pago` independiente | Matías | Implementado; asignación explícita por grupo |
-| OneToOne `SolicitudGasto.tramite_base` y guardas de su identidad | Franco | Integrada en main mediante PR #56; Issue #53 cerrada |
+| OneToOne `SolicitudGasto.tramite_base` y guardas de su identidad | Franco | Pendiente; este corte conserva la FK documental de gastos y usa un puente |
 | Adaptar los eventos existentes de gastos al DTO | Franco | Pendiente; no se crea una tabla ficticia `EventoGasto` |
-| Conectar y verificar el consumidor de pagos con el proveedor real | Franco | Integrado en main mediante PR #55; la revisión formal DOC-R04 sigue en #24 |
+| Conectar y verificar el consumidor de pagos con el proveedor real | Franco | Pendiente; se entrega clase y contrato, sin activar la configuración global |
 | Navegación y parcial visual de historial común | Franco; Matías aporta los DTO de facturación | Pendiente |
 | Recorrido integrado de los dos circuitos | Matías y Franco | Pendiente de las entregas de cada circuito |
 
