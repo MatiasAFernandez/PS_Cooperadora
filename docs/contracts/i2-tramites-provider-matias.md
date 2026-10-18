@@ -1,176 +1,126 @@
-# Cabecera común y proveedor C01: entrega de Matías para #22/#28
+# Contratos comunes de trámites, documentos e historial
 
-Actualización #21/#23 (16/10/2026): el corte de facturación consume la cabecera,
-documentos y DTO sin modificar el consumidor de gastos. Agrega servicios de
-presentación/observación/corrección y snapshots; conserva la fábrica técnica.
-La compensación exterior se ofrece mediante documentos.operaciones y un registro
-interno de escrituras en incorporar. Presentación/corrección son dueñas de su
-transacción; el commit incierto se conserva para reconciliación con aplicación
-detenida. Este mecanismo no conecta ni cambia el proveedor C01 de Franco.
-Los límites históricos que siguen describen el corte #22 anterior; la
-[guía del nuevo recorrido](../guides/recorrido-facturacion-i2.md) explica recuperación.
+Este contrato describe las interfaces entregadas en #51, #52, #55, #56 y #59.
+El estado operativo se sigue en #22/#28; la evidencia está en la
+[verificación de #22](../evidence/i2-22-cierre-contratos.md).
 
-Base: `#22-#28.md`, aportado por Matías el 16/10/2026, con las resoluciones
-confirmadas en la conversación. También se incorporan los requisitos que
-Franco comunicó para conectar su consumidor. Este contrato describe la entrega
-implementada; su revisión cruzada no se da por realizada.
+## Responsabilidades
 
-## Propiedad y alcance
+| Dato o interfaz | Propietario | Revisor | Contrato |
+|---|---|---|---|
+| Cabecera y referencia | Matías | Franco | TramiteBase, TramiteRef y resolver de comunes. |
+| Identidad y capacidades | Matías | Franco | resolve_actor/has_capability; acceso por objeto en cada módulo. |
+| Documentos y proveedor C01 | Matías | Franco | documentos; puerto consumidor de gastos/contracts.py. |
+| Solicitud, decisiones y pagos de gastos | Franco | Matías | OneToOne protegido, guardas y eventos propios. |
+| Solicitud y eventos de facturación | Matías | Franco | OneToOne, presentación/observación/corrección y eventos append-only. |
+| DTO y protocolo de historial | Matías | Franco | EventoHistorialDTO, sin unificar transiciones. |
+| Adaptación de gastos y presentación común | Franco | Matías | como_historial(), navegación y parcial común de ambos módulos. |
 
-| Entrega | Responsable | Estado de este corte |
-|---|---|---|
-| `comunes/`: cabecera, referencias y DTO/protocolo de historial | Matías; revisión de Franco | Implementada |
-| `documentos/`: migraciones, versiones, acceso y proveedor C01 | Matías; revisión de Franco | Implementada |
-| Modelo mínimo y eventos propios de `facturacion/` | Matías | Infraestructura de #22; recorrido funcional en #23–#27 |
-| Catálogo sintético de capacidades, incluido `gastos.registrar_pago` independiente | Matías | Implementado; asignación explícita por grupo |
-| OneToOne `SolicitudGasto.tramite_base` y guardas de su identidad | Franco | Pendiente; este corte conserva la FK documental de gastos y usa un puente |
-| Adaptar los eventos existentes de gastos al DTO | Franco | Pendiente; no se crea una tabla ficticia `EventoGasto` |
-| Conectar y verificar el consumidor de pagos con el proveedor real | Franco | Pendiente; se entrega clase y contrato, sin activar la configuración global |
-| Navegación y parcial visual de historial común | Franco; Matías aporta los DTO de facturación | Pendiente |
-| Recorrido integrado de los dos circuitos | Matías y Franco | Pendiente de las entregas de cada circuito |
+## Identidad e integridad
 
-Las apps mantienen su ubicación actual en la raíz del proyecto. Cada módulo
-Python nuevo tiene un docstring que explica su función y los comentarios
-describen los puntos de autorización, migración o bloqueo que lo requieren.
+`TramiteRef(circuito, numero_publico)` es inmutable: `gastos:7` y
+`facturacion:7` son distintos. El resolver comprueba existencia y coherencia de
+la solicitud y admite `circuito_esperado`. No sustituye la autorización por objeto.
+`TramiteBase` conserva circuito, número público, titular y fecha. PostgreSQL
+impide cambios de identidad incluso por QuerySet.update o SQL directo.
+El titular usa `str(Actor.subject_id)`; centro_costo_codigo admite NULL y no
+se deduce de unidad_requirente.
 
-## Identidad e integridad común
+Ambas solicitudes tienen OneToOne protegido con cabecera. Circuito, PK/número
+público y titular deben coincidir. Gastos crea solicitud y cabecera en una
+transacción y aplica guardas ORM/PostgreSQL. Facturación conserva la fábrica
+técnica y agrega presentación, observación y corrección con control de versión.
 
-`TramiteRef(circuito, numero_publico)` es una referencia inmutable. Conserva
-`gastos:7` y `facturacion:7` como identidades distintas, aunque coincidan los
-números. El resolver consulta por ambos datos, verifica la solicitud concreta
-y puede exigir un circuito consumidor mediante `circuito_esperado`.
+Se conserva por compatibilidad la FK documental original al gasto y el puente
+comunes/documentos. Las nuevas solicitudes de gasto ya crean cabecera; el puente
+la reutiliza y el trigger documental comprueba ambas FK. Las consultas GET no
+crean cabeceras. Retirar el puente requiere un cambio compartido posterior.
 
-`TramiteBase` guarda circuito, número público, titular y fecha de creación.
-PostgreSQL impide cambiar esos datos aun mediante `QuerySet.update()` o SQL
-directo. El titular corresponde a `str(Actor.subject_id)`; no se usa `actor.id`.
-`centro_costo_codigo` admite NULL: `unidad_requirente` no se transforma en un
-centro de costo supuesto.
+## Migraciones y versiones
 
-Facturación tiene un OneToOne protegido con la cabecera. Su PK coincide con el
-número público; la fábrica reserva la secuencia de PostgreSQL y crea las dos
-filas juntas. Es una solicitud `BORRADOR_TECNICO`, sin formulario, factura, cobro
-ni transición funcional implementada. Los eventos de facturación son
-append-only y se convierten a `EventoHistorialDTO`; #23 implementará los
-servicios de presentación, observación y corrección con sus reglas de estado.
+Las migraciones por etapas conservan PK, metadatos, rutas, bytes, autor y fechas.
+Cada documento previo recibe serie y UUID de versión propios; las migraciones
+no abren ni mueven archivos. Gastos agrega relación anulable, valida/vincula
+cabeceras y finalmente exige NOT NULL y guardas PostgreSQL.
+Su migración requiere mantenimiento por los bloqueos. Las inconsistencias
+históricas abortan sin reparación automática ni transferencia de titularidad.
+Las reversas se rechazan cuando perderían relaciones o datos operativos.
 
-Hasta la entrega de Franco, gastos conserva su esquema existente. El puente
-crea cabeceras de gastos previos durante la migración y de gastos nuevos al
-incorporar un documento, bajo bloqueo del gasto. Las consultas GET no crean
-cabeceras. El resolver comprueba número y titular; los documentos conservan su
-FK original al gasto, además de la FK a la cabecera. Un trigger rechaza enlaces
-incompatibles. Si cambia el titular del gasto legado, la discrepancia con la
-cabecera se deniega; no se transfiere el acceso a los documentos.
-
-La FK desde la propia solicitud de gasto y la protección de sus cambios son la
-entrega pendiente de Franco. Este puente no acredita esa parte del cierre de #22.
-
-## Migraciones y datos anteriores
-
-Se crean las cabeceras, se agregan campos documentales inicialmente anulables,
-se migran datos y luego se vuelve obligatoria la FK documental. Cada documento
-previo recibe una serie UUID y una referencia UUID de versión independientes.
-Se conservan PK, ID público del gasto, autor, fechas, nombre físico, tamaño,
-hash y bytes. Las migraciones nunca abren ni mueven archivos del storage.
-
-Los códigos conocidos se traducen explícitamente:
-
-| Anterior | Código persistido nuevo |
+| Alias histórico | Código persistido |
 |---|---|
-| `PRESUPUESTO` | `PRESUPUESTO_PROFORMA` |
-| `TICKET_PROVEEDOR` | `TICKET_NO_FISCAL` |
-| `FACTURA_EMITIDA` | `FACTURA_EMITIDA_XUBIO` |
-| `NOTA_CREDITO` | `NOTA_CREDITO_XUBIO` |
-| `NOTA_DEBITO` | `NOTA_DEBITO_XUBIO` |
+| PRESUPUESTO | PRESUPUESTO_PROFORMA |
+| TICKET_PROVEEDOR | TICKET_NO_FISCAL |
+| FACTURA_EMITIDA | FACTURA_EMITIDA_XUBIO |
+| NOTA_CREDITO | NOTA_CREDITO_XUBIO |
+| NOTA_DEBITO | NOTA_DEBITO_XUBIO |
 
-Estos alias también se aceptan al incorporar archivos desde clientes del primer
-tramo. Valores históricos no clasificados, como `respaldo`, se conservan sin
-reinterpretación y no son elegibles para C01. Requieren clasificación explícita.
-Los códigos describen la clasificación declarada; no prueban validez fiscal.
+Los alias se aceptan al incorporar. Valores sin clasificación, como respaldo,
+se conservan sin inferencias y no son elegibles para C01.
+Cada fila es una versión inmutable. Reemplazar crea otra fila de la misma serie,
+versión siguiente, UUID nuevo y vínculo protegido; conserva archivo y metadatos
+anteriores. Se admiten varias series de un tipo por trámite. Reemplazo y C01
+bloquean la misma raíz y el trigger SQL protege la cadena.
+La referencia opaca es `str(documento.referencia_version)`.
 
-El rollback del nuevo esquema se admite antes de crear versiones de reemplazo
-o documentos de facturación. Si existen, se rechaza la reversión a un esquema
-que perdería sus relaciones; debe prepararse una migración posterior de corrección.
+La incorporación compensa errores internos. Presentación/corrección de
+facturación usan documentos.operaciones para compensar la transacción exterior
+y conservar manifiestos ante commit incierto. La
+[guía de facturación](../guides/recorrido-facturacion-i2.md) explica reconciliación
+con aplicación detenida. Futuros servicios de factura/cobro deben adoptar ese
+contrato y verificar su rollback antes de anidar cargas. C01 sólo lee/bloquea.
 
-## Versiones documentales
+## Proveedor C01 de gastos
 
-Cada fila representa una versión inmutable de un archivo. Un reemplazo crea
-otra fila con la misma serie, versión siguiente, UUID nuevo y vínculo protegido
-con su antecesor. No modifica ni borra el archivo anterior. Un trámite puede
-tener varias series del mismo tipo: no existe unicidad por trámite y tipo.
+`documentos.c01.ProveedorDocumentalGastos` implementa DocumentVerificationPort,
+OpcionDocumental y DocumentoVerificado sin alterar firmas de gastos/contracts.py.
 
-La raíz de la serie se bloquea tanto al reemplazar como al verificar C01. El
-trigger SQL usa el mismo bloqueo y valida la cadena incluso si se escribe por
-ORM directo. La referencia opaca de C01 es `str(documento.referencia_version)`;
-identifica exactamente una versión, sin exponer el contador interno.
-
-## Mapeo para el puerto C01 vigente
-
-Se mantienen `DocumentVerificationPort`, `OpcionDocumental` y
-`DocumentoVerificado` de `gastos/contracts.py`, con sus firmas y códigos actuales.
-
-| Clasificación documental | `tipo_documento` entregado a C01 | Elegible para pago técnico |
+| Tipo documental | Código C01 | Elegible para pago técnico |
 |---|---|---|
-| `FACTURA_PROVEEDOR` | `factura` | Sí |
-| `PRESUPUESTO_PROFORMA` — incluye el alias anterior `PRESUPUESTO` | `presupuesto` | Sí |
-| `TICKET_NO_FISCAL` — incluye el alias anterior `TICKET_PROVEEDOR` | No se entrega | No |
-| Comprobantes de pago, retención y todos los tipos de facturación | No se entregan | No |
+| FACTURA_PROVEEDOR | factura | Sí |
+| PRESUPUESTO_PROFORMA | presupuesto | Sí |
+| TICKET_NO_FISCAL y demás tipos | No se entregan | No |
 
-El catálogo persistido unifica presupuesto y proforma. Por eso el proveedor
-emite `presupuesto` para ambos y no emite `proforma` como tipo independiente.
-Si el consumidor pide exclusivamente `proforma`, el listado queda vacío. Una
-distinción futura exige clasificación explícita; no se deduce del nombre del
-archivo. Este mapeo concreto queda para revisión de Franco antes de conectar.
-
-Ni la clasificación de factura ni una revisión desconocida acreditan conformidad
-documental o contable. El proveedor no devuelve `cierra_deuda_documental` ni
-cambia estados. La deuda documental y el cierre de gastos pertenecen a Franco.
-DOC-R04 y la revisión real siguen en #24.
-
-## Proveedor para conectar desde gastos
-
-Clase: `documentos.c01.ProveedorDocumentalGastos`.
-
-`listar_opciones_para_pago()` es una consulta pura: autoriza acceso al gasto y
-metadatos, y devuelve sólo versiones vigentes del gasto concreto y tipos elegibles.
-El consumidor puede reducir el catálogo, pero no ampliarlo para admitir tickets.
-
-`verificar_y_bloquear_documento()` exige una transacción activa y comprueba
-capacidad de pago, acceso al gasto, capacidad de metadatos, referencia exacta,
-pertenencia, tipo y vigencia. Conserva bloqueos sobre gasto, raíz documental y
-versión hasta que termine la transacción exterior. Las referencias inválidas
-fallan con `DocumentVerificationError`, sin exponer datos del documento ajeno.
-La verificación no escribe archivos ni confirma conformidad documental.
-
-Franco puede configurarlo en el servidor para su integración:
+Presupuesto/proforma están unificados: pedir exclusivamente proforma devuelve
+vacío. Distinguirlos requeriría clasificación explícita. Franco aprobó el mapeo
+en #51; #55 conectó el consumidor con configuración del servidor:
 
 ```python
 GASTOS_PAYMENT_DOCUMENT_PROVIDER = "documentos.c01.ProveedorDocumentalGastos"
 ```
 
-El cliente no selecciona el proveedor. Este corte no configura ese setting por
-defecto. Las pruebas usan el proveedor real con el servicio de pago existente,
-y prueban un acceso a su formulario con sesiones reales, sin modificar `gastos/`.
+El setting es optativo, sin activación implícita; el cliente no elige proveedor.
+Si falta o falla, el alta de pago falla cerrada. listar_opciones_para_pago es
+consulta pura: exige visibilidad/metadatos y devuelve versiones vigentes y tipos
+elegibles del gasto concreto. verificar_y_bloquear_documento exige transacción,
+permiso de pago, visibilidad, metadatos, referencia exacta, pertenencia, tipo y
+vigencia; mantiene gasto, raíz y versión bloqueados hasta terminar la transacción.
+DocumentVerificationError no revela documentos ajenos. No acredita conformidad
+ni devuelve cierra_deuda_documental.
 
-`demo_gastos_pago` concede únicamente `gastos.registrar_pago`. Debe asignarse
-explícitamente junto con el acceso al gasto y metadatos cuando corresponda.
-`demo_operadora` conserva sus capacidades existentes y no recibe pago implícito
-por `gastos.decidir`. Revocar el grupo de pago se refleja en la siguiente petición.
-Facturación usa capacidades independientes de consulta propia y global; ninguna
-capacidad global de lectura implica por sí sola una acción de escritura.
+El grupo demo_gastos_pago concede sólo gastos.registrar_pago; debe combinarse
+con consulta/metadatos. Decidir o leer globalmente no concede escritura.
+Revocar capacidades se refleja en la siguiente petición. Se conserva 404 para
+objetos ajenos/inexistentes y 403 por capacidad insuficiente según el consumidor.
 
-## Alcance de #28 y comprobación pendiente
+## Historial y navegación
 
-Se conserva 404 para objetos ajenos o inexistentes y 403 cuando falta una
-capacidad. Hay pruebas de metadatos y descarga de ambos circuitos, revocación,
-colisión de IDs, rechazo por ticket, referencia cruzada, versión obsoleta,
-idempotencia del servicio de pago y bloqueo desde conexiones independientes.
+EventoHistorialDTO expone evento_id, tramite_ref, tipo_evento, actor_id,
+fecha_hora, estado_resultante y motivo_o_detalle. Cada módulo conserva sus
+modelos/transiciones; el DTO es de lectura, sin tabla ni enum de estados común.
+Facturación conserva presentación, observación y corrección sin borrar hechos.
+Gastos adapta decisiones y registro de pago con actor y hora del servidor.
+En el recorrido actual el pago exige gasto aceptado y ese estado es terminal;
+el pago no cambia el estado. Se autoriza el trámite antes de leer su historial.
 
-Los flujos completos de facturación de #23–#27 y los cambios de gastos y
-navegación de Franco siguen pendientes. #22/#28 permanecen abiertas: esta entrega
-no acredita los dos recorridos funcionales de punta a punta.
+El DTO excluye referencia documental, huella de idempotencia y snapshots privados;
+la plantilla escapa detalles. Ambos detalles consumen el parcial común. La
+navegación ofrece rutas disponibles según capacidades y no sustituye permisos
+por objeto. Véase la [guía común](../guides/historial-y-navegacion-comunes.md).
 
-La incorporación de bytes compensa fallos dentro de su propia operación. Su
-rollback exterior sigue sin resolverse; antes de anidarla en la transacción de
-una factura o cobro, Matías debe implementar el mecanismo de almacenamiento
-correspondiente. C01 verifica documentos ya incorporados y no tiene ese riesgo
-de escritura de archivos. La configuración institucional queda fuera de esta demo.
+## Límites
+
+#22 cubre modelo, contratos y evidencia de integridad/eventos. Los recorridos
+completos siguen en #28 y su demostración en #29/#50. Revisión documental real
+corresponde a #24; factura, cobro y cierre conservan sus issues. Carga o pago no
+aprueban documentos. Aceptación de Cooperadora y almacenamiento institucional
+se verifican por separado.

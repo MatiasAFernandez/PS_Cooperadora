@@ -1,8 +1,8 @@
 # SPEC-009 — Contratos e integración de los dos circuitos
 
-- Estado: decisiones de facturación recibidas; Franco confirmó el acuerdo técnico
-  A01–A05 para la demo sobre la versión indicada en la Issue #20. El nuevo
-  registro de decisiones requiere revisión de su diff.
+- Alcance técnico: cabecera, referencias y contratos de eventos implementados
+  para ambos circuitos mediante #51, #52, #55, #56 y #59. La integración de los
+  recorridos completos y su aceptación conservan seguimiento en #28/#29.
 - Autor y responsable principal: Matías Alejandro Fernández por su aporte de
   estructura, identidad y documentos compartidos.
 - Issues I2: [#20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20)
@@ -25,19 +25,23 @@ para la demo. La referencia lógica combina módulo e identificador, pero su
 representación física debe proteger relaciones con FK y rechazarlas cuando sean
 cruzadas o inexistentes. Cada circuito conserva sus estados y eventos; no se
 impone un enum ni una tabla genérica de historial. Franco revisó los contratos
-versionados que enlazó en su comentario, no el nuevo registro aún no publicado.
+versionados que enlazó en su comentario; el registro posterior fue revisado e
+integrado en #46. El cierre técnico de #20 difiere la validación operativa de
+Cooperadora hasta después de la demo.
 Los detalles de modelo, capacidades y pruebas corresponden a #19/#21/#22/#28;
 las reglas funcionales de gastos siguen bajo la responsabilidad de Franco.
 
 ## Problema y valor
 
-El tramo de Matías preparado el 16/10/2026 se detalla en el
+Las interfaces de Matías y Franco se detallan en el
 [contrato de cabecera y proveedor C01](../contracts/i2-tramites-provider-matias.md).
 Incluye cabecera, versiones inmutables, proveedor transaccional real, catálogo
-sintético de capacidades y modelo técnico de facturación. La FK de la solicitud
-de gastos, la adaptación de sus eventos, el consumidor de pago y la navegación
-son entregas de Franco. #22/#28 siguen abiertas hasta completar y revisar esos
-aportes y los recorridos de cada circuito.
+sintético de capacidades y eventos propios de facturación. Franco incorporó
+el vínculo directo y las guardas de gastos en #56, el consumidor C01 en #55 y
+la adaptación de eventos y presentación común en #59. Cada circuito conserva
+sus estados; #22 comprueba INT-R03/04 y #28 sigue los recorridos integrados.
+La [evidencia de #22](../evidence/i2-22-cierre-contratos.md) relaciona sus
+criterios con revisiones, migraciones y pruebas reproducibles.
 
 Los módulos de gastos y facturación forman una sola aplicación. La identidad,
 documentos, relaciones e historial deben comportarse de forma coherente para que
@@ -98,8 +102,9 @@ duplicar reglas contradictorias.
 
 ## Datos, permisos y sensibilidad
 
-- Datos requeridos: identificadores de trámite, identidad, capacidades, enlaces
-  documentales y eventos; esquema exacto pendiente de diseño conjunto.
+- Datos requeridos: referencia por circuito/número, cabecera y relaciones
+  protegidas, Actor, capacidades, versiones documentales y EventoHistorialDTO,
+  conforme al contrato común.
 - Roles autorizados: los establecidos por SPEC-002 y por cada módulo.
 - Datos sintéticos o anonimizados para pruebas: un recorrido representativo de
   cada circuito, documentos ficticios y usuarios con permisos distintos.
@@ -122,12 +127,16 @@ duplicar reglas contradictorias.
 - Demostración o evidencia: dos recorridos completos, matriz de responsabilidades,
   resultados de pruebas y observaciones de Cooperadora.
 
-## Preguntas abiertas
+## Continuidad
 
-- ¿Qué datos y estados son realmente comunes y cuáles pertenecen a cada módulo?
-- ¿Quién integra cada cambio compartido y quién revisa el contrato?
-- ¿Qué navegación e historial visual requiere la demostración conjunta?
-- ¿Qué ejemplos de ambos circuitos prueban la integridad antes de fijar el modelo?
+- La matriz del contrato asigna propietario y revisor a cada interfaz. Sólo la
+  cabecera, referencia y proyección de historial son comunes; los estados y
+  decisiones permanecen en cada circuito.
+- #28 verifica la integración funcional completa y #29/#50 su demostración.
+- #24 define revisión documental; #25–#27 conservan factura, cobro y cierre.
+- El puente documental de compatibilidad permanece; retirarlo requiere un
+  cambio compartido posterior y no es condición del modelo acordado en #22.
+- Las observaciones de Cooperadora se registran después de presentar la demo.
 
 ## Decisiones
 
@@ -136,3 +145,4 @@ duplicar reglas contradictorias.
 | 2026-09-17 | Plan de Trabajo corregido y división registrada en README | Una aplicación Django modular con propiedad vertical y componentes compartidos. | Los contratos se acuerdan con Franco antes de implementarlos. |
 | 2026-10-09 | Formularios y primera entrevista | Inventariar datos y actores de ambos circuitos como evidencia para el acuerdo. | Identificadores, capacidades, documento y evento compartidos siguen sin aprobación de Franco. |
 | 2026-10-15 | [Comentario de Franco en #20](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/20#issuecomment-6196767849) sobre `1962b63c5024e935e86de261cfdebad5085611e4` | Acordar A01–A05 para la demo con referencia por módulo e identificador, capacidades separadas, versiones documentales y eventos propios por circuito. | Los detalles físicos quedan en #19/#21/#22/#28; este nuevo documento requiere revisión de su diff y el acuerdo no valida reglas de Cooperadora. |
+| 2026-10-18 | #51/#52/#55/#56/#59 y verificación de #22 | Concretar cabecera protegida de ambos circuitos y DTO de historial, con estados propios, permisos por objeto y preservación de hechos. | El cierre técnico de #22 no cierra #24/#28/#29 ni acredita aceptación institucional. |
