@@ -6,8 +6,8 @@ Las obligatoriedades del formulario relevado son perfil provisional de demo.
 
 ## Preparación
 
-Desde la rama de trabajo, con el entorno Python activado, dependencias instaladas
-y PostgreSQL local configurado en .env (ver README):
+Desde una versión integrada que incluya #52/#59, con el entorno Python activado,
+dependencias instaladas y PostgreSQL local configurado en .env (ver README):
 
 ```powershell
 python manage.py migrate
@@ -45,7 +45,8 @@ Sin --facturacion se mantiene la preparación I1; repetir no quita grupos conoci
 
 El pago declarado queda pendiente de verificación. No hay acciones de revisión
 documental, registro de factura/cobro formal, cierre o anulación en estas pantallas.
-La navegación global y el consumidor de gastos de Franco permanecen independientes.
+Ambos circuitos usan la navegación y el parcial de historial comunes de #59.
+Cada módulo conserva sus reglas de estado y permisos por objeto.
 
 ## Fallos y recuperación
 
@@ -77,5 +78,9 @@ pytest
 
 Las pruebas usan PostgreSQL real, storage temporal y cuentas sintéticas. Cubren
 HTTP/CSRF, D01, objetos ajenos, revocación, snapshots, conexiones concurrentes,
-rollback y commit incierto. No acreditan aprobación de Cooperadora, revisión de
-Franco ni SSO. Registrar evidencia y revisión antes de cerrar #21/#23.
+rollback y commit incierto. La prueba de aceptación de #23 completa el ciclo HTTP
+con CSRF válido, consulta autorizada e intentos repetidos o incompatibles sin
+efectos. La [evidencia de cierre de #23](../evidence/i2-23-cierre-solicitudes.md)
+registra la revisión de Franco en #52 y las verificaciones de la versión actual.
+La devolución de Cooperadora se recoge en #29; las pruebas no acreditan SSO ni
+aceptación institucional.

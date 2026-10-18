@@ -1,5 +1,11 @@
 # Verificación técnica del recorrido #21/#23
 
+Este registro conserva la verificación histórica del 16/10/2026 y sus
+actualizaciones. La revisión de Franco en #52 y la comprobación posterior sobre
+la integración común se encuentran en la
+[evidencia de cierre de #23](i2-23-cierre-solicitudes.md). Las referencias a
+implementación local o revisión pendiente describen ese corte histórico.
+
 Fecha: 16/10/2026. Rama de trabajo: codex/21-23-facturacion.
 Base: main d65beda83e2bc056800c87778224c7fe23d06287.
 Resultado: implementación local preparada para revisión; no acredita aprobación
