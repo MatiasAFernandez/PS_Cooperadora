@@ -81,7 +81,11 @@ la validación de Cooperadora en #29.
 ## Migraciones y reproducción
 
 0007 agrega la tabla sin revisar documentos históricos; 0008 instala las guardas
-de auditoría. No se alteran versiones ni archivos. Si ya existen revisiones,
+de auditoría. 0009 reemplaza la función para rechazar motivos sólo whitespace
+(incluidos tabuladores, saltos de línea y espacios Unicode) igual que strip().
+También corrige bases que ya aplicaron 0008, sin borrar ni reescribir revisiones.
+Revertir 0009 no debilita la validación; las guardas de 0008 siguen vigentes.
+No se alteran versiones ni archivos. Si ya existen revisiones,
 ambas reversas se rechazan para conservar historial y guardas. Sin revisiones
 se permite revertir/reaplicar en pruebas; con datos corregir hacia adelante.
 Probar con PostgreSQL aislado, migraciones y almacenamiento temporal. La

@@ -172,6 +172,34 @@ def test_historial_inmutable_en_orm_y_sql(revision):
 
 
 @pytest.mark.parametrize("resultado", ["OBSERVADO", "RECHAZADO"])
+@pytest.mark.parametrize("motivo", [
+    " ", "\t", "\n", "\r\n", " \t\n\r\v\f ", "\x1c\x1f", "\x85", "\xa0",
+    "\u1680\u2000\u200a", "\u2028\u2029\u202f\u205f\u3000",
+])
+def test_sql_rechaza_motivo_solo_whitespace(revision, resultado, motivo):
+    assert not motivo.strip()
+    with pytest.raises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO documentos_revisiondocumento "
+            "(documento_id, resultado, motivo, actor_id, fecha) VALUES (%s,%s,%s,%s,NOW())",
+            [revision.documento.pk, resultado, motivo, revision.staff.pk],
+        )
+    assert not RevisionDocumento.objects.exists()
+
+
+@pytest.mark.parametrize("resultado", ["OBSERVADO", "RECHAZADO"])
+def test_sql_admite_motivo_con_texto(revision, resultado):
+    motivo = "\tDetalle sintético\n"
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO documentos_revisiondocumento "
+            "(documento_id, resultado, motivo, actor_id, fecha) VALUES (%s,%s,%s,%s,NOW())",
+            [revision.documento.pk, resultado, motivo, revision.staff.pk],
+        )
+    assert RevisionDocumento.objects.get().motivo == motivo
+
+
+@pytest.mark.parametrize("resultado", ["OBSERVADO", "RECHAZADO"])
 def test_c01_no_ofrece_ni_verifica_revision_negativa(revision, resultado):
     e = revision
     proveedor = ProveedorDocumentalGastos()

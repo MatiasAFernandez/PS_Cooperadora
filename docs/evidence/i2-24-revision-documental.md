@@ -59,3 +59,24 @@ el ajuste C01 para resultados negativos, compatibilidad de bloqueos/migraciones
 y los componentes comunes de historial. #24 permanece abierta hasta esa revisión
 y la integración. #28 conserva la integración completa de gastos; #27 define
 qué requisitos satisface cada tipo/etapa y #29 registra validación operativa.
+
+## Correcciones de revisión de Franco — 18/10/2026
+
+Se reprodujo el defecto señalado: SQL aceptaba OBSERVADO con un motivo formado
+sólo por tabuladores. La nueva migración 0009 reemplaza la función de 0008 con
+el conjunto explícito de whitespace de `str.strip()`, sin depender de la locale
+de PostgreSQL. No elimina ni reescribe revisiones. Su reversa no reinstala una
+guarda más débil; UPDATE/DELETE y reversas con historial siguen protegidos.
+
+Regresiones SQL directas para OBSERVADO y RECHAZADO prueban espacios, tabuladores,
+saltos de línea, retornos de carro, controles y espacios Unicode. Motivos con
+texto siguen admitidos. El upgrade desde 0008 se prueba con historial existente:
+conserva el registro y corrige la validación. **44 pruebas focales aprobadas en
+8,55 s** sobre PostgreSQL 18.6 aislado. No se suman a los conjuntos anteriores.
+
+Las guías de historial/navegación y recorrido de facturación ahora incluyen el
+DTO `revision_documental`, el parcial común, la preparación optativa y los pasos
+de revisión desde el respaldo. Revisar no cambia pagos, deudas ni trámites.
+La CI del nuevo head se registra en la PR. La aprobación de Franco del ajuste
+sigue pendiente; su revisión original fue estática y no se le atribuyen estas
+pruebas locales.

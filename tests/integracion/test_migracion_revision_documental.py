@@ -56,3 +56,37 @@ def test_reversa_con_historial_no_retira_guarda(escenario_comun):
     with pytest.raises(IntegrityError), transaction.atomic():
         RevisionDocumento.objects.filter(pk=revision.pk).update(resultado="OBSERVADO")
     assert RevisionDocumento.objects.get(pk=revision.pk).resultado == "ACEPTADO"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_upgrade_0008_repara_whitespace_sin_perder_historial(escenario_comun):
+    e = escenario_comun
+    documento = incorporar(
+        actor=e.actor_a, referencia=f"gastos:{e.gasto.pk}", archivo=archivo_pdf(),
+        tipo="FACTURA_PROVEEDOR", procedencia="SOLICITANTE",
+    )
+    executor = MigrationExecutor(connection)
+    finales = executor.loader.graph.leaf_nodes()
+    try:
+        # Reconstruir la función histórica, no sólo marcar 0009 como desaplicada.
+        executor.migrate([("documentos", "0006_integridad_versiones")])
+        MigrationExecutor(connection).migrate([("documentos", "0008_revision_inmutable")])
+        revision = RevisionDocumento.objects.create(
+            documento=documento, resultado="ACEPTADO", actor=e.staff,
+        )
+        sql = (
+            "INSERT INTO documentos_revisiondocumento "
+            "(documento_id, resultado, motivo, actor_id, fecha) VALUES (%s,%s,%s,%s,NOW())"
+        )
+        valores = [documento.pk, "OBSERVADO", "\t\n", e.staff.pk]
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(sql, valores)  # Defecto de 0008, aislado y revertido.
+            transaction.set_rollback(True)
+        MigrationExecutor(connection).migrate(finales)
+        with pytest.raises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(sql, valores)
+        assert RevisionDocumento.objects.get().pk == revision.pk
+        with pytest.raises(IntegrityError), transaction.atomic():
+            RevisionDocumento.objects.filter(pk=revision.pk).update(motivo="Cambiar")
+    finally:
+        MigrationExecutor(connection).migrate(finales)
