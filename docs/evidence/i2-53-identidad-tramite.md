@@ -2,9 +2,14 @@
 
 Fecha: 17/10/2026. Rama: `feat/53-identidad-tramite-gastos`.
 Base: `main` en `7ba783cb42fc6c20fc11c54eacb04baa0236fe93`.
-Resultado: implementación local preparada para revisión; no acredita revisión
-humana, integración con C04/#55, aceptación de Cooperadora ni cierre de issues.
-No se publicó ninguna rama remota ni Pull Request.
+Resultado de la verificación previa a la publicación: implementación local
+preparada para revisión; ese corte no acreditaba revisión humana, integración
+con C04/#55, aceptación de Cooperadora ni cierre de issues. Entonces no se había
+publicado ninguna rama remota ni Pull Request.
+
+> [!NOTE]
+> **Resultado posterior e integración en main**:
+> La Pull Request #56 (head `37c28a9523a16742dcc7534896f90e38db7cbf55`), correspondiente a esta entrega, fue revisada, aprobada e integrada en `main` en el commit `2d8686004d0b440664e8f652c892b2bfe506b62f`, cerrando la Issue #53. Las comprobaciones y resultados que figuran a continuación se conservan intactos como registro histórico de la verificación previa a la publicación.
 
 ## Cambios comprobados
 

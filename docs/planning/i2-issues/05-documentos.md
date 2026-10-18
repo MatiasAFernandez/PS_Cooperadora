@@ -24,8 +24,14 @@ convertir una carga en aprobación automática.
 
 ## Dependencias, pruebas y evidencia
 
-Depende de #19, #21, #22 y regla de revisión de #20. Pruebas en PostgreSQL:
-revisión permitida/denegada, documento ajeno o inexistente, resultado inválido,
-repetición y rollback. Evidencia: PR, contrato de revisión y documentos
-sintéticos. Carga, tipo/tamaño, metadatos y recuperación siguen en #19; la
-integración real con gastos se cierra en #28.
+Al 18/10/2026, el plan inicial dependía de #19, #21, #22 y la regla de
+revisión de #20. El proveedor documental de #19 quedó integrado mediante PR #47
+y sus decisiones técnicas se incorporaron en PR #48; #19 y #20 están cerradas.
+#21 sigue abierta y #22 se cerró mediante PR #60. Pruebas en PostgreSQL: revisión
+permitida/denegada, documento ajeno o inexistente, resultado inválido, repetición
+y rollback. Evidencia: PR, contrato de revisión y documentos sintéticos. Carga,
+tipo/tamaño, metadatos y recuperación están disponibles en el componente
+integrado. El consumidor real de gastos se integró mediante PR #55; #24 continúa
+abierta con DOC-R04. PR #62 es una propuesta abierta con CI quality aprobada,
+pendiente de revisión de Franco e integración; #28 conserva la integración
+conjunta de ambos circuitos.
