@@ -71,6 +71,12 @@ contrato y verificar su rollback antes de anidar cargas. C01 sólo lee/bloquea.
 
 ## Proveedor C01 de gastos
 
+La propuesta de #24 concreta [revisión por versión](revision-documental-i2.md):
+el proveedor omite y deniega revisiones OBSERVADO/RECHAZADO y conserva el recorrido
+técnico sin revisión. La verificación sigue bloqueando la raíz hasta commit;
+no modifica pagos previos ni el DTO y no acredita cumplimiento de deuda.
+Este ajuste requiere revisión cruzada de Franco antes de integrarse.
+
 `documentos.c01.ProveedorDocumentalGastos` implementa DocumentVerificationPort,
 OpcionDocumental y DocumentoVerificado sin alterar firmas de gastos/contracts.py.
 

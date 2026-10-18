@@ -21,6 +21,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--facturacion", action="store_true")
+        parser.add_argument("--revision-documental", action="store_true")
 
     @transaction.atomic
     def handle(self, *args: object, **options: object) -> None:
@@ -75,6 +76,13 @@ class Command(BaseCommand):
                         )
                     )
             # Preparar un circuito no revoca grupos conocidos de otro.
+            if options.get("revision_documental") and username == "demo_o":
+                user.groups.add(*(
+                    groups[g] for g in (
+                        "demo_documentos_revision", "demo_documentos_metadatos",
+                        "demo_documentos_descarga",
+                    )
+                ))
             user.groups.add(groups[group_name])
 
         self.stdout.write(self.style.SUCCESS("Grupos y cuentas sintéticas preparados."))

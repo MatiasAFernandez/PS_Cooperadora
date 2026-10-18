@@ -7,6 +7,8 @@
                     Decisión de gasto
                 {% elif evento.tipo_evento == "pago_externo_registrado" %}
                     Pago externo registrado
+                {% elif evento.tipo_evento == "revision_documental" %}
+                    Revisión documental
                 {% else %}
                     {{ evento.tipo_evento }}
                 {% endif %}
@@ -14,7 +16,7 @@
             — {{ evento.fecha_hora|date:"d/m/Y H:i:s" }}
             — trámite {{ evento.tramite_ref }}
             — actor #{{ evento.actor_id }}
-            — estado del trámite: {{ evento.estado_resultante }}
+            — {% if evento.tipo_evento == "revision_documental" %}resultado documental{% else %}estado del trámite{% endif %}: {{ evento.estado_resultante }}
             {% if evento.motivo_o_detalle %}
                 <p>{{ evento.motivo_o_detalle }}</p>
             {% endif %}
