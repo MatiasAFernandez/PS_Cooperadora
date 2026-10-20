@@ -1,0 +1,12 @@
+{% extends "facturacion/base.html" %}
+{% block content %}
+<h2>Registrar comprobante externo — solicitud {{ solicitud.pk }}</h2>
+<p>Copiá los datos del comprobante ya emitido en Xubio y adjuntá su PDF. Este registro no emite facturas, no acredita cobros ni cierra el trámite.</p>
+{% if factura %}<p>Factura vinculada: {{ factura.identificacion }} — CUIT {{ factura.cuit_emisor }}. Las notas deben conservar su emisor y letra.</p>{% else %}<p>Registrá primero la factura. Se admite una por solicitud y varias notas vinculadas.</p>{% endif %}
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+{{ form.as_p }}
+{% if form.errors %}<p>Los datos se conservaron. Si elegiste un PDF, volvé a seleccionarlo.</p>{% endif %}
+<button type="submit">Registrar comprobante</button>
+</form>
+<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+{% endblock %}

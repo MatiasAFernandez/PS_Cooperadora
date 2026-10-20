@@ -196,3 +196,82 @@ class EventoFacturacion(models.Model):
             estado_resultante=self.estado_resultante,
             motivo_o_detalle=self.motivo_o_detalle,
         )
+
+
+class ComprobanteExterno(models.Model):
+    """Registro inmutable de un comprobante ya emitido; es su propio hecho auditable."""
+
+    class Tipo(models.TextChoices):
+        FACTURA = "FACTURA", "Factura"
+        CREDITO = "NOTA_CREDITO", "Nota de crédito"
+        DEBITO = "NOTA_DEBITO", "Nota de débito"
+
+    solicitud = models.ForeignKey(
+        SolicitudFacturacion, on_delete=models.PROTECT, related_name="comprobantes"
+    )
+    tipo = models.CharField(max_length=16, choices=Tipo.choices)
+    cuit_emisor = models.CharField(max_length=11, validators=[validar_cuit])
+    letra = models.CharField(max_length=1)
+    punto_venta = models.PositiveIntegerField()
+    numero = models.PositiveIntegerField()
+    fecha_emision = models.DateField()
+    importe = models.DecimalField(max_digits=12, decimal_places=2)
+    procedencia = models.CharField(max_length=30, default="EXTERNO_XUBIO", editable=False)
+    factura_origen = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="notas"
+    )
+    documento = models.OneToOneField("documentos.Documento", on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["fecha_registro", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cuit_emisor", "tipo", "letra", "punto_venta", "numero"],
+                name="uq_comprobante_identidad_externa",
+            ),
+            models.UniqueConstraint(
+                fields=["solicitud"], condition=models.Q(tipo="FACTURA"),
+                name="uq_una_factura_por_solicitud",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    importe__gte=Decimal("0.01"), importe__lte=Decimal("9999999999.99")
+                ),
+                name="ck_comprobante_importe",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(punto_venta__gte=1, punto_venta__lte=99999),
+                name="ck_comprobante_punto_venta",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(numero__gte=1, numero__lte=99999999),
+                name="ck_comprobante_numero",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(tipo="FACTURA", factura_origen__isnull=True)
+                | models.Q(tipo__in=["NOTA_CREDITO", "NOTA_DEBITO"], factura_origen__isnull=False),
+                name="ck_comprobante_origen",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise IntegrityError("El comprobante registrado es inmutable.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise IntegrityError("El comprobante registrado es inmutable.")
+
+    @property
+    def identificacion(self):
+        return f"{self.get_tipo_display()} {self.letra} {self.punto_venta:05d}-{self.numero:08d}"
+
+    def como_historial(self):
+        return EventoHistorialDTO(
+            evento_id=self.pk, tramite_ref=f"facturacion:{self.solicitud_id}",
+            tipo_evento="comprobante_externo_registrado", actor_id=str(self.actor_id),
+            fecha_hora=self.fecha_registro, estado_resultante="REGISTRADO",
+            motivo_o_detalle=f"{self.identificacion}. Emisor: {self.cuit_emisor}. Origen: Xubio.",
+        )

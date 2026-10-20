@@ -1,4 +1,4 @@
-# Recorrido local de facturación — #21/#23
+# Recorrido local de facturación — solicitudes y comprobantes externos
 
 Usar exclusivamente datos y documentos sintéticos. Este corte implementa
 presentación, observación y corrección; no verifica ingresos ni emite facturas.
@@ -6,7 +6,7 @@ Las obligatoriedades del formulario relevado son perfil provisional de demo.
 
 ## Preparación
 
-Desde una versión con #52/#59 y el cambio #24 de la PR #62, con el entorno Python
+Desde una versión con solicitudes, revisión documental y comprobantes de #25, con el entorno Python
 activado, dependencias instaladas y PostgreSQL local configurado en .env (ver README):
 
 ```powershell
@@ -48,9 +48,32 @@ ampliar esa capacidad; no revoca un grupo ya asignado. No otorga permiso de pago
 
 El pago declarado queda pendiente de verificación. La revisión documental se abre
 desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
-No hay registro de factura/cobro formal, cierre o anulación en estas pantallas.
+El registro de comprobantes externos se describe a continuación. El registro de
+cobros, cierre y anulación todavía no forman parte de estas pantallas.
 Ambos circuitos usan la navegación y el parcial de historial comunes de #59.
 Cada módulo conserva sus reglas de estado y permisos por objeto.
+
+## Factura y notas externas
+
+1. Como demo_o, abrir una solicitud y **Registrar factura o nota externa**.
+   Completar Factura, CUIT sintético 30712345671, letra A, punto de venta 1,
+   número ficticio único, fecha, importe 100,25 y PDF sintético hasta 10 MiB.
+2. Guardar y comprobar identificación, procedencia Xubio, actor/fecha, PDF e
+   historial en el detalle. El estado de la solicitud se conserva.
+3. Registrar una nota de crédito por 10,10 y una de débito por 1,05, cada una con
+   número propio, mismo emisor/letra y PDF. Se vinculan a la factura del trámite;
+   el neto informativo resulta 91,20. Pueden registrarse más notas.
+4. Una segunda factura o la misma identidad en otro trámite devuelve conflicto.
+   Una nota sin factura, datos inválidos o archivo distinto de PDF se rechazan.
+   Ante error se conservan los campos; volver a seleccionar el PDF.
+5. A consulta sus registros y descarga con su permiso documental. B no accede
+   al detalle ni al archivo de A, incluso por URL. L consulta el registro pero
+   no registra ni recibe descarga por defecto.
+
+Los registros son inmutables y conservan la versión exacta del PDF. La revisión
+documental es independiente: registrar no acepta el respaldo ni acredita un cobro.
+El neto no convierte monedas ni cierra el trámite, incluso si llega a cero o es
+negativo. La [spec](../specs/005-matias-facturas-notas.md) delimita el perfil demo.
 
 ## Revisión documental
 
@@ -79,7 +102,8 @@ El [contrato](../contracts/revision-documental-i2.md) precisa esa separación.
 
 ## Fallos y recuperación
 
-Los servicios de presentación/corrección son dueños de la transacción exterior.
+Los servicios de presentación/corrección y registro de comprobantes son dueños
+de la transacción exterior.
 No envolverlos en otro atomic ni activar ATOMIC_REQUESTS para estas vistas.
 El storage compensa archivos nuevos tras rollback y conserva versiones anteriores.
 La recuperación es de mejor esfuerzo: una caída o commit incierto deja un
