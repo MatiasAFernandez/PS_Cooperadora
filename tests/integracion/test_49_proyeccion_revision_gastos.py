@@ -324,7 +324,7 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
 
     assert (
         ProveedorDocumentalGastos().listar_opciones_para_pago(
-            actor=e.staff, gasto=e.gasto
+            actor=e.actor_staff, gasto=e.gasto
         )
         == []
     )
