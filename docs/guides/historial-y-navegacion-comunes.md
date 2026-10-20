@@ -28,8 +28,9 @@ circuito siguen siendo independientes.
 - La rama local #49 extiende la cronología del detalle de gastos con eventos
   `aporte_documental` y revisiones para actores con
   `documentos.consultar_metadatos`, ordenados por fecha y sin exposición a
-  actores que carecen de esa capacidad. #49 permanece local y su prueba
-  PostgreSQL aún no se ejecutó.
+  actores que carecen de esa capacidad. La validación focalizada de esa
+  proyección aprobó en PostgreSQL; la rama sigue local y aún no integra ambos
+  circuitos ni completa el recorrido de #50.
 - `templates/comunes/historial_eventos.html` consume el DTO en ambos detalles.
   La cronología se ordena por hora del evento y usa el identificador del evento
   para desempatar.
