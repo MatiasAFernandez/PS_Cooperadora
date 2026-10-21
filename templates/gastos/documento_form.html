@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Respaldo documental — Solicitud #{{ solicitud.pk }}{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a></p>
+
+<h3>Cargar o reemplazar un respaldo</h3>
+<p>Solicitud #{{ solicitud.pk }} — {{ solicitud.concepto }}</p>
+
+<section aria-labelledby="ayuda-documentos" style="max-width: 600px; margin: 18px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; background-color: #f8f9fa;">
+    <h4 id="ayuda-documentos" style="margin-top: 0;">Antes de continuar</h4>
+    <p>Se admiten archivos PDF, JPG o PNG. El servidor verifica el formato y el tamaño.</p>
+    <p style="margin-bottom: 0;">Aportar un archivo no lo revisa ni determina si satisface un requisito del trámite. Revisión y pago siguen siendo acciones separadas.</p>
+</section>
+
+{% if puede_ver_documentos %}
+    {% if versiones_reemplazables %}
+        <section aria-labelledby="versiones-actuales" style="max-width: 600px; margin: 18px 0;">
+            <h4 id="versiones-actuales">Versiones vigentes disponibles para reemplazo</h4>
+            <ul>
+                {% for version in versiones_reemplazables %}
+                    <li>{{ version.tipo_mostrado }} — {{ version.nombre }} — versión {{ version.version }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% else %}
+        <p>No hay versiones documentales vigentes visibles para reemplazar; puede incorporar un documento nuevo.</p>
+    {% endif %}
+{% else %}
+    <p role="note">Esta cuenta puede incorporar documentos, pero no consultar metadatos para elegir una versión a reemplazar. Puede aportar un documento nuevo.</p>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" style="max-width: 600px; margin-top: 20px;">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div role="alert" class="alert-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% for field in form %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p>{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<p role="alert" class="alert-error">{{ error }}</p>{% endfor %}
+        </div>
+    {% endfor %}
+    <button class="btn" type="submit">Guardar documento</button>
+</form>
+{% endblock %}

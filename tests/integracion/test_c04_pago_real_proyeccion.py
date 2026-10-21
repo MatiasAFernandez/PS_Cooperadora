@@ -205,11 +205,13 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert "16/10/2026" in contenido_detalle
     assert "Registro informativo de la demo" in contenido_detalle
 
-    # Texto condicional para categoría factura: remite a la revisión real por versión
-    assert "Respaldo documental registrado: factura." in contenido_detalle
+    # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
     assert (
-        "El resultado de revisión de cada versión figura en "
-        "«Versiones y revisión documental»."
+        "La referencia documental del pago coincide con una factura disponible en esta consulta."
+        in contenido_detalle
+    )
+    assert (
+        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
         in contenido_detalle
     )
     # La vista separa tipo y resultado y no decide la suficiencia del trámite
@@ -259,9 +261,9 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert respuesta_reemplazo.context.get("respaldo_categoria") is None
     contenido_reemplazo = respuesta_reemplazo.content.decode("utf-8")
     assert (
-        "La categoría del respaldo no surge por sí sola del registro de pago. "
-        "El resultado de revisión de cada versión figura en "
-        "«Versiones y revisión documental»."
+        "La categoría de la versión referenciada al registrar el pago no está disponible "
+        "en esta consulta. Los aportes y reemplazos posteriores no modifican el registro "
+        "de pago."
         in contenido_reemplazo
     )
     assert (
@@ -333,11 +335,14 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert respuesta_detalle_presupuesto.context.get("respaldo_categoria") == "presupuesto"
     contenido_presupuesto = respuesta_detalle_presupuesto.content.decode("utf-8")
 
-    # Texto condicional para categoría presupuesto: remite a la revisión real por versión
-    assert "Respaldo documental registrado: presupuesto/proforma." in contenido_presupuesto
+    # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
     assert (
-        "El resultado de revisión de cada versión figura en "
-        "«Versiones y revisión documental»."
+        "La referencia documental del pago coincide con un presupuesto o proforma "
+        "disponible en esta consulta."
+        in contenido_presupuesto
+    )
+    assert (
+        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
         in contenido_presupuesto
     )
     assert (
@@ -350,7 +355,7 @@ def test_c04_pago_real_y_proyeccion_documental(
     )
     assert "Falta aportar factura definitiva" not in contenido_presupuesto
     assert "no implica por sí sola aprobación" not in contenido_presupuesto
-    assert "Respaldo documental registrado: factura." not in contenido_presupuesto
+    assert "La referencia documental del pago coincide con una factura" not in contenido_presupuesto
     assert ref_presupuesto_str not in contenido_presupuesto
 
     # 12. Sin metadatos o sin proveedor: no consulta listado y degrada a neutro (status 200)
@@ -393,12 +398,12 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert "Pago externo registrado" in contenido_lector
     assert "SINTETICA-C04-PRES" in contenido_lector
     assert (
-        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante. "
-        "El pago no equivale a aprobación documental ni determina la revisión "
-        "o suficiencia documental."
+        "Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. "
+        "No se puede inferir desde aquí si hay archivos; el registro de pago tampoco "
+        "equivale a aprobación o suficiencia documental."
         in contenido_lector
     )
-    assert "Respaldo documental registrado: presupuesto/proforma." not in contenido_lector
+    assert "La referencia documental del pago coincide con un presupuesto" not in contenido_lector
     assert ref_presupuesto_str not in contenido_lector
 
     # 12.b Proveedor documental desconfigurado en el servidor
@@ -416,9 +421,9 @@ def test_c04_pago_real_y_proyeccion_documental(
 
     contenido_sin_proveedor = respuesta_sin_proveedor.content.decode("utf-8")
     assert (
-        "La categoría del respaldo no surge por sí sola del registro de pago. "
-        "El resultado de revisión de cada versión figura en "
-        "«Versiones y revisión documental»."
+        "La categoría de la versión referenciada al registrar el pago no está disponible "
+        "en esta consulta. Los aportes y reemplazos posteriores no modifican el registro "
+        "de pago."
         in contenido_sin_proveedor
     )
     assert (

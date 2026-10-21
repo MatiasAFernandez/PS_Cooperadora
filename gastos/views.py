@@ -3,6 +3,7 @@
 from typing import Any
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
@@ -10,6 +11,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 
+from comunes.models import Circuito
+from documentos.models import Documento
+from documentos.policy import ArchivoInvalido
+from documentos.services import (
+    TIPOS_POR_CIRCUITO,
+    AlmacenamientoNoDisponible,
+    DocumentoNoVisible,
+    incorporar,
+)
 from gastos.auth import has_capability, resolve_actor
 from gastos.contracts import (
     TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
@@ -19,6 +29,7 @@ from gastos.contracts import (
 from gastos.document_provider import cargar_proveedor_documental
 from gastos.forms import (
     DecisionGastoForm,
+    DocumentoGastoForm,
     FiltroEstadoGastoForm,
     PagoExternoForm,
     SolicitudGastoForm,
@@ -132,6 +143,71 @@ def _cargar_opciones_documentales(
         return None
 
     return proveedor, opciones
+
+
+def _combinaciones_documentales_para_aporte(actor: Any) -> dict[str, tuple[str, ...]]:
+    """Limita las opciones visibles a combinaciones ya admitidas por documentos."""
+    combinaciones = TIPOS_POR_CIRCUITO[Circuito.GASTO]
+    personal = has_capability(actor, "gastos.consultar_todas")
+    tipos_solicitante = {
+        Documento.Tipo.PRESUPUESTO_PROFORMA,
+        Documento.Tipo.FACTURA_PROVEEDOR,
+        Documento.Tipo.TICKET_NO_FISCAL,
+    }
+    resultado: dict[str, tuple[str, ...]] = {}
+    for tipo, procedencias in combinaciones.items():
+        permitidas = tuple(
+            procedencia
+            for procedencia in sorted(procedencias)
+            if (
+                procedencia != Documento.Procedencia.SOLICITANTE
+                if personal
+                else procedencia == Documento.Procedencia.SOLICITANTE
+                and tipo in tipos_solicitante
+            )
+        )
+        if permitidas:
+            resultado[tipo] = permitidas
+    return resultado
+
+
+def _formulario_aporte_documental(
+    actor: Any,
+    solicitud: Any,
+    *,
+    data: Any = None,
+    files: Any = None,
+) -> tuple[DocumentoGastoForm, tuple[Any, ...]]:
+    """Arma opciones de reemplazo sólo desde la proyección documental autorizada."""
+    combinaciones = _combinaciones_documentales_para_aporte(actor)
+    proyeccion = proyectar_documentos(actor, solicitud)
+    versiones_reemplazables = tuple(
+        version
+        for version in (proyeccion.versiones if proyeccion is not None else ())
+        if version.vigente and version.tipo in combinaciones
+    )
+    form = DocumentoGastoForm(
+        data=data,
+        files=files,
+        combinaciones_documentales=combinaciones,
+        versiones_reemplazables=versiones_reemplazables,
+    )
+    return form, versiones_reemplazables
+
+
+def _contexto_formulario_aporte(
+    actor: Any,
+    solicitud: Any,
+    form: DocumentoGastoForm,
+    versiones_reemplazables: tuple[Any, ...],
+) -> dict[str, Any]:
+    return {
+        "actor": actor,
+        "solicitud": solicitud,
+        "form": form,
+        "versiones_reemplazables": versiones_reemplazables,
+        "puede_ver_documentos": has_capability(actor, "documentos.consultar_metadatos"),
+    }
 
 
 
@@ -290,8 +366,8 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
         "pago_permiso_registrar": pago_permiso_registrar,
         "pago_permiso_metadatos": pago_permiso_metadatos,
         "pago_provider_configurado": pago_provider_configurado,
-        "mensaje_respaldo": solicitud.mensaje_respaldo,
         "respaldo_categoria": respaldo_categoria,
+        "puede_incorporar_documentos": has_capability(actor, "documentos.incorporar"),
         "puede_ver_documentos": proyeccion_documental is not None,
         "versiones_documentales": (
             proyeccion_documental.versiones
@@ -316,6 +392,75 @@ class SolicitudGastoDetailView(View):
             request,
             "gastos/solicitud_detail.html",
             _solicitud_detail_context(actor, solicitud),
+        )
+
+
+class SolicitudGastoDocumentosView(View):
+    """Aporta o reemplaza respaldo usando el servicio documental existente."""
+
+    def _solicitud_autorizada(self, request: HttpRequest, pk: int) -> tuple[Any, Any]:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result, None
+        actor = result
+        solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
+        if not has_capability(actor, "documentos.incorporar"):
+            raise PermissionDenied("No tenés permiso para incorporar documentos.")
+        return actor, solicitud
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result, solicitud = self._solicitud_autorizada(request, pk)
+        if isinstance(result, HttpResponse):
+            return result
+        form, versiones = _formulario_aporte_documental(result, solicitud)
+        return render(
+            request,
+            "gastos/documento_form.html",
+            _contexto_formulario_aporte(result, solicitud, form, versiones),
+        )
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result, solicitud = self._solicitud_autorizada(request, pk)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+        form, versiones = _formulario_aporte_documental(
+            actor, solicitud, data=request.POST, files=request.FILES
+        )
+        status = 400
+        if form.is_valid():
+            reemplaza_id = form.cleaned_data["reemplaza_id"]
+            try:
+                incorporar(
+                    actor=actor,
+                    referencia=f"gastos:{solicitud.pk}",
+                    archivo=form.cleaned_data["archivo"],
+                    tipo=form.cleaned_data["tipo"],
+                    procedencia=form.cleaned_data["procedencia"],
+                    reemplaza_id=int(reemplaza_id) if reemplaza_id else None,
+                )
+            except DocumentoNoVisible as exc:
+                raise Http404("La versión no está disponible para este gasto.") from exc
+            except ArchivoInvalido as exc:
+                form.add_error(None, str(exc))
+            except AlmacenamientoNoDisponible:
+                form.add_error(
+                    None,
+                    "No se pudo guardar el archivo; el documento no quedó incorporado.",
+                )
+                status = 503
+            else:
+                messages.success(
+                    request,
+                    "El documento se incorporó. Su revisión se mantiene separada del aporte.",
+                )
+                return redirect("gastos:detalle", pk=solicitud.pk)
+
+        return render(
+            request,
+            "gastos/documento_form.html",
+            _contexto_formulario_aporte(actor, solicitud, form, versiones),
+            status=status,
         )
 
 
