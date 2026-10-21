@@ -8,6 +8,7 @@ from documentos.policy import ArchivoInvalido
 from .comprobantes import autorizar_registro, registrar_comprobante
 from .forms_comprobantes import ComprobanteExternoForm
 from .views import FacturacionView, _errores
+from .workflow import ConflictoConcurrenciaError
 
 
 class RegistrarComprobanteView(FacturacionView):
@@ -38,6 +39,10 @@ class RegistrarComprobanteView(FacturacionView):
                 datos=request.POST,
                 archivo_pdf=request.FILES.get("archivo_pdf"),
             )
+        except ConflictoConcurrenciaError as exc:
+            form.is_valid()
+            form.add_error(None, str(exc))
+            return self.mostrar(request, solicitud, form, 409)
         except (ValidationError, ArchivoInvalido) as exc:
             form.is_valid()
             _errores(form, exc)

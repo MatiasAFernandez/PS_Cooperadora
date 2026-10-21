@@ -172,7 +172,10 @@ def test_permisos_independientes_y_objeto(escenario, solicitud, entrada):
     assert not ComprobanteExterno.objects.exists()
 
 
-def test_http_csrf_detalle_y_descarga_ajena(escenario, solicitud, entrada):
+@pytest.mark.parametrize("duplicado_global", [False, True])
+def test_http_csrf_detalle_y_descarga_ajena(
+    escenario, solicitud, entrada, datos, duplicado_global
+):
     url = reverse("facturacion:registrar_comprobante", args=[solicitud.pk])
     c = Client(enforce_csrf_checks=True)
     c.force_login(escenario.usuarios["o"])
@@ -180,7 +183,30 @@ def test_http_csrf_detalle_y_descarga_ajena(escenario, solicitud, entrada):
     assert c.post(url, dict(entrada, archivo_pdf=pdf())).status_code == 403
     contenido = dict(entrada, archivo_pdf=pdf(), csrfmiddlewaretoken=c.cookies["csrftoken"].value)
     assert c.post(url, contenido).status_code == 302
-    assert c.post(url, dict(contenido, archivo_pdf=pdf())).status_code == 409
+    destino = url
+    if duplicado_global:
+        otra = presentar_solicitud_facturacion(
+            actor=escenario.actores["b"],
+            datos=datos,
+            token_presentacion=emitir_token(escenario.actores["b"]),
+        )
+        destino = reverse("facturacion:registrar_comprobante", args=[otra.pk])
+    respuesta = c.post(destino, dict(contenido, archivo_pdf=pdf()))
+    assert respuesta.status_code == 409
+    assert respuesta.templates[0].name == "facturacion/comprobante_form.html"
+    form = respuesta.context["form"]
+    for campo, valor in entrada.items():
+        assert form[campo].value() == valor
+        assert str(form[campo]) in respuesta.content.decode()
+    mensaje = (
+        "Ese comprobante externo ya está registrado."
+        if duplicado_global else "Esta solicitud ya tiene una factura."
+    )
+    assert mensaje in form.non_field_errors()
+    assert mensaje in respuesta.content.decode()
+    assert "volvé a seleccionarlo" in respuesta.content.decode()
+    assert "type=\"file\"" in respuesta.content.decode()
+    assert ComprobanteExterno.objects.count() == Documento.objects.count() == 1
     registro = ComprobanteExterno.objects.get()
     archivo = reverse("documentos:archivo", args=[registro.documento_id])
     for usuario, estado in (("a", 200), ("b", 404), ("l", 403)):

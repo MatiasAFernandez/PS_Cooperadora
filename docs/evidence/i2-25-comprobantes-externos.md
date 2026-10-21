@@ -54,3 +54,14 @@ letra para notas; queda sujeto a validación institucional junto al resto del pe
 Las pantallas se renderizan en pruebas HTTP; no se declara inspección visual
 interactiva. La revisión cruzada de Franco se registra en la PR; los checks
 verdes por sí solos no la sustituyen.
+
+## Corrección de formulario ante conflicto 409
+
+El 21/10/2026 se corrigió el hallazgo B1 de la revisión de Franco sobre
+`305decbc25350b7ca306c3118d40d389729aceb9`: segunda factura y duplicado global
+vuelven al formulario con los campos conservados, mensaje de conflicto y HTTP
+409. El PDF debe seleccionarse nuevamente. La regresión HTTP con CSRF comprueba
+ambos casos, los valores renderizados, el mensaje y ausencia de altas parciales.
+Conjunto focal final: **26 passed in 17.41s**, PostgreSQL 18.6; Ruff y
+`git diff --check` aprobados. La CI verifica la suite completa del nuevo commit;
+esta corrección no presupone aprobación posterior de Franco.
