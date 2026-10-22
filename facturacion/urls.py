@@ -3,6 +3,7 @@
 from django.urls import path
 
 from . import views
+from .views_comprobantes import RegistrarComprobanteView
 
 app_name = "facturacion"
 urlpatterns = [
@@ -11,4 +12,6 @@ urlpatterns = [
     path("<int:numero>/", views.DetalleSolicitudView.as_view(), name="detalle"),
     path("<int:numero>/observar/", views.ObservarSolicitudView.as_view(), name="observar"),
     path("<int:numero>/corregir/", views.CorregirSolicitudView.as_view(), name="corregir"),
+    path("<int:numero>/comprobantes/nuevo/", RegistrarComprobanteView.as_view(),
+         name="registrar_comprobante"),
 ]
