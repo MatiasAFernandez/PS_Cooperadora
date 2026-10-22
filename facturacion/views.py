@@ -15,6 +15,7 @@ from documentos.policy import ArchivoInvalido
 from documentos.services import documentos_visibles
 from identidad.services import has_capability, resolve_actor
 
+from .cobros import resumen_cobros
 from .comprobantes import resumen_comprobantes
 from .forms import SolicitudFacturacionForm
 from .models import EstadoSolicitudFacturacion as Estado
@@ -182,9 +183,11 @@ class DetalleSolicitudView(FacturacionView):
         solicitud = self.objeto(numero)
         eventos = list(solicitud.eventos.all())
         comprobantes, neto = resumen_comprobantes(solicitud)
+        cobros, totales_cobros, eventos_cobros = resumen_cobros(solicitud)
         historial = [e.como_historial() for e in eventos] + [
             c.como_historial() for c in comprobantes
         ]
+        historial.extend(eventos_cobros)
         historial.sort(key=lambda e: (e.fecha_hora, e.evento_id, e.tipo_evento))
         return render(
             request,
@@ -193,6 +196,11 @@ class DetalleSolicitudView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "historial": historial,
+                "cobros": cobros, "totales_cobros": totales_cobros,
+                "puede_informar_cobro": any(has_capability(self.actor, c) for c in (
+                    "facturacion.informar_cobro", "facturacion.registrar_cobro"
+                )),
+                "puede_verificar_cobro": has_capability(self.actor, "facturacion.verificar_cobro"),
                 "comprobantes": comprobantes, "neto_comprobantes": neto,
                 "puede_registrar_comprobante": has_capability(
                     self.actor, "facturacion.registrar_factura_externa"

@@ -16,6 +16,7 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
             "facturacion.presentar",
             "facturacion.consultar_propias",
             "facturacion.corregir",
+            "facturacion.informar_cobro",
         }
     ),
     "demo_facturacion_lectura": frozenset({"facturacion.consultar_todas"}),
@@ -30,6 +31,7 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
     ),
     "demo_documentos_aporte": frozenset({"documentos.incorporar"}),
     "demo_documentos_revision": frozenset({"documentos.revisar"}),
+    "demo_verificacion_cobros": frozenset({"facturacion.verificar_cobro"}),
     "demo_documentos_metadatos": frozenset(
         {"documentos.consultar_metadatos", "documentos.ver_metadatos"}
     ),

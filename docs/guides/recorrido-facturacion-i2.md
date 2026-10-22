@@ -11,7 +11,7 @@ activado, dependencias instaladas y PostgreSQL local configurado en .env (ver RE
 
 ```powershell
 python manage.py migrate
-python manage.py preparar_identidad_demo --facturacion --revision-documental
+python manage.py preparar_identidad_demo --facturacion --revision-documental --verificacion-cobros
 python manage.py changepassword demo_a
 python manage.py changepassword demo_b
 python manage.py changepassword demo_o
@@ -48,8 +48,8 @@ ampliar esa capacidad; no revoca un grupo ya asignado. No otorga permiso de pago
 
 El pago declarado queda pendiente de verificación. La revisión documental se abre
 desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
-El registro de comprobantes externos se describe a continuación. El registro de
-cobros, cierre y anulación todavía no forman parte de estas pantallas.
+El registro de comprobantes y cobros externos se describe a continuación.
+El cierre y la anulación todavía no forman parte de estas pantallas.
 Ambos circuitos usan la navegación y el parcial de historial comunes de #59.
 Cada módulo conserva sus reglas de estado y permisos por objeto.
 
@@ -74,6 +74,37 @@ Los registros son inmutables y conservan la versión exacta del PDF. La revisió
 documental es independiente: registrar no acepta el respaldo ni acredita un cobro.
 El neto no convierte monedas ni cierra el trámite, incluso si llega a cero o es
 negativo. La [spec](../specs/005-matias-facturas-notas.md) delimita el perfil demo.
+
+## Cobros y anticipos en ARS
+
+1. Como A, presentar una solicitud sintética sin pago declarado. Abrir
+   **Informar cobro o anticipo**. Elegir BNA común, operación ficticia única,
+   fecha e importe 60,10 y adjuntar un PDF/JPEG/PNG sintético de hasta 10 MiB.
+   El resultado es PENDIENTE, incluso si registra O. No exige factura previa.
+2. Informar otro parcial por 40,15 con operación y respaldo propios. Si la solicitud
+   ya tenía comprobante inicial, puede elegirse como respaldo en lugar de subir
+   otro. No reutilizar la misma versión para dos cobros ni el mismo número de
+   operación en la misma cuenta, incluso en otra solicitud.
+3. Como O, preparado explícitamente con `--verificacion-cobros`, abrir
+   **Verificar ingreso**. Confirmar ambos: total confirmado 100,25 ARS. Rechazar
+   exige motivo; el rechazado se conserva pero no suma al confirmado. Una
+   verificación registrada no se edita ni repite; una corrección requiere un
+   diseño posterior, no borrar historia ni inventar otra operación.
+4. El registro inicial no verifica automáticamente el dinero ni el PDF. Revisar
+   el PDF sigue siendo otra acción. Si la factura se emite después, se consulta
+   con los cobros del mismo trámite sin duplicarlos. El estado del trámite no cambia.
+5. A informa y consulta sus cobros; B no accede a ellos ni descarga su archivo.
+   L consulta sin informar, verificar ni descargar por defecto. Quitar el grupo de
+   verificación a O revoca la acción en la siguiente petición. Preparar facturación
+   sin la opción no otorga esa capacidad, ni revoca un grupo ya asignado.
+6. Ante datos inválidos o duplicado se conservan los campos, con respuesta 400 o
+   409; si adjuntaste un archivo, volver a seleccionarlo. Un respaldo existente
+   conserva su selección mientras siga disponible.
+
+Se registra lo efectivamente recibido en ARS. Descuentos, retenciones, comisiones,
+conversión de monedas y cierre quedan fuera de este corte. Los importes pendientes,
+confirmados y rechazados aparecen separados: no representan por sí solos saldo
+cancelado ni suficiencia documental. Ver [SPEC-006](../specs/006-matias-cobros.md).
 
 ## Revisión documental
 
