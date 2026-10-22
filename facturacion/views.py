@@ -15,6 +15,7 @@ from documentos.policy import ArchivoInvalido
 from documentos.services import documentos_visibles
 from identidad.services import has_capability, resolve_actor
 
+from .comprobantes import resumen_comprobantes
 from .forms import SolicitudFacturacionForm
 from .models import EstadoSolicitudFacturacion as Estado
 from .permissions import (
@@ -180,13 +181,23 @@ class DetalleSolicitudView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
         eventos = list(solicitud.eventos.all())
+        comprobantes, neto = resumen_comprobantes(solicitud)
+        historial = [e.como_historial() for e in eventos] + [
+            c.como_historial() for c in comprobantes
+        ]
+        historial.sort(key=lambda e: (e.fecha_hora, e.evento_id, e.tipo_evento))
         return render(
             request,
             "facturacion/detalle.html",
             {
                 "actor": self.actor,
                 "solicitud": solicitud,
-                "historial": [e.como_historial() for e in eventos],
+                "historial": historial,
+                "comprobantes": comprobantes, "neto_comprobantes": neto,
+                "puede_registrar_comprobante": has_capability(
+                    self.actor, "facturacion.registrar_factura_externa"
+                )
+                and has_capability(self.actor, "documentos.incorporar"),
                 "versiones": [
                     {
                         "tipo": e.tipo_evento,
