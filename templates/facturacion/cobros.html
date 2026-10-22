@@ -1,0 +1,12 @@
+<h3>Cobros externos (ARS)</h3>
+{% if puede_informar_cobro %}<p><a href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a></p>{% endif %}
+<p>Confirmado: {{ totales_cobros.CONFIRMADO }} ARS. Pendiente: {{ totales_cobros.PENDIENTE }} ARS. Rechazado: {{ totales_cobros.RECHAZADO }} ARS.</p>
+<p>Estos totales no confirman cancelación ni cierre. {% if comprobantes %}Los cobros corresponden a la factura de esta solicitud, mostrada arriba.{% else %}Sin factura registrada: los ingresos se conservan como anticipos de esta solicitud.{% endif %}</p>
+<ul>{% for cobro in cobros %}<li>
+Cobro #{{ cobro.pk }}: {{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }} — <strong>{{ cobro.resultado }}</strong>.
+Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.
+{% if cobro.resultado != "PENDIENTE" %}Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}{% endif %}
+{% if puede_descargar %}<a href="{% url 'documentos:archivo' cobro.documento_id %}">Descargar respaldo</a>{% endif %}
+{% if puede_ver_revision %}<a href="{% url 'documentos:revision' cobro.documento_id %}">Consultar revisión documental</a>{% endif %}
+{% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" %}<a href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>{% endif %}
+</li>{% empty %}<li>Sin cobros registrados.</li>{% endfor %}</ul>

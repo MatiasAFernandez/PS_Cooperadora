@@ -23,6 +23,7 @@
 <label for="motivo">Motivo de observación</label><textarea id="motivo" name="motivo" required></textarea>
 <button type="submit">Registrar observación</button></form>{% endif %}
 {% include "facturacion/comprobantes.html" %}
+{% include "facturacion/cobros.html" %}
 <h3>Historial</h3>{% include "facturacion/historial.html" %}
 {% if puede_ver_revision %}<h3>Revisión de respaldos</h3><ul>
 {% for documento in respaldos %}<li><a href="{% url 'documentos:revision' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a></li>

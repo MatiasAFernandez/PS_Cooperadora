@@ -13,6 +13,10 @@
                     Revisión documental
                 {% elif evento.tipo_evento == "comprobante_externo_registrado" %}
                     Comprobante externo registrado
+                {% elif evento.tipo_evento == "cobro_informado" %}
+                    Cobro externo informado
+                {% elif evento.tipo_evento == "cobro_verificado" %}
+                    Ingreso verificado
                 {% else %}
                     {{ evento.tipo_evento }}
                 {% endif %}
@@ -20,7 +24,7 @@
             — {{ evento.fecha_hora|date:"d/m/Y H:i:s" }}
             — trámite {{ evento.tramite_ref }}
             — actor #{{ evento.actor_id }}
-            — {% if evento.tipo_evento == "revision_documental" %}resultado documental{% elif evento.tipo_evento == "aporte_documental" %}hecho documental{% elif evento.tipo_evento == "comprobante_externo_registrado" %}registro del comprobante{% else %}estado del trámite{% endif %}: {{ evento.estado_resultante }}
+            — {% if evento.tipo_evento == "revision_documental" %}resultado documental{% elif evento.tipo_evento == "aporte_documental" %}hecho documental{% elif evento.tipo_evento == "comprobante_externo_registrado" %}registro del comprobante{% elif evento.tipo_evento == "cobro_informado" or evento.tipo_evento == "cobro_verificado" %}verificación del ingreso{% else %}estado del trámite{% endif %}: {{ evento.estado_resultante }}
             {% if evento.motivo_o_detalle %}
                 <p>{{ evento.motivo_o_detalle }}</p>
             {% endif %}

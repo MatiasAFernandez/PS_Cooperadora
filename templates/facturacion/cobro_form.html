@@ -1,0 +1,10 @@
+{% extends "facturacion/base.html" %}
+{% block content %}
+<h2>Informar cobro externo — solicitud {{ solicitud.pk }}</h2>
+<p>Registrá lo efectivamente recibido en ARS. Se admiten anticipos y parciales. No mueve dinero ni cierra el trámite: el ingreso empieza pendiente de verificación.</p>
+<p>Usá un respaldo existente o adjuntá uno nuevo. El comprobante del formulario inicial no confirma automáticamente el ingreso; indicá el importe recibido, que puede diferir del importe solicitado.</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}
+{% if form.errors %}<p>Los campos se conservaron. Si elegiste un archivo, volvé a seleccionarlo.</p>{% endif %}
+<button type="submit">Registrar ingreso pendiente</button></form>
+<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+{% endblock %}

@@ -5,7 +5,7 @@ from django.template.loader import render_to_string
 from comunes.contracts import EventoHistorialDTO
 
 
-def test_historial_distingue_aporte_revision_y_comprobante_externo():
+def test_historial_distingue_eventos_documentales_comprobante_y_cobros():
     fecha = datetime(2026, 10, 22, 12, 0, tzinfo=UTC)
     historial = [
         EventoHistorialDTO(
@@ -35,6 +35,24 @@ def test_historial_distingue_aporte_revision_y_comprobante_externo():
             estado_resultante="REGISTRADO",
             motivo_o_detalle="Comprobante sintético.",
         ),
+        EventoHistorialDTO(
+            evento_id=4,
+            tramite_ref="facturacion:2",
+            tipo_evento="cobro_informado",
+            actor_id="10",
+            fecha_hora=fecha,
+            estado_resultante="PENDIENTE",
+            motivo_o_detalle="Cobro sintético informado.",
+        ),
+        EventoHistorialDTO(
+            evento_id=5,
+            tramite_ref="facturacion:2",
+            tipo_evento="cobro_verificado",
+            actor_id="11",
+            fecha_hora=fecha,
+            estado_resultante="CONFIRMADO",
+            motivo_o_detalle="Verificación sintética.",
+        ),
     ]
 
     contenido = render_to_string(
@@ -47,3 +65,7 @@ def test_historial_distingue_aporte_revision_y_comprobante_externo():
     assert "resultado documental: ACEPTADO" in contenido
     assert "Comprobante externo registrado" in contenido
     assert "registro del comprobante: REGISTRADO" in contenido
+    assert "Cobro externo informado" in contenido
+    assert "verificación del ingreso: PENDIENTE" in contenido
+    assert "Ingreso verificado" in contenido
+    assert "verificación del ingreso: CONFIRMADO" in contenido
