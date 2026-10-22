@@ -1,7 +1,7 @@
 # SPEC-006 — Registro de cobros y comprobantes de ingreso
 
-- Estado: parcialidad y datos básicos recibidos; imputación y verificación
-  necesitan precisión antes de implementar.
+- Estado: perfil provisional de demo precisado el 22/10/2026; validación
+  institucional pendiente y separada del cierre técnico.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#26](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/26).
 - Rol de Franco: revisar precisión monetaria y vínculos documentales compartidos.
@@ -15,9 +15,9 @@ comunica fecha, medio, número de operación, importe decimal, descuentos y
 comprobante protegido. Se admiten varios cobros parciales de una solicitud y se
 excluye imputar uno a varias solicitudes en I2. Un cobro aportado por el
 solicitante queda pendiente de verificación de Cooperadora; no se cuenta como
-ingreso confirmado por el mero alta. Falta precisar moneda, anticipos, vínculos
-con varias facturas de una misma solicitud, retenciones/comisiones y diferencias
-con ejemplos, además de la referencia externa única.
+ingreso confirmado por el mero alta. El perfil de demo acordado debajo precisa
+moneda, anticipos, identidad y verificación; difiere explícitamente descuentos,
+retenciones, comisiones y diferencias para otro corte validado.
 
 ## Problema y valor
 
@@ -30,8 +30,8 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 ### Incluye
 
 - Registro de un cobro externo con su procedencia y comprobante de ingreso.
-- Asociación verificable del cobro con facturas registradas y consulta de esos
-  vínculos por usuarios autorizados.
+- Asociación protegida con una solicitud y, por ella, con su factura única cuando
+  exista. Se conservan anticipos sin inventar una factura ni duplicar imputaciones.
 - Conservación de importes decimales y rechazo de operaciones parcialmente válidas.
 
 ### No incluye
@@ -39,11 +39,13 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 - Ejecutar cobros bancarios o conciliar automáticamente extractos.
 - Integración directa por API con bancos, Exubio o ATP.
 - Imputar un cobro a solicitudes diferentes durante I2.
+- Descuentos, retenciones, comisiones, conversión monetaria y corrección/anulación
+  de cobros o verificaciones. No se cuentan importes no recibidos como ingresos.
 
 ## Requisitos verificables
 
 - `COB-R01`: un cobro registrado conserva referencia externa, importe decimal,
-  fecha, actor registrante y vínculos con facturas existentes.
+  fecha, actor registrante y vínculo con la solicitud y su factura cuando exista.
 - `COB-R02`: el comprobante de ingreso se vincula al cobro y sólo se recupera con
   permiso sobre el trámite correspondiente.
 - `COB-R03`: una asociación inválida o un importe no permitido se rechaza sin
@@ -53,17 +55,37 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 
 ## Reglas de negocio
 
-- Se admiten cobros parciales de una solicitud. Moneda, anticipos, distribución
-  entre facturas de esa solicitud y tratamiento de ajustes se precisan antes de
-  implementar la imputación.
+- Sólo ARS, importes positivos hasta 9999999999,99 con hasta dos decimales exactos.
+  Se admiten varios parciales y anticipos antes de emitir la factura. Todos se
+  relacionan con la factura única por la solicitud; ninguna FK se reasigna después.
+- Identidad global: medio/cuenta de destino + número de operación obligatorio.
+  Medios del perfil: Mercado Pago, BNA común, BNA UVT y NBCH. Cuenta corriente
+  describe ausencia de cobro y no se admite como medio de ingreso. La referencia
+  conserva mayúsculas, ceros y separadores; sólo se recortan espacios exteriores.
+- Fecha e importe recibido son explícitos. El importe solicitado en el formulario
+  inicial no se interpreta automáticamente como recibido.
+- Respaldo PDF/JPEG/PNG hasta 10 MiB obligatorio: carga nueva o versión existente
+  COMPROBANTE_COBRO del mismo trámite. Se puede reutilizar el respaldo inicial sin
+  copiar bytes; una versión sólo respalda un cobro. El vínculo conserva esa versión
+  aunque después sea reemplazada. Registrar no exige revisión documental previa.
+- Tanto solicitante como operador dan de alta ingresos PENDIENTES. Una capacidad
+  independiente registra un único resultado CONFIRMADO o RECHAZADO; rechazo exige
+  motivo con texto. Actor, fecha y resultado son inmutables. La capacidad no se
+  deduce de poder registrar, revisar PDFs, leer, ser staff ni ser superusuario.
+- La confirmación verifica el ingreso externo, no la conformidad del archivo.
+  Totales pendientes, confirmados y rechazados se consultan por separado; sólo el
+  confirmado es insumo de #27. El resultado del PDF no altera estos totales.
+- Unicidad, pertenencia documental, importes y conservación del historial se
+  protegen en PostgreSQL; el servicio controla permisos y compensa archivos nuevos
+  tras rollback mediante la operación documental ya existente.
 - El registro del cobro informa una operación externa; no mueve dinero.
 - El estado de cancelación se determina conforme a SPEC-007, con reglas por acordar.
 
 ## Criterios de aceptación
 
-1. Dadas facturas registradas y un cobro externo válido, cuando un operador
-   autorizado lo ingresa, entonces se conservan importe, procedencia, vínculos y
-   comprobante de ingreso.
+1. Dada una solicitud con o sin factura y un cobro externo válido, cuando un actor
+   autorizado lo informa, se conservan importe, procedencia, vínculo y respaldo,
+   como pendiente. Una verificación explícita determina su inclusión en confirmados.
 2. Dado un vínculo inexistente o un importe inválido, cuando se guarda el cobro,
    entonces la operación se rechaza sin cambios parciales.
 3. Dado otro solicitante, cuando intenta consultar el cobro o descargar su
@@ -71,18 +93,21 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 
 ## Datos, permisos y sensibilidad
 
-- Datos requeridos: referencia externa, fecha, importe decimal, factura(s)
-  asociada(s), registrante y comprobante; moneda y distribución por factura por
-  validar.
-- Roles autorizados: personal registrante/verificador y lectores del trámite
-  según capacidades acordadas.
+- Datos requeridos: solicitud, medio/cuenta, operación, fecha, importe y respaldo;
+  moneda ARS, procedencia del registro, actor y fecha se fijan en servidor.
+- Informar exige acceso al trámite y `facturacion.informar_cobro` o
+  `facturacion.registrar_cobro`. Archivo nuevo exige además `documentos.incorporar`;
+  seleccionar respaldo existente exige metadatos. Verificar exige acceso y
+  `facturacion.verificar_cobro`, asignada explícitamente. Consulta y descarga
+  mantienen sus permisos por objeto; los importes y hechos se consultan en el detalle.
 - Datos sintéticos o anonimizados para pruebas: importes y comprobantes ficticios.
 
 ## Módulos e interfaces
 
 - Módulo propietario: facturación y cobros, a cargo de Matías.
-- Entradas y salidas: operación externa verificada → cobro y asociaciones;
-  consulta → importes y respaldo autorizado.
+- Entradas y salidas: operación externa informada → cobro pendiente y respaldo;
+  verificación explícita → hecho confirmado/rechazado; consulta → importes y
+  respaldo autorizado, sin modificar la solicitud.
 - Dependencias: SPEC-002, SPEC-003 y SPEC-005.
 - Integración requerida: SPEC-007 para cancelación; SPEC-009 para integridad.
 
@@ -97,12 +122,13 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 
 ## Preguntas abiertas
 
-- ¿Qué identifica de forma única un cobro y qué respaldo exige Cooperadora?
-- ¿Se admiten anticipos y un cobro para varias facturas de la misma solicitud?
-- ¿Qué moneda y tratamiento de ajustes, retenciones o diferencias corresponde?
+- Validación institucional del perfil, correcciones/anulaciones, tratamiento de
+  diferencias y descuentos/retenciones/comisiones antes de habilitar esos casos.
+- #27 define cierre y cancelación. Un confirmado no cierra ni verifica el PDF.
 
 ## Decisiones
 
 | Fecha | Fuente | Decisión | Consecuencia |
 |---|---|---|---|
 | 2026-09-17 | Plan de Trabajo corregido | Registrar cobros realizados externamente y asociarlos a facturas y comprobantes. | Las reglas de imputación y conciliación quedan pendientes de validación. |
+| 2026-10-22 | Confirmación de Matías para #26 | ARS; parciales y anticipos por solicitud; unicidad medio/cuenta + operación; respaldo nuevo o existente; ingreso pendiente con verificación separada; ajustes diferidos. | Perfil provisional de demo, sin movimiento de dinero ni cierre automático. |

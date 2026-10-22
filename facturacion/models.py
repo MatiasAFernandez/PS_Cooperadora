@@ -11,6 +11,7 @@ from django.db import IntegrityError, models
 from comunes.contracts import EventoHistorialDTO
 
 from .choices import MEDIOS_PAGO_EFECTIVOS, CondicionIVA, ModalidadCobro, ProductoServicio
+from .models_cobros import CobroExterno, VerificacionCobro  # noqa: F401
 from .validation import validar_cuit
 
 
