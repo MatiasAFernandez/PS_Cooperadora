@@ -1,12 +1,15 @@
 # Recorrido local de facturación — solicitudes y comprobantes externos
 
-Usar exclusivamente datos y documentos sintéticos. Este corte implementa
-presentación, observación y corrección; no verifica ingresos ni emite facturas.
-Las obligatoriedades del formulario relevado son perfil provisional de demo.
+Usar exclusivamente datos y documentos sintéticos. Este recorrido cubre la
+presentación, observación y corrección de solicitudes, el registro de comprobantes
+y cobros externos y la verificación independiente del ingreso. No realiza emisión
+fiscal ni transferencias. Las obligatoriedades del formulario relevado son un
+perfil provisional de demo.
 
 ## Preparación
 
-Desde una versión con solicitudes, revisión documental y comprobantes de #25, con el entorno Python
+Desde una versión con solicitudes, revisión documental, comprobantes de #25 y
+cobros de #26, con el entorno Python
 activado, dependencias instaladas y PostgreSQL local configurado en .env (ver README):
 
 ```powershell
