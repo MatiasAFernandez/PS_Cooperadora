@@ -34,6 +34,10 @@ circuito siguen siendo independientes.
 - `templates/comunes/historial_eventos.html` consume el DTO en ambos detalles.
   La cronología se ordena por hora del evento y usa el identificador del evento
   para desempatar.
+- #27 agrega al detalle de facturación el hecho `actualizacion_respaldo` desde
+  `ActualizacionRespaldo`. El parcial lo presenta como «Vínculo documental
+  actualizado» y rotula su resultado «vínculo documental», separado del estado
+  financiero y de la revisión documental.
 - El acceso directo a un objeto continúa sujeto a los filtros de visibilidad del
   servidor. Un enlace o una capacidad de navegación no sustituye las
   comprobaciones por objeto; observar y corregir siguen dependiendo de su

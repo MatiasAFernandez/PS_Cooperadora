@@ -21,6 +21,8 @@ def autorizar_cobro(actor, numero, *, verificar=False):
     solicitud = filtrar_solicitudes_visibles(actor).filter(pk=numero).first()
     if solicitud is None:
         raise ObjetoNoVisibleError
+    from .seguimiento import exigir_abierta
+    exigir_abierta(solicitud)
     capacidades = (
         ("facturacion.verificar_cobro",)
         if verificar

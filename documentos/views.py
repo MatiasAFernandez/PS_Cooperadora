@@ -101,7 +101,11 @@ def documento_revision(request, documento_id: int):
         documento, revisiones = consultar_revision(actor=actor, documento_id=documento_id)
         actual = ultima_revision(documento)
         vigente = not documento.__class__.objects.filter(reemplaza=documento).exists()
-        puede_revisar = has_capability(actor, "documentos.revisar") and vigente
+        terminal = (
+            documento.tramite_base.circuito == "FACTURACION"
+            and documento.tramite_base.solicitud_facturacion.estado in {"CERRADA", "ANULADA"}
+        )
+        puede_revisar = has_capability(actor, "documentos.revisar") and vigente and not terminal
         form = RevisionDocumentoForm(initial={"revision_esperada": actual.pk if actual else 0})
         status = 200
         if request.method == "POST":

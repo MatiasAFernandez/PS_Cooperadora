@@ -131,7 +131,9 @@ class ListaSolicitudesView(FacturacionView):
         ):
             raise PermissionDenied
         pagina = Paginator(
-            filtrar_solicitudes_visibles(self.actor).order_by("-fecha_presentacion", "-pk"),
+            filtrar_solicitudes_visibles(self.actor).prefetch_related(
+                "comprobantes", "cobros__verificacion"
+            ).order_by("-fecha_presentacion", "-pk"),
             25,
         ).get_page(request.GET.get("pagina"))
         return render(request, "facturacion/lista.html", {"actor": self.actor, "pagina": pagina})
@@ -181,13 +183,25 @@ class PresentarSolicitudView(FacturacionView):
 class DetalleSolicitudView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
+        from .seguimiento import diagnostico_visible, respaldo_actual
+        diagnostico_actual = diagnostico_visible(self.actor, solicitud)
         eventos = list(solicitud.eventos.all())
         comprobantes, neto = resumen_comprobantes(solicitud)
         cobros, totales_cobros, eventos_cobros = resumen_cobros(solicitud)
+        from django.db.models import Q
+
+        from .models import ActualizacionRespaldo
+        actualizaciones = ActualizacionRespaldo.objects.filter(
+            Q(comprobante__solicitud=solicitud) | Q(cobro__solicitud=solicitud)
+        ).select_related("comprobante", "cobro")
+        for objeto in [*comprobantes, *cobros]:
+            objeto.respaldo_vinculado = respaldo_actual(objeto)
         historial = [e.como_historial() for e in eventos] + [
             c.como_historial() for c in comprobantes
         ]
         historial.extend(eventos_cobros)
+        if has_capability(self.actor, "documentos.consultar_metadatos"):
+            historial.extend(a.como_historial() for a in actualizaciones)
         historial.sort(key=lambda e: (e.fecha_hora, e.evento_id, e.tipo_evento))
         return render(
             request,
@@ -196,6 +210,15 @@ class DetalleSolicitudView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "historial": historial,
+                "diagnostico": diagnostico_actual,
+                "puede_cerrar": has_capability(self.actor, "facturacion.cerrar")
+                and has_capability(self.actor, "documentos.consultar_metadatos"),
+                "puede_anular": has_capability(self.actor, "facturacion.anular")
+                and has_capability(self.actor, "documentos.consultar_metadatos"),
+                "puede_actualizar_respaldo": has_capability(
+                    self.actor, "facturacion.actualizar_respaldo"
+                )
+                and has_capability(self.actor, "documentos.consultar_metadatos"),
                 "cobros": cobros, "totales_cobros": totales_cobros,
                 "puede_informar_cobro": any(has_capability(self.actor, c) for c in (
                     "facturacion.informar_cobro", "facturacion.registrar_cobro"

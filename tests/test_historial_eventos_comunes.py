@@ -53,6 +53,15 @@ def test_historial_distingue_eventos_documentales_comprobante_y_cobros():
             estado_resultante="CONFIRMADO",
             motivo_o_detalle="Verificación sintética.",
         ),
+        EventoHistorialDTO(
+            evento_id=6,
+            tramite_ref="facturacion:2",
+            tipo_evento="actualizacion_respaldo",
+            actor_id="12",
+            fecha_hora=fecha,
+            estado_resultante="ACTUALIZADO",
+            motivo_o_detalle="Comprobante #3. Respaldo #1 → #2. Corrección sintética.",
+        ),
     ]
 
     contenido = render_to_string(
@@ -69,3 +78,5 @@ def test_historial_distingue_eventos_documentales_comprobante_y_cobros():
     assert "verificación del ingreso: PENDIENTE" in contenido
     assert "Ingreso verificado" in contenido
     assert "verificación del ingreso: CONFIRMADO" in contenido
+    assert "Vínculo documental actualizado" in contenido
+    assert "vínculo documental: ACTUALIZADO" in contenido

@@ -1,0 +1,14 @@
+<h3>Pendientes y resolución</h3>
+<p>Neto: {{ diagnostico.neto }} ARS. Ingreso confirmado: {{ diagnostico.confirmado }} ARS.</p>
+{% if diagnostico.terminal %}<p>Resolución definitiva: {{ solicitud.get_estado_display }}. El historial y los archivos autorizados se conservan; no admite nuevas operaciones ni reapertura.</p>
+{% else %}
+<h4>Para cerrar</h4><ul>{% for falta in diagnostico.faltas_cierre %}<li>{{ falta }}</li>{% empty %}<li>Sin pendientes para el cierre normal.</li>{% endfor %}</ul>
+<h4>Para anular</h4><ul>{% for falta in diagnostico.faltas_anulacion %}<li>{{ falta }}</li>{% empty %}<li>Sin pendientes para la anulación.</li>{% endfor %}</ul>
+{% if puede_cerrar or puede_anular %}
+<form method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
+<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
+<label for="motivo-resolucion">Motivo de resolución</label><textarea id="motivo-resolucion" name="motivo" required maxlength="2000"></textarea>
+{% if puede_cerrar %}<button name="accion" value="cerrar">Cerrar trámite</button>{% endif %}
+{% if puede_anular %}<button name="accion" value="anular">Anular trámite</button>{% endif %}
+</form>{% endif %}
+{% endif %}

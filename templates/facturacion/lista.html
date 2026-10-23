@@ -2,7 +2,7 @@
 {% block content %}<h2>Solicitudes visibles</h2>
 <table><thead><tr><th>Número</th><th>Presentación</th><th>Receptor</th><th>Estado</th></tr></thead><tbody>
 {% for solicitud in pagina %}<tr><td><a href="{% url 'facturacion:detalle' solicitud.pk %}">{{ solicitud.pk }}</a></td>
-<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td>{{ solicitud.get_estado_display }}</td></tr>
+<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td>{{ solicitud.get_estado_display }} — seguimiento: {{ solicitud.estado_seguimiento }}</td></tr>
 {% empty %}<tr><td colspan="4">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
 <nav aria-label="Páginas">{% if pagina.has_previous %}<a href="?pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
 <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>

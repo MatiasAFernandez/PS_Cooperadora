@@ -60,6 +60,8 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
   9999999999,99) y PDF protegido hasta 10 MiB son obligatorios.
 - Registro, versión exacta del PDF, actor y fecha se conservan sin edición ni
   eliminación. La incorporación es atómica y reutiliza la compensación documental.
+  #27 permite una asociación documental sucesora explícita y auditable sin cambiar
+  la FK original ni los datos monetarios del comprobante; consultar SPEC-007.
 - El registro refleja una operación externa; por sí solo no acredita un cobro.
 - El neto informativo suma factura y débitos y resta créditos, sin conversión de
   moneda, verificación de ingreso ni transición de estado. Puede resultar cero
