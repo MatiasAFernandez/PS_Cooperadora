@@ -301,8 +301,7 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     assert "PENDIENTE" in contenido_pendiente
     assert "desconocid" not in contenido_pendiente.lower()
     assert (
-        "El resultado de revisión de cada versión figura en "
-        "«Versiones y revisión documental»."
+        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
         in contenido_pendiente
     )
 
@@ -368,10 +367,12 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
         "no se ofrecen para nuevos pagos; siguen existiendo y conservan su historial."
         in contenido
     )
-    assert "La categoría del respaldo no surge por sí sola del registro de pago." in contenido
     assert (
-        "El resultado de revisión de cada versión figura en "
-        "«Versiones y revisión documental»."
+        "La categoría de la versión referenciada al registrar el pago no está disponible"
+        in contenido
+    )
+    assert (
+        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
         in contenido
     )
     assert (
@@ -421,9 +422,9 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     assert "Versiones y revisión documental" not in contenido_lector
     assert "La categoría del respaldo no surge" not in contenido_lector
     assert (
-        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante. "
-        "El pago no equivale a aprobación documental ni determina la revisión "
-        "o suficiencia documental."
+        "Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. "
+        "No se puede inferir desde aquí si hay archivos; el registro de pago tampoco "
+        "equivale a aprobación o suficiencia documental."
         in contenido_lector
     )
     assert "No hay versiones documentales visibles" not in contenido_lector
