@@ -68,6 +68,9 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
   COMPROBANTE_COBRO del mismo trámite. Se puede reutilizar el respaldo inicial sin
   copiar bytes; una versión sólo respalda un cobro. El vínculo conserva esa versión
   aunque después sea reemplazada. Registrar no exige revisión documental previa.
+  #27 agrega la actualización explícita del vínculo mediante un hecho auditado;
+  conserva la FK original, importes y verificaciones. El cierre usa el vínculo
+  actual y exige su aceptación vigente, según SPEC-007.
 - Tanto solicitante como operador dan de alta ingresos PENDIENTES. Una capacidad
   independiente registra un único resultado CONFIRMADO o RECHAZADO; rechazo exige
   motivo con texto. Actor, fecha y resultado son inmutables. La capacidad no se

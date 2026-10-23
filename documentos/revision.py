@@ -5,7 +5,7 @@ from django.db import transaction
 
 from identidad.services import has_capability
 
-from .acceso import documentos_visibles
+from .acceso import bloquear_facturacion_abierta, documentos_visibles
 from .models import Documento, RevisionDocumento
 from .services import bloquear_serie, obtener
 
@@ -52,7 +52,8 @@ def revisar(*, actor, documento_id, resultado, motivo, revision_esperada):
     if type(revision_esperada) is not int or revision_esperada < 0:
         raise ValidationError("Recargá la página para obtener una revisión válida.")
     with transaction.atomic():
-        # Mismo bloqueo que reemplazo/C01, sin adquirir después un bloqueo de gasto.
+        # Facturación se serializa con cierre antes de tomar la raíz; gastos conserva su orden.
+        bloquear_facturacion_abierta(documento.tramite_base)
         bloquear_serie(documento)
         if not documentos_visibles(actor).filter(pk=documento.pk).exists():
             from .acceso import DocumentoNoVisible

@@ -2,19 +2,19 @@
 
 Usar exclusivamente datos y documentos sintéticos. Este recorrido cubre la
 presentación, observación y corrección de solicitudes, el registro de comprobantes
-y cobros externos y la verificación independiente del ingreso. No realiza emisión
-fiscal ni transferencias. Las obligatoriedades del formulario relevado son un
+y cobros externos, la verificación independiente del ingreso y la resolución
+explícita del trámite. No realiza emisión fiscal ni transferencias. Las obligatoriedades del formulario relevado son un
 perfil provisional de demo.
 
 ## Preparación
 
 Desde una versión con solicitudes, revisión documental, comprobantes de #25 y
-cobros de #26, con el entorno Python
+cobros de #26 y resolución de #27, con el entorno Python
 activado, dependencias instaladas y PostgreSQL local configurado en .env (ver README):
 
 ```powershell
 python manage.py migrate
-python manage.py preparar_identidad_demo --facturacion --revision-documental --verificacion-cobros
+python manage.py preparar_identidad_demo --facturacion --revision-documental --verificacion-cobros --resolucion-facturacion
 python manage.py changepassword demo_a
 python manage.py changepassword demo_b
 python manage.py changepassword demo_o
@@ -52,7 +52,7 @@ ampliar esa capacidad; no revoca un grupo ya asignado. No otorga permiso de pago
 El pago declarado queda pendiente de verificación. La revisión documental se abre
 desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
 El registro de comprobantes y cobros externos se describe a continuación.
-El cierre y la anulación todavía no forman parte de estas pantallas.
+El cierre y la anulación son acciones explícitas del recorrido de resolución.
 Ambos circuitos usan la navegación y el parcial de historial comunes de #59.
 Cada módulo conserva sus reglas de estado y permisos por objeto.
 
@@ -108,6 +108,53 @@ Se registra lo efectivamente recibido en ARS. Descuentos, retenciones, comisione
 conversión de monedas y cierre quedan fuera de este corte. Los importes pendientes,
 confirmados y rechazados aparecen separados: no representan por sí solos saldo
 cancelado ni suficiencia documental. Ver [SPEC-006](../specs/006-matias-cobros.md).
+
+## Pendientes, cierre y anulación
+
+1. Completar la solicitud, registrar factura por 100,25 ARS y cobros confirmados
+   por 60,10 y 40,15. En revisión documental, aceptar la factura y los dos respaldos
+   de ingreso. No hace falta aceptar archivos ajenos a esos registros. Las notas
+   que existan también requieren respaldo aceptado.
+2. El detalle muestra el estado de solicitud (Presentada/Observada) y el seguimiento
+   financiero. La cobertura muestra **Cobrada en revisión** sin resolver el trámite.
+   El diagnóstico enumera causas de bloqueo para cerrar y para anular.
+3. Entrar como O preparado con `--resolucion-facturacion`. Completar motivo y
+   **Cerrar trámite**. Se exige neto positivo, igualdad exacta y ausencia de cobros
+   pendientes, además de las aceptaciones. Si se declaró transferencia en el
+   formulario inicial, registrar su medio/operación como cobro y verificarlo;
+   esa declaración no se descarta ni se confirma automáticamente.
+4. Faltante, exceso, neto negativo, observación pendiente o respaldo sin aceptación
+   vigente impiden cerrar. Un dato cambiado desde que se abrió el detalle devuelve
+   409 y conserva el motivo; recargar para decidir sobre el diagnóstico actual.
+5. **Anular trámite** exige motivo y permite sólo solicitud sin factura ni ingresos
+   pendientes/confirmados, o factura con neto exactamente cero por notas, respaldos
+   aceptados y ausencia de esos ingresos. La nota no acredita devolución de dinero.
+   No ejecuta anulación fiscal externa. Un ingreso rechazado se conserva y no cuenta.
+6. CERRADA y ANULADA son definitivos. Consultar historial y descargar con permiso
+   sigue disponible; nuevas operaciones, revisiones y reapertura se deniegan.
+   Sin el grupo de resolución no se habilita la acción por ser operador/revisor.
+   Resolver requiere también metadatos. Una cuenta sin esa capacidad recibe una
+   sección documental neutral y no ve los motivos de actualización de respaldos.
+
+## Sustituir el respaldo vinculado a un registro
+
+1. Antes de resolver el trámite, como O abrir **Actualizar vínculo del respaldo**
+   en la factura/nota o cobro. Elegir una sucesora vigente existente de la misma
+   serie/tipo/trámite, o adjuntar un archivo nuevo y motivo (una sola opción).
+2. Una carga nueva crea la sucesora y su vínculo en una operación; requiere permiso
+   de incorporación. Factura/nota requiere PDF; cobro admite PDF/JPEG/PNG hasta
+   10 MiB. Los errores conservan motivo/selección y requieren seleccionar el archivo
+   nuevamente. Un rollback no deja vínculo ni archivo nuevos a medias.
+3. El historial registra objeto, vínculo anterior/nuevo, motivo, actor y fecha.
+   Los importes, operaciones y verificaciones no cambian. La nueva versión no
+   hereda aceptación y bloquea el cierre hasta revisarse como ACEPTADO.
+4. La FK original y las versiones anteriores siguen conservadas. Si ese respaldo
+   se compartía con la declaración inicial y luego A corrige con otro archivo,
+   su carga continúa la serie vigente; no borra el vínculo histórico del cobro.
+   El operador debe actualizar explícitamente el vínculo si vuelve a reemplazarse.
+
+Las condiciones completas y los límites de regularización están en
+[SPEC-007](../specs/007-matias-seguimiento-cierre.md).
 
 ## Revisión documental
 

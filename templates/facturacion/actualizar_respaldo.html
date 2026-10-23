@@ -1,0 +1,13 @@
+{% extends "facturacion/base.html" %}{% block content %}
+<h2>Actualizar vínculo documental</h2><p>Versión vinculada: {{ anterior.nombre_original }} — {{ anterior.version }}.</p>
+<p>Esta acción conserva el archivo anterior y deja un evento. No modifica importes ni confirma el ingreso o la revisión documental.</p>
+<ul role="alert">{% for error in errores %}<li>{{ error }}</li>{% endfor %}</ul>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
+<label for="nuevo">Versión sucesora vigente existente</label><select id="nuevo" name="nuevo_id"><option value="">Seleccioná una versión o adjuntá un archivo nuevo</option>
+{% for documento in opciones %}<option value="{{ documento.pk }}"{% if nuevo_id == documento.pk|stringformat:"s" %} selected{% endif %}>{{ documento.nombre_original }} — versión {{ documento.version }}</option>{% endfor %}</select>
+<label for="archivo">O adjuntá un respaldo nuevo (comprobante externo: PDF; cobro: PDF/JPEG/PNG; hasta 10 MiB)</label><input id="archivo" name="archivo" type="file">
+<label for="motivo">Motivo</label><textarea id="motivo" name="motivo" required maxlength="2000">{{ motivo }}</textarea>
+<button type="submit">Actualizar vínculo</button></form>
+<p>Un archivo nuevo crea la versión sucesora y el vínculo en una operación. Requiere permiso de incorporación; la nueva versión empieza sin revisión. El cierre exigirá su aceptación. Ante error, volvé a seleccionar el archivo.</p>
+<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+{% endblock %}

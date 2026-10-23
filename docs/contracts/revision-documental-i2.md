@@ -47,6 +47,14 @@ visibilidad, vigencia y revisión esperada. Una revisión concurrente, un reenv�
 un resultado idéntico sin cambios o una versión reemplazada devuelve conflicto
 (409). Una entrada inválida devuelve 400. El cliente debe recargar tras conflicto.
 
+El consumidor de cierre de facturación (#27) agrega serialización por cabecera:
+los aportes/reemplazos y revisiones de ese circuito bloquean primero su cabecera
+y después la raíz. Así la resolución puede validar todos los respaldos bajo la
+misma cabecera y excluir cambios concurrentes. CERRADA/ANULADA conservan consulta
+y descarga autorizadas, pero deniegan aportes y revisiones posteriores. Las
+guardas SQL aplican esa condición también a inserciones directas. Gastos y C01
+conservan el orden y las reglas descritos en este contrato.
+
 El registro de revisión es el propio hecho de historial: se escribe en una
 transacción y un fallo no deja un resultado separado o evento parcial. PostgreSQL
 protege resultados y motivos válidos e impide UPDATE/DELETE de revisiones incluso
@@ -62,8 +70,9 @@ revisando la versión reemplazada. Los archivos existentes no se tocan al revisa
 `version_aceptada(documento)` sólo informa si la última revisión es ACEPTADO y la
 versión sigue vigente. Es una consulta interna sobre un documento ya autorizado;
 no determina qué requisito de un circuito satisface ni cierra deudas/trámites.
-Un futuro consumidor que tome decisiones debe revalidar dentro de su transacción
-bajo el bloqueo de raíz, no confiar en una lectura previa de esta consulta.
+Un consumidor que tome decisiones debe revalidar dentro de su transacción bajo
+el bloqueo compartido con los escritores: raíz para C01/gastos y cabecera para
+resolución de facturación. No debe confiar en una lectura previa de esta consulta.
 Una carga, ausencia de revisión, OBSERVADO o RECHAZADO no acredita conformidad.
 
 El adaptador C01 omite versiones OBSERVADO/RECHAZADO del selector y vuelve a

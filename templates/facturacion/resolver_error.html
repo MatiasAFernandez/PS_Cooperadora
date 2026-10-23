@@ -1,0 +1,9 @@
+{% extends "facturacion/base.html" %}{% block content %}
+<h2>No se registró la resolución</h2><ul role="alert">{% for error in errores %}<li>{{ error }}</li>{% endfor %}</ul>
+<form method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
+<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
+<input type="hidden" name="accion" value="{{ accion }}">
+<label for="motivo">Motivo de resolución</label><textarea id="motivo" name="motivo" required maxlength="2000">{{ motivo }}</textarea>
+<button type="submit">Reintentar tras revisar los pendientes</button></form>
+<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver al detalle y revisar los pendientes antes de reintentar</a></p>
+{% endblock %}

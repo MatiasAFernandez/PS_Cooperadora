@@ -13,7 +13,12 @@ from comunes.models import Circuito
 from comunes.services import registrar_cabecera_gasto
 from identidad.services import Actor, has_capability
 
-from .acceso import DocumentoNoVisible, destino_visible, documentos_visibles
+from .acceso import (
+    DocumentoNoVisible,
+    bloquear_facturacion_abierta,
+    destino_visible,
+    documentos_visibles,
+)
 from .models import Documento
 from .policy import ArchivoInvalido, ArchivoValidado, validar_archivo
 
@@ -122,6 +127,7 @@ def incorporar(
     try:
         with transaction.atomic():
             base = registrar_cabecera_gasto(destino.gasto) if destino.gasto else destino.base
+            bloquear_facturacion_abierta(base)
             # La revalidación cubre cambios de titular entre consulta y bloqueo.
             destino_visible(actor, referencia)
             anterior = None

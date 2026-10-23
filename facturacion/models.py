@@ -11,6 +11,7 @@ from django.db import IntegrityError, models
 from comunes.contracts import EventoHistorialDTO
 
 from .choices import MEDIOS_PAGO_EFECTIVOS, CondicionIVA, ModalidadCobro, ProductoServicio
+from .models_cierre import ActualizacionRespaldo  # noqa: F401
 from .models_cobros import CobroExterno, VerificacionCobro  # noqa: F401
 from .validation import validar_cuit
 
@@ -19,6 +20,8 @@ class EstadoSolicitudFacturacion(models.TextChoices):
     BORRADOR_TECNICO = "BORRADOR_TECNICO", "Borrador técnico"
     PRESENTADA = "PRESENTADA", "Presentada"
     OBSERVADA = "OBSERVADA", "Observada"
+    CERRADA = "CERRADA", "Cerrada"
+    ANULADA = "ANULADA", "Anulada"
 
 
 class SolicitudQuerySet(models.QuerySet):
@@ -121,6 +124,11 @@ class SolicitudFacturacion(models.Model):
     @property
     def centro_costo(self):
         return self.tramite_base.centro_costo_codigo
+
+    @property
+    def estado_seguimiento(self):
+        from .seguimiento import estado_visible
+        return estado_visible(self)
 
     def clean(self):
         if self.estado == EstadoSolicitudFacturacion.BORRADOR_TECNICO:
