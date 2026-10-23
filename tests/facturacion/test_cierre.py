@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from decimal import Decimal
 from threading import Barrier
+from uuid import uuid4
 
 import pytest
 from django.contrib.auth.models import Group
@@ -12,6 +13,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
 from django.urls import reverse
 
+from comunes.models import TramiteBase
 from documentos.models import Documento, RevisionDocumento
 from documentos.revision import revisar
 from documentos.services import incorporar
@@ -639,3 +641,92 @@ def test_diagnostico_y_actualizacion_no_filtran_metadatos_al_lector(escenario, s
             motivo="Resolver",
             revision_esperada=diagnostico(solicitud)["revision"],
         )
+
+
+def insertar_terminal_sql(solicitud, estado):
+    """Copia datos operativos válidos; sólo cambia identidad reservada, clave y estado."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT nextval(pg_get_serial_sequence('facturacion_solicitudfacturacion','id'))"
+        )
+        numero = cursor.fetchone()[0]
+        base = TramiteBase.objects.create(
+            circuito="FACTURACION",
+            numero_publico=numero,
+            solicitante_actor_id=solicitud.tramite_base.solicitante_actor_id,
+        )
+        valores = {
+            "id": numero,
+            "tramite_base_id": base.pk,
+            "estado": estado,
+            "clave_idempotencia": uuid4(),
+        }
+        columnas = [f.column for f in type(solicitud)._meta.concrete_fields]
+        seleccion = ["%s" if c in valores else connection.ops.quote_name(c) for c in columnas]
+        cursor.execute(
+            "INSERT INTO facturacion_solicitudfacturacion ("
+            + ",".join(connection.ops.quote_name(c) for c in columnas)
+            + ") SELECT "
+            + ",".join(seleccion)
+            + " FROM facturacion_solicitudfacturacion WHERE id=%s",
+            [*(valores[c] for c in columnas if c in valores), solicitud.pk],
+        )
+
+
+@pytest.mark.parametrize("estado", ["CERRADA", "ANULADA"])
+def test_sql_rechaza_alta_terminal_sin_resolucion(escenario, solicitud, estado):
+    cantidad = type(solicitud).objects.count()
+    cabeceras = TramiteBase.objects.count()
+    with pytest.raises(IntegrityError), transaction.atomic():
+        insertar_terminal_sql(solicitud, estado)
+    assert type(solicitud).objects.count() == cantidad
+    assert TramiteBase.objects.count() == cabeceras
+    assert solicitud.eventos.count() == 1
+
+
+@pytest.mark.parametrize("accion", ["cerrar", "anular"])
+def test_centro_costo_terminal_protegido_por_orm_y_sql(escenario, solicitud, accion):
+    base_id = solicitud.tramite_base_id
+    assert TramiteBase.objects.filter(pk=base_id).update(centro_costo_codigo="PREVIO") == 1
+    if accion == "cerrar":
+        preparado(escenario, solicitud)
+    resolver(escenario, solicitud, accion)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        TramiteBase.objects.filter(pk=base_id).update(centro_costo_codigo="POSTERIOR")
+    with pytest.raises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE comunes_tramitebase SET centro_costo_codigo=NULL WHERE id=%s", [base_id]
+        )
+    assert TramiteBase.objects.get(pk=base_id).centro_costo_codigo == "PREVIO"
+    assert solicitud.eventos.filter(tipo_evento__in=["CIERRE", "ANULACION"]).count() == 1
+
+
+def test_guarda_terminal_no_bloquea_centro_costo_de_gastos(escenario):
+    base = TramiteBase.objects.create(
+        circuito="GASTO",
+        numero_publico=1000000,
+        solicitante_actor_id=str(escenario.usuarios["a"].pk),
+    )
+    assert TramiteBase.objects.filter(pk=base.pk).update(centro_costo_codigo="GASTOS") == 1
+    assert TramiteBase.objects.get(pk=base.pk).centro_costo_codigo == "GASTOS"
+
+
+def test_upgrade_guardas_preserva_resolucion_existente(escenario, solicitud):
+    executor = MigrationExecutor(connection)
+    finales = executor.loader.graph.leaf_nodes()
+    try:
+        executor.migrate([("facturacion", "0011_resolucion_integridad")])
+        resolver(escenario, solicitud, "anular")
+        evento = solicitud.eventos.get(tipo_evento="ANULACION")
+        MigrationExecutor(connection).migrate(finales)
+        solicitud.refresh_from_db()
+        assert solicitud.estado == "ANULADA"
+        assert solicitud.eventos.get(tipo_evento="ANULACION").pk == evento.pk
+        with pytest.raises(IntegrityError), transaction.atomic():
+            insertar_terminal_sql(solicitud, "ANULADA")
+        with pytest.raises(IntegrityError), transaction.atomic():
+            TramiteBase.objects.filter(pk=solicitud.tramite_base_id).update(
+                centro_costo_codigo="POSTERIOR"
+            )
+    finally:
+        MigrationExecutor(connection).migrate(finales)

@@ -48,6 +48,14 @@ exige el evento terminal de la revisión y el índice impide duplicarlo. El cont
 documental explica el nuevo bloqueo de facturación; no cambia decisiones, pagos
 ni política documental de gastos.
 
+La migración aditiva 0012 corrige los dos casos de la revisión de Franco sobre
+ba2b6ef: prohíbe INSERT de solicitudes CERRADA/ANULADA y protege el centro de
+costo de la cabecera después de resolver. El UPDATE de cabecera toma el mismo
+bloqueo de fila usado por la resolución. Los trámites abiertos y GASTO conservan
+la posibilidad de modificar ese campo. Las regresiones reprodujeron los cuatro
+fallos (ambos estados) antes del ajuste; también verifican SQL directo, ORM,
+rollback del alta rechazada y actualización desde 0011 con una anulación existente.
+
 ## Reproducción y límites
 
 Entorno local: Python 3.14.7, Django 5.2.17 y PostgreSQL 18.6 aislado en loopback.
@@ -56,6 +64,7 @@ Entorno local: Python 3.14.7, Django 5.2.17 y PostgreSQL 18.6 aislado en loopbac
 |---|---|
 | Suite completa antes del último ajuste de privacidad documental | 582 passed in 172.03s |
 | Conjunto focal final de cierre, incluido el ajuste de privacidad | 31 passed in 26.43s |
+| Conjunto focal con guardas 0012 y regresiones de revisión | 37 passed in 36.28s |
 | Ruff y diff --check | Aprobados |
 | Django check | Sin incidencias |
 | makemigrations --check --dry-run | Sin cambios |
