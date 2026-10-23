@@ -20,6 +20,7 @@ class Command(BaseCommand):
     help = "Crea los cuatro usuarios de demo sin contraseñas; se establecen con changepassword."
 
     def add_arguments(self, parser):
+        parser.add_argument("--resolucion-facturacion", action="store_true")
         parser.add_argument("--verificacion-cobros", action="store_true")
         parser.add_argument("--facturacion", action="store_true")
         parser.add_argument("--revision-documental", action="store_true")
@@ -86,6 +87,8 @@ class Command(BaseCommand):
                 ))
             if options.get("verificacion_cobros") and username == "demo_o":
                 user.groups.add(groups["demo_verificacion_cobros"])
+            if options.get("resolucion_facturacion") and username == "demo_o":
+                user.groups.add(groups["demo_resolucion_facturacion"])
             user.groups.add(groups[group_name])
 
         self.stdout.write(self.style.SUCCESS("Grupos y cuentas sintéticas preparados."))

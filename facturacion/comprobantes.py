@@ -27,6 +27,8 @@ def autorizar_registro(actor, numero):
     solicitud = filtrar_solicitudes_visibles(actor).filter(pk=numero).first()
     if solicitud is None:
         raise ObjetoNoVisibleError
+    from .seguimiento import exigir_abierta
+    exigir_abierta(solicitud)
     for capacidad in ("facturacion.registrar_factura_externa", "documentos.incorporar"):
         if not has_capability(actor, capacidad):
             raise PermissionDenied("No tenés permiso para registrar comprobantes.")

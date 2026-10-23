@@ -26,12 +26,14 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
             "facturacion.observar",
             "facturacion.registrar_factura_externa",
             "facturacion.registrar_cobro",
-            "facturacion.cerrar",
         }
     ),
     "demo_documentos_aporte": frozenset({"documentos.incorporar"}),
     "demo_documentos_revision": frozenset({"documentos.revisar"}),
     "demo_verificacion_cobros": frozenset({"facturacion.verificar_cobro"}),
+    "demo_resolucion_facturacion": frozenset({
+        "facturacion.cerrar", "facturacion.anular", "facturacion.actualizar_respaldo",
+    }),
     "demo_documentos_metadatos": frozenset(
         {"documentos.consultar_metadatos", "documentos.ver_metadatos"}
     ),

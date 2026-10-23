@@ -19,6 +19,16 @@ class DocumentoNoVisible(LookupError):
     """Error uniforme para objetos inexistentes o ajenos (HTTP 404)."""
 
 
+def bloquear_facturacion_abierta(base):
+    """Orden común con resolución: cabecera antes de raíz documental; gastos no cambia."""
+    if base.circuito == Circuito.FACTURACION:
+        from django.core.exceptions import PermissionDenied
+
+        bloqueada = TramiteBase.objects.select_for_update().get(pk=base.pk)
+        if bloqueada.solicitud_facturacion.estado in {"CERRADA", "ANULADA"}:
+            raise PermissionDenied("El trámite es terminal y sólo admite consulta.")
+
+
 @dataclass(frozen=True)
 class DestinoDocumental:
     ref: TramiteRef

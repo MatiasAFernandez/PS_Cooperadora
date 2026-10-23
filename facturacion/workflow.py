@@ -150,6 +150,11 @@ def _validar_modelo(solicitud):
 def _adjuntar(solicitud, actor, limpio, archivo, escrituras):
     actual = solicitud.documento_comprobante_inicial
     if archivo is not None:
+        if actual is not None:
+            # El registro de cobro puede haber reemplazado su versión compartida.
+            # La carga explícita continúa la serie vigente sin reescribir la declaración anterior.
+            documentos.bloquear_serie(actual)
+            actual = actual.__class__.objects.get(serie=actual.serie, sucesor__isnull=True)
         procedencia = (
             "EXTERNO_BANCO"
             if has_capability(actor, "facturacion.consultar_todas")

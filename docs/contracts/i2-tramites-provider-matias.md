@@ -71,6 +71,13 @@ contrato y verificar su rollback antes de anidar cargas. C01 sólo lee/bloquea.
 
 ## Proveedor C01 de gastos
 
+El cierre de facturación de [SPEC-007](../specs/007-matias-seguimiento-cierre.md)
+serializa sus escritores por cabecera antes de solicitud/raíz documental. Revisión
+y aportes de ese circuito participan del mismo bloqueo y deniegan nuevas escrituras
+tras CERRADA/ANULADA; la lectura autorizada se conserva. La actualización de respaldo
+agrega un hecho con anterior/nuevo sin modificar la FK original ni importes de
+comprobante/cobro. Gastos y C01 mantienen sus reglas y orden de raíz documental.
+
 La propuesta de #24 concreta [revisión por versión](revision-documental-i2.md):
 el proveedor omite y deniega revisiones OBSERVADO/RECHAZADO y conserva el recorrido
 técnico sin revisión. La verificación sigue bloqueando la raíz hasta commit;

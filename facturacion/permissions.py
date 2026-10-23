@@ -27,6 +27,8 @@ def verificar_visible(actor, solicitud):
 
 def verificar_accion(actor, solicitud, accion):
     verificar_visible(actor, solicitud)
+    if solicitud.estado in {"CERRADA", "ANULADA"}:
+        raise PermissionDenied("El trámite es terminal y sólo admite consulta.")
     if accion not in {"observar", "corregir"} or not has_capability(actor, f"facturacion.{accion}"):
         raise PermissionDenied("No tenés permiso para esta acción.")
     if accion == "corregir" and solicitud.tramite_base.solicitante_actor_id != str(
