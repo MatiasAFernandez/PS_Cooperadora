@@ -133,6 +133,10 @@ duplicar reglas contradictorias.
   cabecera, referencia y proyección de historial son comunes; los estados y
   decisiones permanecen en cada circuito.
 - #28 verifica la integración funcional completa y #29/#50 su demostración.
+- El [corte de integración cruzada](../evidence/i2-28-integracion-circuitos.md)
+  verifica ambos recorridos HTTP y sus denegaciones con #65/#66/#68 integradas;
+  incluye la pantalla de carga/reemplazo y la cronología por versión de gastos,
+  con preservación del pago y estados propios de cada circuito.
 - #24 define revisión documental; #25–#27 conservan factura, cobro y cierre.
 - El puente documental de compatibilidad permanece; retirarlo requiere un
   cambio compartido posterior y no es condición del modelo acordado en #22.
