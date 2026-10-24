@@ -13,6 +13,11 @@ La [guía de facturación #21/#23](docs/guides/recorrido-facturacion-i2.md)
 describe cuentas, permisos, documentos y recuperación con datos sintéticos.
 Los perfiles provisionales de demo no constituyen reglas institucionales.
 
+La [guía de entrega y recuperación I2](docs/guides/entrega-y-recuperacion-i2.md)
+reúne la verificación integrada, preparación de muestra y ensayo de copia y
+restauración de base y archivos. La [ficha de #29](docs/evidence/i2-29-verificacion-entrega.md)
+separa resultados técnicos de demostración, validación y horas reales pendientes.
+
 La [especificación de I1](docs/specs/001-demostracion-gastos.md) define el recorrido
 propuesto, sus hipótesis de demostración y las consultas pendientes. El reparto
 inicial de componentes comunes requiere revisión breve con Matías. El uso
