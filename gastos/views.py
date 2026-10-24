@@ -34,6 +34,7 @@ from gastos.payments import (
     derivar_categoria_respaldo,
     registrar_pago_externo,
 )
+from gastos.proyeccion_documental import proyectar_documentos
 from gastos.queries import visible_expenses
 from gastos.services import (
     ConcurrencyConflictError,
@@ -222,6 +223,9 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
         )
         if evento_pago is not None:
             cronologia.append(evento_pago.como_historial())
+    proyeccion_documental = proyectar_documentos(actor, solicitud)
+    if proyeccion_documental is not None:
+        cronologia.extend(proyeccion_documental.eventos)
     cronologia.sort(
         key=lambda evento: (
             evento.fecha_hora is None,
@@ -288,6 +292,12 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
         "pago_provider_configurado": pago_provider_configurado,
         "mensaje_respaldo": solicitud.mensaje_respaldo,
         "respaldo_categoria": respaldo_categoria,
+        "puede_ver_documentos": proyeccion_documental is not None,
+        "versiones_documentales": (
+            proyeccion_documental.versiones
+            if proyeccion_documental is not None
+            else None
+        ),
     }
 
 

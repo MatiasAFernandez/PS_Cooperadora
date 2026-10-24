@@ -3,18 +3,25 @@
 Esta guía detalla el procedimiento para reproducir en un entorno local
 aislado (PostgreSQL I2) la integración C04 entre el circuito de gastos y el proveedor
 documental real (`documentos.c01.ProveedorDocumentalGastos`), correspondiente a la
-Issue #49 y la preparación de evidencia para #50. La implementación y los casos
-están cubiertos por la suite de pruebas. Para el registro de validación técnica, véase la nota de la §4.
+Issue #49 y la preparación de evidencia para #50. PR #62 integró DOC-R04 en main.
+La proyección del historial por versión dentro del detalle del gasto se implementó en la
+rama local `feat/49-revision-documental-gastos` (commit `be16bb6`). El 20/10/2026, una
+corrida focalizada de 52 pruebas aprobó con PostgreSQL 17.11 aislado; no es la suite
+completa ni el recorrido manual de #50. La rama aún no está integrada y la integración
+conjunta de ambos circuitos sigue en #28. Para resultados anteriores y el estado de esa
+verificación, véase la nota de la §4 y
+[`docs/evidence/i2-49-revision-gastos.md`](../evidence/i2-49-revision-gastos.md).
 
 > [!IMPORTANT]
 > **Alcance y límites de la demostración técnica**:
-> - Esta entrega aporta evidencia parcial a los criterios GP-01–GP-06 y no completa la totalidad de los criterios de SPEC-011, en particular debido a que DOC-R04/Q4 continúan pendientes y GP-06 cubre sólo parcialmente la localización del trámite.
+> - Esta entrega aporta evidencia parcial a los criterios GP-01–GP-06 y no completa la totalidad de los criterios de SPEC-011. DOC-R04 está integrado mediante PR #62; Q1–Q5 siguen pendientes de validación institucional y GP-06 mantiene límites de cobertura de localización del trámite.
 > - El tipo documental derivado en la vista de detalle es exclusivamente una categoría factual
 >   de presentación (`factura`, `presupuesto` o degradación neutra `None`).
 > - Un estado de revisión desconocido permite el recorrido técnico de la demo, pero **no equivale
 >   a aprobación documental** ni acredita por sí solo el cumplimiento de una factura definitiva pendiente.
-> - La revisión formal DOC-R04 y las decisiones institucionales Q1–Q5 (en particular Q4 sobre criterios
->   definitivos de comprobantes válidos) permanecen **pendientes de validación** con la institución.
+> - DOC-R04 está implementado en la aplicación; las decisiones institucionales Q1–Q5
+>   (en particular Q4 sobre criterios definitivos de comprobantes válidos) permanecen
+>   **pendientes de validación** con la institución.
 > - Se mantienen estrictamente desacoplados: el hecho del pago (`PagoExterno`), el estado de la
 >   solicitud de gasto (`SolicitudGasto.estado`, que conserva su estado `aceptada`) y la revisión documental.
 > - No se implementa ejecución bancaria, pagos parciales, retenciones ni cierre de trámites.
@@ -295,6 +302,8 @@ $env:GASTOS_PAYMENT_DOCUMENT_PROVIDER = "documentos.c01.ProveedorDocumentalGasto
 > **Comprobaciones focales adicionales ejecutadas el 2026-10-17 sobre ese mismo código:**
 > - Configuración del proveedor: `python -m pytest tests/test_environment_configuration.py -q --tb=short` — 11 aprobadas; ejecución aislada, sin PostgreSQL.
 > - Bloqueo PostgreSQL: `python -m pytest tests/integracion/test_bloqueo_documental.py -q --tb=short` — 1 aprobada en PostgreSQL 17 aislado. Se ejecutó por separado, por lo que no está incluida en las 344 regresiones ni en la prueba C04.
+>
+> **Estado de #49 al 2026-10-18 (corte histórico):** la rama local `feat/49-revision-documental-gastos` parte de main `48c094a45416c468c2f4ed3fa03b0ea6ed4e700b` y agrega una prueba focal del historial por versión. Ruff y `manage.py check` aprobaron en esa rama; las pruebas de integración no se ejecutaron porque PostgreSQL local no estaba disponible. La verificación posterior del 20/10 está en [`docs/evidence/i2-49-revision-gastos.md`](../evidence/i2-49-revision-gastos.md).
 
 ### 4.1. Verificación estática con Ruff y verificación de Django
 
@@ -350,6 +359,20 @@ python -m pytest tests/integracion/test_bloqueo_documental.py -q --tb=short
 Resultado adicional del 2026-10-17 sobre `9cab2fd79580755e3e349fbcb49a4862d75272c7`, con
 PostgreSQL 17 aislado: 1 aprobada.
 
+### 4.6. Verificación de la proyección de revisiones por versión (#49)
+
+La prueba focal cubre la proyección de cada versión documental y su historial, el permiso de
+consulta de metadatos, la privacidad y la conservación del comportamiento del pago. Requiere
+la instancia aislada de PostgreSQL descrita en §2.
+
+```powershell
+python -m pytest tests/integracion/test_49_proyeccion_revision_gastos.py -v
+```
+
+Este archivo se incluyó en una corrida focalizada combinada del 20/10/2026: 52 pruebas
+aprobadas en seis archivos, según la nota de evidencia. No se ejecutó el archivo como
+conjunto aislado ni se presenta la corrida como la suite completa.
+
 ---
 
 ## 5. Matriz de evidencia: Criterios GP-01 a GP-06 (SPEC-011)
@@ -362,23 +385,23 @@ Esta matriz distingue estrictamente lo verificado por la prueba de integración 
 | **GP-02** — Vínculo documental y selector | Formulario GET `gastos:pagar` invoca `ProveedorDocumentalGastos.listar_opciones_para_pago` mediante spy real y expone en el selector la opción documental vigente tipada (`factura`). | En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_c01_traduce_catalogo_y_excluye_ticket` (excluye tickets del catálogo y rechaza pago con ticket), `test_c01_rechaza_una_factura_valida_de_otro_gasto` (rechaza factura de otra solicitud), `test_c01_rechaza_documento_facturacion_y_referencia_inexistente`. En `tests/gastos/test_pago_externo_services.py`: `test_evidencia_con_gasto_distinto_es_rechazada`, `test_evidencia_con_tipo_no_admitido_es_rechazada`, `test_evidencia_con_referencia_distinta_es_rechazada`. |
 | **GP-03** — Registro atómico del hecho externo | En recorrido HTTP exitoso, registra atómicamente exactamente un `PagoExterno` y un `EventoPagoExterno`. Mediante spy real demuestra que `verificar_y_bloquear_documento` es invocado en el primer POST.<br>*Límite*: `test_c04` no verifica por sí solo rollbacks ni el bloqueo concurrente. | En `tests/gastos/test_pago_externo_services.py`: `test_rollback_completo_si_falla_la_creacion_del_evento` (garantiza rollback atómico completo si falla el evento), `test_fallo_del_proveedor_no_deja_escrituras` (ausencia de escrituras ante fallo documental). En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_c01_sin_transaccion_exterior_se_deniega`. En `tests/integracion/test_bloqueo_documental.py`: `test_verificacion_c01_bloquea_incluso_un_reemplazo_por_sql` verifica el bloqueo con una conexión independiente; se ejecutó por separado el 2026-10-17 sobre el código `9cab2fd79580755e3e349fbcb49a4862d75272c7` y aprobó (1 prueba), no incluida en las 344 regresiones reportadas. |
 | **GP-04** — Idempotencia y conflicto | Reenvío idéntico produce redirección 302 sin duplicar pago ni evento. Reenvío con payload conflictivo (importe modificado) retorna HTTP 409 Conflicto sin crear pagos ni eventos adicionales (comprueba que los conteos de filas no aumentan). Demuestra mediante spy que ni el reenvío idéntico ni el conflictivo re-ejecutan `verificar_y_bloquear_documento` ni `listar_opciones_para_pago`. | En `tests/gastos/test_pago_externo_services.py`: `test_contenido_distinto_genera_conflicto` (comprueba mediante `refresh_from_db()` que el importe persistido permanece inalterado tras el conflicto, además de verificar los conteos de filas de pago y evento), `test_reenvio_identico_retorna_mismo_pago_sin_evento_nuevo`, `test_reenvio_identico_no_reconsulta_documento_ni_provider`, `test_huella_igual_pero_campo_distinto_no_es_idempotente`. |
-| **GP-05** — Distinción de categoría y límites de revisión | Factura proyecta categoría factual advirtiendo que revisión desconocida no equivale a aprobación ni acredita factura definitiva. Presupuesto proyecta advertencia de falta de factura definitiva. Tras reemplazo documental, la consulta posterior lista el proveedor actual pero la categoría del pago se degrada a neutro (`None`). | En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_reemplazo_conserva_archivos_y_rechaza_version_obsoleta` (demuestra preservación de archivos y rechazo al intentar pagar con versión obsoleta). |
-| **GP-06** — Cronología, privacidad y degradación segura *(Cobertura parcial: localización de trámite pendiente)* | Verifica aserciones negativas en HTML (no filtración de UUID de versión, serie ni huella de idempotencia) y en `pago_consulta` (carece de `referencia_documental`). Verifica degradación a neutro sin llamar a `listar_opciones_para_pago` cuando el actor carece de `documentos.ver_metadatos` o si el proveedor está desconfigurado.<br>*Brecha y límites*: Cobertura parcial frente al requisito de SPEC-011 (localizar el trámite). `test_c04` comprueba privacidad y degradación segura, pero no prueba por sí solo el orden estricto de la cronología ni cubre la navegación común o la localización/búsqueda del trámite. PR #59 integró los eventos/navegación comunes de #54 en main; #28 conserva la integración conjunta de ambos circuitos y DOC-R04/#24 la revisión documental real. El recorrido/evidencia final permanece en #50. | En `tests/gastos/test_pago_externo_services.py`: `test_consulta_pura_omite_referencia_documental` (demuestra que la consulta pura de servicio omite la referencia documental). En `tests/gastos/test_pago_externo_view.py`: `test_detalle_muestra_pago_y_cronologia_sin_referencia_documental` (comprueba la lista ordenada de hitos en el contexto `cronologia`: `[decision, pago]`), `test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle`. En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_capacidad_pago_independiente_y_revocacion_en_consumidor_existente`, `test_descarga_directa_ajena_y_revocacion_facturacion`.<br>*Límite*: la prueba de vista citada acredita la cronología en el detalle, pero no prueba la navegación común ni la localización/búsqueda del trámite.
+| **GP-05** — Distinción de categoría y límites de revisión | La categoría del pago sigue siendo factual. La rama local #49 proyecta la revisión por versión en un panel independiente para actores autorizados; una revisión desconocida no equivale a aprobación. La corrida focalizada del 20/10 aprobó esa proyección con PostgreSQL aislado; Q4 institucional sigue pendiente y el criterio no se considera completo para #50. | En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_reemplazo_conserva_archivos_y_rechaza_version_obsoleta` (demuestra preservación de archivos y rechazo al intentar pagar con versión obsoleta). La evidencia nueva de #49 está en [`docs/evidence/i2-49-revision-gastos.md`](../evidence/i2-49-revision-gastos.md); la rama todavía no está integrada. |
+| **GP-06** — Cronología, privacidad y degradación segura *(Cobertura parcial: localización de trámite pendiente)* | Las pruebas C04 verifican aserciones negativas en HTML (no filtración de UUID de versión, serie ni huella de idempotencia) y en `pago_consulta` (carece de `referencia_documental`), así como degradación segura. La corrida focalizada del 20/10 también aprobó la proyección de aportes y revisiones por versión en el historial.<br>*Brecha y límites*: `test_c04` no prueba por sí solo el nuevo panel, la navegación común ni la localización/búsqueda del trámite. PR #59 integró eventos/navegación comunes de #54; PR #62 integró DOC-R04 (#24). #28 conserva la integración conjunta de ambos circuitos y #50, el recorrido/evidencia manual final. | En `tests/gastos/test_pago_externo_services.py`: `test_consulta_pura_omite_referencia_documental` (demuestra que la consulta pura de servicio omite la referencia documental). En `tests/gastos/test_pago_externo_view.py`: `test_detalle_muestra_pago_y_cronologia_sin_referencia_documental` (comprueba la lista ordenada de hitos en el contexto `cronologia`: `[decision, pago]`), `test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle`. En `tests/integracion/test_issue_28_proveedor_y_accesos.py`: `test_capacidad_pago_independiente_y_revocacion_en_consumidor_existente`, `test_descarga_directa_ajena_y_revocacion_facturacion`.<br>*Límite*: la evidencia de #49 cubre eventos y revisión por versión en el detalle; no acredita el recorrido manual de #50 ni el cruce de ambos circuitos que conserva #28.
 
 ---
 
 ## 6. Estado de implementación y cobertura
-Estado de Issues/PR consultado el 18/10/2026.
+Estado de Issues/PR consultado el 20/10/2026. Los estados fechados en las notas previas se conservan como historia.
 
 
-- **Estado de implementación y cobertura**: La integración C04 con el proveedor real `documentos.c01.ProveedorDocumentalGastos`, la derivación pura de categorías, la degradación segura fail-closed y la preservación estricta de garantías transaccionales de C03 están cubiertas por la suite de pruebas. Para el registro de validación técnica, véase la nota de la §4. Se declara explícitamente la cobertura parcial de GP-06 respecto a la localización del trámite exigida por SPEC-011.
+- **Estado de implementación y cobertura**: La integración C04 con el proveedor real `documentos.c01.ProveedorDocumentalGastos`, la derivación pura de categorías, la degradación segura fail-closed y la preservación estricta de garantías transaccionales de C03 están cubiertas por las pruebas reportadas sobre el código de PR #55. La revisión e historial documentales se integraron mediante PR #62 (#24). La proyección de ese historial en el detalle del gasto está implementada localmente en #49 y su corrida focalizada aprobó 52 pruebas en PostgreSQL 17.11 aislado. La rama aún no está integrada; GP-06 conserva cobertura parcial de navegación y localización del trámite. Véase la nota de la §4.
 - **Distinción entre #49 y #50**: La Issue #49 abarca la integración del proveedor real, la derivación de categorías y la degradación en el circuito de pagos/gastos. La Issue #50 representa la preparación y consolidación de la evidencia completa de integración para revisión cruzada con Matías.
 - **Límites de diseño DOC-R04 y preguntas Q1–Q5 (en especial Q4)**:
-  - DOC-R04: La revisión formal de documentos y los criterios sobre documentos definitivos no están implementados; #24 sigue abierta con PR #62 como propuesta no integrada. Los estados desconocidos sólo posibilitan la navegación técnica en demo.
+  - DOC-R04: La consulta e historial de revisiones están integrados en main mediante PR #62 (#24). La proyección en el detalle del gasto está implementada localmente en #49 y aprobó su validación focalizada en PostgreSQL; la rama aún no está integrada. Q4 sobre criterios institucionales de documentos definitivos sigue pendiente; los estados desconocidos no equivalen a aprobación.
   - Decisiones Q1–Q5: Criterios institucionales pendientes de validación con la administración de Cooperadora (incluyendo Q4 sobre requisitos documentales y comprobantes válidos).
 - **Identidad del trámite integrada**: el vínculo OneToOne `SolicitudGasto.tramite_base` está disponible en main mediante PR #56 (#53 cerrada).
-- **Pendientes para tramos posteriores (#24 / #28 / #50)**:
+- **Pendientes para tramos posteriores (#28 / #49 / #50)**:
   - PR #59 integró la entrega #54 (eventos existentes adaptados a EventoHistorialDTO y navegación común) en main; la Issue #54 está cerrada. El handoff registra 40 pruebas aprobadas en PostgreSQL 17.11 aislado, Ruff y manage.py check.
   - #22 y #23 se cerraron mediante PR #60/#61. #28 continúa abierta para la integración conjunta de ambos circuitos.
-  - La localización/búsqueda del trámite y la consolidación del recorrido/evidencia final (#50) siguen pendientes. La verificación focal de GP-02 (vínculo y accesos) y GP-03 (trazabilidad de un gasto) puede hacerse ahora en main sin esperar DOC-R04/#24 ni el recorrido conjunto de #28; no se ejecutó en esta guía.
+  - #49 tiene validación focalizada aprobada en PostgreSQL, registrada en `docs/evidence/i2-49-revision-gastos.md`; su rama sigue pendiente de revisión e integración. La localización/búsqueda del trámite y el recorrido reproducible con registro manual de resultado para #50 siguen pendientes. La verificación focal de GP-02 (vínculo y accesos) y GP-03 (trazabilidad de un gasto) puede hacerse sobre el recorrido de gastos sin esperar #28; esta guía no afirma que se haya ejecutado ese recorrido manual.
   - Validación de preguntas de negocio institucionales Q1–Q5 con la administración de Cooperadora.

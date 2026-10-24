@@ -20,17 +20,17 @@ facturación y cobros de Matías, sus componentes comunes y la integración
 necesaria. La prioridad MUST/SHOULD proviene del plan; el orden de Issues es
 una propuesta técnica del equipo.
 
-Estado operativo al 18/10/2026: #22 y #23 están cerradas tras PR #60/#61; #24
-sigue abierta y PR #62 propone cambios con CI quality aprobada, pendiente de
-revisión de Franco e integración. #28 continúa abierta. La última columna de la
-tabla conserva el estado inicial de cada propuesta.
+Estado operativo al 18/10/2026: #22 y #23 están cerradas tras PR #60/#61; #24 y
+DOC-R04 se integraron mediante PR #62 en main `48c094a45416c468c2f4ed3fa03b0ea6ed4e700b`.
+#28 continúa abierta para la integración conjunta. La última columna de la tabla
+conserva el estado inicial de cada propuesta.
 
 ## Validación de las specs contra el plan
 
 | Spec | Cobertura del plan | Resultado de la revisión |
 |---|---|---|
 | [002](../../specs/002-matias-identidad-permisos.md) | RF-001, RNF-001, M-E03, I02 | Alineada. El adaptador sintético de I1 ya existe en `identidad`; I2 debe ampliar capacidades y probar el consumidor facturación, sin rehacer T02 ni prometer autenticación institucional. |
-| [003](../../specs/003-matias-documentos.md) | RF-004, RNF-001/004, M-E04, I03 | Alineada. El primer tramo DOC-R01–R03 está integrado en main mediante PR #47 y las decisiones técnicas se aplicaron en PR #48; #19 está cerrada. I2-05 aborda DOC-R04 en #24; la política de revisión y la ubicación de prueba siguen por validar. RF-005 sobre deuda tras un pago de gastos corresponde a Franco. |
+| [003](../../specs/003-matias-documentos.md) | RF-004, RNF-001/004, M-E04, I03 | Alineada. El primer tramo DOC-R01–R03 está integrado en main mediante PR #47 y las decisiones técnicas se aplicaron en PR #48; #19 está cerrada. I2-05 integró DOC-R04 en PR #62 (#24); la política institucional de revisión sigue por validar. RF-005 sobre deuda tras un pago de gastos corresponde a Franco. |
 | [004](../../specs/004-matias-solicitudes-facturacion.md) | RF-002, M-E01/02/05 | Alineada. El formulario y la entrevista ya están inventariados para #20; falta confirmar obligatoriedad, actores, observaciones y transiciones antes de fijar reglas de implementación. |
 | [005](../../specs/005-matias-facturas-notas.md) | RF-002, M-E06, I01/03 | Alineada. Se registran operaciones externas; no se emiten comprobantes ni se integra Exubio por API. Falta validar campos, unicidad y efecto de notas. |
 | [006](../../specs/006-matias-cobros.md) | RF-002, RNF-002/003, M-E07, I03 | Alineada. Faltan imputación, cobros parciales y moneda; las pruebas deben cubrir precisión y atomicidad. |
@@ -63,10 +63,9 @@ porque éstas reagrupan resultados y no hay horas ejecutadas acreditadas.
 Los órdenes 2 y 3 pueden avanzar en paralelo tras I2-01. La Issue #19 está
 cerrada y su proveedor documental está disponible en main.
 
-#22 y #23 se cerraron mediante PR #60/#61. La Issue #24 continúa abierta para
-DOC-R04 y conserva la dependencia de #21 y la regla de revisión registrada en
-#20. PR #62 es una propuesta abierta con CI quality aprobada, pendiente de
-revisión de Franco e integración; #28 sigue abierta para la integración conjunta.
+#22 y #23 se cerraron mediante PR #60/#61. La Issue #24 y DOC-R04 se integraron
+mediante PR #62; la política institucional de revisión permanece pendiente, y
+#28 sigue abierta para la integración conjunta.
 
 I2-04 puede entregar primero el alta y consulta, pero la Issue se cierra sólo
 con observación, corrección e historial de esos eventos. El contrato de I2-05
