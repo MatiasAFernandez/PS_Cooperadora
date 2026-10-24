@@ -7,6 +7,7 @@ from typing import Any
 from django import forms
 from django.core.exceptions import ValidationError
 
+from documentos.models import Documento
 from gastos.contracts import OpcionDocumental
 from gastos.models import EstadoSolicitud, SolicitudGasto
 
@@ -103,6 +104,109 @@ class DecisionGastoForm(forms.Form):
             }
         ),
     )
+
+
+class DocumentoGastoForm(forms.Form):
+    """Formulario de aporte o reemplazo; los servicios documentales revalidan."""
+
+    archivo = forms.FileField(
+        label="Archivo de respaldo",
+        error_messages={"required": "Seleccione un archivo de respaldo."},
+        widget=forms.ClearableFileInput(
+            attrs={"accept": ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"}
+        ),
+    )
+    tipo = forms.ChoiceField(
+        label="Tipo de documento",
+        choices=(),
+        error_messages={
+            "required": "Seleccione un tipo de documento.",
+            "invalid_choice": "Seleccione un tipo de documento válido para gastos.",
+        },
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+    procedencia = forms.ChoiceField(
+        label="Procedencia",
+        choices=(),
+        error_messages={
+            "required": "Seleccione la procedencia del documento.",
+            "invalid_choice": "Seleccione una procedencia válida.",
+        },
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+    reemplaza_id = forms.ChoiceField(
+        label="Versión a reemplazar",
+        required=False,
+        choices=(("", "Incorporar un documento nuevo"),),
+        error_messages={
+            "invalid_choice": (
+                "Seleccione una versión vigente de este gasto o incorpore un documento nuevo."
+            ),
+        },
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    def __init__(
+        self,
+        *args,
+        combinaciones_documentales: dict[str, tuple[str, ...]],
+        versiones_reemplazables=(),
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        etiquetas_tipo = dict(Documento.Tipo.choices)
+        etiquetas_procedencia = dict(Documento.Procedencia.choices)
+        tipos = tuple(combinaciones_documentales)
+        procedencias = tuple(
+            dict.fromkeys(
+                procedencia
+                for opciones in combinaciones_documentales.values()
+                for procedencia in opciones
+            )
+        )
+        self.combinaciones_documentales = {
+            tipo: frozenset(opciones)
+            for tipo, opciones in combinaciones_documentales.items()
+        }
+        self.versiones_reemplazables = {
+            str(version.documento_id): version for version in versiones_reemplazables
+        }
+        self.fields["tipo"].choices = [
+            ("", "Seleccione un tipo"),
+            *((tipo, etiquetas_tipo[tipo]) for tipo in tipos),
+        ]
+        self.fields["procedencia"].choices = [
+            ("", "Seleccione una procedencia"),
+            *((codigo, etiquetas_procedencia[codigo]) for codigo in procedencias),
+        ]
+        self.fields["reemplaza_id"].choices = [
+            ("", "Incorporar un documento nuevo"),
+            *(
+                (
+                    documento_id,
+                    f"{version.tipo_mostrado} — {version.nombre} — versión {version.version}",
+                )
+                for documento_id, version in self.versiones_reemplazables.items()
+            ),
+        ]
+
+    def clean(self):
+        datos = super().clean()
+        tipo = datos.get("tipo")
+        procedencia = datos.get("procedencia")
+        if tipo and procedencia and procedencia not in self.combinaciones_documentales.get(
+            tipo, frozenset()
+        ):
+            self.add_error(
+                "procedencia",
+                "La combinación de tipo y procedencia no está disponible para este gasto.",
+            )
+
+        reemplaza_id = datos.get("reemplaza_id")
+        version = self.versiones_reemplazables.get(reemplaza_id)
+        if version is not None and tipo and version.tipo != tipo:
+            self.add_error("tipo", "Al reemplazar, conserve el tipo de la versión seleccionada.")
+        return datos
 
 
 class PagoExternoForm(forms.Form):

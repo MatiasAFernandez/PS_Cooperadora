@@ -9,10 +9,10 @@ Aporta evidencia a los criterios GP-01 a GP-06 de SPEC-011 (la cobertura de GP-0
 - Conflicto 409 ante reenvío con datos distintos (GP-04).
 - Preservación de estado aceptada y monto_estimado sin mutaciones silenciosas (GP-01, GP-05).
 - Proyección condicional en el detalle:
-  * Factura: categoría factual explícita advirtiendo que revisión desconocida no
-    equivale a aprobación documental ni satisface por sí sola el pendiente de factura definitiva.
-  * Presupuesto / proforma: explica que falta aportar factura definitiva y que revisión
-    desconocida no implica aprobación.
+  * Factura: categoría factual que remite a la revisión real por versión y separa
+    tipo documental de resultado, sin decidir la suficiencia del trámite.
+  * Presupuesto / proforma: categoría factual que remite a la revisión real por
+    versión, sin afirmar un faltante documental definitivo.
   * Reemplazo documental / degradación neutra: conserva la referencia pagada pero degrada a neutro.
   * No revela UUID ni huella de idempotencia en el detalle.
   * No consulta listado antes del pago o sin metadatos/proveedor disponible (GP-01, GP-05, GP-06).
@@ -205,13 +205,27 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert "16/10/2026" in contenido_detalle
     assert "Registro informativo de la demo" in contenido_detalle
 
-    # Texto condicional para categoría factura: expresa límites de revisión y factura definitiva
-    assert "Respaldo documental registrado: factura." in contenido_detalle
+    # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
     assert (
-        "Un estado de revisión desconocido no equivale a aprobación documental "
-        "ni satisface por sí sola el pendiente de factura definitiva."
+        "La referencia documental del pago coincide con una factura disponible en esta consulta."
         in contenido_detalle
     )
+    assert (
+        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
+        in contenido_detalle
+    )
+    # La vista separa tipo y resultado y no decide la suficiencia del trámite
+    assert (
+        "El tipo documental y su resultado de revisión se muestran por separado."
+        in contenido_detalle
+    )
+    assert (
+        "Esta vista no determina si el documento satisface un requisito del trámite."
+        in contenido_detalle
+    )
+    assert "Falta aportar factura definitiva" not in contenido_detalle
+    assert "no equivale por sí sola a aprobación" not in contenido_detalle
+    assert "desconocid" not in contenido_detalle.lower()
     assert "presupuesto/proforma" not in contenido_detalle
 
     # Garantía de privacidad: detalle no revela UUID de versión, serie ni huella de idempotencia
@@ -247,10 +261,22 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert respuesta_reemplazo.context.get("respaldo_categoria") is None
     contenido_reemplazo = respuesta_reemplazo.content.decode("utf-8")
     assert (
-        "Esta vista no muestra metadatos ni estado de revisión del comprobante. "
-        "El registro de pago no equivale a aprobación documental "
-        "ni acredita la factura definitiva pendiente."
+        "La categoría de la versión referenciada al registrar el pago no está disponible "
+        "en esta consulta. Los aportes y reemplazos posteriores no modifican el registro "
+        "de pago."
         in contenido_reemplazo
+    )
+    assert (
+        "El tipo documental y su resultado de revisión se muestran por separado."
+        in contenido_reemplazo
+    )
+    assert (
+        "Esta vista no determina si el documento satisface un requisito del trámite."
+        in contenido_reemplazo
+    )
+    assert (
+        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante."
+        not in contenido_reemplazo
     )
     assert "Respaldo documental registrado: factura." not in contenido_reemplazo
     # Ni la versión v1 pagada ni la v2 aparecen en el detalle post-reemplazo
@@ -309,14 +335,27 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert respuesta_detalle_presupuesto.context.get("respaldo_categoria") == "presupuesto"
     contenido_presupuesto = respuesta_detalle_presupuesto.content.decode("utf-8")
 
-    # Texto condicional para categoría presupuesto: explica falta de factura definitiva
-    assert "Respaldo documental registrado: presupuesto/proforma." in contenido_presupuesto
+    # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
     assert (
-        "Falta aportar factura definitiva y un estado de revisión desconocido "
-        "no implica aprobación documental."
+        "La referencia documental del pago coincide con un presupuesto o proforma "
+        "disponible en esta consulta."
         in contenido_presupuesto
     )
-    assert "Respaldo documental registrado: factura." not in contenido_presupuesto
+    assert (
+        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
+        in contenido_presupuesto
+    )
+    assert (
+        "El tipo documental y su resultado de revisión se muestran por separado."
+        in contenido_presupuesto
+    )
+    assert (
+        "Esta vista no determina si el documento satisface un requisito del trámite."
+        in contenido_presupuesto
+    )
+    assert "Falta aportar factura definitiva" not in contenido_presupuesto
+    assert "no implica por sí sola aprobación" not in contenido_presupuesto
+    assert "La referencia documental del pago coincide con una factura" not in contenido_presupuesto
     assert ref_presupuesto_str not in contenido_presupuesto
 
     # 12. Sin metadatos o sin proveedor: no consulta listado y degrada a neutro (status 200)
@@ -359,12 +398,12 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert "Pago externo registrado" in contenido_lector
     assert "SINTETICA-C04-PRES" in contenido_lector
     assert (
-        "Esta vista no muestra metadatos ni estado de revisión del comprobante. "
-        "El registro de pago no equivale a aprobación documental "
-        "ni acredita la factura definitiva pendiente."
+        "Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. "
+        "No se puede inferir desde aquí si hay archivos; el registro de pago tampoco "
+        "equivale a aprobación o suficiencia documental."
         in contenido_lector
     )
-    assert "Respaldo documental registrado: presupuesto/proforma." not in contenido_lector
+    assert "La referencia documental del pago coincide con un presupuesto" not in contenido_lector
     assert ref_presupuesto_str not in contenido_lector
 
     # 12.b Proveedor documental desconfigurado en el servidor
@@ -382,8 +421,20 @@ def test_c04_pago_real_y_proyeccion_documental(
 
     contenido_sin_proveedor = respuesta_sin_proveedor.content.decode("utf-8")
     assert (
-        "Esta vista no muestra metadatos ni estado de revisión del comprobante. "
-        "El registro de pago no equivale a aprobación documental "
-        "ni acredita la factura definitiva pendiente."
+        "La categoría de la versión referenciada al registrar el pago no está disponible "
+        "en esta consulta. Los aportes y reemplazos posteriores no modifican el registro "
+        "de pago."
         in contenido_sin_proveedor
+    )
+    assert (
+        "El tipo documental y su resultado de revisión se muestran por separado."
+        in contenido_sin_proveedor
+    )
+    assert (
+        "Esta vista no determina si el documento satisface un requisito del trámite."
+        in contenido_sin_proveedor
+    )
+    assert (
+        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante."
+        not in contenido_sin_proveedor
     )
