@@ -1,7 +1,8 @@
 # SPEC-001 — I1: presentación y decisión de un gasto
 
-- Estado: paquete técnico de demo preparado para revisión; no implementado ni
-  validado por Cooperadora. Actualizado: 17/09/2026.
+- Estado: I1 implementado para la demostración local; T06/#8 tuvo cierre técnico.
+  T07/#9 y la validación institucional de H1–H4 siguen pendientes. Actualizado:
+  21/10/2026.
 - Issue: pendiente; no se creó una Issue remota.
 - Propietario: Franco, módulo vertical de gastos/pagos.
 - Aporte de Matías: componente de identidad sintética y capacidades; revisión
@@ -60,7 +61,7 @@ generar deuda de factura definitiva.
 | H1. Datos mínimos | Concepto obligatorio, importe estimado único positivo en ARS y unidad de prueba. Identificador, solicitante y fecha se asignan en el servidor. | La operadora valida campos reales, unidades y necesidad de rangos. |
 | H2. Acceso | Dos solicitantes ficticios ven sólo sus trámites. Una cuenta con capacidad de decidir gastos consulta ambos y decide. No se habilita registro público. | Matías revisa el contrato; la operadora valida personas, capacidades y pertenencia por persona/unidad. |
 | H3. Decisión | Aceptar, postergar o rechazar. Motivo obligatorio en postergación/rechazo; opcional en aceptación. Se conserva actor, fecha y resolución. | La operadora valida decisiones y política de motivos. |
-| H4. Pendiente | Tras aceptar, mostrar «Respaldo del gasto (presupuesto o factura): por aportar». En otras etapas: «No se solicita documentación en esta etapa de la demostración». | La operadora valida documento y momento. No equivale a deuda posterior a un pago. |
+| H4. Pendiente | En el primer corte de I1, el detalle mostraba «Respaldo del gasto (presupuesto o factura): por aportar» al aceptar y otro texto neutral en las demás etapas. La extensión I2 de #50 presenta hechos documentales autorizados en lugar de inferirlos del estado. | La operadora valida documento y momento. No equivale a deuda posterior a un pago ni a una política institucional. |
 
 Importes, nombres, unidades y cuentas serán sintéticos. La pertenencia a una unidad
 no concede por sí sola acceso a solicitudes ajenas. Tener acceso al administrador
@@ -92,11 +93,21 @@ Las transiciones no listadas se rechazan también en el servidor.
 | I1-R02 | Consultar solicitudes propias. | A ve el estado y detalle de sus trámites; B no accede a ellos por lista ni identificador directo. Sin sesión no se accede. |
 | I1-R03 | Registrar la decisión humana autorizada. | La cuenta decisora acepta, posterga o rechaza según la tabla; un solicitante no puede hacerlo mediante una petición directa. |
 | I1-R04 | Conservar las decisiones del trámite. | Una postergación y una aceptación posterior quedan visibles con responsable, fecha y motivos correspondientes. |
-| I1-R05 | Mostrar la documentación por aportar. | Al aceptar aparece el pendiente H4; no se ofrecen carga de archivo, marca manual de cumplimiento ni cierre. |
+| I1-R05 | Mostrar el estado documental previsto en el primer corte de I1. | En ese corte, al aceptar aparecía el texto H4; no se ofrecían carga de archivo, marca manual de cumplimiento ni cierre. |
 | I1-R06 | Respetar el estado vigente al decidir. | Una acción desde un estado no permitido o una decisión repetida desde una pantalla desactualizada no sobrescribe la resolución ni agrega otro evento. |
 
 La interfaz ofrece listados y detalle propios de gastos. El administrador queda
 para preparar las cuentas de prueba; no sustituye el recorrido de la demo.
+
+La exclusión de carga de archivos corresponde al alcance inicial de I1. La rama
+local `feat/50-aporte-reemplazo-respaldo`, basada en PR #65, incorpora para I2 una
+página separada de aporte/reemplazo. Incorporar un documento nuevo requiere que el
+gasto sea visible y la capacidad `documentos.incorporar`; reemplazar además requiere
+`documentos.consultar_metadatos`. El formulario ofrece sólo versiones vigentes de la
+proyección autorizada cuyo tipo puede incorporar esa cuenta. Ninguna acción depende de
+`EstadoSolicitud`. El detalle informa hechos visibles o que sus metadatos no están
+disponibles, sin inferir obligación, aprobación o suficiencia. Esta implementación no
+valida H1–H4 como reglas institucionales y sigue pendiente de revisión e integración.
 
 ## Módulos e interfaces
 
