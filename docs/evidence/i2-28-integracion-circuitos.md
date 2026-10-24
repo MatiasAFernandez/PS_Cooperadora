@@ -1,10 +1,11 @@
 # Integración cruzada de gastos y facturación — #28
 
-Base verificada: `7fda5ce` (PR #68 integrada). Rama:
+Base del corte inicial: `7fda5ce` (PR #68 integrada). Base del recorrido ampliado:
+`4aadda7` (#65 y #66 integradas por Franco). Rama:
 `codex/28-integracion-circuitos`. Aporte principal de Matías con asistencia de
 Codex; revisión de contratos comunes y recorrido de gastos a cargo de Franco.
 El estado operativo se mantiene en #28 y en su PR; este corte no declara la
-aceptación institucional de #29 ni completa las entregas de gastos pendientes.
+aceptación institucional de #29 ni el cierre de #50.
 
 ## Cobertura y responsabilidades
 
@@ -13,7 +14,7 @@ aceptación institucional de #29 ni completa las entregas de gastos pendientes.
 | INT-R01 | Sesiones reales A/B/O/L, accesos ajenos 404, lector global sin escritura ni metadatos; revocación de pago no revoca facturación. | Identidad común: Matías; políticas de gasto: Franco. |
 | INT-R02 | Documento de gasto y factura/cobro de facturación con cabecera correcta; descarga autorizada con bytes sintéticos; lectura/aporte ajenos denegados. | Documentos: Matías; consumo C01 y UI de gastos: Franco. |
 | INT-R03 | Relación documental cruzada rechazada por PostgreSQL; rollback sin cambiar vínculo; aporte ajeno sin fila ni archivo adicional. | Cabecera/documentos: Matías; vínculos propios de gasto: Franco. |
-| INT-R04 | Detalles HTTP con eventos de decisión/pago y presentación/comprobante/cobro/verificación/cierre; cada DTO conserva referencia, actor y fecha. | Contrato común/facturación: Matías; proyección de gasto: Franco. |
+| INT-R04 | Detalles HTTP con decisión/pago/aporte/revisión documental en gastos y presentación/comprobante/cobro/verificación/cierre en facturación; cada DTO conserva referencia, actor y fecha. | Contrato común/facturación: Matías; proyección de gasto: Franco. |
 | INT-R05 | Inicio común -> ambos listados -> presentación -> detalle; pago y cierre explícitos en una misma base sin mezclar estados. | Navegación común: Franco; integración de facturación: Matías. |
 
 `tests/integracion/test_issue_28_recorridos.py` ejecuta cinco casos sobre
@@ -44,10 +45,15 @@ grupo por decidir ni modifica el proveedor global. Los tests crean esa asignaci�
 en su propia base efímera, sin alterar cuentas existentes.
 
 1. **Gasto de A:** presentar necesidad por 100,25 ARS desde la navegación común;
-   O acepta con versión vigente; A incorpora factura de proveedor sintética;
+   O acepta con versión vigente; A abre desde el detalle la pantalla de carga de
+   respaldo e incorpora una factura de proveedor sintética;
    O registra aceptación documental y pago externo usando la referencia de la
    versión exacta ofrecida por C01. Reenviar el mismo pago conserva un solo pago
-   y evento. El gasto permanece `aceptada`; el pago no es otra decisión.
+   y evento. A reemplaza el documento desde la misma pantalla: v1 conserva su
+   revisión y bytes; v2 queda vigente y pendiente, sin heredar aceptación. El
+   pago sigue ligado a v1 y su reenvío no duplica eventos. El detalle muestra las
+   dos versiones y los hechos documentales, sin inferir categoría vigente del
+   respaldo pagado. El gasto permanece `aceptada`; el pago no es otra decisión.
 2. **Facturación de B:** presentar datos para emitir por 100,25 ARS, sin declarar
    transferencia; O registra factura externa PDF; B informa cobro por ese importe;
    O confirma ingreso y acepta ambas versiones documentales. El trámite sigue
@@ -59,11 +65,10 @@ en su propia base efímera, sin alterar cuentas existentes.
    siguiente petición sin impedir registrar factura; retirar su perfil de
    facturación mantiene la consulta de gastos.
 
-El aporte de gasto de este corte pasa por la interfaz HTTP documental compartida
-`POST documentos:tramite`, que devuelve JSON. **No se presenta como una pantalla
-de carga de gastos terminada.** La integración visual de carga/reemplazo y la
-cronología documental del gasto corresponden a las PR #66 y #65 de Franco.
-La revisión por versión se puede consultar en la pantalla del documento en main.
+El corte inicial `0649deb` aportaba al gasto por `POST documentos:tramite` (JSON).
+El recorrido ampliado usa `gastos:documentos`, la pantalla de carga y reemplazo
+entregada por Franco en #66, y la proyección documental de #65 en el detalle.
+Se verifica por HTTP/renderizado, sin atribuirle inspección visual interactiva.
 
 ## Verificación
 
@@ -79,16 +84,27 @@ python manage.py makemigrations --check --dry-run
 La CI de la PR comprueba la suite completa sobre su SHA. Los resultados de este
 corte y el enlace al run se registran en la PR, sin sumar conjuntos solapados.
 
+Franco aprobó el aporte inicial `0649deb` tras ejecutar 108 pruebas sobre una
+combinación local con `4aadda7`; esa aprobación no comprendía este recorrido
+ampliado ni el cierre de #28. Su observación sobre cuatro fallos de fixtures al
+invocar sólo los dos módulos focales se reprodujo: la secuencia de gastos podía
+entregar un número ya ocupado por la colisión pública intencional del fixture
+común. La fábrica sintética ahora descarta los números ocupados, sin reiniciar
+las secuencias ni modificar restricciones o servicios productivos. Los 17 casos de
+esos dos módulos pasan juntos después del ajuste.
+
+Validación local del recorrido ampliado: 17 pruebas focales en 9,73 s y 108
+pruebas de integración/navegación en 36,21 s; Ruff y controles de Django y
+migraciones aprobados. Conjuntos solapados, no se suman.
+
 ## Pendientes para el cierre conjunto
 
-- Franco debe integrar como dueño #65 y #66 después de sus revisiones. Este
-  aporte no cambia sus ramas ni reproduce su implementación. Después se debe
-  actualizar la rama de integración y comprobar historial por versión y
-  carga/reemplazo desde el detalle de gastos, con permisos y proveedor real.
-- Revisión cruzada de Franco sobre este diff y los ejemplos de gastos; revisión
-  de Matías del consumo común tras integrar los heads finales de esas PR.
-- Ejecutar la verificación conjunta sobre la versión integrada y registrar los
-  resultados. Mantener #28 abierta mientras ese tramo no esté incorporado.
+- #65/#66 ya están incorporadas por su dueño; la rama incluye `4aadda7`. Matías
+  verificó su consumo desde el recorrido cruzado: pertenencia, historial por
+  versión, carga/reemplazo y preservación del pago frente al cierre de facturación.
+- Falta revisión de Franco del delta ampliado y su evidencia sobre el nuevo SHA,
+  e integración de #69. Mantener #28 abierta hasta completar esos pasos; la
+  aprobación inicial no se presenta como aceptación del cierre conjunto.
 - La demostración/aceptación con Cooperadora y #29/#50 tienen seguimiento propio.
   No se activan reglas institucionales, almacenamiento compartido ni movimientos
   de dinero a partir de estas pruebas.

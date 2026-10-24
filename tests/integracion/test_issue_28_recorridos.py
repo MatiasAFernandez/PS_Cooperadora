@@ -1,4 +1,4 @@
-"""Recorridos cruzados sobre main; no sustituyen la UI de gastos pendiente en #66."""
+"""Recorridos cruzados con las pantallas de gastos y facturación integradas."""
 
 from types import SimpleNamespace
 
@@ -103,13 +103,18 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
         ).status_code
         == 302
     )
-    # Usa la interfaz documental compartida; la pantalla de carga es aporte de #66.
+    documentos_url = reverse("gastos:documentos", args=[e.gasto.pk])
+    assert (
+        f'href="{documentos_url}"'
+        in a.get(reverse("gastos:detalle", args=[e.gasto.pk])).content.decode()
+    )
+    assert a.get(documentos_url).status_code == 200
     respuesta = a.post(
-        reverse("documentos:tramite", args=["gastos", e.gasto.pk]),
+        documentos_url,
         {"archivo": archivo_pdf(), "tipo": "FACTURA_PROVEEDOR", "procedencia": "SOLICITANTE"},
     )
-    assert respuesta.status_code == 201, respuesta.content
-    documento_gasto = Documento.objects.get(pk=respuesta.json()["id"])
+    assert respuesta.status_code == 302, respuesta.content
+    documento_gasto = Documento.objects.get(solicitud_gasto=e.gasto)
     aceptar_documento(o, documento_gasto)
     pago_url = reverse("gastos:pagar", args=[e.gasto.pk])
     assert o.get(pago_url).status_code == 200
@@ -122,6 +127,43 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
     assert o.post(pago_url, datos_pago).status_code == 302
     assert o.post(pago_url, datos_pago).status_code == 302
     assert PagoExterno.objects.count() == EventoPagoExterno.objects.count() == 1
+
+    # Reemplazar no reescribe el pago ni hereda la revisión de la versión pagada.
+    assert (
+        a.post(
+            documentos_url,
+            {
+                "archivo": archivo_pdf(),
+                "tipo": "FACTURA_PROVEEDOR",
+                "procedencia": "SOLICITANTE",
+                "reemplaza_id": documento_gasto.pk,
+            },
+        ).status_code
+        == 302
+    )
+    sucesor = Documento.objects.get(reemplaza=documento_gasto)
+    assert sucesor.version == 2 and sucesor.serie == documento_gasto.serie
+    assert not sucesor.revisiones.exists()
+    assert documento_gasto.revisiones.get().resultado == "ACEPTADO"
+    pago = PagoExterno.objects.get(solicitud=e.gasto)
+    assert pago.referencia_documental == str(documento_gasto.referencia_version)
+    assert o.post(pago_url, datos_pago).status_code == 302
+    assert EventoPagoExterno.objects.filter(pago=pago).count() == 1
+    detalle_gasto = a.get(reverse("gastos:detalle", args=[e.gasto.pk]))
+    versiones = detalle_gasto.context["versiones_documentales"]
+    assert [(v.documento_id, v.vigente) for v in versiones] == [
+        (documento_gasto.pk, False),
+        (sucesor.pk, True),
+    ]
+    assert detalle_gasto.context["respaldo_categoria"] is None
+    assert {e.tipo_evento for e in detalle_gasto.context["cronologia"]} >= {
+        "decision_gasto",
+        "aporte_documental",
+        "revision_documental",
+        "pago_externo_registrado",
+    }
+    assert "PENDIENTE" in detalle_gasto.content.decode()
+    assert all((e.raiz / d.archivo).is_file() for d in (documento_gasto, sucesor))
 
     # Facturación real: factura, cobro, verificación y aceptación no cierran solos.
     s = e.solicitud
@@ -181,6 +223,7 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
     assert s.estado == "CERRADA" and e.gasto.estado == "aceptada"
     assert e.gasto.tramite_base_id != s.tramite_base_id
     assert documento_gasto.tramite_base_id == e.gasto.tramite_base_id
+    assert sucesor.tramite_base_id == e.gasto.tramite_base_id
     assert cobro.documento.tramite_base_id == s.tramite_base_id
     for cliente, ruta in ((a, reverse("gastos:detalle", args=[e.gasto.pk])), (b, detalle_url)):
         respuesta = cliente.get(ruta)

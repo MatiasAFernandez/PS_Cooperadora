@@ -16,10 +16,15 @@ from gastos.models import EstadoSolicitud, SolicitudGasto
 
 
 def reservar_numero_solicitud_gasto() -> int:
-    """Reserva el siguiente entero de la secuencia de gastos para un fixture."""
+    """Reserva un número libre, incluso tras fixtures con PK explícita."""
     with connection.cursor() as cursor:
-        cursor.execute("SELECT nextval(pg_get_serial_sequence('gastos_solicitudgasto', 'id'))")
-        return cursor.fetchone()[0]
+        while True:
+            cursor.execute("SELECT nextval(pg_get_serial_sequence('gastos_solicitudgasto', 'id'))")
+            numero = cursor.fetchone()[0]
+            if not TramiteBase.objects.filter(
+                circuito=Circuito.GASTO, numero_publico=numero
+            ).exists():
+                return numero
 
 
 def crear_gasto_sintetico(
