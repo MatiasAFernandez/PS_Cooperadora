@@ -3,12 +3,14 @@
 from django.urls import path
 
 from . import views
+from .exportacion import ExportarSolicitudPDFView
 from .views_cobros import RegistrarCobroView, VerificarCobroView
 from .views_comprobantes import RegistrarComprobanteView
 from .views_seguimiento import ActualizarRespaldoView, ResolverTramiteView
 
 app_name = "facturacion"
 urlpatterns = [
+    path("<int:numero>/exportar.pdf", ExportarSolicitudPDFView.as_view(), name="exportar_pdf"),
     path("<int:numero>/resolver/", ResolverTramiteView.as_view(), name="resolver"),
     path("<int:numero>/respaldos/<str:clase>/<int:objeto_id>/", ActualizarRespaldoView.as_view(),
          name="actualizar_respaldo"),

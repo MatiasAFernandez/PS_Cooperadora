@@ -1,5 +1,7 @@
 # SPEC-007 — Estados, historial, pendientes y cierre de facturación
 
+> Ajustes de consulta aprobados el 25/10/2026: diferencia neto/confirmado, impedimentos con nombres específicos y lista de revisiones por atender. Las reglas de cierre no cambian. Ver [SPEC-012](012-mejoras-demo-consultas.md).
+
 - Estado: perfil provisional de demo confirmado para #27; validación institucional
   separada. No incluye regularización de diferencias ni devolución de ingresos.
 - Autor y responsable principal: Matías Alejandro Fernández.

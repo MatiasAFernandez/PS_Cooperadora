@@ -16,6 +16,7 @@ from documentos.revision import version_aceptada
 from documentos.services import bloquear_serie, incorporar
 from identidad.services import has_capability
 
+from .choices import ModalidadCobro
 from .models import ActualizacionRespaldo, SolicitudFacturacion
 from .permissions import ObjetoNoVisibleError, filtrar_solicitudes_visibles
 from .workflow import ConflictoConcurrenciaError, _evento, _serializar
@@ -104,7 +105,18 @@ def diagnostico(solicitud):
         documento = respaldo_actual(objeto)
         documentos.append(documento)
         if not version_aceptada(documento):
-            mensaje = f"El respaldo #{documento.pk} debe ser vigente y estar ACEPTADO."
+            etiqueta = (
+                objeto.identificacion
+                if objeto in comprobantes
+                else (
+                    f"Cobro {objeto.numero_operacion} "
+                    f"({dict(ModalidadCobro.choices).get(objeto.medio, objeto.medio)})"
+                )
+            )
+            mensaje = (
+                f'{etiqueta} — respaldo "{documento.nombre_original}", '
+                f"versión {documento.version}: debe ser vigente y estar ACEPTADO."
+            )
             faltas_documentales.append(mensaje)
             faltas_cierre.append(mensaje)
             if objeto in comprobantes:
@@ -150,6 +162,8 @@ def diagnostico(solicitud):
     return dict(
         neto=neto,
         confirmado=confirmado,
+        diferencia=neto - confirmado,
+        exceso=max(confirmado - neto, Decimal("0.00")),
         estado=estado,
         faltas_cierre=faltas_cierre,
         faltas_anulacion=faltas_anulacion,
@@ -244,7 +258,7 @@ def actualizar_respaldo(
                 tipo=anterior.tipo,
                 procedencia="EXTERNO_BANCO"
                 if anterior.tipo == "COMPROBANTE_COBRO"
-                else "EXTERNO_XUBIO",
+                else objeto.procedencia,
                 reemplaza_id=anterior.pk,
                 _escrituras=escrituras,
             )
@@ -264,6 +278,8 @@ def actualizar_respaldo(
             raise ValidationError(
                 "Elegí la versión sucesora vigente del mismo trámite, tipo y serie."
             )
+        if clase == "comprobante" and nuevo.procedencia != objeto.procedencia:
+            raise ValidationError("La versión debe conservar el origen del comprobante.")
         if clase == "comprobante" and nuevo.formato != "application/pdf":
             raise ValidationError("El comprobante externo requiere PDF.")
         otros = solicitud.comprobantes if clase == "comprobante" else solicitud.cobros

@@ -13,14 +13,15 @@ class Documento(models.Model):
         TICKET_NO_FISCAL = "TICKET_NO_FISCAL", "Ticket no fiscal"
         COMPROBANTE_PAGO = "COMPROBANTE_PAGO", "Comprobante de pago"
         CONSTANCIA_RETENCION_ATP = "CONSTANCIA_RETENCION_ATP", "Constancia ATP"
-        FACTURA_EMITIDA_XUBIO = "FACTURA_EMITIDA_XUBIO", "Factura emitida en Xubio"
-        NOTA_CREDITO_XUBIO = "NOTA_CREDITO_XUBIO", "Nota de crédito de Xubio"
-        NOTA_DEBITO_XUBIO = "NOTA_DEBITO_XUBIO", "Nota de débito de Xubio"
+        FACTURA_EMITIDA_XUBIO = "FACTURA_EMITIDA_XUBIO", "Factura emitida"
+        NOTA_CREDITO_XUBIO = "NOTA_CREDITO_XUBIO", "Nota de crédito"
+        NOTA_DEBITO_XUBIO = "NOTA_DEBITO_XUBIO", "Nota de débito"
         COMPROBANTE_COBRO = "COMPROBANTE_COBRO", "Comprobante de cobro"
 
     class Procedencia(models.TextChoices):
         SOLICITANTE = "SOLICITANTE", "Solicitante"
         EXTERNO_XUBIO = "EXTERNO_XUBIO", "Xubio"
+        EXTERNO_OTRO = "EXTERNO_OTRO", "Otro"
         EXTERNO_BANCO = "EXTERNO_BANCO", "Banco"
         EXTERNO_ATP = "EXTERNO_ATP", "ATP"
         INTERNO_COOPERADORA = "INTERNO_COOPERADORA", "Cooperadora"

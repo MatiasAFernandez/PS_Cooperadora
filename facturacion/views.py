@@ -17,7 +17,8 @@ from identidad.services import has_capability, resolve_actor
 
 from .cobros import resumen_cobros
 from .comprobantes import resumen_comprobantes
-from .forms import SolicitudFacturacionForm
+from .consultas import filtrar_solicitudes
+from .forms import FiltroFacturacionForm, SolicitudFacturacionForm
 from .models import EstadoSolicitudFacturacion as Estado
 from .permissions import (
     ObjetoNoVisibleError,
@@ -130,13 +131,26 @@ class ListaSolicitudesView(FacturacionView):
             )
         ):
             raise PermissionDenied
+        filtro = FiltroFacturacionForm(request.GET)
+        consulta = filtrar_solicitudes(filtrar_solicitudes_visibles(self.actor), filtro)
         pagina = Paginator(
-            filtrar_solicitudes_visibles(self.actor).prefetch_related(
-                "comprobantes", "cobros__verificacion"
-            ).order_by("-fecha_presentacion", "-pk"),
+            consulta.prefetch_related("comprobantes", "cobros__verificacion").order_by(
+                "-fecha_presentacion", "-pk"
+            ),
             25,
         ).get_page(request.GET.get("pagina"))
-        return render(request, "facturacion/lista.html", {"actor": self.actor, "pagina": pagina})
+        parametros = request.GET.copy()
+        parametros.pop("pagina", None)
+        return render(
+            request,
+            "facturacion/lista.html",
+            {
+                "actor": self.actor,
+                "pagina": pagina,
+                "filtro_form": filtro,
+                "filtros_query": parametros.urlencode(),
+            },
+        )
 
 
 class PresentarSolicitudView(FacturacionView):
@@ -184,6 +198,7 @@ class DetalleSolicitudView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
         from .seguimiento import diagnostico_visible, respaldo_actual
+
         diagnostico_actual = diagnostico_visible(self.actor, solicitud)
         eventos = list(solicitud.eventos.all())
         comprobantes, neto = resumen_comprobantes(solicitud)
@@ -191,6 +206,7 @@ class DetalleSolicitudView(FacturacionView):
         from django.db.models import Q
 
         from .models import ActualizacionRespaldo
+
         actualizaciones = ActualizacionRespaldo.objects.filter(
             Q(comprobante__solicitud=solicitud) | Q(cobro__solicitud=solicitud)
         ).select_related("comprobante", "cobro")
@@ -202,6 +218,27 @@ class DetalleSolicitudView(FacturacionView):
         historial.extend(eventos_cobros)
         if has_capability(self.actor, "documentos.consultar_metadatos"):
             historial.extend(a.como_historial() for a in actualizaciones)
+        pendientes_revision = []
+        if has_capability(self.actor, "documentos.consultar_metadatos"):
+            from django.db.models import OuterRef, Subquery
+
+            from documentos.models import RevisionDocumento
+
+            pendientes_revision = (
+                documentos_visibles(self.actor)
+                .filter(
+                    tramite_base=solicitud.tramite_base,
+                    sucesor__isnull=True,
+                )
+                .annotate(
+                    resultado_revision=Subquery(
+                        RevisionDocumento.objects.filter(documento_id=OuterRef("pk"))
+                        .order_by("-id")
+                        .values("resultado")[:1]
+                    )
+                )
+                .filter(Q(resultado_revision__isnull=True) | ~Q(resultado_revision="ACEPTADO"))
+            )
         historial.sort(key=lambda e: (e.fecha_hora, e.evento_id, e.tipo_evento))
         return render(
             request,
@@ -210,6 +247,7 @@ class DetalleSolicitudView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "historial": historial,
+                "pendientes_revision": pendientes_revision,
                 "diagnostico": diagnostico_actual,
                 "puede_cerrar": has_capability(self.actor, "facturacion.cerrar")
                 and has_capability(self.actor, "documentos.consultar_metadatos"),
@@ -219,12 +257,15 @@ class DetalleSolicitudView(FacturacionView):
                     self.actor, "facturacion.actualizar_respaldo"
                 )
                 and has_capability(self.actor, "documentos.consultar_metadatos"),
-                "cobros": cobros, "totales_cobros": totales_cobros,
-                "puede_informar_cobro": any(has_capability(self.actor, c) for c in (
-                    "facturacion.informar_cobro", "facturacion.registrar_cobro"
-                )),
+                "cobros": cobros,
+                "totales_cobros": totales_cobros,
+                "puede_informar_cobro": any(
+                    has_capability(self.actor, c)
+                    for c in ("facturacion.informar_cobro", "facturacion.registrar_cobro")
+                ),
                 "puede_verificar_cobro": has_capability(self.actor, "facturacion.verificar_cobro"),
-                "comprobantes": comprobantes, "neto_comprobantes": neto,
+                "comprobantes": comprobantes,
+                "neto_comprobantes": neto,
                 "puede_registrar_comprobante": has_capability(
                     self.actor, "facturacion.registrar_factura_externa"
                 )
@@ -241,7 +282,6 @@ class DetalleSolicitudView(FacturacionView):
                 "respaldos": documentos_visibles(self.actor)
                 .filter(
                     tramite_base=solicitud.tramite_base,
-                    tipo="COMPROBANTE_COBRO",
                 )
                 .order_by("fecha_incorporacion", "pk")
                 if has_capability(self.actor, "documentos.consultar_metadatos")

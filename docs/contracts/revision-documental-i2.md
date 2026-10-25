@@ -1,5 +1,7 @@
 # Revisión documental — perfil de demo #24
 
+> Las vistas de la demo incorporan la consulta de pendientes de todos los tipos autorizados y origen externo alternativo aprobado el 25/10/2026. Los códigos documentales históricos se conservan; las etiquetas de facturas/notas ya no presuponen Xubio. Ver [SPEC-012](../specs/012-mejoras-demo-consultas.md).
+
 Perfil preparado el 18/10/2026. Matías pidió avanzar con #24 y eligió incorporar
 RECHAZADO además de ACEPTADO/OBSERVADO. Son decisiones del perfil técnico de demo;
 Franco revisa la interfaz común y su consumidor de gastos. La asignación a cargos

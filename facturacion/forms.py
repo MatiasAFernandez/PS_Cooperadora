@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from django import forms
 
+from comunes.filtros import FiltroFechaForm
+
 from .choices import (
     MEDIOS_PAGO_EFECTIVOS,
     CentroCosto,
@@ -75,3 +77,25 @@ class SolicitudFacturacionForm(forms.Form):
             if not data.get("archivo_comprobante") and not conserva:
                 self.add_error("archivo_comprobante", "Adjuntá el comprobante del pago declarado.")
         return data
+
+
+class FiltroFacturacionForm(FiltroFechaForm):
+    estado = forms.ChoiceField(
+        label="Estado / seguimiento",
+        required=False,
+        choices=[
+            ("", "Todos los estados"),
+            ("PRESENTADA", "Presentada"),
+            ("OBSERVADA", "Observada"),
+            ("FACTURADA_PENDIENTE_COBRO", "Facturada pendiente de cobro"),
+            ("COBRADA_EN_REVISION", "Cobrada en revisión"),
+            ("CERRADA", "Cerrada"),
+            ("ANULADA", "Anulada"),
+        ],
+    )
+    q = forms.CharField(
+        label="Buscar solicitud, solicitante, receptor, CUIT o detalle",
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={"type": "search"}),
+    )

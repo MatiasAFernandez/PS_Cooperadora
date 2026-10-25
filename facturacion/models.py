@@ -128,6 +128,7 @@ class SolicitudFacturacion(models.Model):
     @property
     def estado_seguimiento(self):
         from .seguimiento import estado_visible
+
         return estado_visible(self)
 
     def clean(self):
@@ -225,7 +226,12 @@ class ComprobanteExterno(models.Model):
     numero = models.PositiveIntegerField()
     fecha_emision = models.DateField()
     importe = models.DecimalField(max_digits=12, decimal_places=2)
-    procedencia = models.CharField(max_length=30, default="EXTERNO_XUBIO", editable=False)
+    procedencia = models.CharField(
+        max_length=30,
+        default="EXTERNO_XUBIO",
+        choices=[("EXTERNO_XUBIO", "Xubio"), ("EXTERNO_OTRO", "Otro")],
+    )
+    origen_aclaracion = models.CharField(max_length=200, blank=True, default="", db_default="")
     factura_origen = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.PROTECT, related_name="notas"
     )
@@ -236,12 +242,18 @@ class ComprobanteExterno(models.Model):
     class Meta:
         ordering = ["fecha_registro", "id"]
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(procedencia="EXTERNO_XUBIO", origen_aclaracion="")
+                | models.Q(procedencia="EXTERNO_OTRO", origen_aclaracion__regex=r"\S"),
+                name="ck_comprobante_procedencia",
+            ),
             models.UniqueConstraint(
                 fields=["cuit_emisor", "tipo", "letra", "punto_venta", "numero"],
                 name="uq_comprobante_identidad_externa",
             ),
             models.UniqueConstraint(
-                fields=["solicitud"], condition=models.Q(tipo="FACTURA"),
+                fields=["solicitud"],
+                condition=models.Q(tipo="FACTURA"),
                 name="uq_una_factura_por_solicitud",
             ),
             models.CheckConstraint(
@@ -277,10 +289,20 @@ class ComprobanteExterno(models.Model):
     def identificacion(self):
         return f"{self.get_tipo_display()} {self.letra} {self.punto_venta:05d}-{self.numero:08d}"
 
+    @property
+    def origen_mostrado(self):
+        return "Xubio" if self.procedencia == "EXTERNO_XUBIO" else f"Otro: {self.origen_aclaracion}"
+
     def como_historial(self):
         return EventoHistorialDTO(
-            evento_id=self.pk, tramite_ref=f"facturacion:{self.solicitud_id}",
-            tipo_evento="comprobante_externo_registrado", actor_id=str(self.actor_id),
-            fecha_hora=self.fecha_registro, estado_resultante="REGISTRADO",
-            motivo_o_detalle=f"{self.identificacion}. Emisor: {self.cuit_emisor}. Origen: Xubio.",
+            evento_id=self.pk,
+            tramite_ref=f"facturacion:{self.solicitud_id}",
+            tipo_evento="comprobante_externo_registrado",
+            actor_id=str(self.actor_id),
+            fecha_hora=self.fecha_registro,
+            estado_resultante="REGISTRADO",
+            motivo_o_detalle=(
+                f"{self.identificacion}. Emisor: {self.cuit_emisor}. "
+                f"Origen: {self.origen_mostrado}."
+            ),
         )

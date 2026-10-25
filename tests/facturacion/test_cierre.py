@@ -353,10 +353,14 @@ def test_dos_cierres_concurrentes_un_solo_evento(escenario, solicitud):
 def test_reversa_terminal_bloqueada_y_sql_terminal_inmutable(escenario, solicitud):
     f, _ = preparado(escenario, solicitud)
     resolver(escenario, solicitud)
-    with pytest.raises(DatabaseError, match="Hay resoluciones"):
-        MigrationExecutor(connection).migrate(
-            [("facturacion", "0010_actualizacionrespaldo_and_more")]
-        )
+    finales = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        with pytest.raises(DatabaseError, match="Hay resoluciones"):
+            MigrationExecutor(connection).migrate(
+                [("facturacion", "0010_actualizacionrespaldo_and_more")]
+            )
+    finally:
+        MigrationExecutor(connection).migrate(finales)
     with pytest.raises(IntegrityError), transaction.atomic():
         type(solicitud).objects.filter(pk=solicitud.pk).update(estado="PRESENTADA")
     with pytest.raises(IntegrityError), transaction.atomic():
@@ -716,8 +720,26 @@ def test_upgrade_guardas_preserva_resolucion_existente(escenario, solicitud):
     finales = executor.loader.graph.leaf_nodes()
     try:
         executor.migrate([("facturacion", "0011_resolucion_integridad")])
-        resolver(escenario, solicitud, "anular")
-        evento = solicitud.eventos.get(tipo_evento="ANULACION")
+        # Construir el hecho con los modelos historicos: el servicio actual usa campos nuevos.
+        anteriores = (
+            MigrationExecutor(connection)
+            .loader.project_state([("facturacion", "0011_resolucion_integridad")])
+            .apps
+        )
+        SolicitudAnterior = anteriores.get_model("facturacion", "SolicitudFacturacion")
+        EventoAnterior = anteriores.get_model("facturacion", "EventoFacturacion")
+        with transaction.atomic():
+            SolicitudAnterior.objects.filter(pk=solicitud.pk).update(
+                estado="ANULADA", version_concurrencia=2
+            )
+            evento = EventoAnterior.objects.create(
+                solicitud_id=solicitud.pk,
+                actor_id=escenario.usuarios["o"].pk,
+                tipo_evento="ANULACION",
+                estado_resultante="ANULADA",
+                motivo_o_detalle="Resolucion previa sintetica",
+                snapshot_datos={"version_resultante": 2},
+            )
         MigrationExecutor(connection).migrate(finales)
         solicitud.refresh_from_db()
         assert solicitud.estado == "ANULADA"

@@ -1,0 +1,8 @@
+{{ form.non_field_errors }}
+<div class="filter-fields">
+{% for field in form %}<div class="form-group{% if field.name == 'q' %} filter-wide{% endif %}">
+{{ field.label_tag }}{{ field }}
+{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+{{ field.errors }}
+</div>{% endfor %}
+</div>

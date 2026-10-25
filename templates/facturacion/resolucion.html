@@ -1,5 +1,11 @@
+<section class="panel">
 <h3>Pendientes y resolución</h3>
 <p>Neto: {{ diagnostico.neto }} ARS. Ingreso confirmado: {{ diagnostico.confirmado }} ARS.</p>
+<p>Diferencia (neto − ingresos confirmados): <strong>{{ diagnostico.diferencia }} ARS</strong>.
+{% if diagnostico.diferencia > 0 %}Importe por cubrir con ingresos confirmados.
+{% elif diagnostico.diferencia < 0 %}Exceso confirmado: {{ diagnostico.exceso }} ARS.
+{% else %}Sin diferencia.{% endif %}
+Los cobros pendientes de verificación no se incluyen en el ingreso confirmado.</p>
 {% if diagnostico.terminal %}<p>Resolución definitiva: {{ solicitud.get_estado_display }}. El historial y los archivos autorizados se conservan; no admite nuevas operaciones ni reapertura.</p>
 {% else %}
 <h4>Para cerrar</h4><ul>{% for falta in diagnostico.faltas_cierre %}<li>{{ falta }}</li>{% empty %}<li>Sin pendientes para el cierre normal.</li>{% endfor %}</ul>
@@ -12,3 +18,5 @@
 {% if puede_anular %}<button name="accion" value="anular">Anular trámite</button>{% endif %}
 </form>{% endif %}
 {% endif %}
+
+</section>

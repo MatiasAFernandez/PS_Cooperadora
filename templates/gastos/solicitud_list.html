@@ -11,20 +11,7 @@
 </div>
 
 <form method="get" action="{% url 'gastos:lista' %}">
-    <div class="form-group">
-        {{ filtro_form.estado.label_tag }}
-        {{ filtro_form.estado }}
-        {% if filtro_form.estado.errors %}
-            <div class="alert-error" role="alert">{{ filtro_form.estado.errors }}</div>
-        {% endif %}
-    </div>
-    <div class="form-group">
-        {{ filtro_form.q.label_tag }}
-        {{ filtro_form.q }}
-        {% if filtro_form.q.errors %}
-            <div class="alert-error" role="alert">{{ filtro_form.q.errors }}</div>
-        {% endif %}
-    </div>
+    {% include "comunes/campos_filtro.html" with form=filtro_form %}
     <button type="submit" class="btn">Filtrar</button>
     <a href="{% url 'gastos:lista' %}">Quitar filtro</a>
 </form>

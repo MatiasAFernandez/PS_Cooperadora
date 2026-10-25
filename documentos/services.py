@@ -37,9 +37,18 @@ TIPOS_POR_CIRCUITO = {
         Documento.Tipo.CONSTANCIA_RETENCION_ATP: {Documento.Procedencia.EXTERNO_ATP},
     },
     Circuito.FACTURACION: {
-        Documento.Tipo.FACTURA_EMITIDA_XUBIO: {Documento.Procedencia.EXTERNO_XUBIO},
-        Documento.Tipo.NOTA_CREDITO_XUBIO: {Documento.Procedencia.EXTERNO_XUBIO},
-        Documento.Tipo.NOTA_DEBITO_XUBIO: {Documento.Procedencia.EXTERNO_XUBIO},
+        Documento.Tipo.FACTURA_EMITIDA_XUBIO: {
+            Documento.Procedencia.EXTERNO_XUBIO,
+            Documento.Procedencia.EXTERNO_OTRO,
+        },
+        Documento.Tipo.NOTA_CREDITO_XUBIO: {
+            Documento.Procedencia.EXTERNO_XUBIO,
+            Documento.Procedencia.EXTERNO_OTRO,
+        },
+        Documento.Tipo.NOTA_DEBITO_XUBIO: {
+            Documento.Procedencia.EXTERNO_XUBIO,
+            Documento.Procedencia.EXTERNO_OTRO,
+        },
         Documento.Tipo.COMPROBANTE_COBRO: {
             Documento.Procedencia.SOLICITANTE,
             Documento.Procedencia.EXTERNO_BANCO,
