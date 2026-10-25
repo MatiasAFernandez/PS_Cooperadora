@@ -1,9 +1,14 @@
 {% extends "facturacion/base.html" %}
-{% block content %}<h2>Solicitudes visibles</h2>
+{% block content %}<h2>Solicitudes de facturación</h2>
+{% if "facturacion.presentar" in actor.capabilities %}<p><a class="btn" href="{% url 'facturacion:presentar' %}">Nueva solicitud</a></p>{% endif %}
+<form method="get">
+{% include "comunes/campos_filtro.html" with form=filtro_form %}
+<button type="submit">Filtrar</button> <a href="{% url 'facturacion:lista' %}">Quitar filtro</a>
+</form>
 <table><thead><tr><th>Número</th><th>Presentación</th><th>Receptor</th><th>Estado</th></tr></thead><tbody>
 {% for solicitud in pagina %}<tr><td><a href="{% url 'facturacion:detalle' solicitud.pk %}">{{ solicitud.pk }}</a></td>
-<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td>{{ solicitud.get_estado_display }} — seguimiento: {{ solicitud.estado_seguimiento }}</td></tr>
+<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td><span class="badge">{{ solicitud.get_estado_display }}</span> — seguimiento: {{ solicitud.estado_seguimiento }}</td></tr>
 {% empty %}<tr><td colspan="4">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
-<nav aria-label="Páginas">{% if pagina.has_previous %}<a href="?pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+<nav aria-label="Páginas">{% if pagina.has_previous %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
 <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-{% if pagina.has_next %}<a href="?pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endblock %}
+{% if pagina.has_next %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endblock %}

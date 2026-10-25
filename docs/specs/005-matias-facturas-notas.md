@@ -1,5 +1,7 @@
 # SPEC-005 — Registro de facturas y notas emitidas externamente
 
+> Ampliación aprobada por Matías el 25/10/2026: Xubio predeterminado y Otro con aclaración para los tres tipos; etiquetas documentales neutrales y códigos históricos conservados. Ver [SPEC-012](012-mejoras-demo-consultas.md).
+
 - Estado: perfil provisional de demo precisado; pendiente de validación institucional.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#25](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/25).

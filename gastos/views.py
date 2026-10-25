@@ -270,6 +270,7 @@ class SolicitudGastoListView(View):
         solicitudes = visible_expenses(actor)
         filtro_form = FiltroEstadoGastoForm(request.GET)
         if filtro_form.is_valid():
+            solicitudes = filtro_form.filtrar_fecha(solicitudes, "fecha_creacion")
             estado = filtro_form.cleaned_data["estado"]
             if estado:
                 solicitudes = solicitudes.filter(estado=estado)

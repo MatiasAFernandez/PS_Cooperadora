@@ -16,5 +16,9 @@
         {% if actor and "facturacion.presentar" in actor.capabilities %}
             <li><a href="{% url 'facturacion:presentar' %}">Presentar facturación</a></li>
         {% endif %}
+        {% if actor %}
+        <li><a href="{% url 'identidad:inicio' %}">Inicio de demo</a></li>
+        <li><form method="post" action="{% url 'identidad:logout' %}">{% csrf_token %}<button class="nav-logout" type="submit">Salir</button></form></li>
+        {% endif %}
     </ul>
 </nav>

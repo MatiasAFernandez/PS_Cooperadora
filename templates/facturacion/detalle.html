@@ -1,8 +1,9 @@
 {% extends "facturacion/base.html" %}
 {% block content %}<h2>Solicitud {{ solicitud.pk }}</h2>
+<p><a class="btn" href="{% url 'facturacion:exportar_pdf' solicitud.pk %}">Exportar solicitud a PDF</a></p>
 <p><strong>{{ solicitud.get_estado_display }}</strong> — versión {{ solicitud.version_concurrencia }}.
 Seguimiento: <strong>{{ solicitud.estado_seguimiento }}</strong>.</p>
-<dl><dt>Presentación</dt><dd>{{ solicitud.fecha_presentacion }} — {{ solicitud.correo_solicitante }}</dd>
+<dl class="detail-grid"><dt>Presentación</dt><dd>{{ solicitud.fecha_presentacion }} — {{ solicitud.correo_solicitante }}</dd>
 <dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd>
 <dt>Receptor</dt><dd>{{ solicitud.nombre_receptor }} — CUIT {{ solicitud.cuit_receptor }}</dd>
 <dt>Condición IVA</dt><dd>{{ solicitud.get_condicion_iva_display }}</dd>
@@ -28,8 +29,8 @@ Seguimiento: <strong>{{ solicitud.estado_seguimiento }}</strong>.</p>
 {% include "facturacion/resolucion.html" %}
 <h3>Historial</h3>{% include "facturacion/historial.html" %}
 {% if puede_ver_revision %}<h3>Revisión de respaldos</h3><ul>
-{% for documento in respaldos %}<li><a href="{% url 'documentos:revision' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a></li>
-{% empty %}<li>Sin respaldos.</li>{% endfor %}</ul>{% endif %}
+{% for documento in pendientes_revision %}<li>{{ documento.get_tipo_display }} — <a href="{% url 'documentos:revision' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a> — {{ documento.resultado_revision|default:"Pendiente" }}</li>
+{% empty %}<li>Sin versiones vigentes pendientes, observadas o rechazadas.</li>{% endfor %}</ul>{% endif %}
 {% if puede_descargar %}<h3>Respaldos conservados</h3><ul>
 {% for documento in respaldos %}<li><a href="{% url 'documentos:archivo' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a>
 — {{ documento.fecha_incorporacion }}</li>{% empty %}<li>Sin archivos.</li>{% endfor %}

@@ -173,9 +173,7 @@ def test_permisos_independientes_y_objeto(escenario, solicitud, entrada):
 
 
 @pytest.mark.parametrize("duplicado_global", [False, True])
-def test_http_csrf_detalle_y_descarga_ajena(
-    escenario, solicitud, entrada, datos, duplicado_global
-):
+def test_http_csrf_detalle_y_descarga_ajena(escenario, solicitud, entrada, datos, duplicado_global):
     url = reverse("facturacion:registrar_comprobante", args=[solicitud.pk])
     c = Client(enforce_csrf_checks=True)
     c.force_login(escenario.usuarios["o"])
@@ -200,12 +198,13 @@ def test_http_csrf_detalle_y_descarga_ajena(
         assert str(form[campo]) in respuesta.content.decode()
     mensaje = (
         "Ese comprobante externo ya está registrado."
-        if duplicado_global else "Esta solicitud ya tiene una factura."
+        if duplicado_global
+        else "Esta solicitud ya tiene una factura."
     )
     assert mensaje in form.non_field_errors()
     assert mensaje in respuesta.content.decode()
     assert "volvé a seleccionarlo" in respuesta.content.decode()
-    assert "type=\"file\"" in respuesta.content.decode()
+    assert 'type="file"' in respuesta.content.decode()
     assert ComprobanteExterno.objects.count() == Documento.objects.count() == 1
     registro = ComprobanteExterno.objects.get()
     archivo = reverse("documentos:archivo", args=[registro.documento_id])
@@ -312,8 +311,13 @@ def test_sql_rechaza_vinculos_ajenos(escenario, solicitud, datos, entrada, cruce
 
 def test_reversa_con_comprobantes_preserva_historial(escenario, solicitud, entrada):
     registro = registrar(escenario, solicitud, entrada)
-    with pytest.raises(DatabaseError, match="Hay comprobantes"):
-        MigrationExecutor(connection).migrate([("facturacion", "0006_comprobantes_externos")])
+    finales = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        with pytest.raises(DatabaseError, match="Hay comprobantes"):
+            MigrationExecutor(connection).migrate([("facturacion", "0006_comprobantes_externos")])
+    finally:
+        # Una reversa multipaso puede haber deshecho migraciones posteriores antes del rechazo.
+        MigrationExecutor(connection).migrate(finales)
     assert ComprobanteExterno.objects.get().pk == registro.pk
     with pytest.raises(IntegrityError), transaction.atomic():
         ComprobanteExterno.objects.filter(pk=registro.pk).update(numero=2)

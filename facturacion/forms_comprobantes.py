@@ -30,3 +30,26 @@ class ComprobanteExternoForm(forms.Form):
         min_value=Decimal("0.01"),
     )
     archivo_pdf = forms.FileField(label="PDF del comprobante")
+
+    procedencia = forms.ChoiceField(
+        label="Origen",
+        required=False,
+        choices=[("EXTERNO_XUBIO", "Xubio"), ("EXTERNO_OTRO", "Otro")],
+        initial="EXTERNO_XUBIO",
+    )
+    origen_aclaracion = forms.CharField(
+        label="Aclaración del otro origen",
+        required=False,
+        max_length=200,
+        help_text="Obligatoria si seleccionás Otro.",
+    )
+
+    def clean(self):
+        datos = super().clean()
+        origen = datos.get("procedencia") or "EXTERNO_XUBIO"
+        datos["procedencia"] = origen
+        if origen == "EXTERNO_OTRO" and not datos.get("origen_aclaracion"):
+            self.add_error("origen_aclaracion", "Indicá el sistema o procedencia del comprobante.")
+        if origen == "EXTERNO_XUBIO":
+            datos["origen_aclaracion"] = ""
+        return datos

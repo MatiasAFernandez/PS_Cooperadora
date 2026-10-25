@@ -298,10 +298,14 @@ def test_sql_historia_y_reversa(escenario, solicitud, entrada):
             modelo.objects.filter(pk=pk).update(actor_id=escenario.usuarios["b"].pk)
         with pytest.raises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute(f"DELETE FROM {modelo._meta.db_table} WHERE id=%s", [pk])
-    with pytest.raises(DatabaseError, match="Hay cobros"):
-        MigrationExecutor(connection).migrate(
-            [("facturacion", "0008_cobroexterno_verificacioncobro_and_more")]
-        )
+    finales = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        with pytest.raises(DatabaseError, match="Hay cobros"):
+            MigrationExecutor(connection).migrate(
+                [("facturacion", "0008_cobroexterno_verificacioncobro_and_more")]
+            )
+    finally:
+        MigrationExecutor(connection).migrate(finales)
     assert CobroExterno.objects.count() == VerificacionCobro.objects.count() == 1
 
 

@@ -90,7 +90,7 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
                 referencia=str(base.referencia),
                 archivo=archivo,
                 tipo=TIPOS_DOCUMENTALES[limpio["tipo"]],
-                procedencia="EXTERNO_XUBIO",
+                procedencia=limpio["procedencia"],
                 _escrituras=escrituras,
             )
             return ComprobanteExterno.objects.create(
@@ -98,6 +98,8 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
                 documento=documento,
                 factura_origen=factura,
                 actor_id=actor.subject_id,
+                procedencia=limpio["procedencia"],
+                origen_aclaracion=limpio["origen_aclaracion"],
                 fecha_emision=limpio["fecha_emision"],
                 importe=limpio["importe"],
                 **identidad,

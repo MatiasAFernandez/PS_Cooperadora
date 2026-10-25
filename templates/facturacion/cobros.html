@@ -1,3 +1,4 @@
+<section class="panel">
 <h3>Cobros externos (ARS)</h3>
 {% if puede_informar_cobro and not diagnostico.terminal %}<p><a href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a></p>{% endif %}
 <p>Confirmado: {{ totales_cobros.CONFIRMADO }} ARS. Pendiente: {{ totales_cobros.PENDIENTE }} ARS. Rechazado: {{ totales_cobros.RECHAZADO }} ARS.</p>
@@ -11,3 +12,5 @@ Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{
 {% if puede_actualizar_respaldo and not diagnostico.terminal %}<a href="{% url 'facturacion:actualizar_respaldo' solicitud.pk 'cobro' cobro.pk %}">Actualizar vínculo del respaldo</a>{% endif %}
 {% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" %}<a href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>{% endif %}
 </li>{% empty %}<li>Sin cobros registrados.</li>{% endfor %}</ul>
+
+</section>

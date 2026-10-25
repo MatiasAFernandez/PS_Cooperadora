@@ -190,7 +190,8 @@ def test_consulta_combinada_y_recarga_no_escriben_solicitudes_o_decisiones(
     response = client.get(reverse("gastos:lista"), params)
     reload = client.get(reverse("gastos:lista"), params)
     assert response.status_code == reload.status_code == 200
-    assert response.content == reload.content
+    # El formulario de salida incorpora un token CSRF enmascarado por respuesta.
+    assert list(response.context["solicitudes"]) == list(reload.context["solicitudes"])
     assert list(response.context["solicitudes"]) == [gastos_busqueda["a_presentada"]]
     content = response.content.decode()
     assert '<label for="id_q">Buscar en concepto:</label>' in content

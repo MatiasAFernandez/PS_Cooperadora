@@ -1,5 +1,7 @@
 # SPEC-008 — Búsqueda, filtros y resúmenes de facturación y cobros
 
+> El alcance de búsqueda y filtros de la demo fue aprobado por Matías el 25/10/2026; ver [SPEC-012](012-mejoras-demo-consultas.md). No confirma validación institucional ni resúmenes globales.
+
 - Estado: borrador; capacidad SHOULD, pendiente de priorización y validación.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/30),

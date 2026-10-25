@@ -36,6 +36,11 @@ La base propuesta usa:
 La interfaz se mantiene, por ahora, dentro de Django. Incorporar un framework de
 frontend separado requiere una necesidad concreta y una decisión del equipo.
 
+La [guía de consultas y exportación](docs/guides/mejoras-demo-consultas.md)
+describe los ajustes aprobados tras el ensayo local: estilos comunes, filtros de
+presentación, respaldos por revisar, diferencia financiera, origen alternativo y
+PDF de solicitud (sin emisión fiscal ni integración con Xubio).
+
 ## Puesta en marcha local en Windows
 
 Requisitos: Python 3.11 y Docker Desktop iniciado con el motor de contenedores

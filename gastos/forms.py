@@ -7,12 +7,13 @@ from typing import Any
 from django import forms
 from django.core.exceptions import ValidationError
 
+from comunes.filtros import FiltroFechaForm
 from documentos.models import Documento
 from gastos.contracts import OpcionDocumental
 from gastos.models import EstadoSolicitud, SolicitudGasto
 
 
-class FiltroEstadoGastoForm(forms.Form):
+class FiltroEstadoGastoForm(FiltroFechaForm):
     """Filtros de sólo lectura sobre las solicitudes visibles de la demo."""
 
     estado = forms.ChoiceField(

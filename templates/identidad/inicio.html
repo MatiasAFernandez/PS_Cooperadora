@@ -1,16 +1,4 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <title>Sesión de demostración</title>
-</head>
-<body>
-  <h1>Sesión de demostración activa</h1>
-  <p>Sujeto local: {{ actor.subject_id }}</p>
-  {% include "comunes/navegacion_tramites.html" %}
-  <form method="post" action="{% url 'identidad:logout' %}">
-    {% csrf_token %}
-    <button type="submit">Salir</button>
-  </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Sesión de demostración{% endblock %}
+{% block titulo_modulo %}Sesión de demostración activa{% endblock %}
+{% block content %}<p>Sujeto local: {{ actor.subject_id }}</p>{% endblock %}

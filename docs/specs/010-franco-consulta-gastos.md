@@ -1,5 +1,7 @@
 # SPEC-010 — Consulta de gastos por estado y concepto
 
+> Extensión de consulta aprobada por Matías el 25/10/2026: filtro por día, mes/año o año de presentación combinado con texto/estado. Ver [SPEC-012](012-mejoras-demo-consultas.md); revisión de Franco pendiente.
+
 - Fecha: 03/10/2026. Preparación de I2; I2-T01 implementada y probada.
 - Responsable: Franco Damián Sánchez, módulo gastos/pagos. Revisión independiente de coordinación
   aprobada el 03/10/2026, sin bloqueos materiales. Revisión del compañero pendiente.

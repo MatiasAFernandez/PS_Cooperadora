@@ -170,7 +170,8 @@ def test_consulta_y_recarga_no_modifican_gastos_ni_historial(
         first = client.get(url, params)
         reload = client.get(url, params)
         assert first.status_code == reload.status_code == 200
-        assert first.content == reload.content
+        # La navegacion incluye ahora un token CSRF enmascarado distinto por respuesta.
+        assert list(first.context["solicitudes"]) == list(reload.context["solicitudes"])
         assert all(s.solicitante_id == accounts["demo_a"].pk for s in first.context["solicitudes"])
     assert list(SolicitudGasto.objects.order_by("pk").values()) == before_gastos
     assert list(DecisionGasto.objects.order_by("pk").values()) == before_decisiones
