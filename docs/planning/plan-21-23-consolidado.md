@@ -42,7 +42,7 @@ de nuevas restricciones operativas.
 | Observar requiere motivo no vacío; corregir admite nota opcional. | La observación necesita contenido para ser subsanable; no existe fundamento previo para exigir un descargo adicional al corregir. |
 | D01 exige fecha, operación y archivo solo con respuesta Sí y banco/Mercado Pago. | Regla previa confirmada. |
 | Cuenta corriente con Sí no se rechaza por esa sola combinación; los respaldos opcionales se conservan. | No introducir restricciones ajenas a D01. La interfaz explica que declarar no verifica el ingreso. |
-| Campos marcados obligatorios en el formulario se usan como perfil provisional de demo, incluida observaciones. | Hipótesis explícita y reversible para ejecutar el recorrido; sigue pendiente confirmar si se mantienen las 13 exigencias. No presentar esa hipótesis como decisión operativa aprobada. |
+| Campos marcados obligatorios en el formulario se usan como perfil provisional de demo. Observaciones pasa a ser opcional por el ajuste de Matías del 26/10/2026 en SPEC-004. | Las demás obligatoriedades conservan su carácter provisional; no presentar el perfil como validación institucional. |
 
 La aclaración de obligatoriedades y catálogos puede ajustar el perfil provisional
 antes de la validación funcional. No bloquea la infraestructura ni las pruebas
@@ -158,7 +158,7 @@ Conservar aplicaciones en la raíz y relaciones de #22:
 | importe_factura | DecimalField(12,2), finito, positivo, máximo 9999999999.99; rechazar precisión excedente, sin redondeo silencioso ni float. |
 | producto_servicio | CharField(60), código del catálogo. |
 | modalidad_cobro | CharField(30), código del catálogo. |
-| observaciones | TextField, obligatorio solo conforme al perfil provisional indicado en sección 1. |
+| observaciones | TextField opcional en alta y corrección, según el ajuste de SPEC-004 del 26/10/2026. |
 | fecha_operacion_declarada | DateField opcional salvo D01. |
 | numero_operacion_declarado | CharField(100), opcional salvo D01. |
 | documento_comprobante_inicial | FK Documento PROTECT anulable, related_name='+'; referencia al respaldo actualmente asociado, incluso versión posterior a 1. |

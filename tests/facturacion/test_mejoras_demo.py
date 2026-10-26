@@ -111,7 +111,10 @@ def test_busqueda_y_fecha_no_amplian_visibilidad(escenario, datos):
 
 
 @pytest.mark.parametrize(
-    "campo", ["nombre_solicitante", "nombre_receptor", "cuit_receptor", "detalle_factura", "pk"]
+    "campo", [
+        "nombre_solicitante", "nombre_receptor", "cuit_receptor",
+        "detalle_factura", "numero_solicitante",
+    ]
 )
 def test_campos_busqueda(escenario, datos, campo):
     s = presentar(escenario, datos)

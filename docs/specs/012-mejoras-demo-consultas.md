@@ -16,7 +16,8 @@ compartidos y de gastos requieren revisión de Franco según el flujo existente.
   períodos no afectan el filtro. Parámetros inválidos muestran errores y no
   resultados parciales. Fecha, estado y texto se combinan sobre trámites visibles.
 - Gastos conserva búsqueda por concepto y sus cuatro estados. Facturación busca
-  por número de solicitud exacto o texto en solicitante, receptor, CUIT y detalle;
+  por número de solicitud del titular o CUIT exacto cuando se ingresan sólo
+  dígitos, o texto en solicitante, receptor, CUIT y detalle;
   filtra por estado/seguimiento. Presentada sin factura, facturada pendiente de
   cobro y cobrada en revisión se distinguen sin alterar estados almacenados.
   Observada y resoluciones terminales conservan prioridad; los filtros financieros

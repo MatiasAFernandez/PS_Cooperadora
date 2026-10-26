@@ -53,6 +53,13 @@ El pago declarado queda pendiente de verificación. La revisión documental se a
 desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
 El registro de comprobantes y cobros externos se describe a continuación.
 
+Las solicitudes se numeran desde 1 por solicitante, también para los registros
+existentes. El correo del titular distingue números iguales en la consulta global.
+La búsqueda numérica usa ese número (o CUIT exacto), sin modificar los enlaces y
+referencias internas. **Observaciones (opcional)** puede quedar vacío tanto al
+presentar como al corregir. Aplicar la migración 0014 antes de usar este cambio;
+no borra datos. Su reversa exige no tener solicitudes con observaciones vacías.
+
 Los cobros se numeran desde 1 dentro de cada solicitud. Aceptar su comprobante
 en la revisión documental no confirma el ingreso: éste continúa PENDIENTE hasta
 registrar su verificación desde **Verificar ingreso**, en el detalle de la

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models
+from django.utils.functional import cached_property
 
 from comunes.contracts import EventoHistorialDTO
 
@@ -27,6 +28,15 @@ class EstadoSolicitudFacturacion(models.TextChoices):
 class SolicitudQuerySet(models.QuerySet):
     def operativas(self):
         return self.exclude(estado=EstadoSolicitudFacturacion.BORRADOR_TECNICO)
+
+    def con_numero_solicitante(self):
+        anteriores = self.model.objects.operativas().filter(
+            tramite_base__solicitante_actor_id=models.OuterRef("tramite_base__solicitante_actor_id"),
+            pk__lte=models.OuterRef("pk"),
+        ).order_by().values("tramite_base__solicitante_actor_id").annotate(
+            total=models.Count("pk")
+        ).values("total")
+        return self.annotate(_numero_solicitante=models.Subquery(anteriores))
 
 
 class SolicitudFacturacion(models.Model):
@@ -85,7 +95,6 @@ class SolicitudFacturacion(models.Model):
                     & ~models.Q(detalle_factura="")
                     & ~models.Q(producto_servicio="")
                     & ~models.Q(modalidad_cobro="")
-                    & ~models.Q(observaciones="")
                 ),
                 name="ck_fac_datos_operativos",
             ),
@@ -125,6 +134,15 @@ class SolicitudFacturacion(models.Model):
     def centro_costo(self):
         return self.tramite_base.centro_costo_codigo
 
+    @cached_property
+    def numero_solicitante(self):
+        if "_numero_solicitante" in self.__dict__:
+            return self._numero_solicitante
+        return type(self).objects.operativas().filter(
+            tramite_base__solicitante_actor_id=self.tramite_base.solicitante_actor_id,
+            pk__lte=self.pk,
+        ).count()
+
     @property
     def estado_seguimiento(self):
         from .seguimiento import estado_visible
@@ -146,7 +164,6 @@ class SolicitudFacturacion(models.Model):
             "detalle_factura",
             "producto_servicio",
             "modalidad_cobro",
-            "observaciones",
         ):
             value = getattr(self, field)
             if value is None or (isinstance(value, str) and not value.strip()):

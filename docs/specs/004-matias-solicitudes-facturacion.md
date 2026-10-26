@@ -1,5 +1,26 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
+## Ajuste de demo aprobado por Matías el 26/10/2026 (PR #73)
+
+Observaciones del solicitante es opcional, tanto al presentar como al corregir.
+Puede omitirse o quedar vacío; no se exige texto de relleno. Esto no afecta al
+motivo obligatorio de la operadora al observar una solicitud.
+
+La numeración visible de solicitudes empieza en 1 para cada titular identificado
+por su actor, según el orden de creación de las solicitudes operativas. Se aplica
+también a las existentes y no se recalcula según filtros o paginación. Las vistas
+y la ficha PDF muestran número y correo del titular para distinguir solicitudes
+de distintas personas. Los identificadores globales internos, URLs, vínculos
+documentales e historial de hechos se conservan; no se reasignan claves.
+La búsqueda numérica selecciona ese número dentro de las solicitudes visibles
+o un CUIT exacto; el resto de las búsquedas de texto mantiene su comportamiento.
+La migración 0014 permite observaciones vacías conservando las demás condiciones
+de datos operativos. No borra ni reescribe solicitudes ni eventos. Su reversa
+exige que no existan solicitudes operativas con observaciones vacías.
+
+Este ajuste sustituye la obligatoriedad provisional de observaciones descrita
+en el corte histórico de abajo; no acredita validación institucional.
+
 ## Verificación técnica de #23 — 18/10/2026
 
 El recorrido de demo se integró en #52 con revisión de Franco. La verificación
