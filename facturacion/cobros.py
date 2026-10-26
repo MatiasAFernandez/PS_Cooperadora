@@ -177,7 +177,7 @@ def resumen_cobros(solicitud):
     for numero, cobro in enumerate(cobros, start=1):
         cobro.numero_en_solicitud = numero
         totales[cobro.resultado] += cobro.importe
-        eventos.append(cobro.como_historial())
+        eventos.append(cobro.como_historial(numero_cobro=numero))
         if cobro.resultado != "PENDIENTE":
             eventos.append(cobro.verificacion.como_historial(numero_cobro=numero))
     return cobros, totales, eventos

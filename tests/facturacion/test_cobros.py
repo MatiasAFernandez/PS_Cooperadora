@@ -221,6 +221,8 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     intercalado = alta(escenario, otra, entrada, numero_operacion="OTRA-SOLICITUD")
     segundo = alta(escenario, solicitud, entrada, numero_operacion="SEGUNDO")
     assert [c.numero_en_solicitud for c in (primero, intercalado, segundo)] == [1, 1, 2]
+    assert intercalado.como_historial().motivo_o_detalle.startswith("Cobro #1.")
+    assert segundo.como_historial().motivo_o_detalle.startswith("Cobro #2.")
     verificacion = verificar_cobro(
         actor=revisor(escenario), numero=solicitud.pk, cobro_id=segundo.pk,
         datos={"resultado": "CONFIRMADO"},
@@ -228,11 +230,19 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     assert verificacion.como_historial().motivo_o_detalle.startswith("Cobro #2.")
     lista, _, eventos = resumen_cobros(solicitud)
     assert [c.numero_en_solicitud for c in lista] == [1, 2]
-    assert eventos[-1].motivo_o_detalle.startswith("Cobro #2.")
+    assert [(e.tipo_evento, e.motivo_o_detalle.split(". ")[0]) for e in eventos] == [
+        ("cobro_informado", "Cobro #1"),
+        ("cobro_informado", "Cobro #2"),
+        ("cobro_verificado", "Cobro #2"),
+    ]
     cliente = Client()
     cliente.force_login(escenario.usuarios["a"])
     contenido = cliente.get(reverse("facturacion:detalle", args=[otra.pk])).content.decode()
     assert "Cobro #1:" in contenido and f"Cobro #{intercalado.pk}:" not in contenido
+    assert "Cobro #1. 60.10 ARS." in contenido
+    contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
+    assert "Cobro #1. 60.10 ARS." in contenido
+    assert "Cobro #2. 60.10 ARS." in contenido
     escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_verificacion_cobros"))
     cliente.force_login(escenario.usuarios["o"])
     respuesta = cliente.get(reverse("facturacion:verificar_cobro", args=[otra.pk, intercalado.pk]))

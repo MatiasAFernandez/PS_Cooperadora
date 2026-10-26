@@ -69,7 +69,9 @@ class CobroExterno(models.Model):
     def delete(self, *args, **kwargs):
         raise IntegrityError("El cobro registrado es inmutable.")
 
-    def como_historial(self):
+    def como_historial(self, *, numero_cobro=None):
+        if numero_cobro is None:
+            numero_cobro = self.numero_en_solicitud
         return EventoHistorialDTO(
             evento_id=self.pk,
             tramite_ref=f"facturacion:{self.solicitud_id}",
@@ -77,7 +79,10 @@ class CobroExterno(models.Model):
             actor_id=str(self.actor_id),
             fecha_hora=self.fecha_registro,
             estado_resultante="PENDIENTE",
-            motivo_o_detalle=f"{self.importe:.2f} ARS. {self.medio}: {self.numero_operacion}.",
+            motivo_o_detalle=(
+                f"Cobro #{numero_cobro}. {self.importe:.2f} ARS. "
+                f"{self.medio}: {self.numero_operacion}."
+            ),
         )
 
 
