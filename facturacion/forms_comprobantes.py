@@ -10,12 +10,23 @@ from .validation import validar_cuit
 
 class ComprobanteExternoForm(forms.Form):
     tipo = forms.ChoiceField(choices=[("", "Seleccioná…"), *ComprobanteExterno.Tipo.choices])
-    cuit_emisor = forms.CharField(label="CUIT del emisor", validators=[validar_cuit], max_length=11)
+    cuit_emisor = forms.CharField(
+        label="CUIT de quien emite el comprobante",
+        validators=[validar_cuit],
+        max_length=11,
+        help_text=(
+            "Copialo del comprobante emitido. Si factura Cooperadora, corresponde su CUIT; "
+            "el CUIT del receptor de la solicitud identifica a quien recibe la factura."
+        ),
+    )
     letra = forms.RegexField(
         regex=r"^[A-Z]$",
-        label="Letra",
+        label="Letra del comprobante (A, B, C…)",
         max_length=1,
-        help_text="Copiala del comprobante emitido, en mayúscula.",
+        help_text=(
+            "Copiala del comprobante emitido, en mayúscula. "
+            "El campo Tipo distingue factura, nota de crédito o nota de débito."
+        ),
     )
     punto_venta = forms.IntegerField(label="Punto de venta", min_value=1, max_value=99999)
     numero = forms.IntegerField(label="Número", min_value=1, max_value=99999999)
