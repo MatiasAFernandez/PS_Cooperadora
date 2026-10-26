@@ -1,40 +1,21 @@
 {% if historial %}
-<ol>
-    {% for evento in historial %}
-        <li>
-            <strong>
-                {% if evento.tipo_evento == "decision_gasto" %}
-                    Decisión de gasto
-                {% elif evento.tipo_evento == "pago_externo_registrado" %}
-                    Pago externo registrado
-                {% elif evento.tipo_evento == "aporte_documental" %}
-                    Aporte documental
-                {% elif evento.tipo_evento == "revision_documental" %}
-                    Revisión documental
-                {% elif evento.tipo_evento == "comprobante_externo_registrado" %}
-                    Comprobante externo registrado
-                {% elif evento.tipo_evento == "cobro_informado" %}
-                    Cobro externo informado
-                {% elif evento.tipo_evento == "cobro_verificado" %}
-                    Ingreso verificado
-                {% elif evento.tipo_evento == "actualizacion_respaldo" %}
-                    Vínculo documental actualizado
-                {% else %}
-                    {{ evento.tipo_evento }}
-                {% endif %}
-            </strong>
-            — {{ evento.fecha_hora|date:"d/m/Y H:i:s" }}
-            — trámite {{ evento.tramite_ref }}
-            — actor #{{ evento.actor_id }}
-            — {% if evento.tipo_evento == "revision_documental" %}resultado documental{% elif evento.tipo_evento == "aporte_documental" %}hecho documental{% elif evento.tipo_evento == "comprobante_externo_registrado" %}registro del comprobante{% elif evento.tipo_evento == "actualizacion_respaldo" %}vínculo documental{% elif evento.tipo_evento == "cobro_informado" or evento.tipo_evento == "cobro_verificado" %}verificación del ingreso{% else %}estado del trámite{% endif %}: {{ evento.estado_resultante }}
-            {% if evento.motivo_o_detalle %}
-                <p>{{ evento.motivo_o_detalle }}</p>
-            {% endif %}
-        </li>
-    {% empty %}
-        <li>Sin eventos.</li>
+{% with eventos=historial|dictsortreversed:"tipo_evento"|dictsortreversed:"evento_id"|dictsortreversed:"fecha_hora" %}
+<ol class="history-list" aria-label="Eventos más recientes">
+    {% for evento in eventos|slice:":3" %}
+        {% include "comunes/historial_evento.html" with destacado=forloop.first %}
     {% endfor %}
 </ol>
+{% if eventos|length > 3 %}
+<details class="history-expand">
+    <summary><span class="history-show">Ver historial completo ({{ eventos|length }} eventos)</span><span class="history-hide">Colapsar historial (mostrar sólo 3)</span></summary>
+    <ol class="history-list" start="4" aria-label="Eventos anteriores">
+        {% for evento in eventos|slice:"3:" %}
+            {% include "comunes/historial_evento.html" with destacado=False %}
+        {% endfor %}
+    </ol>
+</details>
+{% endif %}
+{% endwith %}
 {% else %}
 <p>Sin eventos para este trámite.</p>
 {% endif %}

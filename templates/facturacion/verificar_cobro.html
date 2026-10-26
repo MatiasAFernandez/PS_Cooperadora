@@ -1,6 +1,6 @@
 {% extends "facturacion/base.html" %}
 {% block content %}
-<h2>Verificar ingreso #{{ cobro.pk }}</h2>
+<h2>Verificar ingreso del cobro #{{ cobro.numero_en_solicitud }}</h2>
 <p>{{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — {{ cobro.fecha_operacion|date:"d/m/Y" }}.</p>
 <p>Confirmar acredita la verificación del ingreso externo. La revisión documental es independiente y esta acción no cierra el trámite. La verificación registrada se conserva sin edición.</p>
 {% if cobro.resultado == "PENDIENTE" %}<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Registrar verificación</button></form>

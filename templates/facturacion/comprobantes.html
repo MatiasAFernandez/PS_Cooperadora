@@ -1,15 +1,17 @@
 <section class="panel">
-{% if puede_registrar_comprobante and not diagnostico.terminal %}<p><a href="{% url 'facturacion:registrar_comprobante' solicitud.pk %}">Registrar factura o nota externa</a></p>{% endif %}
-{% if comprobantes %}
 <h3>Comprobantes externos registrados</h3>
+{% if puede_registrar_comprobante and not diagnostico.terminal %}<p><a class="btn" href="{% url 'facturacion:registrar_comprobante' solicitud.pk %}">Registrar factura o nota externa</a></p>{% endif %}
+{% if comprobantes %}
 <p>Neto registrado: <strong>{{ neto_comprobantes }}</strong> (factura + débitos − créditos). Es informativo: no acredita saldo cobrado ni cierre.</p>
-<ul>{% for c in comprobantes %}<li>
-<strong>{{ c.identificacion }}</strong> — emisor {{ c.cuit_emisor }} — emisión {{ c.fecha_emision|date:"d/m/Y" }} — importe {{ c.importe }}.
+<ul class="record-list">{% for c in comprobantes %}<li class="record-card">
+<p><strong>{{ c.identificacion }}</strong> — emisor {{ c.cuit_emisor }} — emisión {{ c.fecha_emision|date:"d/m/Y" }} — importe {{ c.importe }}.
 {% if c.factura_origen %}Vinculada a {{ c.factura_origen.identificacion }}.{% endif %}
-Origen {{ c.origen_mostrado }}. Registrado por actor #{{ c.actor_id }} el {{ c.fecha_registro|date:"d/m/Y H:i:s" }}.
-{% if puede_descargar %}<a href="{% url 'documentos:archivo' c.respaldo_vinculado.pk %}">Descargar PDF vinculado</a>{% endif %}
-{% if puede_ver_revision %}<a href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}">Consultar revisión documental</a>{% endif %}
-{% if puede_actualizar_respaldo and not diagnostico.terminal %}<a href="{% url 'facturacion:actualizar_respaldo' solicitud.pk 'comprobante' c.pk %}">Actualizar vínculo del respaldo</a>{% endif %}
+</p><p>Origen {{ c.origen_mostrado }}. Registrado por actor #{{ c.actor_id }} el {{ c.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
+<div class="record-actions" role="group" aria-label="Acciones de {{ c.identificacion }}">
+{% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' c.respaldo_vinculado.pk %}">Descargar PDF vinculado</a>{% endif %}
+{% if puede_ver_revision %}<a class="btn" href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}">Consultar revisión documental</a>{% endif %}
+</div>
+{% if puede_actualizar_respaldo and not diagnostico.terminal %}<div class="record-maintenance"><p>Si el respaldo fue reemplazado, actualizá su vínculo.</p><div class="record-actions"><a class="btn btn-secondary" href="{% url 'facturacion:actualizar_respaldo' solicitud.pk 'comprobante' c.pk %}">Actualizar vínculo del respaldo</a></div></div>{% endif %}
 </li>{% endfor %}</ul>
 {% endif %}
 

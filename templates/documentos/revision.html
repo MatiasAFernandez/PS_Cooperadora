@@ -4,7 +4,8 @@
 <h2>Revisión documental</h2>
 <p>{{ documento.get_tipo_display }} — {{ documento.nombre_original }} — versión {{ documento.version }}</p>
 <p>Trámite {{ documento.referencia_tramite }}.</p>
-<p>Resultado: <strong>{% if actual %}{{ actual.get_resultado_display }}{% else %}Pendiente{% endif %}</strong>.</p>
+<p>Resultado documental: <strong>{% if actual %}{{ actual.get_resultado_display }}{% else %}Pendiente{% endif %}</strong>.</p>
+{% if documento.tipo == "COMPROBANTE_COBRO" %}<p class="notice">Aceptar este comprobante no confirma el cobro. La verificación del ingreso se registra por separado desde el detalle de la solicitud, en «Verificar ingreso».</p>{% endif %}
 {% if not vigente %}<p class="notice">Versión reemplazada. Se conserva su historial; la nueva versión requiere su propia revisión.</p>{% endif %}
 {% if puede_descargar %}<p><a href="{% url 'documentos:archivo' documento.pk %}">Descargar esta versión</a></p>{% endif %}
 <p class="notice">Una carga o una revisión no cierra por sí sola pendientes, pagos ni trámites.</p>
