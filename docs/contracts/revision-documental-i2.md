@@ -35,6 +35,15 @@ trámite. La pantalla usa el parcial común y escapa nombres y motivos.
 El historial autorizado sigue consultable aunque cambie el resultado o se
 reemplace el archivo. No se modifica el contenido ni el estado del trámite.
 
+El alta interna de cobros de SPEC-006 permite declarar la conformidad del respaldo
+y la verificación del ingreso en el mismo formulario (ajuste de demo aprobado el
+25/10/2026). Usa este servicio y sus permisos, vigencia y bloqueos: registra ACEPTADO
+con un motivo que identifica la declaración del mismo actor que informa y verifica
+el cobro; no acredita revisión independiente. Una aceptación previa se conserva
+sin duplicación y una revisión desfavorable no se sobrescribe desde el alta.
+Los hechos se confirman o revierten junto con el cobro y su verificación. Otros
+aportes y los cobros informados por el solicitante mantienen su revisión separada.
+
 La consulta se autoriza con metadatos y acceso por objeto. Un objeto ajeno o
 inexistente devuelve 404; sin capacidad suficiente se deniega con 403. La página
 `/documentos/<id>/revision/` permite consultar y, con permiso, registrar por POST

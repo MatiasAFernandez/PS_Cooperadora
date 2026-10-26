@@ -52,6 +52,9 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
   dejar cobro, vínculo ni cambio de estado parcial.
 - `COB-R04`: el detalle permite reconstruir qué cobros se relacionan con cada
   factura y sus importes registrados.
+- La numeración visible de cobros comienza en 1 por solicitud, en orden de
+  registro, y se usa también en verificación e historial. Los identificadores
+  internos y las referencias externas conservan su identidad global.
 
 ## Reglas de negocio
 
@@ -71,10 +74,21 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
   #27 agrega la actualización explícita del vínculo mediante un hecho auditado;
   conserva la FK original, importes y verificaciones. El cierre usa el vínculo
   actual y exige su aceptación vigente, según SPEC-007.
-- Tanto solicitante como operador dan de alta ingresos PENDIENTES. Una capacidad
+- El solicitante y el operador sin confirmación explícita dan de alta ingresos
+  PENDIENTES. Una capacidad
   independiente registra un único resultado CONFIRMADO o RECHAZADO; rechazo exige
   motivo con texto. Actor, fecha y resultado son inmutables. La capacidad no se
   deduce de poder registrar, revisar PDFs, leer, ser staff ni ser superusuario.
+- Ajuste de demo aprobado por Matías el 25/10/2026: el operador con capacidades
+  de registro, verificación de cobro, revisión documental y metadatos puede marcar
+  «Cotejé el ingreso externo y doy conformidad al respaldo» en el alta. La casilla
+  empieza desmarcada. En una sola operación atómica se registran el cobro,
+  la conformidad documental ACEPTADO y la verificación CONFIRMADO, atribuidas al
+  mismo actor. La conformidad no se presenta como revisión independiente.
+  Un respaldo existente ya aceptado conserva su revisión; uno observado o rechazado
+  exige resolver esa revisión antes de usar esta opción. Versiones reemplazadas
+  no se aceptan. Cualquier fallo revierte los hechos y compensa el archivo nuevo.
+  El solicitante no puede activar la opción, incluso mediante POST directo.
 - La confirmación verifica el ingreso externo, no la conformidad del archivo.
   Totales pendientes, confirmados y rechazados se consultan por separado; sólo el
   confirmado es insumo de #27. El resultado del PDF no altera estos totales.
@@ -88,7 +102,8 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 
 1. Dada una solicitud con o sin factura y un cobro externo válido, cuando un actor
    autorizado lo informa, se conservan importe, procedencia, vínculo y respaldo,
-   como pendiente. Una verificación explícita determina su inclusión en confirmados.
+   como pendiente, o confirmado en el alta interna con la declaración y capacidades
+   descritas arriba. Una verificación explícita determina su inclusión en confirmados.
 2. Dado un vínculo inexistente o un importe inválido, cuando se guarda el cobro,
    entonces la operación se rechaza sin cambios parciales.
 3. Dado otro solicitante, cuando intenta consultar el cobro o descargar su

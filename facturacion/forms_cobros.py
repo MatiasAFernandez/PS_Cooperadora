@@ -30,9 +30,19 @@ class CobroForm(forms.Form):
         empty_label="Seleccioná un respaldo o adjuntá uno nuevo",
     )
     archivo = forms.FileField(label="Nuevo respaldo PDF/JPEG/PNG (hasta 10 MiB)", required=False)
+    confirmar_al_registrar = forms.BooleanField(
+        label="Cotejé el ingreso externo y doy conformidad al respaldo",
+        required=False,
+        help_text=(
+            "Confirma el ingreso y registra tu conformidad documental en esta misma carga. "
+            "No constituye una revisión por otra persona. Sin marcar, el cobro queda pendiente."
+        ),
+    )
 
-    def __init__(self, *args, documentos, **kwargs):
+    def __init__(self, *args, documentos, puede_confirmar=False, **kwargs):
         super().__init__(*args, **kwargs)
+        if not puede_confirmar:
+            del self.fields["confirmar_al_registrar"]
         self.fields["documento"].queryset = documentos
         self.fields["documento"].label_from_instance = lambda d: (
             f"{d.nombre_original} — versión {d.version}"

@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import IntegrityError, models
+from django.utils.functional import cached_property
 
 from comunes.contracts import EventoHistorialDTO
 
@@ -51,6 +52,14 @@ class CobroExterno(models.Model):
             return self.verificacion.resultado
         except VerificacionCobro.DoesNotExist:
             return "PENDIENTE"
+
+    @cached_property
+    def numero_en_solicitud(self):
+        """Ordinal visible; la identidad global se conserva para URLs y relaciones."""
+        return type(self).objects.filter(solicitud_id=self.solicitud_id).filter(
+            models.Q(fecha_registro__lt=self.fecha_registro)
+            | models.Q(fecha_registro=self.fecha_registro, pk__lte=self.pk)
+        ).count()
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
@@ -101,7 +110,9 @@ class VerificacionCobro(models.Model):
     def delete(self, *args, **kwargs):
         raise IntegrityError("La verificación de ingreso es inmutable.")
 
-    def como_historial(self):
+    def como_historial(self, *, numero_cobro=None):
+        if numero_cobro is None:
+            numero_cobro = self.cobro.numero_en_solicitud
         return EventoHistorialDTO(
             evento_id=self.pk,
             tramite_ref=f"facturacion:{self.cobro.solicitud_id}",
@@ -109,5 +120,5 @@ class VerificacionCobro(models.Model):
             actor_id=str(self.actor_id),
             fecha_hora=self.fecha,
             estado_resultante=self.resultado,
-            motivo_o_detalle=f"Cobro #{self.cobro_id}. {self.motivo}",
+            motivo_o_detalle=f"Cobro #{numero_cobro}. {self.motivo}",
         )

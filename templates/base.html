@@ -39,6 +39,25 @@
         main { overflow-wrap:anywhere; }
         .panel { background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:1rem; margin:1.25rem 0; }
         .panel > h3:first-child { margin-top:0; }
+        .record-list { list-style:none; padding:0; margin:1rem 0 0; }
+        .record-card { background:white; border:1px solid #dee2e6; border-radius:4px; padding:1rem; margin-bottom:1rem; }
+        .record-card > p { margin:0 0 .75rem; }
+        .record-actions { display:flex; flex-wrap:wrap; align-items:stretch; gap:.75rem; margin-top:1rem; }
+        .record-actions .btn { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; text-align:center; line-height:1.4; max-width:100%; border:1px solid transparent; }
+        .record-actions .btn-secondary { color:#084298; background:#fff; border-color:#9aafc9; }
+        .record-actions .btn-secondary:hover { background:#e7f1ff; border-color:#084298; }
+        .record-maintenance { margin-top:1rem; padding-top:1rem; border-top:1px solid #dee2e6; }
+        .record-maintenance p { margin:0; color:#495057; }
+        .history-list { padding-left:1.75rem; }
+        .history-event { padding:1rem; margin-bottom:.75rem; border:1px solid #dee2e6; border-radius:4px; }
+        .history-event p:last-child { margin-bottom:0; }
+        .history-latest { background:#e7f1ff; border-left:4px solid #0d6efd; }
+        .history-current { margin:0 0 .5rem; color:#084298; font-weight:700; }
+        .history-expand > summary { cursor:pointer; color:#084298; background:#fff; border:1px solid #9aafc9; border-radius:4px; padding:.75rem 1rem; }
+        .history-expand > summary:hover { background:#e7f1ff; }
+        .history-hide, .history-expand[open] > summary .history-show { display:none; }
+        .history-expand[open] > summary .history-hide { display:inline; }
+        @media(max-width:600px) { .record-actions { flex-direction:column; } .record-actions .btn { width:100%; } }
         .detail-grid { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); border-top:1px solid #dee2e6; border-left:1px solid #dee2e6; }
         .detail-grid dt, .detail-grid dd { margin:0; padding:.75rem; border-right:1px solid #dee2e6; border-bottom:1px solid #dee2e6; }
         .detail-grid dt { background:#f8f9fa; }

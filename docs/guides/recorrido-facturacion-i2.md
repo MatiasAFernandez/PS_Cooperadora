@@ -52,6 +52,27 @@ ampliar esa capacidad; no revoca un grupo ya asignado. No otorga permiso de pago
 El pago declarado queda pendiente de verificación. La revisión documental se abre
 desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
 El registro de comprobantes y cobros externos se describe a continuación.
+
+Los cobros se numeran desde 1 dentro de cada solicitud. Aceptar su comprobante
+en la revisión documental no confirma el ingreso: éste continúa PENDIENTE hasta
+registrar su verificación desde **Verificar ingreso**, en el detalle de la
+solicitud. Una lista de respaldos sin revisiones pendientes no implica que todos
+los ingresos estén confirmados.
+
+Si operadora registra un ingreso que ya cotejó, puede marcar **Cotejé el ingreso
+externo y doy conformidad al respaldo** antes de guardar. Esta opción requiere
+los permisos explícitos de registro, verificación, revisión documental y metadatos.
+Guarda cobro, conformidad del respaldo y confirmación en una sola operación,
+conservando actor y fecha; no representa revisión por otra persona. Sin marcar,
+el cobro queda pendiente. El solicitante continúa informando cobros pendientes.
+Un respaldo previamente observado/rechazado debe resolver su revisión antes de
+usar esta opción; no se altera el historial anterior ni se confirma ningún cobro
+ya existente automáticamente. El cierre del trámite sigue siendo independiente.
+
+Los historiales muestran primero el evento más reciente, resaltado como **Último
+evento**. Por defecto se ven hasta tres eventos. **Ver historial completo**
+despliega los anteriores; **Colapsar historial** vuelve a mostrar sólo los tres
+recientes. El orden y el despliegue no modifican los hechos registrados.
 El cierre y la anulación son acciones explícitas del recorrido de resolución.
 Ambos circuitos usan la navegación y el parcial de historial comunes de #59.
 Cada módulo conserva sus reglas de estado y permisos por objeto.

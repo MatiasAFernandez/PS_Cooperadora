@@ -3,7 +3,13 @@ from django.shortcuts import redirect, render
 
 from documentos.policy import ArchivoInvalido
 
-from .cobros import autorizar_cobro, registrar_cobro, respaldos_cobro, verificar_cobro
+from .cobros import (
+    autorizar_cobro,
+    puede_confirmar_al_registrar,
+    registrar_cobro,
+    respaldos_cobro,
+    verificar_cobro,
+)
 from .forms_cobros import CobroForm, VerificacionCobroForm
 from .permissions import ObjetoNoVisibleError
 from .views import FacturacionView, _errores
@@ -26,13 +32,17 @@ class RegistrarCobroView(FacturacionView):
     def get(self, request, numero):
         solicitud = autorizar_cobro(self.actor, numero)
         return self.mostrar(
-            request, solicitud, CobroForm(documentos=respaldos_cobro(self.actor, solicitud))
+            request, solicitud, CobroForm(
+                documentos=respaldos_cobro(self.actor, solicitud),
+                puede_confirmar=puede_confirmar_al_registrar(self.actor),
+            )
         )
 
     def post(self, request, numero):
         solicitud = autorizar_cobro(self.actor, numero)
         form = CobroForm(
-            request.POST, request.FILES, documentos=respaldos_cobro(self.actor, solicitud)
+            request.POST, request.FILES, documentos=respaldos_cobro(self.actor, solicitud),
+            puede_confirmar=puede_confirmar_al_registrar(self.actor),
         )
         try:
             registrar_cobro(
