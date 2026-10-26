@@ -1,16 +1,20 @@
 <section class="panel">
 <h3>Cobros externos (ARS)</h3>
-{% if puede_informar_cobro and not diagnostico.terminal %}<p><a href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a></p>{% endif %}
+<p class="notice">Aceptar el comprobante sólo registra su revisión documental. Para confirmar un cobro pendiente, usá «Verificar ingreso» después de cotejar el ingreso externo. Al cargar un cobro interno, también podés confirmar ingreso y respaldo en el mismo formulario si tenés los permisos.</p>
+{% if puede_informar_cobro and not diagnostico.terminal %}<p><a class="btn" href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a></p>{% endif %}
 <p>Confirmado: {{ totales_cobros.CONFIRMADO }} ARS. Pendiente: {{ totales_cobros.PENDIENTE }} ARS. Rechazado: {{ totales_cobros.RECHAZADO }} ARS.</p>
 <p>Estos totales no confirman cancelación ni cierre. {% if comprobantes %}Los cobros corresponden a la factura de esta solicitud, mostrada arriba.{% else %}Sin factura registrada: los ingresos se conservan como anticipos de esta solicitud.{% endif %}</p>
-<ul>{% for cobro in cobros %}<li>
-Cobro #{{ cobro.pk }}: {{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }} — <strong>{{ cobro.resultado }}</strong>.
-Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.
-{% if cobro.resultado != "PENDIENTE" %}Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}{% endif %}
-{% if puede_descargar %}<a href="{% url 'documentos:archivo' cobro.respaldo_vinculado.pk %}">Descargar respaldo vinculado</a>{% endif %}
-{% if puede_ver_revision %}<a href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}">Consultar revisión documental</a>{% endif %}
-{% if puede_actualizar_respaldo and not diagnostico.terminal %}<a href="{% url 'facturacion:actualizar_respaldo' solicitud.pk 'cobro' cobro.pk %}">Actualizar vínculo del respaldo</a>{% endif %}
-{% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" %}<a href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>{% endif %}
+<ul class="record-list">{% for cobro in cobros %}<li class="record-card">
+<p>Cobro #{{ cobro.numero_en_solicitud }}: {{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }} — Ingreso: <strong>{{ cobro.resultado }}</strong>.</p>
+{% if cobro.resultado == "PENDIENTE" %}<p>Falta verificar el ingreso externo, aunque el comprobante esté aceptado.</p>{% endif %}
+<p>Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
+{% if cobro.resultado != "PENDIENTE" %}<p>Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}</p>{% endif %}
+<div class="record-actions" role="group" aria-label="Acciones del cobro {{ cobro.numero_en_solicitud }}">
+{% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' cobro.respaldo_vinculado.pk %}">Descargar respaldo vinculado</a>{% endif %}
+{% if puede_ver_revision %}<a class="btn btn-secondary" href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}">Consultar revisión documental</a>{% endif %}
+{% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" and not diagnostico.terminal %}<a class="btn" href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>{% endif %}
+</div>
+{% if puede_actualizar_respaldo and not diagnostico.terminal %}<div class="record-maintenance"><p>Si el respaldo fue reemplazado, actualizá su vínculo.</p><div class="record-actions"><a class="btn btn-secondary" href="{% url 'facturacion:actualizar_respaldo' solicitud.pk 'cobro' cobro.pk %}">Actualizar vínculo del respaldo</a></div></div>{% endif %}
 </li>{% empty %}<li>Sin cobros registrados.</li>{% endfor %}</ul>
 
 </section>

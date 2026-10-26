@@ -62,6 +62,223 @@ def revisor(e):
     )
 
 
+def operador_alta_confirmada(e):
+    return replace(
+        revisor(e), capabilities=revisor(e).capabilities | {"documentos.revisar"}
+    )
+
+
+def test_alta_confirmada_atomica_y_respaldo_sin_pendiente(escenario, solicitud, entrada):
+    from facturacion.seguimiento import diagnostico
+
+    actor = operador_alta_confirmada(escenario)
+    cobro = registrar_cobro(
+        actor=actor, numero=solicitud.pk,
+        datos=dict(entrada, confirmar_al_registrar=True), archivo=pdf(),
+    )
+    assert cobro.procedencia == "INTERNO_COOPERADORA"
+    assert cobro.resultado == "CONFIRMADO"
+    revision = cobro.documento.revisiones.get()
+    assert revision.resultado == "ACEPTADO"
+    assert revision.actor_id == cobro.verificacion.actor_id == actor.subject_id
+    assert "mismo actor" in revision.motivo
+    assert not diagnostico(solicitud)["faltas_documentales"]
+    assert resumen_cobros(solicitud)[1]["CONFIRMADO"] == Decimal("60.10")
+    with pytest.raises(ConflictoConcurrenciaError):
+        registrar_cobro(
+            actor=actor, numero=solicitud.pk,
+            datos=dict(entrada, confirmar_al_registrar=True), archivo=pdf(),
+        )
+    assert CobroExterno.objects.count() == VerificacionCobro.objects.count() == 1
+    assert RevisionDocumento.objects.count() == 1
+
+
+@pytest.mark.parametrize("capacidad", [
+    "facturacion.registrar_cobro", "facturacion.verificar_cobro",
+    "documentos.revisar", "documentos.consultar_metadatos",
+])
+def test_alta_confirmada_exige_capacidades(escenario, solicitud, entrada, capacidad):
+    actor = operador_alta_confirmada(escenario)
+    actor = replace(actor, capabilities=actor.capabilities - {capacidad})
+    with pytest.raises(PermissionDenied):
+        registrar_cobro(
+            actor=actor, numero=solicitud.pk,
+            datos=dict(entrada, confirmar_al_registrar="on"), archivo=pdf(),
+        )
+    assert not CobroExterno.objects.exists()
+    assert not Documento.objects.exists()
+
+
+def test_alta_confirmada_http_y_solicitante_no_puede_confirmar(escenario, solicitud, entrada):
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["a"])
+    url = reverse("facturacion:registrar_cobro", args=[solicitud.pk])
+    assert "confirmar_al_registrar" not in cliente.get(url).context["form"].fields
+    respuesta = cliente.post(url, dict(entrada, confirmar_al_registrar="on", archivo=pdf()))
+    assert respuesta.status_code == 403
+    escenario.usuarios["o"].groups.add(
+        Group.objects.get(name="demo_verificacion_cobros"),
+        Group.objects.get(name="demo_documentos_revision"),
+    )
+    cliente.force_login(escenario.usuarios["o"])
+    formulario = cliente.get(url).context["form"]
+    assert not formulario["confirmar_al_registrar"].value()
+    respuesta = cliente.post(url, dict(entrada, confirmar_al_registrar="on", archivo=pdf()))
+    assert respuesta.status_code == 302
+    assert CobroExterno.objects.get().resultado == "CONFIRMADO"
+    respuesta = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk]))
+    assert not respuesta.context["pendientes_revision"]
+
+
+def test_alta_confirmada_error_conserva_casilla_y_datos(escenario, solicitud, entrada):
+    escenario.usuarios["o"].groups.add(
+        Group.objects.get(name="demo_verificacion_cobros"),
+        Group.objects.get(name="demo_documentos_revision"),
+    )
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    respuesta = cliente.post(
+        reverse("facturacion:registrar_cobro", args=[solicitud.pk]),
+        dict(entrada, importe="-1", confirmar_al_registrar="on", archivo=pdf()),
+    )
+    assert respuesta.status_code == 400
+    assert respuesta.context["form"]["confirmar_al_registrar"].value()
+    assert respuesta.context["form"]["numero_operacion"].value() == entrada["numero_operacion"]
+    assert not CobroExterno.objects.exists()
+    assert not Documento.objects.exists()
+
+
+def test_operadora_sin_casilla_conserva_pendiente(escenario, solicitud, entrada):
+    cobro = registrar_cobro(
+        actor=operador_alta_confirmada(escenario), numero=solicitud.pk,
+        datos=entrada, archivo=pdf(),
+    )
+    assert cobro.resultado == "PENDIENTE"
+    assert not RevisionDocumento.objects.exists()
+
+
+def test_fallo_alta_confirmada_revierte_hechos_y_archivo(
+    escenario, solicitud, entrada, monkeypatch
+):
+    original = cobros.verificar_cobro
+
+    def fallar(**kwargs):
+        original(**kwargs)
+        raise RuntimeError("Fallo sintético después de confirmar")
+
+    monkeypatch.setattr(cobros, "verificar_cobro", fallar)
+    with pytest.raises(RuntimeError):
+        registrar_cobro(
+            actor=operador_alta_confirmada(escenario), numero=solicitud.pk,
+            datos=dict(entrada, confirmar_al_registrar=True), archivo=pdf(),
+        )
+    assert not CobroExterno.objects.exists()
+    assert not VerificacionCobro.objects.exists()
+    assert not RevisionDocumento.objects.exists()
+    assert not Documento.objects.exists()
+    assert not list((escenario.raiz / "documentos").iterdir())
+
+
+@pytest.mark.parametrize("resultado", [None, "ACEPTADO", "OBSERVADO", "RECHAZADO"])
+def test_alta_confirmada_respaldo_existente_no_pisa_revision(
+    escenario, solicitud, entrada, resultado
+):
+    from documentos.revision import revisar
+    from documentos.services import incorporar
+
+    actor = operador_alta_confirmada(escenario)
+    documento = incorporar(
+        actor=actor, referencia=f"facturacion:{solicitud.pk}", archivo=pdf(),
+        tipo="COMPROBANTE_COBRO", procedencia="EXTERNO_BANCO",
+    )
+    if resultado:
+        revisar(
+            actor=actor, documento_id=documento.pk, resultado=resultado,
+            motivo="Revisión previa sintética", revision_esperada=0,
+        )
+    kwargs = dict(
+        actor=actor, numero=solicitud.pk,
+        datos=dict(entrada, documento=str(documento.pk), confirmar_al_registrar=True),
+    )
+    if resultado in {"OBSERVADO", "RECHAZADO"}:
+        with pytest.raises(ValidationError):
+            registrar_cobro(**kwargs)
+        assert not CobroExterno.objects.exists()
+        assert not VerificacionCobro.objects.exists()
+    else:
+        assert registrar_cobro(**kwargs).resultado == "CONFIRMADO"
+    assert documento.revisiones.count() == 1
+
+
+def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
+    escenario, solicitud, entrada, datos
+):
+    primero = alta(escenario, solicitud, entrada)
+    otra = presentar_solicitud_facturacion(
+        actor=escenario.actores["a"], datos=datos,
+        token_presentacion=emitir_token(escenario.actores["a"]),
+    )
+    intercalado = alta(escenario, otra, entrada, numero_operacion="OTRA-SOLICITUD")
+    segundo = alta(escenario, solicitud, entrada, numero_operacion="SEGUNDO")
+    assert [c.numero_en_solicitud for c in (primero, intercalado, segundo)] == [1, 1, 2]
+    assert intercalado.como_historial().motivo_o_detalle.startswith("Cobro #1.")
+    assert segundo.como_historial().motivo_o_detalle.startswith("Cobro #2.")
+    verificacion = verificar_cobro(
+        actor=revisor(escenario), numero=solicitud.pk, cobro_id=segundo.pk,
+        datos={"resultado": "CONFIRMADO"},
+    )
+    assert verificacion.como_historial().motivo_o_detalle.startswith("Cobro #2.")
+    lista, _, eventos = resumen_cobros(solicitud)
+    assert [c.numero_en_solicitud for c in lista] == [1, 2]
+    assert [(e.tipo_evento, e.motivo_o_detalle.split(". ")[0]) for e in eventos] == [
+        ("cobro_informado", "Cobro #1"),
+        ("cobro_informado", "Cobro #2"),
+        ("cobro_verificado", "Cobro #2"),
+    ]
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["a"])
+    contenido = cliente.get(reverse("facturacion:detalle", args=[otra.pk])).content.decode()
+    assert "Cobro #1:" in contenido and f"Cobro #{intercalado.pk}:" not in contenido
+    assert "Cobro #1. 60.10 ARS." in contenido
+    contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
+    assert "Cobro #1. 60.10 ARS." in contenido
+    assert "Cobro #2. 60.10 ARS." in contenido
+    escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_verificacion_cobros"))
+    cliente.force_login(escenario.usuarios["o"])
+    respuesta = cliente.get(reverse("facturacion:verificar_cobro", args=[otra.pk, intercalado.pk]))
+    assert respuesta.status_code == 200
+    assert "Verificar ingreso del cobro #1" in respuesta.content.decode()
+
+
+def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada):
+    from documentos.revision import revisar
+
+    cobro = alta(escenario, solicitud, entrada)
+    actor = replace(
+        escenario.actores["o"],
+        capabilities=escenario.actores["o"].capabilities | {"documentos.revisar"},
+    )
+    revisar(
+        actor=actor, documento_id=cobro.documento_id, resultado="ACEPTADO",
+        motivo="", revision_esperada=0,
+    )
+    assert resumen_cobros(solicitud)[1]["PENDIENTE"] == Decimal("60.10")
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
+    assert "Falta verificar el ingreso externo" in contenido
+    respuesta = cliente.get(reverse("documentos:revision", args=[cobro.documento_id]))
+    contenido = respuesta.content.decode()
+    assert "Aceptar este comprobante no confirma el cobro" in contenido
+    verificar_cobro(
+        actor=revisor(escenario), numero=solicitud.pk, cobro_id=cobro.pk,
+        datos={"resultado": "CONFIRMADO"},
+    )
+    _, totales, _ = resumen_cobros(solicitud)
+    assert totales["CONFIRMADO"] == Decimal("60.10")
+    assert totales["PENDIENTE"] == Decimal("0.00")
+
+
 def test_anticipos_parciales_verificacion_y_factura_posterior(escenario, solicitud, entrada):
     from facturacion.comprobantes import registrar_comprobante
 

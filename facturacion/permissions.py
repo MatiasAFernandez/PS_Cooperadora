@@ -12,7 +12,9 @@ class ObjetoNoVisibleError(LookupError):
 
 
 def filtrar_solicitudes_visibles(actor):
-    qs = SolicitudFacturacion.objects.operativas().select_related("tramite_base")
+    qs = SolicitudFacturacion.objects.operativas().con_numero_solicitante().select_related(
+        "tramite_base"
+    )
     if has_capability(actor, "facturacion.consultar_todas"):
         return qs
     if has_capability(actor, "facturacion.consultar_propias"):

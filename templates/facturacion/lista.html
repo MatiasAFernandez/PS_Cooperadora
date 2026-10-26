@@ -5,8 +5,8 @@
 {% include "comunes/campos_filtro.html" with form=filtro_form %}
 <button type="submit">Filtrar</button> <a href="{% url 'facturacion:lista' %}">Quitar filtro</a>
 </form>
-<table><thead><tr><th>Número</th><th>Presentación</th><th>Receptor</th><th>Estado</th></tr></thead><tbody>
-{% for solicitud in pagina %}<tr><td><a href="{% url 'facturacion:detalle' solicitud.pk %}">{{ solicitud.pk }}</a></td>
+<table><thead><tr><th>Número del solicitante</th><th>Presentación</th><th>Receptor</th><th>Estado</th></tr></thead><tbody>
+{% for solicitud in pagina %}<tr><td><a href="{% url 'facturacion:detalle' solicitud.pk %}">{{ solicitud.numero_solicitante }}</a><br><small>{{ solicitud.correo_solicitante }}</small></td>
 <td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td><span class="badge">{{ solicitud.get_estado_display }}</span> — seguimiento: {{ solicitud.estado_seguimiento }}</td></tr>
 {% empty %}<tr><td colspan="4">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
 <nav aria-label="Páginas">{% if pagina.has_previous %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}

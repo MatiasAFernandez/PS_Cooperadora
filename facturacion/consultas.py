@@ -32,7 +32,8 @@ def filtrar_solicitudes(consulta, form):
             | Q(detalle_factura__icontains=texto)
         )
         if texto.isascii() and texto.isdigit() and len(texto) <= 18:
-            criterio |= Q(pk=int(texto))
+            consulta = consulta.con_numero_solicitante()
+            criterio = Q(_numero_solicitante=int(texto)) | Q(cuit_receptor=texto)
         consulta = consulta.filter(criterio)
     estado = form.cleaned_data["estado"]
     if not estado:

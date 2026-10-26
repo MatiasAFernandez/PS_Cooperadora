@@ -42,7 +42,9 @@ class SolicitudFacturacionForm(forms.Form):
     )
     centro_costo = forms.ChoiceField(label="Centro de costo", choices=CentroCosto.choices)
     modalidad_cobro = forms.ChoiceField(label="Medio o cuenta", choices=ModalidadCobro.choices)
-    observaciones = forms.CharField(label="Observaciones", widget=forms.Textarea)
+    observaciones = forms.CharField(
+        label="Observaciones (opcional)", widget=forms.Textarea, required=False
+    )
     fecha_operacion_declarada = forms.DateField(
         label="Fecha de operación declarada",
         required=False,

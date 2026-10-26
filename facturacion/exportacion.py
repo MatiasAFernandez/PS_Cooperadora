@@ -66,7 +66,11 @@ def generar_pdf(solicitud):
         Paragraph("Solicitud para preparar facturación", titulo),
         texto("No es comprobante fiscal"),
         Spacer(1, 5 * mm),
-        texto(f"Solicitud facturacion:{solicitud.pk} · Versión {solicitud.version_concurrencia}"),
+        texto(f"Solicitud {solicitud.numero_solicitante} de {solicitud.correo_solicitante}"),
+        texto(
+            f"Referencia interna facturacion:{solicitud.pk} · "
+            f"Versión {solicitud.version_concurrencia}"
+        ),
         texto(f"Estado: {solicitud.get_estado_display()}"),
         texto(
             "Presentada: "
@@ -88,7 +92,8 @@ def generar_pdf(solicitud):
         canvas.drawCentredString(
             A4[0] / 2,
             12 * mm,
-            f"Solicitud {solicitud.pk} · No es comprobante fiscal · Página {doc.page}",
+            f"Solicitud {solicitud.numero_solicitante} · No es comprobante fiscal · "
+            f"Página {doc.page}",
         )
         canvas.restoreState()
 
@@ -99,7 +104,7 @@ def generar_pdf(solicitud):
         leftMargin=18 * mm,
         topMargin=18 * mm,
         bottomMargin=22 * mm,
-        title=f"Solicitud de facturación {solicitud.pk}",
+        title=f"Solicitud de facturación {solicitud.numero_solicitante}",
     ).build(contenido, onFirstPage=pie, onLaterPages=pie)
     return salida.getvalue()
 
@@ -109,7 +114,7 @@ class ExportarSolicitudPDFView(FacturacionView):
         solicitud = self.objeto(numero)
         respuesta = HttpResponse(generar_pdf(solicitud), content_type="application/pdf")
         respuesta["Content-Disposition"] = (
-            f'attachment; filename="solicitud-facturacion-{numero}.pdf"'
+            f'attachment; filename="solicitud-facturacion-{solicitud.numero_solicitante}.pdf"'
         )
         respuesta["Cache-Control"] = "private, no-store"
         respuesta["X-Content-Type-Options"] = "nosniff"

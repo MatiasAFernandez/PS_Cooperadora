@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 from comunes.models import TramiteBase
 from documentos.acceso import documentos_visibles
 from documentos.operaciones import operacion_documental
+from documentos.revision import ConflictoRevision, revisar, ultima_revision, version_aceptada
 from documentos.services import incorporar
 from identidad.services import has_capability
 
@@ -15,6 +16,13 @@ from .forms_cobros import CobroForm, VerificacionCobroForm
 from .models import CobroExterno, SolicitudFacturacion, VerificacionCobro
 from .permissions import ObjetoNoVisibleError, filtrar_solicitudes_visibles
 from .workflow import ConflictoConcurrenciaError
+
+
+def puede_confirmar_al_registrar(actor):
+    return all(has_capability(actor, c) for c in (
+        "facturacion.registrar_cobro", "facturacion.verificar_cobro",
+        "documentos.revisar", "documentos.consultar_metadatos",
+    ))
 
 
 def autorizar_cobro(actor, numero, *, verificar=False):
@@ -51,6 +59,12 @@ def respaldos_cobro(actor, solicitud):
 
 def registrar_cobro(*, actor, numero, datos, archivo=None):
     solicitud = autorizar_cobro(actor, numero)
+    puede_confirmar = puede_confirmar_al_registrar(actor)
+    confirmar = CobroForm.base_fields["confirmar_al_registrar"].clean(
+        datos.get("confirmar_al_registrar")
+    )
+    if confirmar and not puede_confirmar:
+        raise PermissionDenied("No tenés permiso para confirmar ingreso y respaldo al registrar.")
     if datos.get("moneda", "ARS") != "ARS":
         raise ValidationError("El perfil de demo admite únicamente ARS.")
     if isinstance(datos.get("importe"), float | bool):
@@ -59,6 +73,7 @@ def registrar_cobro(*, actor, numero, datos, archivo=None):
         datos,
         {"archivo": archivo} if archivo else None,
         documentos=respaldos_cobro(actor, solicitud),
+        puede_confirmar=puede_confirmar,
     )
     if not form.is_valid():
         raise ValidationError({k: list(v) for k, v in form.errors.items()})
@@ -87,7 +102,7 @@ def registrar_cobro(*, actor, numero, datos, archivo=None):
                     else "SOLICITANTE",
                     _escrituras=escrituras,
                 )
-            return CobroExterno.objects.create(
+            cobro = CobroExterno.objects.create(
                 solicitud=solicitud,
                 medio=d["medio"],
                 numero_operacion=d["numero_operacion"],
@@ -99,6 +114,33 @@ def registrar_cobro(*, actor, numero, datos, archivo=None):
                 if has_capability(actor, "facturacion.registrar_cobro")
                 else "SOLICITANTE",
             )
+            if d.get("confirmar_al_registrar"):
+                # Conformidad explícita del mismo actor, no una revisión independiente.
+                if not version_aceptada(documento):
+                    if ultima_revision(documento) is not None:
+                        raise ValidationError(
+                            "El respaldo tiene una revisión desfavorable o fue reemplazado. "
+                            "Resolvé su revisión documental antes de confirmar en el alta."
+                        )
+                    try:
+                        revisar(
+                            actor=actor, documento_id=documento.pk, resultado="ACEPTADO",
+                            motivo=(
+                                "Conformidad del respaldo declarada al registrar el cobro; "
+                                "mismo actor que informa y verifica el ingreso."
+                            ),
+                            revision_esperada=0,
+                        )
+                    except ConflictoRevision as exc:
+                        raise ConflictoConcurrenciaError(str(exc)) from exc
+                verificar_cobro(
+                    actor=actor, numero=numero, cobro_id=cobro.pk,
+                    datos={
+                        "resultado": "CONFIRMADO",
+                        "motivo": "Ingreso externo cotejado y confirmado al registrar el cobro.",
+                    },
+                )
+            return cobro
     except IntegrityError as exc:
         if getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None) in {
             "uq_cobro_operacion_global",
@@ -132,9 +174,10 @@ def resumen_cobros(solicitud):
     cobros = list(solicitud.cobros.select_related("verificacion", "documento"))
     totales = {r: Decimal("0.00") for r in ("PENDIENTE", "CONFIRMADO", "RECHAZADO")}
     eventos = []
-    for cobro in cobros:
+    for numero, cobro in enumerate(cobros, start=1):
+        cobro.numero_en_solicitud = numero
         totales[cobro.resultado] += cobro.importe
-        eventos.append(cobro.como_historial())
+        eventos.append(cobro.como_historial(numero_cobro=numero))
         if cobro.resultado != "PENDIENTE":
-            eventos.append(cobro.verificacion.como_historial())
+            eventos.append(cobro.verificacion.como_historial(numero_cobro=numero))
     return cobros, totales, eventos
