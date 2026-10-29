@@ -182,6 +182,110 @@ class SolicitudGasto(models.Model):
     def __str__(self) -> str:
         return f"Solicitud #{self.pk} - {self.concepto} (${self.monto_estimado})"
 
+
+class RevisionDatosTransferenciaQuerySet(models.QuerySet):
+    """QuerySet que impide modificar o borrar revisiones ya registradas."""
+
+    def update(self, **kwargs: Any) -> int:
+        raise IntegrityError(
+            "No se permite modificar una Revisión de datos de transferencia existente."
+        )
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        raise IntegrityError(
+            "No se permite modificar una Revisión de datos de transferencia existente."
+        )
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise IntegrityError(
+            "No se permite borrar una Revisión de datos de transferencia existente."
+        )
+
+
+class RevisionDatosTransferencia(models.Model):
+    """Datos operativos informados para preparar una transferencia del gasto.
+
+    Cada corrección crea una fila nueva; las anteriores se conservan. El actor y
+    la hora los fija el servidor. La ausencia de esta revisión no altera el
+    estado del gasto ni el contrato documental del pago externo (C03).
+    """
+
+    solicitud = models.ForeignKey(
+        SolicitudGasto,
+        on_delete=models.PROTECT,
+        related_name="revisiones_datos_transferencia",
+        help_text="Gasto al que pertenece la revisión; el historial no se reasigna.",
+    )
+    numero_revision = models.PositiveIntegerField(
+        help_text="Número secuencial de la revisión dentro del gasto (inicial: 1).",
+    )
+    titular_nombre = models.CharField(
+        max_length=200,
+        help_text="Titular o beneficiario de la cuenta, tal como fue informado.",
+    )
+    identificacion = models.CharField(
+        max_length=100,
+        help_text="Identificación informada del titular; no se valida contra un padrón.",
+    )
+    cbu_alias = models.CharField(
+        max_length=128,
+        help_text=(
+            "CBU o alias informado como dato textual; no se valida contra un padrón bancario."
+        ),
+    )
+    correo_comprobante = models.CharField(
+        max_length=254,
+        help_text="Correo informado para remitir el comprobante; no se envía automáticamente.",
+    )
+    centro_costo = models.CharField(
+        max_length=100,
+        help_text="Centro de costo informado; no se confunde con la unidad requirente.",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="revisiones_datos_transferencia_gasto",
+        help_text="Actor del servidor que registró la revisión.",
+    )
+    fecha_hora = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora fijadas por el servidor al registrar la revisión.",
+    )
+
+    objects = RevisionDatosTransferenciaQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Revisión de datos de transferencia"
+        verbose_name_plural = "Revisiones de datos de transferencia"
+        ordering = ["solicitud", "numero_revision"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["solicitud", "numero_revision"],
+                name="uq_revision_datos_transferencia_numero",
+            ),
+            models.CheckConstraint(
+                condition=Q(numero_revision__gt=0),
+                name="revision_datos_transferencia_numero_positivo",
+            ),
+        ]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise IntegrityError(
+                "Cada revisión de datos de transferencia es inmutable; registrá una nueva."
+            )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar una Revisión de datos de transferencia.")
+
+    def __str__(self) -> str:
+        return (
+            f"Revisión {self.numero_revision} de datos de transferencia "
+            f"del gasto #{self.solicitud_id}"
+        )
+
+
 class DecisionGasto(models.Model):
     """Registro de un evento de decisión sobre una solicitud de gasto."""
 

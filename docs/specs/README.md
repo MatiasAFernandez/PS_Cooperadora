@@ -56,6 +56,8 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [009](009-matias-integracion-compartida.md) | Contratos e integración de módulos | I01-I05 |
 | [010](010-franco-consulta-gastos.md) | Consulta por estado y concepto; apoyo parcial de I2 | RF-007, F-E09 |
 | [011](011-franco-seguimiento-pago-externo.md) | Propuesta de núcleo I2: gasto aceptado, pago externo y pendientes | RF-003/004/005/006, F-E07/08, I03 |
+| [012](012-mejoras-demo-consultas.md) | Ajustes de consulta y presentación tras ensayo local | #30, SPEC-005/007/010 |
+| [013](013-franco-datos-operativos-transferencia.md) | Datos operativos y continuidad de transferencia en gastos | #74, RF-001/003/004/006, RNF-001/002/003 |
 
 ## De las specs a las tareas
 

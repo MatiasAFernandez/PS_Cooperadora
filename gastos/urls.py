@@ -4,6 +4,7 @@ from django.urls import path
 
 from gastos.views import (
     SolicitudGastoCreateView,
+    SolicitudGastoDatosTransferenciaView,
     SolicitudGastoDecidirView,
     SolicitudGastoDetailView,
     SolicitudGastoDocumentosView,
@@ -16,6 +17,11 @@ app_name = "gastos"
 urlpatterns = [
     path("", SolicitudGastoListView.as_view(), name="lista"),
     path("presentar/", SolicitudGastoCreateView.as_view(), name="presentar"),
+    path(
+        "<int:pk>/datos-transferencia/",
+        SolicitudGastoDatosTransferenciaView.as_view(),
+        name="datos-transferencia",
+    ),
     path("<int:pk>/", SolicitudGastoDetailView.as_view(), name="detalle"),
     path(
         "<int:pk>/documentos/",

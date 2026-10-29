@@ -38,6 +38,37 @@
         {% endif %}
     </div>
 
+    <fieldset style="margin-top: 1.5rem; padding: 1rem; border: 1px solid #dee2e6; border-radius: 4px;">
+        <legend style="font-weight: 600;">Datos de transferencia (opcional)</legend>
+        <p style="margin-top: 0;">
+            Podés presentar la solicitud sin este bloque. Si completás un campo, completá
+            todos. Los datos se guardan como fueron informados, con actor y hora del
+            servidor. No se copian del correo de la sesión.
+        </p>
+        {% if datos_form.non_field_errors %}
+            <div class="alert-error" role="alert">
+                {{ datos_form.non_field_errors }}
+            </div>
+        {% endif %}
+        {% for field in datos_form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <small>{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="alert-error">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <p style="margin-bottom: 0;" role="note">
+            La ausencia de estos datos no impide presentar el gasto ni bloquea por sí
+            sola el registro de pago previsto en C03. El centro de costo es independiente
+            de la unidad requirente.
+        </p>
+    </fieldset>
+
     <button type="submit" class="btn">Enviar Solicitud</button>
 </form>
 {% endblock %}
