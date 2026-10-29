@@ -26,8 +26,19 @@ from gastos.contracts import (
     DocumentVerificationError,
     OpcionDocumental,
 )
+from gastos.datos_transferencia import (
+    DatosTransferenciaBloqueadaError,
+    DatosTransferenciaInvalidInputError,
+    DatosTransferenciaNotFoundError,
+    DatosTransferenciaPermissionDeniedError,
+    consultar_revisiones_datos_transferencia,
+    datos_de_revision,
+    puede_editar_datos_transferencia,
+    registrar_revision_datos_transferencia,
+)
 from gastos.document_provider import cargar_proveedor_documental
 from gastos.forms import (
+    DatosTransferenciaForm,
     DecisionGastoForm,
     DocumentoGastoForm,
     FiltroEstadoGastoForm,
@@ -224,10 +235,11 @@ class SolicitudGastoCreateView(View):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
 
         form = SolicitudGastoForm()
+        datos_form = DatosTransferenciaForm()
         return render(
             request,
             "gastos/solicitud_form.html",
-            {"form": form, "actor": actor},
+            {"form": form, "datos_form": datos_form, "actor": actor},
         )
 
     def post(self, request: HttpRequest) -> HttpResponse:
@@ -240,20 +252,33 @@ class SolicitudGastoCreateView(View):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
 
         form = SolicitudGastoForm(request.POST)
-        if not form.is_valid():
+        datos_form = DatosTransferenciaForm(request.POST)
+        form_valido = form.is_valid()
+        datos_valido = datos_form.is_valid()
+        if not (form_valido and datos_valido):
             return render(
                 request,
                 "gastos/solicitud_form.html",
-                {"form": form, "actor": actor},
+                {"form": form, "datos_form": datos_form, "actor": actor},
                 status=200,
             )
 
-        solicitud = crear_solicitud_gasto(
-            actor=actor,
-            concepto=form.cleaned_data["concepto"],
-            monto_estimado=form.cleaned_data["monto_estimado"],
-            unidad_requirente=form.cleaned_data["unidad_requirente"],
-        )
+        try:
+            solicitud = crear_solicitud_gasto(
+                actor=actor,
+                concepto=form.cleaned_data["concepto"],
+                monto_estimado=form.cleaned_data["monto_estimado"],
+                unidad_requirente=form.cleaned_data["unidad_requirente"],
+                datos_transferencia=datos_form.datos_transferencia,
+            )
+        except DatosTransferenciaInvalidInputError as exc:
+            datos_form.add_error(None, str(exc))
+            return render(
+                request,
+                "gastos/solicitud_form.html",
+                {"form": form, "datos_form": datos_form, "actor": actor},
+                status=400,
+            )
 
         return redirect(reverse("gastos:detalle", kwargs={"pk": solicitud.pk}))
 
@@ -319,7 +344,8 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
         DecisionGastoForm(initial={"version": solicitud.version}) if can_decide else None
     )
     # Acción de pago: requiere ambos permisos, estado aceptado y ausencia de pago.
-    # La mera presencia de configuración no invoca al proveedor ni lista opciones.
+    # El detalle no lista opciones; el formulario de pago comprueba el respaldo
+    # habilitado y explica el bloqueo y el camino según permisos.
     mostrar_estado_registro_pago = (
         pago_consulta is None
         and solicitud.estado == EstadoSolicitud.ACEPTADA
@@ -353,6 +379,32 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
             )
             respaldo_categoria = derivar_categoria_respaldo(referencia_doc, opciones)
 
+    revisiones_datos_transferencia = consultar_revisiones_datos_transferencia(
+        actor, solicitud.pk
+    )
+    datos_transferencia_actual = (
+        revisiones_datos_transferencia[-1] if revisiones_datos_transferencia else None
+    )
+    datos_transferencia_historial = (
+        tuple(reversed(revisiones_datos_transferencia[:-1]))
+        if revisiones_datos_transferencia
+        else ()
+    )
+    pago_registrado = pago_consulta is not None
+    puede_editar_datos = (
+        revisiones_datos_transferencia is not None
+        and puede_editar_datos_transferencia(
+            actor, solicitud, pago_registrado=pago_registrado
+        )
+    )
+
+    factura_vigente = None
+    if proyeccion_documental is not None:
+        for version in proyeccion_documental.versiones:
+            if version.vigente and version.tipo == Documento.Tipo.FACTURA_PROVEEDOR:
+                factura_vigente = version
+                break
+
     return {
         "solicitud": solicitud,
         "actor": actor,
@@ -368,6 +420,15 @@ def _solicitud_detail_context(actor: Any, solicitud: Any) -> dict[str, Any]:
         "pago_permiso_metadatos": pago_permiso_metadatos,
         "pago_provider_configurado": pago_provider_configurado,
         "respaldo_categoria": respaldo_categoria,
+        "datos_transferencia": revisiones_datos_transferencia,
+        "datos_transferencia_autorizado": revisiones_datos_transferencia is not None,
+        "datos_transferencia_actual": datos_transferencia_actual,
+        "datos_transferencia_historial": datos_transferencia_historial,
+        "puede_editar_datos_transferencia": puede_editar_datos,
+        "mostrar_seguimiento_factura": (
+            pago_consulta is not None and proyeccion_documental is not None
+        ),
+        "factura_vigente": factura_vigente,
         "puede_incorporar_documentos": has_capability(actor, "documentos.incorporar"),
         "puede_ver_documentos": proyeccion_documental is not None,
         "versiones_documentales": (
@@ -393,6 +454,141 @@ class SolicitudGastoDetailView(View):
             request,
             "gastos/solicitud_detail.html",
             _solicitud_detail_context(actor, solicitud),
+        )
+
+
+class SolicitudGastoDatosTransferenciaView(View):
+    """Agrega o corrige los datos de transferencia del titular.
+
+    La ruta exige visibilidad del gasto, titularidad y ``gastos.presentar``. El
+    servicio revalida y serializa la escritura con el pago sobre la misma fila
+    del gasto. Una pantalla bloqueada no ofrece el formulario; un POST bloqueado
+    conserva lo ingresado y responde 409 sin escribir.
+    """
+
+    template_name = "gastos/datos_transferencia_form.html"
+
+    def _solicitud_autorizada(
+        self, request: HttpRequest, pk: int
+    ) -> tuple[Any, Any]:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result, None
+        actor = result
+        solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
+        if (
+            solicitud.solicitante_id != actor.subject_id
+            or not has_capability(actor, "gastos.presentar")
+        ):
+            raise PermissionDenied(
+                "Sólo el titular con capacidad para presentar gastos puede "
+                "informar estos datos."
+            )
+        return actor, solicitud
+
+    @staticmethod
+    def _contexto(
+        actor: Any,
+        solicitud: Any,
+        form: DatosTransferenciaForm,
+    ) -> dict[str, Any]:
+        revisiones = (
+            consultar_revisiones_datos_transferencia(actor, solicitud.pk) or ()
+        )
+        return {
+            "actor": actor,
+            "solicitud": solicitud,
+            "form": form,
+            "revision_actual": revisiones[-1] if revisiones else None,
+            "historial_datos": (
+                tuple(reversed(revisiones[:-1])) if revisiones else ()
+            ),
+        }
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result, solicitud = self._solicitud_autorizada(request, pk)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+
+        pago_registrado = _pago_externo_registrado(solicitud)
+        if not puede_editar_datos_transferencia(
+            actor,
+            solicitud,
+            pago_registrado=pago_registrado,
+        ):
+            if pago_registrado:
+                messages.info(
+                    request,
+                    "La solicitud ya tiene un pago registrado; en esta demo los "
+                    "datos de transferencia no se corrigen después del pago.",
+                )
+            elif solicitud.estado == EstadoSolicitud.RECHAZADA:
+                messages.info(
+                    request,
+                    "La solicitud fue rechazada y no admite nuevos datos de "
+                    "transferencia.",
+                )
+            else:
+                raise PermissionDenied(
+                    "No podés modificar los datos de transferencia de este gasto."
+                )
+            return redirect(reverse("gastos:detalle", kwargs={"pk": solicitud.pk}))
+
+        revisiones = (
+            consultar_revisiones_datos_transferencia(actor, solicitud.pk) or ()
+        )
+        actual = revisiones[-1] if revisiones else None
+        form = DatosTransferenciaForm(
+            initial=datos_de_revision(actual) if actual is not None else {}
+        )
+        return render(
+            request,
+            self.template_name,
+            self._contexto(actor, solicitud, form),
+        )
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result, solicitud = self._solicitud_autorizada(request, pk)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+
+        form = DatosTransferenciaForm(request.POST)
+        status = 400
+        if form.is_valid():
+            try:
+                revision = registrar_revision_datos_transferencia(
+                    actor=actor,
+                    solicitud_id=solicitud.pk,
+                    datos=form.datos_transferencia,
+                )
+            except DatosTransferenciaNotFoundError as exc:
+                raise Http404("Solicitud inexistente o no visible.") from exc
+            except DatosTransferenciaPermissionDeniedError as exc:
+                raise PermissionDenied(str(exc)) from exc
+            except DatosTransferenciaBloqueadaError as exc:
+                form.add_error(None, str(exc))
+                status = 409
+            except DatosTransferenciaInvalidInputError as exc:
+                form.add_error(None, str(exc))
+                status = 400
+            else:
+                messages.success(
+                    request,
+                    f"Datos de transferencia guardados como revisión "
+                    f"{revision.numero_revision}. No modifican el pago ni el "
+                    "estado de la solicitud.",
+                )
+                return redirect(
+                    reverse("gastos:detalle", kwargs={"pk": solicitud.pk})
+                )
+
+        return render(
+            request,
+            self.template_name,
+            self._contexto(actor, solicitud, form),
+            status=status,
         )
 
 
@@ -782,5 +978,8 @@ class SolicitudGastoPagoView(View):
             "form": form,
             "opciones_documentales": opciones,
             "formulario_habilitado": formulario_habilitado,
+            "puede_incorporar_documentos": has_capability(
+                actor, "documentos.incorporar"
+            ),
             "tramite_id": f"gastos:{solicitud.pk}",
         }

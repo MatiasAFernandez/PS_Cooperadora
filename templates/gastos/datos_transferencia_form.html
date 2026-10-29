@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Datos de transferencia — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a></p>
+
+<h3>Datos de transferencia — Solicitud #{{ solicitud.pk }}</h3>
+
+<p>
+    {{ solicitud.concepto }} — {{ solicitud.get_estado_display }}.
+</p>
+
+{% if messages %}
+    {% for message in messages %}
+        <div role="status" class="notice">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+{% if revision_actual %}
+    <p>
+        Última revisión registrada: <strong>{{ revision_actual.numero_revision }}</strong>.
+        Al guardar se crea una revisión nueva; la anterior se conserva.
+    </p>
+{% else %}
+    <p>Todavía no hay datos de transferencia informados para este gasto.</p>
+{% endif %}
+
+<p class="notice">
+    Cada guardado fija el actor y la hora en el servidor. Esta pantalla no registra
+    pagos, no aporta documentos y no cierra el trámite. La ausencia de estos datos
+    no modifica por sí sola el respaldo documental exigido por C03.
+</p>
+
+{% if form.non_field_errors %}
+    <div class="alert-error" role="alert">
+        <strong>No se pudieron guardar los datos:</strong>
+        <ul>
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<p class="notice">
+    Completá todos los campos para guardar una revisión; el bloque no se guarda
+    parcialmente.
+</p>
+
+<form method="post" action="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}">
+    {% csrf_token %}
+
+    {% for field in form %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+            {{ field }}
+            {% if field.help_text %}
+                <small>{{ field.help_text }}</small>
+            {% endif %}
+            {% if field.errors %}
+                <div class="alert-error" role="alert">{{ field.errors }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    <button type="submit" class="btn">Guardar revisión de datos</button>
+</form>
+
+{% if historial_datos %}
+    <h4 style="margin-top: 2rem;">Revisiones anteriores</h4>
+    {% for revision in historial_datos %}
+        <details class="panel">
+            <summary>
+                Revisión {{ revision.numero_revision }} — Usuario #{{ revision.actor_id }}
+                — {{ revision.fecha_hora|date:"d/m/Y H:i:s" }}
+            </summary>
+            <dl class="detail-grid" style="margin-top: 1rem;">
+                <dt>Titular o beneficiario</dt>
+                <dd>{{ revision.titular_nombre }}</dd>
+                <dt>Identificación informada</dt>
+                <dd>{{ revision.identificacion }}</dd>
+                <dt>CBU o alias</dt>
+                <dd>{{ revision.cbu_alias }}</dd>
+                <dt>Correo para el comprobante</dt>
+                <dd>{{ revision.correo_comprobante }}</dd>
+                <dt>Centro de costo informado</dt>
+                <dd>{{ revision.centro_costo }}</dd>
+            </dl>
+        </details>
+    {% endfor %}
+{% endif %}
+{% endblock %}

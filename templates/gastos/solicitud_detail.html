@@ -16,83 +16,240 @@
     {% endfor %}
 {% endif %}
 
-<table style="max-width: 600px;">
-    <tr>
-        <th>Identificador</th>
-        <td>{{ tramite_id }}</td>
-    </tr>
-    <tr>
-        <th>Concepto</th>
-        <td>{{ solicitud.concepto }}</td>
-    </tr>
-    <tr>
-        <th>Monto Estimado</th>
-        <td>${{ solicitud.monto_estimado }} ARS</td>
-    </tr>
-    <tr>
-        <th>Unidad Requirente</th>
-        <td>{{ solicitud.unidad_requirente }}</td>
-    </tr>
-    <tr>
-        <th>Estado</th>
-        <td><span class="badge">{{ solicitud.get_estado_display }}</span></td>
-    </tr>
-    <tr>
-        <th>Fecha de Presentación</th>
-        <td>{{ solicitud.fecha_creacion|date:"d/m/Y H:i:s" }}</td>
-    </tr>
-    <tr>
-        <th>Versión</th>
-        <td>{{ solicitud.version }}</td>
-    </tr>
-</table>
-
-{% if pago_consulta %}
-<section id="pago-externo" aria-labelledby="pago-externo-heading" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
-    <h4 id="pago-externo-heading" style="margin-top: 0;">Pago externo registrado</h4>
-    <table style="max-width: 600px; width: 100%;">
-        <caption>Datos informativos del pago</caption>
-        <tbody>
-            <tr>
-                <th scope="row">Importe</th>
-                <td>{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</td>
-            </tr>
-            <tr>
-                <th scope="row">Fecha del hecho</th>
-                <td>{{ pago_consulta.fecha_pago|date:"d/m/Y" }}</td>
-            </tr>
-            <tr>
-                <th scope="row">Referencia externa</th>
-                <td>{{ pago_consulta.referencia_externa }}</td>
-            </tr>
-            <tr>
-                <th scope="row">Registrado el</th>
-                <td>
-                    {% if pago_consulta.fecha_registro %}
-                        {{ pago_consulta.fecha_registro|date:"d/m/Y H:i:s" }}
-                    {% else %}
-                        No disponible
-                    {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th scope="row">Actor</th>
-                <td>
-                    {% if pago_consulta.actor_id != None %}
-                        Usuario #{{ pago_consulta.actor_id }}
-                    {% else %}
-                        No disponible
-                    {% endif %}
-                </td>
-            </tr>
-        </tbody>
+<section id="estado-solicitud" class="panel" aria-labelledby="estado-solicitud-heading">
+    <h4 id="estado-solicitud-heading" style="margin-top: 0;">Estado de la solicitud</h4>
+    <table style="max-width: 600px;">
+        <tr>
+            <th>Identificador</th>
+            <td>{{ tramite_id }}</td>
+        </tr>
+        <tr>
+            <th>Concepto</th>
+            <td>{{ solicitud.concepto }}</td>
+        </tr>
+        <tr>
+            <th>Monto Estimado</th>
+            <td>${{ solicitud.monto_estimado }} ARS</td>
+        </tr>
+        <tr>
+            <th>Unidad Requirente</th>
+            <td>{{ solicitud.unidad_requirente }}</td>
+        </tr>
+        <tr>
+            <th>Estado</th>
+            <td><span class="badge">{{ solicitud.get_estado_display }}</span></td>
+        </tr>
+        <tr>
+            <th>Fecha de Presentación</th>
+            <td>{{ solicitud.fecha_creacion|date:"d/m/Y H:i:s" }}</td>
+        </tr>
+        <tr>
+            <th>Versión</th>
+            <td>{{ solicitud.version }}</td>
+        </tr>
     </table>
-    <p role="note" style="margin-bottom: 0;">Registro informativo de la demo. No cambia el estado ni el importe estimado, y no confirma que el importe estimado esté saldado.</p>
+    <p role="note" style="margin-bottom: 0;">
+        Aceptar una solicitud no equivale a pagarla ni a cerrar el trámite. El estado
+        de la solicitud se conserva separado del pago y de la documentación.
+    </p>
 </section>
-{% endif %}
 
-<div id="respaldo-documental" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
-    <h4 style="margin-top: 0; margin-bottom: 8px;">Documentación de Respaldo</h4>
+<section id="datos-transferencia" class="panel" aria-labelledby="datos-transferencia-heading">
+    <h4 id="datos-transferencia-heading" style="margin-top: 0;">Datos de transferencia</h4>
+
+    {% if not datos_transferencia_autorizado %}
+        <p role="note" style="margin: 0;">
+            No disponibles para esta cuenta. Sólo el titular del gasto y los perfiles
+            con permiso para registrar pagos que ya pueden ver este gasto acceden a
+            estos datos. La consulta global por sí sola no los expone.
+        </p>
+    {% else %}
+        {% if datos_transferencia_actual %}
+            <p style="margin-top: 0;">
+                Revisión actual <strong>{{ datos_transferencia_actual.numero_revision }}</strong>
+                de {{ datos_transferencia|length }}. Las revisiones anteriores se conservan
+                por separado.
+            </p>
+            <dl class="detail-grid">
+                <dt>Titular o beneficiario</dt>
+                <dd>{{ datos_transferencia_actual.titular_nombre }}</dd>
+                <dt>Identificación informada</dt>
+                <dd>{{ datos_transferencia_actual.identificacion }}</dd>
+                <dt>CBU o alias</dt>
+                <dd>{{ datos_transferencia_actual.cbu_alias }}</dd>
+                <dt>Correo para el comprobante</dt>
+                <dd>{{ datos_transferencia_actual.correo_comprobante }}</dd>
+                <dt>Centro de costo informado</dt>
+                <dd>{{ datos_transferencia_actual.centro_costo }}</dd>
+                <dt>Registrada por</dt>
+                <dd>
+                    Usuario #{{ datos_transferencia_actual.actor_id }}
+                    el {{ datos_transferencia_actual.fecha_hora|date:"d/m/Y H:i:s" }}
+                </dd>
+            </dl>
+
+            {% if puede_editar_datos_transferencia %}
+                <p style="margin-top: 1rem;">
+                    <a class="btn" href="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}">
+                        Corregir datos de transferencia
+                    </a>
+                </p>
+            {% elif pago_consulta %}
+                <p role="note" style="margin-bottom: 0;">
+                    El pago ya fue registrado. Por el alcance de esta demo, los datos de
+                    transferencia no se corrigen después del pago para no cambiar
+                    retrospectivamente el caso.
+                </p>
+            {% elif solicitud.estado == "rechazada" %}
+                <p role="note" style="margin-bottom: 0;">
+                    La solicitud fue rechazada; no admite nuevos datos de transferencia.
+                </p>
+            {% else %}
+                <p role="note" style="margin-bottom: 0;">
+                    Sólo el titular con capacidad para presentar gastos puede corregir
+                    estos datos antes del pago.
+                </p>
+            {% endif %}
+
+            {% if datos_transferencia_historial %}
+                <details style="margin-top: 1rem;">
+                    <summary>
+                        Ver revisiones anteriores ({{ datos_transferencia_historial|length }})
+                    </summary>
+                    {% for revision in datos_transferencia_historial %}
+                        <div class="record-card" style="margin-top: 1rem;">
+                            <p>
+                                <strong>Revisión {{ revision.numero_revision }}</strong>
+                                — Usuario #{{ revision.actor_id }}
+                                — {{ revision.fecha_hora|date:"d/m/Y H:i:s" }}
+                            </p>
+                            <dl class="detail-grid">
+                                <dt>Titular o beneficiario</dt>
+                                <dd>{{ revision.titular_nombre }}</dd>
+                                <dt>Identificación informada</dt>
+                                <dd>{{ revision.identificacion }}</dd>
+                                <dt>CBU o alias</dt>
+                                <dd>{{ revision.cbu_alias }}</dd>
+                                <dt>Correo para el comprobante</dt>
+                                <dd>{{ revision.correo_comprobante }}</dd>
+                                <dt>Centro de costo informado</dt>
+                                <dd>{{ revision.centro_costo }}</dd>
+                            </dl>
+                        </div>
+                    {% endfor %}
+                </details>
+            {% endif %}
+        {% else %}
+            <p style="margin-top: 0;">No hay datos de transferencia informados.</p>
+            <p role="note">
+                La presentación pudo completarse sin este bloque. La falta de datos de
+                destino no bloquea por sí sola el pago ni modifica el respaldo documental
+                exigido por C03. El centro de costo informado es independiente de la
+                unidad requirente.
+            </p>
+            {% if puede_editar_datos_transferencia %}
+                <p style="margin-bottom: 0;">
+                    <a class="btn" href="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}">
+                        Agregar datos de transferencia
+                    </a>
+                </p>
+            {% elif pago_consulta %}
+                <p role="note" style="margin-bottom: 0;">
+                    El pago ya fue registrado; en esta demo no se agregan datos de
+                    transferencia después del pago.
+                </p>
+            {% elif solicitud.estado == "rechazada" %}
+                <p role="note" style="margin-bottom: 0;">
+                    La solicitud fue rechazada; no admite datos de transferencia.
+                </p>
+            {% else %}
+                <p role="note" style="margin-bottom: 0;">
+                    Sólo el titular con capacidad para presentar gastos puede agregar
+                    estos datos antes del pago.
+                </p>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+</section>
+
+<section id="pago-externo" class="panel" aria-labelledby="pago-externo-heading">
+    <h4 id="pago-externo-heading" style="margin-top: 0;">Pago externo</h4>
+
+    {% if pago_consulta %}
+        <h5 style="margin-top: 0;">Pago externo registrado</h5>
+        <table style="max-width: 600px; width: 100%;">
+            <caption>Datos informativos del pago</caption>
+            <tbody>
+                <tr>
+                    <th scope="row">Importe</th>
+                    <td>{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Fecha del hecho</th>
+                    <td>{{ pago_consulta.fecha_pago|date:"d/m/Y" }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Referencia externa</th>
+                    <td>{{ pago_consulta.referencia_externa }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Registrado el</th>
+                    <td>
+                        {% if pago_consulta.fecha_registro %}
+                            {{ pago_consulta.fecha_registro|date:"d/m/Y H:i:s" }}
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Actor</th>
+                    <td>
+                        {% if pago_consulta.actor_id != None %}
+                            Usuario #{{ pago_consulta.actor_id }}
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p role="note" style="margin-bottom: 0;">Registro informativo de la demo. No cambia el estado ni el importe estimado, y no confirma que el importe estimado esté saldado.</p>
+    {% else %}
+        <p style="margin-top: 0;">No hay un pago externo registrado.</p>
+
+        {% if solicitud.estado != "aceptada" %}
+            <p role="note" style="margin-bottom: 0;">
+                El registro de pago se habilita cuando la solicitud está aceptada.
+                Estado actual: <strong>{{ solicitud.get_estado_display }}</strong>.
+            </p>
+        {% elif not pago_permiso_registrar %}
+            <p role="note">Acción no disponible: falta el permiso para registrar pagos.
+                Solicitá a un perfil autorizado que registre el pago si corresponde.</p>
+            <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+        {% elif not pago_permiso_metadatos %}
+            <p role="note">Acción no disponible: falta el permiso para consultar metadatos documentales.
+                Solicitá a un perfil con permiso documental que verifique y aporte el respaldo.</p>
+            <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+        {% elif not pago_provider_configurado %}
+            <p role="note" style="margin: 0 0 10px;">
+                Registro de pago no disponible: no hay un proveedor documental configurado en el servidor.
+            </p>
+            <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+        {% else %}
+            <p style="margin-top: 0;">La solicitud está aceptada y todavía no registra un pago.</p>
+            <a class="btn" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago externo</a>
+            <p role="note" style="margin-bottom: 0;">
+                El formulario comprueba que exista una factura, presupuesto o proforma
+                vigente. Si falta, explica el bloqueo y el camino para aportarla según
+                tus permisos. C03 conserva sus verificaciones documentales.
+            </p>
+        {% endif %}
+    {% endif %}
+</section>
+
+<section id="respaldo-documental" class="panel" aria-labelledby="respaldo-documental-heading">
+    <h4 id="respaldo-documental-heading" style="margin-top: 0;">Documentación de respaldo</h4>
     {% if puede_ver_documentos %}
         {% if versiones_documentales %}
             <p style="margin: 0;">Versiones documentales visibles para este gasto: {{ versiones_documentales|length }}. El tipo, la vigencia y la revisión de cada versión figuran por separado.</p>
@@ -100,27 +257,34 @@
             <p style="margin: 0;">No hay documentos de respaldo visibles para este gasto.</p>
         {% endif %}
         {% if pago_consulta %}
-        {% if respaldo_categoria == "factura" %}
+            {% if respaldo_categoria == "factura" %}
                 <p style="margin: 8px 0 0;">La referencia documental del pago coincide con una factura disponible en esta consulta.</p>
-        {% elif respaldo_categoria == "presupuesto" %}
+            {% elif respaldo_categoria == "presupuesto" %}
                 <p style="margin: 8px 0 0;">La referencia documental del pago coincide con un presupuesto o proforma disponible en esta consulta.</p>
-        {% else %}
+            {% else %}
                 <p style="margin: 8px 0 0;">La categoría de la versión referenciada al registrar el pago no está disponible en esta consulta. Los aportes y reemplazos posteriores no modifican el registro de pago.</p>
-        {% endif %}
+            {% endif %}
         {% else %}
             <p style="margin: 8px 0 0;">La presencia de un archivo o su revisión no determina la suficiencia documental del trámite.</p>
         {% endif %}
+        <p role="note">
+            La factura, el presupuesto o la proforma del proveedor son el respaldo comercial.
+            El comprobante bancario y la constancia ATP son respaldos de la operación y
+            conservan sus propios permisos de carga, consulta y descarga. Una proforma no
+            reemplaza la factura definitiva: la factura posterior se incorpora como
+            documento nuevo, con su propia revisión, sin modificar el pago.
+        </p>
     {% else %}
         <p style="margin: 0;">Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. No se puede inferir desde aquí si hay archivos; el registro de pago tampoco equivale a aprobación o suficiencia documental.</p>
     {% endif %}
     {% if puede_incorporar_documentos %}
         <p style="margin: 10px 0 0;"><a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}">Cargar o reemplazar un respaldo</a></p>
     {% endif %}
-</div>
+</section>
 
 {% if puede_ver_documentos %}
-<div id="documentos-gasto" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
-    <h4 style="margin-top: 0;">Versiones y revisión documental</h4>
+<section id="documentos-gasto" class="panel" aria-labelledby="documentos-gasto-heading">
+    <h4 id="documentos-gasto-heading" style="margin-top: 0;">Versiones y revisión documental</h4>
     {% if versiones_documentales %}
         <ul style="list-style: none; padding-left: 0;">
             {% for version in versiones_documentales %}
@@ -151,33 +315,45 @@
         <p style="margin: 0;">No hay versiones documentales visibles para este gasto.</p>
     {% endif %}
     <p role="note" style="margin-bottom: 0;">Las versiones cuyo último resultado de revisión sea observado o rechazado no se ofrecen para nuevos pagos; siguen existiendo y conservan su historial. El tipo documental y su resultado de revisión se muestran por separado. El registro de pago conserva su referencia aunque se incorpore o reemplace otra versión. Esta vista no determina si el documento satisface un requisito del trámite.</p>
-</div>
+</section>
+{% endif %}
+
+{% if mostrar_seguimiento_factura %}
+<section id="seguimiento-factura-definitiva" class="panel" aria-labelledby="seguimiento-factura-heading">
+    <h4 id="seguimiento-factura-heading" style="margin-top: 0;">Seguimiento de factura definitiva</h4>
+    {% if respaldo_categoria == "presupuesto" %}
+        <p style="margin-top: 0;">El pago quedó asociado a un presupuesto o proforma. Una proforma no es una factura definitiva.</p>
+        {% if factura_vigente %}
+            <p>Hay una factura vigente incorporada: <strong>{{ factura_vigente.nombre }}</strong> — versión {{ factura_vigente.version }}.
+                <a href="{% url 'documentos:revision' factura_vigente.documento_id %}">Ver su revisión</a>.
+            </p>
+            {% if factura_vigente.revision_actual %}
+                <p>Último resultado propio de la factura: <strong>{{ factura_vigente.revision_actual.resultado_mostrado }}</strong>
+                    — Usuario #{{ factura_vigente.revision_actual.actor_id }}
+                    — {{ factura_vigente.revision_actual.fecha|date:"d/m/Y H:i:s" }}.</p>
+            {% else %}
+                <p><strong>PENDIENTE</strong> — la factura todavía no tiene un acto de revisión registrado.</p>
+            {% endif %}
+        {% else %}
+            <p>No hay una factura definitiva vigente incorporada.</p>
+            {% if puede_incorporar_documentos %}
+                <p><a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}">Aportar factura definitiva</a></p>
+            {% else %}
+                <p role="note">Solicitá a un perfil con permiso de incorporación documental que aporte la factura definitiva si corresponde.</p>
+            {% endif %}
+        {% endif %}
+    {% elif respaldo_categoria == "factura" %}
+        <p style="margin-top: 0;">El respaldo referenciado por el pago es una factura. No hay una proforma pendiente de factura definitiva.</p>
+    {% else %}
+        <p style="margin-top: 0;">No se pudo confirmar la categoría del respaldo referenciado en esta consulta. Si era una proforma, la factura definitiva se incorpora como documento nuevo.</p>
+    {% endif %}
+    <p role="note" style="margin-bottom: 0;">Incorporar o revisar la factura no modifica el pago, no reemplaza el respaldo referenciado por el pago y no cierra el trámite. Una revisión pendiente tampoco se presenta como aprobación.</p>
+</section>
 {% endif %}
 
 {% if error_pago %}
 <div role="alert" style="color: red; margin-top: 20px; max-width: 600px;">
     <strong>Error:</strong> {{ error_pago }}
-</div>
-{% endif %}
-
-{% if mostrar_estado_registro_pago %}
-<div id="accion-pago-externo" style="margin-top: 25px; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; max-width: 600px; background-color: #f8f9fa;">
-    <h4 style="margin-top: 0;">Registrar pago externo</h4>
-    {% if not pago_permiso_registrar %}
-        <p role="note" style="margin: 0 0 10px;">Acción no disponible: falta el permiso para registrar pagos.</p>
-        <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
-    {% elif not pago_permiso_metadatos %}
-        <p role="note" style="margin: 0 0 10px;">Acción no disponible: falta el permiso para consultar metadatos documentales.</p>
-        <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
-    {% elif pago_provider_configurado %}
-        <p style="margin-top: 0;">La solicitud está aceptada y todavía no registra un pago.</p>
-        <a class="btn" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago externo</a>
-    {% else %}
-        <p role="note" style="margin: 0 0 10px;">
-            Registro de pago no disponible: no hay un proveedor documental configurado en el servidor.
-        </p>
-        <button type="button" class="btn" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
-    {% endif %}
 </div>
 {% endif %}
 
