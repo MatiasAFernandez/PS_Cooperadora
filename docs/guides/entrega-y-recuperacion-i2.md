@@ -42,7 +42,7 @@ inspeccionar historial y recuperación, usar el comando de la sección siguiente
 Sus cuentas nuevas tienen contraseña inutilizable: asignarla localmente mediante
 `changepassword` antes de entrar por navegador. El comando no publica contraseñas.
 
-Guion para la futura demostración (registrar resultado observado, no sólo esperado):
+Guion reproducible de los dos circuitos (registrar resultado observado):
 
 1. A y B entran por el inicio común y presentan un gasto y una solicitud de
    facturación con datos ficticios. Comprobar que no ven trámites ajenos.
@@ -60,9 +60,12 @@ Guion para la futura demostración (registrar resultado observado, no sólo espe
 5. Registrar observaciones, preguntas y desacuerdos en la ficha de #29. Distinguir
    una falla reproducida de una regla de negocio aún no validada.
 
-Este guion todavía no es un acta de una demostración realizada ni aceptación
-institucional. La [ficha de entrega](../evidence/i2-29-verificacion-entrega.md)
-identifica la evidencia técnica y los campos pendientes.
+La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) registra los recorridos
+mostrados y su devolución. Este guion permite repetir comprobaciones adicionales;
+no atribuye a la reunión escenarios que no se ejecutaron. La
+[ficha de entrega](../evidence/i2-29-verificacion-entrega.md) enlaza el plan
+individual y la evidencia técnica. La aceptación institucional conserva su
+alcance específico y las definiciones abiertas.
 
 ## Ensayar copia y restauración de la muestra
 

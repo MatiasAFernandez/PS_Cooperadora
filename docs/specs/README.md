@@ -56,8 +56,19 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [009](009-matias-integracion-compartida.md) | Contratos e integración de módulos | I01-I05 |
 | [010](010-franco-consulta-gastos.md) | Consulta por estado y concepto; apoyo parcial de I2 | RF-007, F-E09 |
 | [011](011-franco-seguimiento-pago-externo.md) | Propuesta de núcleo I2: gasto aceptado, pago externo y pendientes | RF-003/004/005/006, F-E07/08, I03 |
-| [012](012-mejoras-demo-consultas.md) | Ajustes de consulta y presentación tras ensayo local | #30, SPEC-005/007/010 |
+| [012](012-mejoras-demo-consultas.md) | Ajustes de consulta/presentación del ensayo, integrados antes de la demo | Consulta y presentación; #30 |
 | [013](013-franco-datos-operativos-transferencia.md) | Datos operativos y continuidad de transferencia en gastos | #74, RF-001/003/004/006, RNF-001/002/003 |
+| [014](014-matias-administracion-catalogos-capacidades.md) | Administración de catálogos y contrato de excepciones | Evolución RF-001/002; #77/#85 |
+| [015](015-matias-avisos-pendientes.md) | Avisos y acceso a pendientes | Evolución del seguimiento; #78 |
+| [016](016-matias-preparacion-identidad-institucional.md) | Contrato y preparación del origen institucional | Evolución RF-001; #79 |
+| [017](017-matias-historicos-proyecciones.md) | Historia importada y proyección, dos tramos por definir | Alcance nuevo de demo; #82/#83 |
+| [018](018-matias-registro-externo-simplificado.md) | Referencias Xubio, trazabilidad y cierre sin duplicar archivos | Evolución RF-002/004/006; #76 |
+
+La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) aporta necesidades,
+confirmaciones parciales y preguntas abiertas. SPEC-014–018 son cambios
+solicitados/propuestos, no implementación ni ampliación académica con horas o
+prioridad comprometidas. #80/#81/#84 usan specs existentes. Los estados operativos
+se mantienen en GitHub Issues.
 
 ## De las specs a las tareas
 

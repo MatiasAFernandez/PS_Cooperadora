@@ -1,20 +1,28 @@
 # Verificación y preparación de entrega I2 — #29
 
-Base: `c1f491f` (#69 integrada, con #65/#66/#68). Aporte de Matías con asistencia
-de Codex; revisión cruzada de Franco pendiente sobre la PR de este corte. El
-estado operativo se conserva en #29/PR. Esta ficha organiza evidencia, no sustituye
-el informe oficial, el registro de horas ni una devolución de Cooperadora.
+Estado al 31/10/2026: demo realizada el 29/10/2026 sobre
+`09095a6d472bfcceeab21a4b371c7880f35e98c4`, según confirmación de Matías.
+Ver [evidencia y devolución](demo-2026-10-29.md). Se recibieron pedidos de ajuste;
+no se declara aceptación integral ni producción. Los apartados del 24/10 son
+históricos. Las ampliaciones se siguen por separado en #30 y #76–#85.
+
+Base de la preparación técnica: `c1f491f` (#69 integrada, con #65/#66/#68).
+La PR #70 incorporó muestra, recuperación y guía tras la revisión de Franco.
+La demostración posterior corresponde a `09095a6`; la actualización documental
+conserva ambas versiones y sus resultados. Aporte de Matías con asistencia de
+Codex; Franco mantiene gastos/pagos y la revisión de contratos comunes.
+El estado operativo se conserva en #29/PR.
 
 ## Criterios y evidencia
 
 | Criterio #29 | Fuente / resultado | Límite |
 |---|---|---|
-| Permisos, archivos inválidos, estados, importes y errores | Suite de facturación/documentos/identidad/integración; #69 cerró técnicamente #28 con 598 pruebas y revisión sobre `47652bb`. | El resultado histórico no se atribuye al nuevo código del comando. La CI de esta PR verifica su SHA. |
-| Revisiones cruzadas | PR #62/#64/#67/#68/#69 y #65/#66 integradas; #69 verifica el consumo común de los dos circuitos. | Franco debe revisar la nueva guía/comando/evidencia de #29. |
+| Permisos, archivos inválidos, estados, importes y errores | #69 cerró técnicamente #28 con 598 pruebas; #70 verificó el comando de muestra y su CI aprobó 601 pruebas. | Son resultados de sus respectivos SHA; la actualización documental no los presenta como pruebas nuevas de aplicación. |
+| Revisiones cruzadas | PR #62/#64/#67/#68/#69/#70 y #65/#66 integradas; #69 verifica el consumo común de los dos circuitos. | Las nuevas interfaces se revisan en sus propias issues. |
 | Uso, contratos e instalación | Manuales de facturación y gastos, contratos de identidad/documentos, README y nueva [guía de entrega/recuperación](../guides/entrega-y-recuperacion-i2.md). | Demo local; sin despliegue, SSO o storage institucional. |
 | Migración y recuperación | Migración desde base vacía; `pg_dump -Fc`, copia de storage y `pg_restore` en segunda base vacía; `migrate --check` y verificación de muestra correctos. | Ensayo lógico con escrituras detenidas, sin simular caída, pérdida de servidor ni RPO/RTO. |
-| Demostración e informe | Guion de ambos circuitos preparado; índice individual de evidencia debajo. | Demostración aún no realizada; horas reales no registradas. |
-| Aceptación funcional | Matías confirmó el 24/10/2026 que todavía no se realizó la demostración. | Validación abierta: sin aceptación, fecha de aprobación ni observaciones atribuibles a Cooperadora. |
+| Demostración e informe | Recorridos completos de gastos y facturación mostrados el 29/10; [devolución registrada](demo-2026-10-29.md) e índice del plan individual debajo. | Los escenarios técnicos no recorridos conservan su evidencia anterior. |
+| Aceptación funcional | Cooperadora aportó observaciones sobre el flujo completo y necesidades de evolución, con fuentes y tiempos en la ficha de demo. | Devolución funcional registrada y validación abierta de reglas específicas; sin aprobación integral ni habilitación productiva. |
 
 ## Ensayo técnico de recuperación — 24/10/2026
 
@@ -49,36 +57,46 @@ Ruff, formato del comando/tests, `manage.py check`, `makemigrations --check
 --dry-run` y `git diff --check` aprobados. Los conjuntos se solapan y no se suman;
 la CI de la PR verifica la suite completa de su SHA.
 
-## Índice para el informe individual de Matías
+## Actividades del plan individual de Matías
 
-| Actividad / resultado | Evidencia a enlazar | Horas reales |
-|---|---|---|
-| Identidad/capacidades y documentos comunes | Specs 002/003, contratos, #21/#22/#24 y sus PR/evidencias. | No registradas. |
-| Solicitudes y correcciones | Spec 004, #23 y evidencia del recorrido. | No registradas. |
-| Factura/notas externas e ingresos verificados | Specs 005/006, #25/#26, PR #64/#67. | No registradas. |
-| Diagnóstico y resolución explícita | Spec 007, #27, PR #68 y correcciones SQL revisadas. | No registradas. |
-| Integración cruzada con gastos | Spec 009, #28, PR #69 y matriz con contribuciones de ambos responsables. | No registradas. |
-| Instalación, recuperación y preparación de demo | #29, esta ficha, guía, comando y CI del corte. | No registradas. |
+Fuente: Plan de Trabajo de Matías, tabla de actividades. Corte: 31/10/2026.
 
-Las horas disponibles son las **propuestas en la planificación**, según confirmó
-Matías el 24/10/2026. No se convierten en ejecutadas, no se calculan desde commits
-o duración de tests y no se inventa una reconstrucción retrospectiva. Cualquier
-registro posterior debe tener fuente y diferenciar actividad, fecha, duración
-real y evidencia; las estimaciones mantienen su categoría y referencia al plan.
+| Tarea | Resultado y evidencia | Estado | Horas del plan |
+|---|---|---|---:|
+| M-E01 | Relevamiento de formularios y documentos; [inventario](../planning/i2-issues/01-relevamiento-fuentes.md). | Completada | 8 |
+| M-E02 | Reglas, modelo y casos de aceptación en [specs 002–009](../specs/README.md). | Completada para el corte demostrado | 10 |
+| C01 | Responsabilidades y [contratos comunes](../contracts/i2-tramites-provider-matias.md); #20/#22. | Completada | 4 |
+| C02 | Ejemplos, decisiones y [devolución de Cooperadora](demo-2026-10-29.md); #20/#29. | Realizada; ampliaciones en seguimiento | 6 |
+| M-E03 | Identidad y capacidades; [verificación #21/#23](i2-21-23-verificacion-tecnica.md), SPEC-002. | Completada | 16 |
+| M-E04 | Almacenamiento, metadatos y autorización; SPEC-003, #19/#24. | Completada | 20 |
+| M-E05 | Solicitud, consulta, observación y corrección; [#23](i2-23-cierre-solicitudes.md), PR #52. | Completada | 12 |
+| M-E06 | Facturas y notas externas; [#25](i2-25-comprobantes-externos.md), PR #64. | Completada | 8 |
+| M-E07 | Cobros y respaldos de ingreso; [#26](i2-26-cobros-externos.md), PR #67. | Completada | 18 |
+| M-E08 | Estados, historial, pendientes y cierre; [#27](i2-27-resolucion-facturacion.md), PR #68. | Completada | 10 |
+| M-E09 | Filtros integrados en #71/#73; [resúmenes en #30](../specs/008-matias-consultas.md). | Parcial: faltan resúmenes | 8 |
+| M-E10 | Pruebas funcionales, permisos, errores e integridad; evidencias #23–#28 y CI #70. | Completada para el corte demostrado | 14 |
+| M-E11 | [Manual de facturación](../guides/recorrido-facturacion-i2.md) y contratos de identidad/documentos. | Completada | 6 |
+| M-E12 | Organización de resultados en esta ficha e índice de fuentes para el informe. | Informe individual en preparación | 6 |
+| I01 | Modelo común, relaciones y restricciones; [#22](i2-22-cierre-contratos.md). | Completada | 10 |
+| I02 | Accesos permitidos y denegados en ambos circuitos; [#28](i2-28-integracion-circuitos.md). | Completada | 6 |
+| I03 | Documentos, facturas, cobros y consumidor real C01; #51/#55/#65/#66/#69. | Completada | 8 |
+| I04 | Navegación y presentación común; #59/#69/#71/#73. | Completada | 4 |
+| I05 | Escenarios cruzados y consistencia; [#28](i2-28-integracion-circuitos.md), PR #69. | Completada | 8 |
+| I06 | Revisión de cambios de gastos/contratos y revisión de facturación por Franco; #65/#66/#68/#69/#70. | Completada para el corte demostrado | 6 |
+| I07 | Datos, demostración de ambos recorridos y [observaciones del 29/10](demo-2026-10-29.md). | Completada | 6 |
+| I08 | Migraciones, datos sintéticos y [guía de instalación/recuperación](../guides/entrega-y-recuperacion-i2.md); ensayo de PR #70. | Completada | 6 |
+| Total | Plan individual de Matías | | 200 |
 
-## Registro pendiente de demostración y devolución
+## Alcance de aceptación y continuidad
 
-- Estado: **no realizada**, confirmado por Matías el 24/10/2026.
-- Fecha y participantes efectivos: pendientes; no hay acta ni aprobación.
-- Versión a mostrar y entorno: anotar SHA y configuración del ensayo futuro.
-- Casos observados: seguir el guion; para cada uno registrar resultado, evidencia
-  y observación textual o resumen validado, con su fuente.
-- Reglas por validar: conservar H1–H4 y las consultas abiertas del incremento;
-  separar correcciones técnicas de decisiones institucionales.
-- Devolución de Cooperadora: pendiente, con fuente/fecha por incorporar cuando
-  exista; una revisión de Franco o un check verde no la sustituye.
+La demo recorrió ambos circuitos desde la solicitud hasta la actuación de
+Cooperadora, con validación, respaldos y decisión operativa según cada módulo.
+La [ficha de demo](demo-2026-10-29.md) distingue lo mostrado, las necesidades
+confirmadas y las definiciones abiertas. La devolución respalda el recorrido y
+requiere ajustes; no constituye aceptación de toda excepción ni uso productivo.
 
-La PR técnica puede revisarse mientras esta validación permanece abierta; el
-cierre de #29 requiere revisar sus criterios y conservar explícitos los pendientes,
-sin afirmar una demostración que todavía no ocurrió. #30 es SHOULD y no bloquea
-esta preparación. #50 conserva la demostración del tramo de Franco.
+Los cambios nuevos se gestionan en #30 y #76–#85, con sus dependencias y
+responsables. #30 mantiene prioridad SHOULD. #50 conserva la evidencia y
+demostración del tramo de Franco. La integración de esta documentación no
+declara implementadas las propuestas SPEC-014–018 ni modifica los contratos
+operativos vigentes por sí sola.

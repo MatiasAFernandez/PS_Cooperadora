@@ -1,5 +1,9 @@
 # SPEC-003 — Documentos protegidos de los trámites
 
+## Validación y alcance posterior al 29/10/2026
+
+La [demo](../evidence/demo-2026-10-29.md) confirma conservar documentos y correcciones. #81 precisa el cambio solicitado de 10 MiB a un máximo cercano a 2 MB, sin aplicar todavía un número no acordado. PDF/JPEG/PNG, control en servidor y acceso protegido siguen vigentes. #76/[SPEC-018](018-matias-registro-externo-simplificado.md) plantea dispensar duplicación de archivos de Xubio sólo en facturación; no elimina revisión de aportes ajenos ni garantías de gastos.
+
 ## Propuesta de implementación DOC-R04 — 18/10/2026
 
 El [contrato de revisión](../contracts/revision-documental-i2.md) concreta el

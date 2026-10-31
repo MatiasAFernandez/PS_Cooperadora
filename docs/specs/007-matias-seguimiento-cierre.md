@@ -1,5 +1,9 @@
 # SPEC-007 — Estados, historial, pendientes y cierre de facturación
 
+## Validación y alcance posterior al 29/10/2026
+
+La [demo](../evidence/demo-2026-10-29.md) muestra cierre explícito tras dos cobros y conserva historial. No acredita aprobación de cada excepción de cancelación/anulación. #76/[SPEC-018](018-matias-registro-externo-simplificado.md) debe adaptar conjuntamente el cierre si se dispensa duplicar el archivo de Xubio; volver opcional el formulario no basta. Las reglas técnicas de abajo siguen vigentes hasta integrar ese cambio y no se trasladan a gastos.
+
 > Ajustes de consulta aprobados el 25/10/2026: diferencia neto/confirmado, impedimentos con nombres específicos y lista de revisiones por atender. Las reglas de cierre no cambian. Ver [SPEC-012](012-mejoras-demo-consultas.md).
 
 - Estado: perfil provisional de demo confirmado para #27; validación institucional

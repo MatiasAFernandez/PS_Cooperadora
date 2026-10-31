@@ -1,5 +1,13 @@
 # SPEC-009 — Contratos e integración de los dos circuitos
 
+La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) corresponde a
+`09095a6`, según confirmación de Matías. #28 conserva su cierre técnico; #29
+registra la devolución. Los cambios de referencias externas (#76), catálogos
+(#77), avisos (#78), identidad (#79), históricos (#82) y excepciones (#85)
+requieren acordar sólo las interfaces afectadas antes de integrar. Matías
+mantiene comunes/facturación; Franco conserva gastos, pagos y política de deuda.
+Correo compartido para agrupación no sustituye actor ni titularidad.
+
 - Alcance técnico: cabecera, referencias y contratos de eventos implementados
   para ambos circuitos mediante #51, #52, #55, #56 y #59. La integración de los
   recorridos completos y su aceptación conservan seguimiento en #28/#29.
