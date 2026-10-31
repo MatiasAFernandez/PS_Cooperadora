@@ -1,5 +1,6 @@
 """Servicios de negocio para el módulo de gastos."""
 
+from collections.abc import Mapping
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
@@ -7,7 +8,13 @@ from django.db import connection, transaction
 
 from comunes.models import Circuito, TramiteBase
 from gastos.auth import has_capability
-from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
+from gastos.datos_transferencia import validar_datos_transferencia
+from gastos.models import (
+    DecisionGasto,
+    EstadoSolicitud,
+    RevisionDatosTransferencia,
+    SolicitudGasto,
+)
 from gastos.queries import visible_expenses
 
 
@@ -250,15 +257,20 @@ def crear_solicitud_gasto(
     concepto: str,
     monto_estimado: Any,
     unidad_requirente: str,
+    datos_transferencia: Mapping[str, Any] | None = None,
 ) -> SolicitudGasto:
     """Crea cabecera y solicitud juntas con valores fijados por el servidor.
 
     La capacidad se revalida dentro del servicio, el número público se reserva
-    con la secuencia de PostgreSQL y el centro de costo queda NULL: la unidad
-    requirente no acredita un centro de costo.
+    con la secuencia de PostgreSQL y el centro de costo institucional queda NULL:
+    la unidad requirente no acredita un centro de costo. Si se informa un bloque
+    completo de datos de transferencia, se crea su primera revisión en la misma
+    transacción; un bloque parcial se rechaza antes de reservar el número.
     """
     if not has_capability(actor, "gastos.presentar"):
         raise PermissionDenied("El actor no posee la capacidad 'gastos.presentar'.")
+
+    datos_validos = validar_datos_transferencia(datos_transferencia)
 
     numero = _reservar_numero_solicitud_gasto()
     base = TramiteBase.objects.create(
@@ -267,7 +279,7 @@ def crear_solicitud_gasto(
         solicitante_actor_id=str(actor.subject_id),
         centro_costo_codigo=None,
     )
-    return SolicitudGasto.objects.create(
+    solicitud = SolicitudGasto.objects.create(
         pk=numero,
         tramite_base=base,
         concepto=concepto,
@@ -277,3 +289,11 @@ def crear_solicitud_gasto(
         estado=EstadoSolicitud.PRESENTADA,
         version=0,
     )
+    if datos_validos is not None:
+        RevisionDatosTransferencia.objects.create(
+            solicitud=solicitud,
+            numero_revision=1,
+            actor_id=actor.subject_id,
+            **datos_validos,
+        )
+    return solicitud

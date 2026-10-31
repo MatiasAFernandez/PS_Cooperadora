@@ -67,8 +67,21 @@
         {{ form.referencia_documental }}
         {% if not opciones_documentales and formulario_habilitado %}
             <p role="note" style="margin: 0.25rem 0 0; font-size: 0.9em;">
-                No hay opciones documentales disponibles para este gasto.
+                No hay opciones documentales disponibles para este gasto. El registro
+                de pago requiere una factura, presupuesto o proforma vigente.
             </p>
+            {% if puede_incorporar_documentos %}
+                <p style="margin: 0.5rem 0 0;">
+                    <a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}">
+                        Aportar factura, presupuesto o proforma
+                    </a>
+                </p>
+            {% else %}
+                <p role="note" style="margin: 0.5rem 0 0; font-size: 0.9em;">
+                    Solicitá a un perfil con permiso de incorporación documental que
+                    aporte la factura, presupuesto o proforma.
+                </p>
+            {% endif %}
         {% elif not formulario_habilitado %}
             <p role="note" style="margin: 0.25rem 0 0; font-size: 0.9em;">
                 La solicitud ya no admite el registro de un pago. Consulte su estado en el detalle.

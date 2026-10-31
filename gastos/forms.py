@@ -6,10 +6,21 @@ from typing import Any
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 from comunes.filtros import FiltroFechaForm
 from documentos.models import Documento
 from gastos.contracts import OpcionDocumental
+from gastos.datos_transferencia import (
+    CAMPOS_DATOS_TRANSFERENCIA,
+    ETIQUETAS_DATOS_TRANSFERENCIA,
+    LONGITUDES_DATOS_TRANSFERENCIA,
+    MENSAJE_CBU_ALIAS_FRECUENTE,
+    MENSAJE_CORREO_COMPROBANTE_INVALIDO,
+    DatosTransferenciaInvalidInputError,
+    es_cbu_alias_frecuente,
+    validar_datos_transferencia,
+)
 from gastos.models import EstadoSolicitud, SolicitudGasto
 
 
@@ -79,6 +90,119 @@ class SolicitudGastoForm(forms.ModelForm):
         if monto is None or monto <= Decimal("0"):
             raise ValidationError("El importe estimado debe ser un monto positivo en ARS.")
         return monto
+
+
+class DatosTransferenciaForm(forms.Form):
+    """Bloque opcional y completo de datos operativos para una transferencia.
+
+    El formulario no crea filas por sí mismo: la vista entrega el resultado al
+    servicio, que revalida y serializa la escritura. Valida la sintaxis del
+    correo de destino y rechaza el literal «frecuente» como CBU/alias; tampoco
+    copia el correo de la sesión ni relaciona estos datos con la unidad
+    requirente.
+    """
+
+    titular_nombre = forms.CharField(
+        label=ETIQUETAS_DATOS_TRANSFERENCIA["titular_nombre"],
+        required=False,
+        max_length=LONGITUDES_DATOS_TRANSFERENCIA["titular_nombre"],
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "autocomplete": "off",
+                "placeholder": "Persona titular o beneficiaria de la cuenta",
+            }
+        ),
+        help_text="Se guarda como fue informado; no se presume que sea quien solicita.",
+    )
+    identificacion = forms.CharField(
+        label=ETIQUETAS_DATOS_TRANSFERENCIA["identificacion"],
+        required=False,
+        max_length=LONGITUDES_DATOS_TRANSFERENCIA["identificacion"],
+        widget=forms.TextInput(attrs={"class": "form-control", "autocomplete": "off"}),
+        help_text="No se valida contra un padrón todavía inexistente.",
+    )
+    cbu_alias = forms.CharField(
+        label=ETIQUETAS_DATOS_TRANSFERENCIA["cbu_alias"],
+        required=False,
+        max_length=LONGITUDES_DATOS_TRANSFERENCIA["cbu_alias"],
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "autocomplete": "off",
+                "placeholder": "CBU o alias real informado",
+            }
+        ),
+        help_text=(
+            "Dato textual; no se acepta «frecuente» como cuenta ni se verifica "
+            "con el banco."
+        ),
+    )
+    correo_comprobante = forms.CharField(
+        label=ETIQUETAS_DATOS_TRANSFERENCIA["correo_comprobante"],
+        required=False,
+        max_length=LONGITUDES_DATOS_TRANSFERENCIA["correo_comprobante"],
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "autocomplete": "off", "inputmode": "email"}
+        ),
+        help_text=(
+            "Correo de destino; se guarda el texto ingresado normalizado, sin "
+            "copiarlo de la sesión y sin enviar mensajes."
+        ),
+    )
+    centro_costo = forms.CharField(
+        label=ETIQUETAS_DATOS_TRANSFERENCIA["centro_costo"],
+        required=False,
+        max_length=LONGITUDES_DATOS_TRANSFERENCIA["centro_costo"],
+        widget=forms.TextInput(attrs={"class": "form-control", "autocomplete": "off"}),
+        help_text="Se informa como texto y es independiente de la unidad requirente.",
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.datos_transferencia: dict[str, str] | None = None
+
+    def clean_cbu_alias(self) -> str:
+        cbu_alias = self.cleaned_data.get("cbu_alias", "").strip()
+        if cbu_alias and es_cbu_alias_frecuente(cbu_alias):
+            raise ValidationError(MENSAJE_CBU_ALIAS_FRECUENTE, code="invalid")
+        return cbu_alias
+
+    def clean_correo_comprobante(self) -> str:
+        correo = self.cleaned_data.get("correo_comprobante", "").strip()
+        if not correo:
+            return correo
+        try:
+            validate_email(correo)
+        except ValidationError as exc:
+            raise ValidationError(
+                MENSAJE_CORREO_COMPROBANTE_INVALIDO, code="invalid"
+            ) from exc
+        return correo
+
+    def clean(self) -> dict[str, Any]:
+        datos = super().clean()
+        if not any(datos.get(campo) for campo in CAMPOS_DATOS_TRANSFERENCIA):
+            self.datos_transferencia = None
+            return datos
+
+        # Un error de campo (correo inválido, «frecuente» o longitud excedida)
+        # ya explica el problema; no se duplica como dato faltante del bloque.
+        if self.errors:
+            self.datos_transferencia = None
+            return datos
+
+        try:
+            self.datos_transferencia = validar_datos_transferencia(datos)
+        except DatosTransferenciaInvalidInputError as exc:
+            for campo in exc.campos_faltantes:
+                self.add_error(
+                    campo,
+                    "Este dato es obligatorio si completa el bloque de transferencia.",
+                )
+            self.add_error(None, str(exc))
+            self.datos_transferencia = None
+        return datos
 
 
 class DecisionGastoForm(forms.Form):
