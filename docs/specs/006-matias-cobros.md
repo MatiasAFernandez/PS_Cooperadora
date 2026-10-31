@@ -1,5 +1,9 @@
 # SPEC-006 — Registro de cobros y comprobantes de ingreso
 
+## Validación y alcance posterior al 29/10/2026
+
+La [demo](../evidence/demo-2026-10-29.md) confirma ARS, cobro inicial posible antes de factura y cobro único como caso habitual, sin eliminar parciales. La acción conjunta explícita del 25/10 ya formaba parte del código presentado: exponer pasos separados no acredita ausencia de esa capacidad. #80 revisa descubribilidad/recorrido; #76 simplifica comprobantes externos. No quedan validadas todas las diferencias, retenciones/comisiones, imputaciones o anulaciones. La mera carga no acredita ingreso.
+
 - Estado: perfil provisional de demo precisado el 22/10/2026; validación
   institucional pendiente y separada del cierre técnico.
 - Autor y responsable principal: Matías Alejandro Fernández.

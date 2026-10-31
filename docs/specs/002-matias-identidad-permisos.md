@@ -1,5 +1,9 @@
 # SPEC-002 — Identidad recibida y permisos internos
 
+## Validación y alcance posterior al 29/10/2026
+
+El tramo sintético de identidad/capacidades de facturación está integrado y verificado mediante #52/#61/#69; #21 se concilia como cierre técnico. La [devolución](../evidence/demo-2026-10-29.md) pide administración diferenciada y preparación del origen institucional: [SPEC-014](014-matias-administracion-catalogos-capacidades.md) y [SPEC-016](016-matias-preparacion-identidad-institucional.md). La oferta de un endpoint no implementa SSO ni valida toda la matriz institucional. Correo de área puede agrupar operaciones; no sustituye subject_id ni fusiona actores. Los cortes fechados siguientes conservan su contexto histórico.
+
 ## Corte de implementación #21/#23 — 16/10/2026
 
 La rama de trabajo extiende Actor de forma compatible con email_registrado

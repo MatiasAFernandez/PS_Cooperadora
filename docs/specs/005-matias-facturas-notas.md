@@ -1,5 +1,9 @@
 # SPEC-005 — Registro de facturas y notas emitidas externamente
 
+## Validación y alcance posterior al 29/10/2026
+
+La [demo](../evidence/demo-2026-10-29.md) solicita evitar el archivo duplicado de Xubio y conservar referencias y trazabilidad de envío. [SPEC-018](018-matias-registro-externo-simplificado.md)/#76 define el cambio por validar/implementar junto con revisión y cierre de SPEC-007. Hasta integrarlo, PDF obligatorio y sus garantías describen el código demostrado. #84 investiga exportación disponible sin asumir JSON ni autorizar API.
+
 > Ampliación aprobada por Matías el 25/10/2026: Xubio predeterminado y Otro con aclaración para los tres tipos; etiquetas documentales neutrales y códigos históricos conservados. Ver [SPEC-012](012-mejoras-demo-consultas.md).
 
 - Estado: perfil provisional de demo precisado; pendiente de validación institucional.

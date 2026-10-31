@@ -1,5 +1,14 @@
 # I2 - paquete de Issues de Matías
 
+Actualización de coordinación al 31/10/2026: la demostración del 29/10 ya se
+realizó sobre `09095a6`, confirmado por Matías. Ver
+[evidencia y devolución](../../evidence/demo-2026-10-29.md) y #29 como fuente
+operativa. #21 se concilia por evidencia técnica integrada; #29 conserva
+pendientes documentales/informe y #30 resúmenes. Nuevas necesidades #76–#85,
+SPEC-014–018, con dependencias y límites en sus issues. Las fechas y tablas
+iniciales de este paquete conservan la propuesta histórica, sin reemplazar
+el seguimiento actual ni declarar aceptación integral de Cooperadora.
+
 Estado: Issues [#20 a #30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues?q=is%3Aissue+is%3Aopen+%5BI2%5D)
 publicadas el 09/10/2026 y asignadas a Matías. Los IDs `I2-01` a `I2-11` son
 referencias locales; el número real figura en la tabla. La publicación no

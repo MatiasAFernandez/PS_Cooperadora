@@ -1,5 +1,9 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
+## Validación y alcance posterior al 29/10/2026
+
+La [demo](../evidence/demo-2026-10-29.md) recorre presentación/observación/corrección y confirma poder aportar comprobante inicial cuando ya hubo pago. No valida individualmente todas las obligatoriedades ni delegaciones. #80 sigue la unificación de formularios comunidad/grupos y el recorrido compacto; [SPEC-015](015-matias-avisos-pendientes.md)/#78 especifica avisos y acceso a pendientes. Son cambios por realizar; el cierre técnico de #23 se conserva.
+
 ## Ajuste de demo aprobado por Matías el 26/10/2026 (PR #73)
 
 Observaciones del solicitante es opcional, tanto al presentar como al corregir.

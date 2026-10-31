@@ -1,5 +1,12 @@
 # SPEC-012 — Ajustes de consulta y presentación tras ensayo local
 
+Estado conciliado al 31/10/2026: los ajustes del ensayo se integraron mediante
+PR #71/#73 antes de la demo. Matías confirma que `09095a6` fue la versión
+demostrada el 29/10/2026. El texto de preparación de rama siguiente describe
+el corte original; no es un pendiente actual de implementación. #30 mantiene
+resúmenes globales pendientes; #80 trata la nueva devolución sobre usabilidad,
+unificación y descubribilidad. Ver [acta](../evidence/demo-2026-10-29.md).
+
 Alcance aprobado por Matías el 25/10/2026 durante el ensayo guiado con datos
 sintéticos. Implementación en rama de tarea para revisión; no equivale a validación de
 Cooperadora, revisión cruzada ni integración. Relacionado con #30 (consultas),
