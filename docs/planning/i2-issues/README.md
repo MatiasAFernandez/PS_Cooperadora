@@ -3,8 +3,8 @@
 Actualización de coordinación al 31/10/2026: la demostración del 29/10 ya se
 realizó sobre `09095a6`, confirmado por Matías. Ver
 [evidencia y devolución](../../evidence/demo-2026-10-29.md) y #29 como fuente
-operativa. #21 se concilia por evidencia técnica integrada; #29 conserva
-pendientes documentales/informe y #30 resúmenes. Nuevas necesidades #76–#85,
+operativa. #21 se concilia por evidencia técnica integrada; #29 sigue
+la entrega documental y el informe; #30 conserva los resúmenes pendientes. Nuevas necesidades #76–#85,
 SPEC-014–018, con dependencias y límites en sus issues. Las fechas y tablas
 iniciales de este paquete conservan la propuesta histórica, sin reemplazar
 el seguimiento actual ni declarar aceptación integral de Cooperadora.
