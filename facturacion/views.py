@@ -15,7 +15,8 @@ from documentos.policy import ArchivoInvalido
 from documentos.services import documentos_visibles
 from identidad.services import has_capability, resolve_actor
 
-from .cobros import resumen_cobros
+from .atencion import acciones_inmediatas, solicitudes_atencion
+from .cobros import puede_corregir_cobro, resumen_cobros
 from .comprobantes import resumen_comprobantes
 from .consultas import filtrar_solicitudes
 from .forms import FiltroFacturacionForm, SolicitudFacturacionForm
@@ -149,6 +150,9 @@ class ListaSolicitudesView(FacturacionView):
                 "pagina": pagina,
                 "filtro_form": filtro,
                 "filtros_query": parametros.urlencode(),
+                "atencion": solicitudes_atencion(
+                    self.actor, filtrar_solicitudes_visibles(self.actor)
+                ),
             },
         )
 
@@ -212,6 +216,8 @@ class DetalleSolicitudView(FacturacionView):
         ).select_related("comprobante", "cobro")
         for objeto in [*comprobantes, *cobros]:
             objeto.respaldo_vinculado = respaldo_actual(objeto)
+        for cobro in cobros:
+            cobro.puede_corregir = puede_corregir_cobro(self.actor, cobro)
         historial = [e.como_historial() for e in eventos] + [
             c.como_historial() for c in comprobantes
         ]
@@ -247,6 +253,7 @@ class DetalleSolicitudView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "historial": historial,
+                "acciones_inmediatas": acciones_inmediatas(self.actor, solicitud),
                 "pendientes_revision": pendientes_revision,
                 "diagnostico": diagnostico_actual,
                 "puede_cerrar": has_capability(self.actor, "facturacion.cerrar")

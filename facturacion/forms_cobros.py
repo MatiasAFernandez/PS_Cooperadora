@@ -55,6 +55,23 @@ class CobroForm(forms.Form):
         return datos
 
 
+class CorreccionCobroForm(forms.Form):
+    medio = CobroForm.base_fields["medio"]
+    numero_operacion = CobroForm.base_fields["numero_operacion"]
+    fecha_operacion = forms.DateField(
+        label="Fecha de operación",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    importe = CobroForm.base_fields["importe"]
+    archivo = forms.FileField(
+        label="Nuevo respaldo (opcional; si no, se conserva una nueva versión del actual)",
+        required=False,
+    )
+    motivo = forms.CharField(
+        label="Motivo de la corrección", max_length=2000, widget=forms.Textarea
+    )
+
+
 class VerificacionCobroForm(forms.Form):
     resultado = forms.ChoiceField(
         choices=[("", "Seleccioná…"), *VerificacionCobro.Resultado.choices]

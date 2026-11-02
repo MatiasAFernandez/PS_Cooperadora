@@ -190,7 +190,7 @@ def test_aislamiento_consultas_propias_a_y_b(create_actor: Any, auth_client: Any
     solicitudes_a = list(resp_list_a.context["solicitudes"])
     assert solicitud_a in solicitudes_a
     assert solicitud_b not in solicitudes_a
-    assert b"Presentar gasto" in resp_list_a.content
+    assert b"Solicitud de Gasto" in resp_list_a.content
     assert b"Nueva Solicitud" in resp_list_a.content
 
     # Listado para B

@@ -1,5 +1,33 @@
 # SPEC-015 — Avisos y acceso a pendientes
 
+## Tramo interno solicitado el 02/11/2026 — #78/#80
+
+Sin enviar correos, el listado muestra por encima de los filtros hasta dos
+solicitudes propias abiertas con acciones ejecutables por el titular, ordenadas
+por su actualización más reciente. No muestra acciones pendientes de Cooperadora
+ni trámites terminales. Las tarjetas son independientes del filtro del listado.
+Durante los últimos siete días naturales del mes se destaca el cierre próximo,
+excluyendo solicitudes creadas en esa última semana; sólo se avisa si el titular
+tiene una acción pendiente. No crea plazos de deuda ni bloquea solicitudes.
+
+Al operador se muestran hasta tres solicitudes abiertas con trabajo ejecutable,
+ordenadas por la última intervención del titular (presentación/corrección,
+aporte documental o cobro). Permanecen mientras quede una acción del operador,
+aunque haya sido él quien intervino por última vez. Sólo se resume la siguiente
+acción; la cabecera del detalle expone la secuencia completa de acciones posibles.
+Las observadas esperan corrección del titular. Un cobro pendiente de verificación
+no se pide de nuevo al solicitante. Un lector sin escritura no recibe acciones.
+
+Los cobros propios rechazados o con respaldo observado/rechazado ofrecen corregir
+el cobro según [SPEC-019](019-matias-correccion-cobros.md)/#87. Se prioriza esa
+subsanación frente a pedir otro ingreso. Los pendientes pueden corregirse desde
+el detalle sin que su mera espera de revisión los convierta en tarea obligatoria.
+
+Los enlaces reutilizan permisos y servicios existentes: observar/corregir,
+registrar factura, revisar respaldo, verificar ingreso, actualizar vínculo y
+cierre explícito. La sugerencia no ejecuta acciones ni acredita una revisión.
+Los envíos por correo y sus definiciones siguen fuera de este tramo.
+
 - Estado: para validar eventos y destinatarios; necesidad confirmada.
 - Issue: [#78](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/78).
 - Responsable principal: Matías Alejandro Fernández.

@@ -58,11 +58,18 @@ def test_navegacion_por_capacidad_en_bases_y_inicio(
 
     html = render_to_string(plantilla, {"actor": actor})
 
-    for capacidad, nombre_ruta in _RUTAS.items():
+    rutas_visibles = set(rutas_visibles)
+    for circuito in ("gastos", "facturacion"):
+        if any(circuito + "." + permiso in capacidades for permiso in (
+            "consultar_propias", "consultar_todas"
+        )):
+            rutas_visibles.discard(circuito + ":presentar")
+
+    for _capacidad, nombre_ruta in _RUTAS.items():
         enlace = f'href="{reverse(nombre_ruta)}"'
-        if capacidad in capacidades:
+        if nombre_ruta in rutas_visibles:
             assert enlace in html
-        elif nombre_ruta not in rutas_visibles:
+        else:
             assert enlace not in html
 
 

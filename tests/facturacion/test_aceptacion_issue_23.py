@@ -25,7 +25,8 @@ def test_ciclo_http_con_csrf_historial_y_reenvios(escenario, datos):
 
     alta = reverse("facturacion:presentar")
     inicio = a.get(reverse("identidad:inicio"))
-    assert f'href="{alta}"' in inicio.content.decode()
+    assert f'href="{alta}"' not in inicio.content.decode()
+    assert f'href="{reverse("facturacion:lista")}"' in inicio.content.decode()
     formulario = a.get(alta)
     token = formulario.context["token"]
     contenido = dict(datos, token_presentacion=token)

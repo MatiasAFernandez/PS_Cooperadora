@@ -9,7 +9,19 @@ from django.utils.functional import cached_property
 from comunes.contracts import EventoHistorialDTO
 
 
+class CobroVigenteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(sustituido=False)
+
+
 class CobroExterno(models.Model):
+    sustituido = models.BooleanField(default=False, editable=False)
+    reemplaza = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="correccion"
+    )
+    motivo_correccion = models.TextField(blank=True)
+    objects = CobroVigenteManager()
+    todos = models.Manager()
     solicitud = models.ForeignKey(
         "facturacion.SolicitudFacturacion", on_delete=models.PROTECT, related_name="cobros"
     )
@@ -27,7 +39,9 @@ class CobroExterno(models.Model):
         ordering = ["fecha_registro", "id"]
         constraints = [
             models.UniqueConstraint(
-                fields=["medio", "numero_operacion"], name="uq_cobro_operacion_global"
+                fields=["medio", "numero_operacion"],
+                name="uq_cobro_operacion_global",
+                condition=models.Q(sustituido=False),
             ),
             models.CheckConstraint(
                 condition=models.Q(
@@ -56,10 +70,18 @@ class CobroExterno(models.Model):
     @cached_property
     def numero_en_solicitud(self):
         """Ordinal visible; la identidad global se conserva para URLs y relaciones."""
-        return type(self).objects.filter(solicitud_id=self.solicitud_id).filter(
-            models.Q(fecha_registro__lt=self.fecha_registro)
-            | models.Q(fecha_registro=self.fecha_registro, pk__lte=self.pk)
-        ).count()
+        original = self
+        while original.reemplaza_id:
+            original = original.reemplaza
+        return (
+            type(self)
+            .todos.filter(solicitud_id=self.solicitud_id, reemplaza__isnull=True)
+            .filter(
+                models.Q(fecha_registro__lt=original.fecha_registro)
+                | models.Q(fecha_registro=original.fecha_registro, pk__lte=original.pk)
+            )
+            .count()
+        )
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
@@ -75,13 +97,13 @@ class CobroExterno(models.Model):
         return EventoHistorialDTO(
             evento_id=self.pk,
             tramite_ref=f"facturacion:{self.solicitud_id}",
-            tipo_evento="cobro_informado",
+            tipo_evento="cobro_corregido" if self.reemplaza_id else "cobro_informado",
             actor_id=str(self.actor_id),
             fecha_hora=self.fecha_registro,
             estado_resultante="PENDIENTE",
             motivo_o_detalle=(
                 f"Cobro #{numero_cobro}. {self.importe:.2f} ARS. "
-                f"{self.medio}: {self.numero_operacion}."
+                f"{self.medio}: {self.numero_operacion}. {self.motivo_correccion}"
             ),
         )
 

@@ -1,14 +1,32 @@
 {% extends "facturacion/base.html" %}
 {% block content %}<h2>Solicitudes de facturación</h2>
 {% if "facturacion.presentar" in actor.capabilities %}<p><a class="btn" href="{% url 'facturacion:presentar' %}">Nueva solicitud</a></p>{% endif %}
+{% include "facturacion/atencion.html" %}
 <form method="get">
 {% include "comunes/campos_filtro.html" with form=filtro_form %}
 <button type="submit">Filtrar</button> <a href="{% url 'facturacion:lista' %}">Quitar filtro</a>
 </form>
-<table><thead><tr><th>Número del solicitante</th><th>Presentación</th><th>Receptor</th><th>Estado</th></tr></thead><tbody>
-{% for solicitud in pagina %}<tr><td><a href="{% url 'facturacion:detalle' solicitud.pk %}">{{ solicitud.numero_solicitante }}</a><br><small>{{ solicitud.correo_solicitante }}</small></td>
-<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td><span class="badge">{{ solicitud.get_estado_display }}</span> — seguimiento: {{ solicitud.estado_seguimiento }}</td></tr>
-{% empty %}<tr><td colspan="4">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
+<div class="solicitudes-scroll" tabindex="0" role="region" aria-label="Lista de solicitudes de facturación">
+<table class="solicitudes-tabla"><thead><tr><th>ID de Solicitud</th><th>Fecha de Presentación</th><th>Receptor</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>
+{% for solicitud in pagina %}<tr><td>{{ solicitud.numero_solicitante }}<br><small>{{ solicitud.correo_solicitante }}</small></td>
+<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td><span class="badge">{{ solicitud.get_estado_display }}</span> — seguimiento: {{ solicitud.estado_seguimiento }}</td><td><a class="btn" href="{% url 'facturacion:detalle' solicitud.pk %}">Ver Detalle</a></td></tr>
+{% empty %}<tr><td colspan="5">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
+</div>
 <nav aria-label="Páginas">{% if pagina.has_previous %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
 <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-{% if pagina.has_next %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endblock %}
+{% if pagina.has_next %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>
+<script>
+document.querySelectorAll('.solicitudes-scroll').forEach(function (region) {
+    const tabla = region.querySelector('table');
+    function ajustar() {
+        const filas = Array.from(tabla.tBodies[0].rows).slice(0, 4);
+        const alto = tabla.tHead.getBoundingClientRect().height +
+            filas.reduce(function (total, fila) { return total + fila.getBoundingClientRect().height; }, 0);
+        region.style.maxHeight = Math.ceil(alto + 1) + 'px';
+    }
+    ajustar();
+    if (window.ResizeObserver) new ResizeObserver(ajustar).observe(tabla);
+    else window.addEventListener('resize', ajustar);
+});
+</script>
+{% endblock %}
