@@ -5,6 +5,49 @@
 {% block content %}
 <h3>Presentar Solicitud de Gasto</h3>
 
+{% if resumen_deuda and resumen_deuda.tiene_bloqueo %}
+    <div class="message message-error" role="alert" style="margin-bottom: 1.25rem;">
+        <div style="flex: 1;">
+            <strong style="display: block; font-size: var(--text-base, 1rem); margin-bottom: 0.25rem;">
+                ⚠️ Bloqueo de nuevas solicitudes por comprobantes adeudados
+            </strong>
+            <p style="margin: 0 0 0.5rem 0;">
+                Registrás <strong>{{ resumen_deuda.total_en_mora }}</strong> compra(s) directa(s) con rendición de factura fiscal definitiva vencida (más de {{ resumen_deuda.dias_gracia }} días desde el pago). El límite máximo permitido es de {{ resumen_deuda.max_mora_permitida }} trámite(s) en mora.
+            </p>
+            <p style="margin: 0 0 0.5rem 0;">
+                Debés adjuntar la factura correspondiente a los trámites pendientes para rehabilitar la presentación:
+            </p>
+            <ul style="margin: 0; padding-left: 1.25rem;">
+                {% for item in resumen_deuda.solicitudes_en_mora %}
+                    <li>
+                        <strong>Solicitud #{{ item.solicitud_id }}</strong>: {{ item.concepto }} — Pagada el {{ item.fecha_pago|date:"d/m/Y" }} (hace {{ item.dias_transcurridos }} días).
+                        <a href="{% url 'gastos:detalle' pk=item.solicitud_id %}" style="margin-left: 0.5rem; text-decoration: underline;">Ver trámite</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% elif resumen_deuda and resumen_deuda.tiene_deuda %}
+    <div class="message message-warning" role="alert" style="margin-bottom: 1.25rem;">
+        <div style="flex: 1;">
+            <strong style="display: block; font-size: var(--text-base, 1rem); margin-bottom: 0.25rem;">
+                ℹ️ Aviso preventivo de rendición documental
+            </strong>
+            <p style="margin: 0 0 0.5rem 0;">
+                Tenés <strong>{{ resumen_deuda.total_pendientes }}</strong> compra(s) directa(s) pagada(s) pendiente(s) de factura definitiva. Recordá que el plazo de gracia para adjuntar la factura es de {{ resumen_deuda.dias_gracia }} días posteriores al pago.
+            </p>
+            <ul style="margin: 0; padding-left: 1.25rem;">
+                {% for item in resumen_deuda.solicitudes_pendientes %}
+                    <li>
+                        <strong>Solicitud #{{ item.solicitud_id }}</strong>: {{ item.concepto }} — Pagada el {{ item.fecha_pago|date:"d/m/Y" }} (hace {{ item.dias_transcurridos }} días{% if item.en_mora %} — <span style="font-weight: 600; color: var(--color-error, #b91c1c);">vencida</span>{% endif %}).
+                        <a href="{% url 'gastos:detalle' pk=item.solicitud_id %}" style="margin-left: 0.5rem; text-decoration: underline;">Ver trámite</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}
+
 <form method="post" action="{% url 'gastos:presentar' %}">
     {% csrf_token %}
 
@@ -91,6 +134,10 @@
         </p>
     </fieldset>
 
-    <button type="submit" class="btn">Enviar Solicitud</button>
+    {% if resumen_deuda and resumen_deuda.tiene_bloqueo %}
+        <button type="submit" class="btn" disabled style="opacity: 0.5; cursor: not-allowed; background-color: var(--color-error, #dc2626);" title="Presentación bloqueada por mora en rendición de comprobantes">Presentación Bloqueada</button>
+    {% else %}
+        <button type="submit" class="btn">Enviar Solicitud</button>
+    {% endif %}
 </form>
 {% endblock %}

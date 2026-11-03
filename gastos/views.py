@@ -70,6 +70,7 @@ from gastos.proyeccion_documental import proyectar_documentos
 from gastos.queries import visible_expenses
 from gastos.services import (
     ConcurrencyConflictError,
+    DeudaDocumentalBloqueoError,
     ExpenseNotFoundError,
     ExpensePermissionDeniedError,
     InvalidDecisionInputError,
@@ -80,6 +81,7 @@ from gastos.services import (
     decide_expense,
     obtener_alicuota_atp,
     obtener_base_imponible_atp,
+    verificar_deuda_documental_solicitante,
 )
 
 
@@ -250,12 +252,18 @@ class SolicitudGastoCreateView(View):
         if not has_capability(actor, "gastos.presentar"):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
 
+        resumen_deuda = verificar_deuda_documental_solicitante(actor)
         form = SolicitudGastoForm()
         datos_form = DatosTransferenciaForm()
         return render(
             request,
             "gastos/solicitud_form.html",
-            {"form": form, "datos_form": datos_form, "actor": actor},
+            {
+                "form": form,
+                "datos_form": datos_form,
+                "actor": actor,
+                "resumen_deuda": resumen_deuda,
+            },
         )
 
     def post(self, request: HttpRequest) -> HttpResponse:
@@ -266,6 +274,8 @@ class SolicitudGastoCreateView(View):
 
         if not has_capability(actor, "gastos.presentar"):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
+
+        resumen_deuda = verificar_deuda_documental_solicitante(actor)
 
         cc_list = request.POST.getlist("centro_costo")
         cc_catalog_raw = ""
@@ -323,13 +333,39 @@ class SolicitudGastoCreateView(View):
             )
         else:
             datos_form = DatosTransferenciaForm({})
+
+        if resumen_deuda.tiene_bloqueo:
+            form.add_error(
+                None,
+                f"Presentación bloqueada: Registrás {resumen_deuda.total_en_mora} compras directas "
+                f"con rendición de factura definitiva vencida "
+                f"(más de {resumen_deuda.dias_gracia} días). "
+                f"Debés regularizar los comprobantes pendientes antes de presentar nuevas.",
+            )
+            return render(
+                request,
+                "gastos/solicitud_form.html",
+                {
+                    "form": form,
+                    "datos_form": datos_form,
+                    "actor": actor,
+                    "resumen_deuda": resumen_deuda,
+                },
+                status=400,
+            )
+
         form_valido = form.is_valid()
         datos_valido = datos_form.is_valid()
         if not (form_valido and datos_valido):
             return render(
                 request,
                 "gastos/solicitud_form.html",
-                {"form": form, "datos_form": datos_form, "actor": actor},
+                {
+                    "form": form,
+                    "datos_form": datos_form,
+                    "actor": actor,
+                    "resumen_deuda": resumen_deuda,
+                },
                 status=200,
             )
 
@@ -343,12 +379,30 @@ class SolicitudGastoCreateView(View):
                 centro_costo=form.cleaned_data.get("centro_costo"),
                 datos_transferencia=datos_form.datos_transferencia,
             )
+        except DeudaDocumentalBloqueoError as exc:
+            form.add_error(None, str(exc))
+            return render(
+                request,
+                "gastos/solicitud_form.html",
+                {
+                    "form": form,
+                    "datos_form": datos_form,
+                    "actor": actor,
+                    "resumen_deuda": resumen_deuda,
+                },
+                status=400,
+            )
         except DatosTransferenciaInvalidInputError as exc:
             datos_form.add_error(None, str(exc))
             return render(
                 request,
                 "gastos/solicitud_form.html",
-                {"form": form, "datos_form": datos_form, "actor": actor},
+                {
+                    "form": form,
+                    "datos_form": datos_form,
+                    "actor": actor,
+                    "resumen_deuda": resumen_deuda,
+                },
                 status=400,
             )
 
@@ -400,6 +454,10 @@ class SolicitudGastoListView(View):
         parametros.pop("page", None)
         parametros.pop("pagina", None)
 
+        resumen_deuda = None
+        if has_capability(actor, "gastos.presentar"):
+            resumen_deuda = verificar_deuda_documental_solicitante(actor)
+
         return render(
             request,
             "gastos/solicitud_list.html",
@@ -410,6 +468,7 @@ class SolicitudGastoListView(View):
                 "filtros_query": parametros.urlencode(),
                 "actor": actor,
                 "filtro_form": filtro_form,
+                "resumen_deuda": resumen_deuda,
             },
         )
 

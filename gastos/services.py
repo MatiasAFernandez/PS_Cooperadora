@@ -1,13 +1,18 @@
 """Servicios de negocio para el módulo de gastos."""
 
 from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError, connection, transaction
+from django.db.models import Prefetch, Q
+from django.utils import timezone
 
 from comunes.models import Circuito, TramiteBase
+from documentos.models import Documento, RevisionDocumento
 from gastos.auth import has_capability
 from gastos.datos_transferencia import validar_datos_transferencia
 from gastos.models import (
@@ -44,6 +49,19 @@ class ConcurrencyConflictError(ExpenseError):
 
 class InvalidTransitionError(ExpenseError):
     """Transición no permitida desde el estado actual en base de datos (HTTP 409)."""
+
+
+class DeudaDocumentalBloqueoError(ExpenseError):
+    """Lanzada cuando un solicitante supera el máximo permitido de trámites en mora documental."""
+
+    def __init__(
+        self,
+        mensaje: str,
+        solicitudes_en_mora: tuple[Any, ...] | list[Any] = (),
+    ) -> None:
+        super().__init__(mensaje)
+        self.mensaje = mensaje
+        self.solicitudes_en_mora = tuple(solicitudes_en_mora)
 
 
 def can_decide_expense(actor: Any, expense: SolicitudGasto, action: str) -> bool:
@@ -254,6 +272,153 @@ def _reservar_numero_solicitud_gasto() -> int:
                 return numero
 
 
+DIAS_GRACIA_RENDICION_FACTURA = 15
+MAX_TRAMITES_MORA_PERMITIDOS = 2
+
+
+@dataclass(frozen=True)
+class TramiteDeudaDocumentalDTO:
+    """Detalle de una solicitud en seguimiento por deuda documental."""
+
+    solicitud: SolicitudGasto
+    fecha_pago: date
+    dias_transcurridos: int
+    en_mora: bool
+
+    @property
+    def solicitud_id(self) -> int:
+        return self.solicitud.pk
+
+    @property
+    def concepto(self) -> str:
+        return self.solicitud.concepto
+
+
+@dataclass(frozen=True)
+class ResumenDeudaDocumentalDTO:
+    """Consolidado de deudas documentales para un solicitante."""
+
+    solicitudes_pendientes: tuple[TramiteDeudaDocumentalDTO, ...] = ()
+    solicitudes_en_mora: tuple[TramiteDeudaDocumentalDTO, ...] = ()
+    dias_gracia: int = DIAS_GRACIA_RENDICION_FACTURA
+    max_mora_permitida: int = MAX_TRAMITES_MORA_PERMITIDOS
+
+    @property
+    def total_pendientes(self) -> int:
+        return len(self.solicitudes_pendientes)
+
+    @property
+    def total_en_mora(self) -> int:
+        return len(self.solicitudes_en_mora)
+
+    @property
+    def tiene_deuda(self) -> bool:
+        return len(self.solicitudes_pendientes) > 0
+
+    @property
+    def tiene_bloqueo(self) -> bool:
+        return len(self.solicitudes_en_mora) > self.max_mora_permitida
+
+
+def verificar_deuda_documental_solicitante(
+    actor: Any,
+    *,
+    fecha_referencia: date | None = None,
+) -> ResumenDeudaDocumentalDTO:
+    """Evalúa la deuda documental de compras directas pagadas para un solicitante.
+
+    Reglas canónicas (GAST-R07):
+    - Sólo aplica al solicitante (solicitante_id == actor.subject_id).
+    - Sólo audita compras directas (tipo_flujo == COMPRA_DIRECTA). Los reintegros
+      quedan rendidos al pagar y no generan deuda documental posterior.
+    - Requiere pago efectivo registrado (pago_externo existente).
+    - Un trámite adeuda factura definitiva si carece de un Documento de tipo
+      FACTURA_PROVEEDOR vigente (no reemplazado) cuyo último dictamen no sea
+      RECHAZADO.
+    - Se computa la antigüedad en días respecto a fecha_referencia (o fecha local).
+    - Mora: días_transcurridos > DIAS_GRACIA_RENDICION_FACTURA (15 días).
+    - Bloqueo: total_en_mora > MAX_TRAMITES_MORA_PERMITIDOS (2 trámites).
+    """
+    user_id = (
+        getattr(actor, "subject_id", None)
+        or getattr(actor, "pk", None)
+        or getattr(actor, "id", None)
+    )
+    if user_id is None:
+        return ResumenDeudaDocumentalDTO()
+
+    fecha_actual = fecha_referencia if fecha_referencia is not None else timezone.localdate()
+
+    solicitudes = list(
+        SolicitudGasto.objects.filter(
+            solicitante_id=user_id,
+            tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
+            pago_externo__isnull=False,
+        )
+        .select_related("pago_externo")
+        .order_by("pago_externo__fecha_pago", "pk")
+    )
+
+    if not solicitudes:
+        return ResumenDeudaDocumentalDTO()
+
+    solicitudes_ids = [s.pk for s in solicitudes]
+    tramites_ids = [s.tramite_base_id for s in solicitudes if s.tramite_base_id]
+
+    documentos_candidatos = (
+        Documento.objects.filter(
+            Q(solicitud_gasto_id__in=solicitudes_ids) | Q(tramite_base_id__in=tramites_ids),
+            tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+            sucesor__isnull=True,
+        )
+        .prefetch_related(
+            Prefetch(
+                "revisiones",
+                queryset=RevisionDocumento.objects.order_by("-id"),
+                to_attr="revisiones_ordenadas",
+            )
+        )
+    )
+
+    solicitudes_con_factura_valida: set[int] = set()
+    tramite_a_solicitud = {s.tramite_base_id: s.pk for s in solicitudes if s.tramite_base_id}
+
+    for doc in documentos_candidatos:
+        ultima_rev = (
+            doc.revisiones_ordenadas[0]
+            if getattr(doc, "revisiones_ordenadas", None)
+            else None
+        )
+        if ultima_rev is None or ultima_rev.resultado != RevisionDocumento.Resultado.RECHAZADO:
+            if doc.solicitud_gasto_id:
+                solicitudes_con_factura_valida.add(doc.solicitud_gasto_id)
+            elif doc.tramite_base_id and doc.tramite_base_id in tramite_a_solicitud:
+                solicitudes_con_factura_valida.add(tramite_a_solicitud[doc.tramite_base_id])
+
+    pendientes: list[TramiteDeudaDocumentalDTO] = []
+    en_mora: list[TramiteDeudaDocumentalDTO] = []
+
+    for s in solicitudes:
+        if s.pk not in solicitudes_con_factura_valida:
+            fecha_pago = s.pago_externo.fecha_pago
+            dias = max(0, (fecha_actual - fecha_pago).days)
+            mora = dias > DIAS_GRACIA_RENDICION_FACTURA
+            item = TramiteDeudaDocumentalDTO(
+                solicitud=s,
+                fecha_pago=fecha_pago,
+                dias_transcurridos=dias,
+                en_mora=mora,
+            )
+            pendientes.append(item)
+            if mora:
+                en_mora.append(item)
+
+    return ResumenDeudaDocumentalDTO(
+        solicitudes_pendientes=tuple(pendientes),
+        solicitudes_en_mora=tuple(en_mora),
+    )
+
+
 @transaction.atomic
 def crear_solicitud_gasto(
     *,
@@ -264,6 +429,7 @@ def crear_solicitud_gasto(
     tipo_flujo: str = TipoFlujoGasto.COMPRA_DIRECTA,
     centro_costo: Any = None,
     datos_transferencia: Mapping[str, Any] | None = None,
+    fecha_referencia: date | None = None,
 ) -> SolicitudGasto:
     """Crea cabecera y solicitud juntas con valores fijados por el servidor.
 
@@ -273,9 +439,20 @@ def crear_solicitud_gasto(
     Si se selecciona un centro de costo y no se ingresó texto libre en la
     transferencia, el nombre del centro se sincroniza automáticamente en la
     revisión de datos de transferencia.
+    Aplica control determinista de mora documental (GAST-R07) para compras directas.
     """
     if not has_capability(actor, "gastos.presentar"):
         raise PermissionDenied("El actor no posee la capacidad 'gastos.presentar'.")
+
+    # Control determinista de deuda documental (GAST-R07)
+    resumen_deuda = verificar_deuda_documental_solicitante(actor, fecha_referencia=fecha_referencia)
+    if resumen_deuda.tiene_bloqueo:
+        raise DeudaDocumentalBloqueoError(
+            f"El solicitante registra {resumen_deuda.total_en_mora} trámites con rendición de "
+            f"factura definitiva vencida (límite permitido: {resumen_deuda.max_mora_permitida}). "
+            f"Debe regularizar los comprobantes pendientes antes de presentar nuevas solicitudes.",
+            solicitudes_en_mora=resumen_deuda.solicitudes_en_mora,
+        )
 
     if tipo_flujo not in TipoFlujoGasto.values:
         tipo_flujo = TipoFlujoGasto.COMPRA_DIRECTA
