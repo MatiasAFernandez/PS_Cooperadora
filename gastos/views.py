@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -355,7 +356,7 @@ class SolicitudGastoCreateView(View):
 
 
 class SolicitudGastoListView(View):
-    """Listado de solicitudes de gasto visibles para el actor."""
+    """Listado de solicitudes de gasto visibles para el actor (panel compacto Master-Detail)."""
 
     def get(self, request: HttpRequest) -> HttpResponse:
         result = _enforce_actor(request)
@@ -363,7 +364,11 @@ class SolicitudGastoListView(View):
             return result
         actor = result
 
-        solicitudes = visible_expenses(actor)
+        solicitudes = (
+            visible_expenses(actor)
+            .select_related("centro_costo", "pago_externo")
+            .prefetch_related("revisiones_datos_transferencia")
+        )
         filtro_form = FiltroEstadoGastoForm(request.GET)
         if filtro_form.is_valid():
             solicitudes = filtro_form.filtrar_fecha(solicitudes, "fecha_creacion")
@@ -375,10 +380,37 @@ class SolicitudGastoListView(View):
                 solicitudes = solicitudes.filter(concepto__icontains=concepto)
         else:
             solicitudes = solicitudes.none()
+
+        paginator = Paginator(solicitudes, 25)
+        page_number = request.GET.get("page") or request.GET.get("pagina")
+        page_obj = paginator.get_page(page_number)
+
+        puede_ver_todas_transferencias = has_capability(actor, "gastos.registrar_pago")
+        for s in page_obj:
+            s.puede_ver_transferencia = (
+                puede_ver_todas_transferencias or s.solicitante_id == actor.subject_id
+            )
+            if s.puede_ver_transferencia:
+                revs = list(s.revisiones_datos_transferencia.all())
+                s.datos_transferencia_actual = revs[-1] if revs else None
+            else:
+                s.datos_transferencia_actual = None
+
+        parametros = request.GET.copy()
+        parametros.pop("page", None)
+        parametros.pop("pagina", None)
+
         return render(
             request,
             "gastos/solicitud_list.html",
-            {"solicitudes": solicitudes, "actor": actor, "filtro_form": filtro_form},
+            {
+                "solicitudes": page_obj,
+                "page_obj": page_obj,
+                "is_paginated": page_obj.has_other_pages(),
+                "filtros_query": parametros.urlencode(),
+                "actor": actor,
+                "filtro_form": filtro_form,
+            },
         )
 
 
