@@ -632,3 +632,86 @@ class EventoPagoExterno(models.Model):
             estado_resultante=pago.solicitud.estado,
             motivo_o_detalle=detalle,
         )
+
+
+class CentroCosto(models.Model):
+    """Catálogo de centros de costo o áreas para afectación de gastos.
+
+    Permite al administrador agregar y desactivar centros de costo (baja lógica)
+    sin romper la integridad referencial de los trámites históricos.
+    """
+
+    codigo = models.SlugField(
+        max_length=50,
+        unique=True,
+        help_text="Código identificador único del centro de costo (ej: lab-quimica).",
+    )
+    nombre = models.CharField(
+        max_length=150,
+        help_text="Nombre descriptivo del centro de costo.",
+    )
+    activo = models.BooleanField(
+        default=True,
+        help_text="Indica si el centro de costo está habilitado para nuevas solicitudes.",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Centro de costo"
+        verbose_name_plural = "Centros de costo"
+        ordering = ["nombre"]
+
+    def __str__(self) -> str:
+        return f"{self.nombre} ({self.codigo})"
+
+
+class ParametroOperativo(models.Model):
+    """Parámetro operativo configurable de la Asociación Cooperadora.
+
+    Permite al administrador editar valores como la base imponible y alícuota
+    de retención ATP sin hardcodearlos en el código ni exigir migraciones.
+    """
+
+    clave = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Clave unívoca del parámetro operativo (ej: ATP_BASE_IMPONIBLE).",
+    )
+    valor_decimal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Valor numérico decimal si corresponde.",
+    )
+    valor_texto = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Valor en texto si corresponde.",
+    )
+    descripcion = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Descripción del propósito del parámetro.",
+    )
+    modificado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="parametros_operativos_modificados",
+        help_text="Usuario que realizó la última modificación.",
+    )
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Parámetro operativo"
+        verbose_name_plural = "Parámetros operativos"
+        ordering = ["clave"]
+
+    def __str__(self) -> str:
+        valor = self.valor_decimal if self.valor_decimal is not None else self.valor_texto
+        return f"{self.clave}: {valor}"
+

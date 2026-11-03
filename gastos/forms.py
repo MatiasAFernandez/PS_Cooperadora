@@ -21,7 +21,7 @@ from gastos.datos_transferencia import (
     es_cbu_alias_frecuente,
     validar_datos_transferencia,
 )
-from gastos.models import EstadoSolicitud, SolicitudGasto
+from gastos.models import CentroCosto, EstadoSolicitud, SolicitudGasto
 
 
 class FiltroEstadoGastoForm(FiltroFechaForm):
@@ -410,3 +410,59 @@ class PagoExternoForm(forms.Form):
         if etiqueta:
             return etiqueta
         return f"Documento de respaldo ({opcion.tipo_documento})"
+
+
+class CentroCostoForm(forms.ModelForm):
+    """Formulario para la administración de centros de costo."""
+
+    class Meta:
+        model = CentroCosto
+        fields = ["codigo", "nombre", "activo"]
+        widgets = {
+            "codigo": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "ej: lab-quimica"}
+            ),
+            "nombre": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "ej: Laboratorio de Química"}
+            ),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def clean_codigo(self) -> str:
+        codigo = self.cleaned_data.get("codigo", "").strip().lower()
+        if not codigo:
+            raise ValidationError("El código del centro de costo es obligatorio.")
+        return codigo
+
+    def clean_nombre(self) -> str:
+        nombre = self.cleaned_data.get("nombre", "").strip()
+        if not nombre:
+            raise ValidationError("El nombre del centro de costo es obligatorio.")
+        return nombre
+
+
+class ParametrosATPForm(forms.Form):
+    """Formulario para la configuración de la retención de ATP."""
+
+    base_imponible_atp = forms.DecimalField(
+        label="Base imponible de retención ATP (ARS)",
+        min_value=Decimal("0.00"),
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "step": "0.01", "placeholder": "90000.00"}
+        ),
+        help_text="Monto a partir del cual aplica retención impositiva.",
+    )
+    alicuota_atp = forms.DecimalField(
+        label="Alícuota sugerida ATP (%)",
+        min_value=Decimal("0.00"),
+        max_value=Decimal("100.00"),
+        max_digits=5,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "step": "0.01", "placeholder": "3.50"}
+        ),
+        help_text="Porcentaje de retención provincial aplicado por defecto.",
+    )
+

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Administración Operativa y Catálogos — PS Cooperadora{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h2>Administración Operativa y Catálogos</h2>
+    <a href="{% url 'gastos:lista' %}" class="btn" style="background: #6c757d;">Volver al listado</a>
+</div>
+
+{% if messages %}
+    <div style="margin-bottom: 1rem;">
+        {% for message in messages %}
+            <div class="notice" style="border-left: 4px solid #0d6efd; margin-bottom: 0.5rem;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="panel">
+    <h3>Parámetros de Retención ATP (Ingresos Brutos Chaco)</h3>
+    <p style="color: #6c757d; margin-top: 0;">
+        Configuración de la base imponible y alícuota de referencia para retenciones impositivas en pagos.
+        Los cambios aplican de inmediato para nuevas liquidaciones sin alterar pagos históricos.
+    </p>
+
+    <form method="post" action="{% url 'gastos:gestion_catalogos' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="actualizar_atp">
+
+        {% if atp_form.non_field_errors %}
+            <div class="alert-error">{{ atp_form.non_field_errors }}</div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="{{ atp_form.base_imponible_atp.id_for_label }}">{{ atp_form.base_imponible_atp.label }}:</label>
+                {{ atp_form.base_imponible_atp }}
+                {% if atp_form.base_imponible_atp.help_text %}
+                    <small style="color: #6c757d;">{{ atp_form.base_imponible_atp.help_text }}</small>
+                {% endif %}
+                {% if atp_form.base_imponible_atp.errors %}
+                    <div class="alert-error">{{ atp_form.base_imponible_atp.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ atp_form.alicuota_atp.id_for_label }}">{{ atp_form.alicuota_atp.label }}:</label>
+                {{ atp_form.alicuota_atp }}
+                {% if atp_form.alicuota_atp.help_text %}
+                    <small style="color: #6c757d;">{{ atp_form.alicuota_atp.help_text }}</small>
+                {% endif %}
+                {% if atp_form.alicuota_atp.errors %}
+                    <div class="alert-error">{{ atp_form.alicuota_atp.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <button type="submit" class="btn">Guardar Parámetros ATP</button>
+    </form>
+</div>
+
+<div class="panel">
+    <h3>Catálogo de Centros de Costo</h3>
+    <p style="color: #6c757d; margin-top: 0;">
+        Áreas, laboratorios, proyectos y cátedras disponibles para afectación de gastos.
+        Desactivar un centro de costo no elimina los trámites históricos asociados (baja lógica).
+    </p>
+
+    {% if centros_costo %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre descriptivo</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for centro in centros_costo %}
+                    <tr>
+                        <td><code>{{ centro.codigo }}</code></td>
+                        <td><strong>{{ centro.nombre }}</strong></td>
+                        <td>
+                            {% if centro.activo %}
+                                <span class="badge" style="background: #d1e7dd; color: #0f5132;">Activo</span>
+                            {% else %}
+                                <span class="badge" style="background: #f8d7da; color: #842029;">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'gastos:centro_costo_toggle' pk=centro.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                {% if centro.activo %}
+                                    <button type="submit" class="btn" style="background: #ffc107; color: #000; padding: 0.25rem 0.5rem; font-size: 0.85em;">Desactivar</button>
+                                {% else %}
+                                    <button type="submit" class="btn" style="background: #198754; color: #fff; padding: 0.25rem 0.5rem; font-size: 0.85em;">Activar</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="color: #6c757d;">No hay centros de costo registrados en el catálogo.</p>
+    {% endif %}
+
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #dee2e6;">
+        <h4>Agregar nuevo centro de costo</h4>
+        <form method="post" action="{% url 'gastos:gestion_catalogos' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="crear_centro">
+
+            {% if centro_form.non_field_errors %}
+                <div class="alert-error">{{ centro_form.non_field_errors }}</div>
+            {% endif %}
+
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="{{ centro_form.codigo.id_for_label }}">Código (slug único):</label>
+                    {{ centro_form.codigo }}
+                    {% if centro_form.codigo.errors %}
+                        <div class="alert-error">{{ centro_form.codigo.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ centro_form.nombre.id_for_label }}">Nombre descriptivo:</label>
+                    {{ centro_form.nombre }}
+                    {% if centro_form.nombre.errors %}
+                        <div class="alert-error">{{ centro_form.nombre.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                {{ centro_form.activo }}
+                <label for="{{ centro_form.activo.id_for_label }}" style="margin: 0; font-weight: normal;">Habilitado de inmediato para nuevas solicitudes</label>
+            </div>
+
+            <button type="submit" class="btn" style="background: #198754;">Agregar al Catálogo</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
