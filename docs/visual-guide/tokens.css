@@ -439,8 +439,30 @@ textarea:focus {
   overflow-y: auto;
 }
 
+.drawer-backdrop.is-open,
+.drawer-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(100vw, var(--drawer-width, 520px));
+  background: var(--ref-white);
+  box-shadow: var(--shadow-drawer);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--transition-normal);
+}
+
 .drawer-backdrop.is-open .drawer-panel,
-.drawer-panel.is-open {
+.drawer-panel.is-open,
+.drawer-panel.open {
   transform: translateX(0);
 }
 
@@ -451,6 +473,25 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   background-color: var(--ref-bg-muted);
+}
+
+.btn-close,
+.drawer-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ref-text);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.btn-close:hover,
+.drawer-close:hover {
+  background: var(--ref-border);
+  color: var(--ref-heading);
 }
 
 .drawer-body {
