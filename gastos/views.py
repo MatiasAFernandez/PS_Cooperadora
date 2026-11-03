@@ -265,10 +265,27 @@ class SolicitudGastoCreateView(View):
         if not has_capability(actor, "gastos.presentar"):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
 
-        form = SolicitudGastoForm(request.POST)
+        valores_cc = request.POST.getlist("centro_costo")
+        centro_costo_id = (
+            valores_cc[0]
+            if len(valores_cc) > 1
+            else (valores_cc[0] if valores_cc and valores_cc[0].isdigit() else None)
+        )
+        texto_transferencia = (
+            valores_cc[1]
+            if len(valores_cc) > 1
+            else ("" if centro_costo_id else (valores_cc[0] if valores_cc else ""))
+        )
+
+        post_gasto = request.POST.copy()
+        if centro_costo_id is not None:
+            post_gasto["centro_costo"] = centro_costo_id
+        elif len(valores_cc) > 1:
+            post_gasto["centro_costo"] = ""
+        form = SolicitudGastoForm(post_gasto)
+
         cc = None
         centro_costo_nombre = ""
-        centro_costo_id = request.POST.get("centro_costo")
         if centro_costo_id:
             try:
                 cc = CentroCosto.objects.filter(pk=centro_costo_id, activo=True).first()
@@ -285,10 +302,15 @@ class SolicitudGastoCreateView(View):
             datos_post = request.POST.copy()
             if cc is not None:
                 if (
-                    not (datos_post.get("centro_costo") or "").strip()
-                    or datos_post.get("centro_costo") == str(cc.pk)
+                    not texto_transferencia.strip()
+                    or texto_transferencia == str(cc.pk)
                 ):
                     datos_post["centro_costo"] = cc.nombre
+                else:
+                    datos_post["centro_costo"] = texto_transferencia
+            else:
+                datos_post["centro_costo"] = texto_transferencia
+
             datos_form = DatosTransferenciaForm(
                 datos_post,
                 centro_costo_default=centro_costo_nombre,
