@@ -1,24 +1,29 @@
 <nav aria-label="Navegación de trámites">
-    <ul style="display: flex; gap: 1rem; flex-wrap: wrap; list-style: none; margin: 0; padding: 0;">
+    <ul class="nav-pills">
         {% if actor and "gastos.presentar" in actor.capabilities and "gastos.consultar_propias" not in actor.capabilities and "gastos.consultar_todas" not in actor.capabilities %}
-            <li><a href="{% url 'gastos:presentar' %}">Solicitud de Gasto</a></li>
+            <li><a href="{% url 'gastos:presentar' %}" class="nav-link">Solicitud de Gasto</a></li>
         {% endif %}
         {% if actor and "facturacion.presentar" in actor.capabilities and "facturacion.consultar_propias" not in actor.capabilities and "facturacion.consultar_todas" not in actor.capabilities %}
-            <li><a href="{% url 'facturacion:presentar' %}">Solicitud de Facturación</a></li>
+            <li><a href="{% url 'facturacion:presentar' %}" class="nav-link">Solicitud de Facturación</a></li>
         {% endif %}
         {% if actor %}
             {% if "gastos.consultar_propias" in actor.capabilities or "gastos.consultar_todas" in actor.capabilities %}
-                <li><a href="{% url 'gastos:lista' %}">{% if "gastos.presentar" in actor.capabilities %}Solicitud de Gasto{% else %}Consultar gastos{% endif %}</a></li>
+                <li><a href="{% url 'gastos:lista' %}" class="nav-link">{% if "gastos.presentar" in actor.capabilities %}Solicitud de Gasto{% else %}Consultar gastos{% endif %}</a></li>
             {% endif %}
         {% endif %}
         {% if actor %}
             {% if "facturacion.consultar_propias" in actor.capabilities or "facturacion.consultar_todas" in actor.capabilities %}
-                <li><a href="{% url 'facturacion:lista' %}">{% if "facturacion.presentar" in actor.capabilities %}Solicitud de Facturación{% else %}Consultar facturación{% endif %}</a></li>
+                <li><a href="{% url 'facturacion:lista' %}" class="nav-link">{% if "facturacion.presentar" in actor.capabilities %}Solicitud de Facturación{% else %}Consultar facturación{% endif %}</a></li>
             {% endif %}
         {% endif %}
         {% if actor %}
-        <li><a href="{% url 'identidad:inicio' %}">Inicio de demo</a></li>
-        <li><form method="post" action="{% url 'identidad:logout' %}">{% csrf_token %}<button class="nav-logout" type="submit">Salir</button></form></li>
+        <li><a href="{% url 'identidad:inicio' %}" class="nav-link">Inicio de demo</a></li>
+        <li>
+            <form method="post" action="{% url 'identidad:logout' %}" style="margin: 0; display: inline;">
+                {% csrf_token %}
+                <button class="nav-logout" type="submit">Salir</button>
+            </form>
+        </li>
         {% endif %}
     </ul>
 </nav>

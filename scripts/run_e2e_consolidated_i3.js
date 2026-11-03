@@ -73,8 +73,22 @@ async function run() {
     console.log('--- Fase 1: Issue #91 - Pago con Retención ATP ---');
     await login(page, 'demo_o');
 
-    // 1.1 Formulario de pago para solicitud 13
-    await page.goto(`${BASE_URL}/gastos/13/pagar/`);
+    // Detectar dinámicamente IDs de solicitudes
+    await page.goto(`${BASE_URL}/gastos/`);
+    await page.waitForLoadState('networkidle');
+
+    let idSinPago = '1';
+    let idConPago = '2';
+
+    const filaPagar = page.locator('a[href*="/pagar/"]').first();
+    if (await filaPagar.isVisible()) {
+      const href = await filaPagar.getAttribute('href');
+      const match = href.match(/\/gastos\/(\d+)\/pagar\//);
+      if (match) idSinPago = match[1];
+    }
+
+    // 1.1 Formulario de pago para solicitud pendiente
+    await page.goto(`${BASE_URL}/gastos/${idSinPago}/pagar/`);
     await page.waitForLoadState('networkidle');
 
     const tieneMontoBruto = await page.locator('#id_monto_bruto').isVisible();
@@ -82,7 +96,7 @@ async function run() {
     const tieneImporteNeto = await page.locator('#id_importe').isVisible();
 
     if (tieneMontoBruto && tieneRetencionAtp && tieneImporteNeto) {
-      log('E2E-91-01', 'PASSED', 'Formulario de pago muestra campos para Bruto, Retención ATP sugerida y Neto transferido');
+      log('E2E-91-01', 'PASSED', `Formulario de pago (#${idSinPago}) muestra campos para Bruto, Retención ATP sugerida y Neto transferido`);
     } else {
       log('E2E-91-01', 'FAILED', 'Faltan campos de desglose ATP en formulario de pago');
     }
@@ -90,8 +104,8 @@ async function run() {
     const captFormPago = path.join(EVIDENCE_DIR, 'e2e-91-01-pago-retencion-atp-form.png');
     await page.screenshot({ path: captFormPago, fullPage: true });
 
-    // 1.2 Detalle de solicitud 14 (ya pagada con retención ATP)
-    await page.goto(`${BASE_URL}/gastos/14/`);
+    // 1.2 Detalle de solicitud pagada con retención ATP
+    await page.goto(`${BASE_URL}/gastos/${idConPago}/`);
     await page.waitForLoadState('networkidle');
 
     const detalleTexto = await page.content();
@@ -100,7 +114,7 @@ async function run() {
     const tieneNeto = detalleTexto.includes('115.800,00') || detalleTexto.includes('115800');
 
     if (tieneBruto && tieneRetencion && tieneNeto) {
-      log('E2E-91-02', 'PASSED', 'Detalle de gasto pagado exhibe desglose Bruto, Retención ATP y Neto transferido con fuentes tabulares');
+      log('E2E-91-02', 'PASSED', `Detalle de gasto pagado (#${idConPago}) exhibe desglose Bruto, Retención ATP y Neto transferido con fuentes tabulares`);
     } else {
       log('E2E-91-02', 'FAILED', 'Detalle no exhibe desglose completo de retención ATP');
     }
@@ -115,20 +129,20 @@ async function run() {
     await page.goto(`${BASE_URL}/gastos/`);
     await page.waitForLoadState('networkidle');
 
-    // 2.1 Abrir Drawer lateral de solicitud 14
-    await page.evaluate(() => {
+    // 2.1 Abrir Drawer lateral de solicitud pagada
+    await page.evaluate((id) => {
       if (typeof abrirDrawer === 'function') {
-        abrirDrawer('14');
+        abrirDrawer(id);
       }
-    });
+    }, idConPago);
     await page.waitForTimeout(600); // Esperar animación CSS del drawer
 
     const captDrawerAbierto = path.join(EVIDENCE_DIR, 'e2e-92-01-panel-compacto-drawer-abierto.png');
     await page.screenshot({ path: captDrawerAbierto, fullPage: true });
-    log('E2E-92-01', 'PASSED', 'Drawer lateral inspecciona solicitud #14 con panel Master-Detail de alta densidad');
+    log('E2E-92-01', 'PASSED', `Drawer lateral inspecciona solicitud #${idConPago} con panel Master-Detail de alta densidad`);
 
     // 2.2 Copiado rápido de CBU en Drawer con feedback visual
-    const botonCopiar = page.locator('#drawer-solicitud-14 button.btn-copy').first();
+    const botonCopiar = page.locator(`#drawer-solicitud-${idConPago} button.btn-copy`).first();
     if (await botonCopiar.isVisible()) {
       await botonCopiar.click();
       await page.waitForTimeout(300);
@@ -138,11 +152,11 @@ async function run() {
     await login(page, 'demo_l');
     await page.goto(`${BASE_URL}/gastos/`);
     await page.waitForLoadState('networkidle');
-    await page.evaluate(() => {
+    await page.evaluate((id) => {
       if (typeof abrirDrawer === 'function') {
-        abrirDrawer('14');
+        abrirDrawer(id);
       }
-    });
+    }, idConPago);
     await page.waitForTimeout(600);
 
     const captPrivacidad = path.join(EVIDENCE_DIR, 'e2e-92-02-privacidad-cbu-drawer.png');

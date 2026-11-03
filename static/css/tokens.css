@@ -548,3 +548,169 @@ textarea:focus {
   font-family: var(--font-mono);
 }
 
+.nowrap {
+  white-space: nowrap !important;
+}
+
+/* Evitar división indeseada de palabras o importes en tablas */
+table th,
+table td,
+.badge,
+.status-pill,
+.btn,
+.btn-copy,
+.font-tabular {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. Barra Superior Institucional (Topbar) y Navegación
+ * --------------------------------------------------------------------------- */
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--ref-white);
+  border-bottom: 1px solid var(--ref-border);
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04);
+}
+
+.app-topbar-inner {
+  width: min(100% - 2rem, var(--content-width));
+  margin-inline: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  font-family: var(--font-sans);
+}
+
+.app-brand:hover {
+  text-decoration: none;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--ref-deep-blue);
+  color: var(--ref-white);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-bold);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+}
+
+.brand-title {
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  color: var(--ref-deep-blue);
+  letter-spacing: -0.01em;
+}
+
+.brand-divider {
+  color: #cbd5e1;
+  font-weight: 300;
+}
+
+.brand-sub {
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  color: #64748b;
+}
+
+.nav-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-md);
+  color: #475569;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.nav-link:hover {
+  background-color: #f1f5f9;
+  color: var(--ref-deep-blue);
+  text-decoration: none;
+}
+
+.nav-logout {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.75rem;
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.nav-logout:hover {
+  background-color: #fef2f2;
+  border-color: #fecdd3;
+  color: #991b1b;
+  text-decoration: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * 9. Barra de Acciones de Filtro
+ * --------------------------------------------------------------------------- */
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.filter-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--ref-border);
+  border-radius: var(--radius-md);
+  background-color: var(--ref-white);
+  color: var(--ref-blue);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  transition: all var(--transition-fast);
+}
+
+.filter-actions a:hover {
+  background-color: #f1f5f9;
+  border-color: var(--ref-bright-blue);
+  color: var(--ref-deep-blue);
+  text-decoration: none;
+}
+
+
+
