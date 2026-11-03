@@ -462,6 +462,25 @@ class PagoExterno(models.Model):
         validators=[MinValueValidator(Decimal("0.01"))],
         help_text="Importe efectivamente pagado en ARS.",
     )
+    monto_bruto = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text="Monto bruto de la operación antes de retenciones impositivas.",
+    )
+    monto_retencion_atp = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Monto retenido según alícuota provincial ATP.",
+    )
+    referencia_atp = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Número o referencia del certificado de retención ATP.",
+    )
     moneda = models.CharField(
         max_length=3,
         default="ARS",
@@ -503,10 +522,38 @@ class PagoExterno(models.Model):
                 condition=Q(moneda="ARS"),
                 name="pago_externo_moneda_ars",
             ),
+            models.CheckConstraint(
+                condition=Q(importe=models.F("monto_bruto") - models.F("monto_retencion_atp"))
+                & Q(monto_retencion_atp__gte=Decimal("0.00"))
+                & Q(monto_bruto__gt=Decimal("0.00")),
+                name="pago_externo_identidad_neto_atp",
+            ),
         ]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if (
+            (self.monto_bruto is None or self.monto_bruto == Decimal("0.00"))
+            and self.importe
+            and (self.monto_retencion_atp is None or self.monto_retencion_atp == Decimal("0.00"))
+        ):
+            self.monto_bruto = self.importe
 
     def clean(self) -> None:
         super().clean()
+        if (
+            self.monto_bruto is not None
+            and self.monto_retencion_atp is not None
+            and self.importe is not None
+        ):
+            if self.importe != (self.monto_bruto - self.monto_retencion_atp):
+                raise ValidationError(
+                    {
+                        "importe": (
+                            "El importe neto debe ser igual al monto bruto menos la retención ATP."
+                        )
+                    }
+                )
         if self.pk is not None and not self._state.adding:
             original = (
                 PagoExterno.objects.filter(pk=self.pk)
@@ -533,6 +580,13 @@ class PagoExterno(models.Model):
                     )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
+        if (
+            (self.monto_bruto is None or self.monto_bruto == Decimal("0.00"))
+            and self.importe
+            and (self.monto_retencion_atp is None or self.monto_retencion_atp == Decimal("0.00"))
+        ):
+            self.monto_bruto = self.importe
+
         if self.pk is not None and not self._state.adding:
             original = (
                 PagoExterno.objects.filter(pk=self.pk)

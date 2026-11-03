@@ -71,6 +71,9 @@ class PagoExternoConsulta:
     referencia_externa: str
     fecha_registro: datetime | None
     actor_id: int | None
+    monto_bruto: Decimal = Decimal("0.00")
+    monto_retencion_atp: Decimal = Decimal("0.00")
+    referencia_atp: str = ""
 
 
 def validate_payment_input(
@@ -212,6 +215,128 @@ def validate_payment_input(
     return norm_importe, norm_fecha, norm_ref, referencia_doc
 
 
+def _validar_decimal_estricto(
+    valor: Any,
+    nombre_campo: str,
+    *,
+    permitir_cero: bool = False,
+) -> Decimal:
+    """Valida y normaliza un importe decimal conforme al estándar riguroso de GAST-R05."""
+    if isinstance(valor, bool) or valor is None or isinstance(valor, (float, int)):
+        raise PaymentInvalidInputError(
+            f"El campo '{nombre_campo}' debe ser Decimal o string decimal ASCII "
+            "(no se admiten bool, float ni int)."
+        )
+
+    if isinstance(valor, str):
+        val_str = valor.strip()
+        if not val_str:
+            raise PaymentInvalidInputError(f"El campo '{nombre_campo}' no puede ser vacío.")
+        if not _IMPORTE_DECIMAL_ESTRICTO.fullmatch(val_str):
+            raise PaymentInvalidInputError(
+                f"El campo '{nombre_campo}' debe ser un string decimal ASCII sin exponente "
+                "(sólo dígitos, signo opcional y un punto decimal)."
+            )
+        try:
+            dec = Decimal(val_str)
+        except InvalidOperation:
+            raise PaymentInvalidInputError(
+                f"Formato numérico inválido para '{nombre_campo}'."
+            ) from None
+    elif isinstance(valor, Decimal):
+        dec = valor
+    else:
+        raise PaymentInvalidInputError(f"Tipo de dato no admitido para '{nombre_campo}'.")
+
+    if not dec.is_finite():
+        raise PaymentInvalidInputError(f"El campo '{nombre_campo}' debe ser un número finito.")
+
+    if permitir_cero:
+        if dec < Decimal("0.00"):
+            raise PaymentInvalidInputError(f"El campo '{nombre_campo}' no puede ser negativo.")
+    else:
+        if dec <= Decimal("0.00"):
+            raise PaymentInvalidInputError(
+                f"El campo '{nombre_campo}' debe ser estrictamente positivo."
+            )
+
+    exponent = dec.as_tuple().exponent
+    if isinstance(exponent, int) and exponent < -2:
+        raise PaymentInvalidInputError(
+            f"El campo '{nombre_campo}' no puede tener más de 2 cifras fraccionarias "
+            "(sobreprecisión no admitida)."
+        )
+
+    if dec > Decimal("9999999999.99"):
+        raise PaymentInvalidInputError(
+            f"El campo '{nombre_campo}' excede el límite máximo permitido de 12 dígitos."
+        )
+
+    return dec.quantize(Decimal("0.01"))
+
+
+def validate_retencion_atp_input(
+    *,
+    importe: Decimal,
+    monto_bruto: Any = None,
+    monto_retencion_atp: Any = Decimal("0.00"),
+    referencia_atp: Any = "",
+) -> tuple[Decimal, Decimal, str]:
+    """Valida y normaliza la retención provincial ATP conforme a GAST-R04 y GAST-R05.
+
+    Garantiza la identidad: Importe Neto == Monto Bruto - Monto Retención ATP.
+    Si monto_bruto es None y retención es cero, asume monto_bruto = importe.
+    """
+    # 1. Normalizar referencia ATP
+    if referencia_atp is None:
+        norm_ref_atp = ""
+    elif isinstance(referencia_atp, bool) or not isinstance(referencia_atp, str):
+        raise PaymentInvalidInputError("La referencia ATP debe ser de tipo str.")
+    elif "\x00" in referencia_atp:
+        raise PaymentInvalidInputError("La referencia ATP no puede contener caracteres nulos.")
+    else:
+        norm_ref_atp = referencia_atp.strip()
+        if len(norm_ref_atp) > 128:
+            raise PaymentInvalidInputError(
+                f"La referencia ATP excede el límite de 128 caracteres "
+                f"(longitud: {len(norm_ref_atp)})."
+            )
+
+    # 2. Caso neutro retrocompatible: sin especificar monto_bruto y retención nula
+    es_retencion_cero = (
+        monto_retencion_atp is None
+        or (
+            isinstance(monto_retencion_atp, (str, Decimal))
+            and str(monto_retencion_atp).strip() in ("0", "0.0", "0.00", "0.000")
+        )
+        or monto_retencion_atp == Decimal("0.00")
+    )
+
+    if monto_bruto is None and es_retencion_cero:
+        return importe, Decimal("0.00"), norm_ref_atp
+
+    # 3. Caso con valores informados: validación rigurosa
+    if monto_bruto is None:
+        raise PaymentInvalidInputError("Debe especificar monto_bruto si informa retención ATP.")
+
+    valid_bruto = _validar_decimal_estricto(monto_bruto, "monto_bruto", permitir_cero=False)
+    valid_retencion = (
+        Decimal("0.00")
+        if es_retencion_cero and monto_retencion_atp is None
+        else _validar_decimal_estricto(
+            monto_retencion_atp, "monto_retencion_atp", permitir_cero=True
+        )
+    )
+
+    if importe != (valid_bruto - valid_retencion):
+        raise PaymentInvalidInputError(
+            f"Inconsistencia contable: el importe neto ({importe}) debe ser igual a "
+            f"monto_bruto ({valid_bruto}) menos monto_retencion_atp ({valid_retencion})."
+        )
+
+    return valid_bruto, valid_retencion, norm_ref_atp
+
+
 def calcular_huella_pago(
     *,
     solicitud_id: int,
@@ -220,17 +345,28 @@ def calcular_huella_pago(
     fecha_pago: date,
     referencia_externa: str,
     referencia_documental: str,
+    monto_bruto: Decimal | None = None,
+    monto_retencion_atp: Decimal | None = None,
+    referencia_atp: str = "",
 ) -> str:
     """Calcula una huella SHA-256 canónica sin ambigüedad a partir de los valores normalizados."""
+    payload_dict: dict[str, Any] = {
+        "fecha_pago": fecha_pago.isoformat(),
+        "importe": f"{importe.quantize(Decimal('0.01')):.2f}",
+        "moneda": moneda,
+        "referencia_documental": referencia_documental,
+        "referencia_externa": referencia_externa,
+        "solicitud_id": solicitud_id,
+    }
+    if monto_retencion_atp is not None and monto_retencion_atp > Decimal("0.00"):
+        payload_dict["monto_retencion_atp"] = f"{monto_retencion_atp.quantize(Decimal('0.01')):.2f}"
+    if monto_bruto is not None and monto_bruto != importe:
+        payload_dict["monto_bruto"] = f"{monto_bruto.quantize(Decimal('0.01')):.2f}"
+    if referencia_atp:
+        payload_dict["referencia_atp"] = referencia_atp
+
     payload = json.dumps(
-        {
-            "fecha_pago": fecha_pago.isoformat(),
-            "importe": f"{importe.quantize(Decimal('0.01')):.2f}",
-            "moneda": moneda,
-            "referencia_documental": referencia_documental,
-            "referencia_externa": referencia_externa,
-            "solicitud_id": solicitud_id,
-        },
+        payload_dict,
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -246,6 +382,9 @@ def registrar_pago_externo(
     fecha_pago: Any,
     referencia_externa: Any,
     referencia_documental: Any,
+    monto_bruto: Any = None,
+    monto_retencion_atp: Any = Decimal("0.00"),
+    referencia_atp: Any = "",
     document_provider: DocumentVerificationPort | None = None,
 ) -> PagoExterno:
     """Registra de forma atómica un pago externo sobre una solicitud de gasto visible y aceptada.
@@ -301,6 +440,12 @@ def registrar_pago_externo(
         referencia_externa=referencia_externa,
         referencia_documental=referencia_documental,
     )
+    valid_monto_bruto, valid_retencion_atp, valid_ref_atp = validate_retencion_atp_input(
+        importe=valid_importe,
+        monto_bruto=monto_bruto,
+        monto_retencion_atp=monto_retencion_atp,
+        referencia_atp=referencia_atp,
+    )
     huella = calcular_huella_pago(
         solicitud_id=solicitud.pk,
         importe=valid_importe,
@@ -308,6 +453,9 @@ def registrar_pago_externo(
         fecha_pago=valid_fecha,
         referencia_externa=valid_ref_ext,
         referencia_documental=valid_doc_ref,
+        monto_bruto=valid_monto_bruto,
+        monto_retencion_atp=valid_retencion_atp,
+        referencia_atp=valid_ref_atp,
     )
 
     # 5. Comprobar reenvíos previos sobre la fila bloqueada
@@ -320,6 +468,9 @@ def registrar_pago_externo(
             and pago_existente.fecha_pago == valid_fecha
             and pago_existente.referencia_externa == valid_ref_ext
             and pago_existente.referencia_documental == valid_doc_ref
+            and pago_existente.monto_bruto == valid_monto_bruto
+            and pago_existente.monto_retencion_atp == valid_retencion_atp
+            and pago_existente.referencia_atp == valid_ref_atp
         )
         if es_identico:
             # Reenvío idéntico: reautorizado con éxito, retorna sin requerir provider
@@ -367,6 +518,9 @@ def registrar_pago_externo(
     pago = PagoExterno.objects.create(
         solicitud=solicitud,
         importe=valid_importe,
+        monto_bruto=valid_monto_bruto,
+        monto_retencion_atp=valid_retencion_atp,
+        referencia_atp=valid_ref_atp,
         moneda="ARS",
         fecha_pago=valid_fecha,
         referencia_externa=valid_ref_ext,
@@ -426,6 +580,9 @@ def consultar_pago_externo(
         referencia_externa=pago.referencia_externa,
         fecha_registro=fecha_reg,
         actor_id=actor_id,
+        monto_bruto=pago.monto_bruto,
+        monto_retencion_atp=pago.monto_retencion_atp,
+        referencia_atp=pago.referencia_atp,
     )
 
 

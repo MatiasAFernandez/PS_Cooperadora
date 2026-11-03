@@ -287,10 +287,16 @@ def crear_solicitud_gasto(
         centro_costo_obj = CentroCosto.objects.filter(pk=centro_costo).first()
 
     # Sincronización automática de Centro de Costo (GAST-R02)
+    tiene_otros_campos = (
+        isinstance(datos_transferencia, Mapping)
+        and any(
+            bool((datos_transferencia.get(k) or "").strip())
+            for k in ("titular_nombre", "identificacion", "cbu_alias", "correo_comprobante")
+        )
+    )
     if (
         centro_costo_obj is not None
-        and datos_transferencia
-        and isinstance(datos_transferencia, Mapping)
+        and tiene_otros_campos
         and not (datos_transferencia.get("centro_costo") or "").strip()
     ):
         datos_transferencia = dict(datos_transferencia)

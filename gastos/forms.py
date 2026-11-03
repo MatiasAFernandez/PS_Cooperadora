@@ -416,6 +416,47 @@ class PagoExternoForm(forms.Form):
         ),
         error_messages={"required": "El importe es obligatorio."},
     )
+    monto_bruto = forms.CharField(
+        label="Monto bruto de la operación (ARS)",
+        required=False,
+        strip=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "inputmode": "decimal",
+                "autocomplete": "off",
+                "placeholder": "0.00",
+            }
+        ),
+        help_text="Importe bruto antes de retención ATP. Si no aplica retención, déjelo vacío.",
+    )
+    monto_retencion_atp = forms.CharField(
+        label="Monto retención ATP (ARS)",
+        required=False,
+        strip=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "inputmode": "decimal",
+                "autocomplete": "off",
+                "placeholder": "0.00",
+            }
+        ),
+        help_text="Importe a retener por alícuota provincial de ATP Chaco.",
+    )
+    referencia_atp = forms.CharField(
+        label="Certificado o referencia ATP",
+        required=False,
+        strip=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "autocomplete": "off",
+                "placeholder": "ej: CERT-ATP-2026-001",
+            }
+        ),
+        help_text="Número o referencia del certificado de retención impositiva.",
+    )
     fecha_pago = forms.CharField(
         label="Fecha del pago",
         strip=False,
