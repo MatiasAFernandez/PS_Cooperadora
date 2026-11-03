@@ -71,7 +71,7 @@ from gastos.services import (
     ExpensePermissionDeniedError,
     InvalidDecisionInputError,
     InvalidTransitionError,
-    actualizar_parametro_decimal,
+    actualizar_parametros_atp,
     can_decide_expense,
     crear_solicitud_gasto,
     decide_expense,
@@ -1072,17 +1072,10 @@ class GestionCatalogosView(View):
             atp_form = ParametrosATPForm(request.POST)
             centro_form = CentroCostoForm()
             if atp_form.is_valid():
-                actualizar_parametro_decimal(
-                    clave="ATP_BASE_IMPONIBLE",
-                    valor=atp_form.cleaned_data["base_imponible_atp"],
+                actualizar_parametros_atp(
+                    base_imponible=atp_form.cleaned_data["base_imponible_atp"],
+                    alicuota=atp_form.cleaned_data["alicuota_atp"],
                     actor=self.actor,
-                    descripcion="Base imponible de retención provincial ATP",
-                )
-                actualizar_parametro_decimal(
-                    clave="ATP_ALICUOTA_DEFECTO",
-                    valor=atp_form.cleaned_data["alicuota_atp"],
-                    actor=self.actor,
-                    descripcion="Alícuota sugerida por defecto para retención provincial ATP",
                 )
                 messages.success(
                     request,

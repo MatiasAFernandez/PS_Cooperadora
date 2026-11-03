@@ -415,13 +415,19 @@ class PagoExternoForm(forms.Form):
 class CentroCostoForm(forms.ModelForm):
     """Formulario para la administración de centros de costo."""
 
+    codigo = forms.SlugField(
+        max_length=64,
+        strip=True,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "ej: lab-quimica"}
+        ),
+        help_text="Identificador único en minúsculas, números y guiones.",
+    )
+
     class Meta:
         model = CentroCosto
         fields = ["codigo", "nombre", "activo"]
         widgets = {
-            "codigo": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "ej: lab-quimica"}
-            ),
             "nombre": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "ej: Laboratorio de Química"}
             ),

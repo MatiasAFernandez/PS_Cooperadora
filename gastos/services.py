@@ -1,11 +1,11 @@
 """Servicios de negocio para el módulo de gastos."""
 
 from collections.abc import Mapping
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 
 from comunes.models import Circuito, TramiteBase
 from gastos.auth import has_capability
@@ -321,7 +321,7 @@ def obtener_parametro_decimal(clave: str, default: Decimal) -> Decimal:
         )
         if valor is not None:
             return Decimal(str(valor))
-    except Exception:
+    except (DatabaseError, InvalidOperation, TypeError, ValueError):
         pass
     return default
 
@@ -355,4 +355,27 @@ def actualizar_parametro_decimal(
         },
     )
     return param
+
+
+@transaction.atomic
+def actualizar_parametros_atp(
+    *,
+    base_imponible: Decimal,
+    alicuota: Decimal,
+    actor: Any = None,
+) -> tuple[ParametroOperativo, ParametroOperativo]:
+    """Actualiza de forma atómica y conjunta ambos parámetros operativos de ATP."""
+    p_base = actualizar_parametro_decimal(
+        clave=CLAVE_PARAMETRO_ATP_BASE,
+        valor=base_imponible,
+        actor=actor,
+        descripcion="Base imponible mínima sujeta a retención ATP",
+    )
+    p_alicuota = actualizar_parametro_decimal(
+        clave=CLAVE_PARAMETRO_ATP_ALICUOTA,
+        valor=alicuota,
+        actor=actor,
+        descripcion="Alícuota porcentual por defecto para retención ATP",
+    )
+    return p_base, p_alicuota
 
