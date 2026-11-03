@@ -306,10 +306,14 @@ def validate_retencion_atp_input(
     es_retencion_cero = (
         monto_retencion_atp is None
         or (
-            isinstance(monto_retencion_atp, (str, Decimal))
+            not isinstance(monto_retencion_atp, (bool, float))
+            and isinstance(monto_retencion_atp, (str, Decimal))
             and str(monto_retencion_atp).strip() in ("0", "0.0", "0.00", "0.000")
         )
-        or monto_retencion_atp == Decimal("0.00")
+        or (
+            not isinstance(monto_retencion_atp, (bool, float))
+            and monto_retencion_atp == Decimal("0.00")
+        )
     )
 
     if monto_bruto is None and es_retencion_cero:
@@ -320,12 +324,9 @@ def validate_retencion_atp_input(
         raise PaymentInvalidInputError("Debe especificar monto_bruto si informa retención ATP.")
 
     valid_bruto = _validar_decimal_estricto(monto_bruto, "monto_bruto", permitir_cero=False)
-    valid_retencion = (
-        Decimal("0.00")
-        if es_retencion_cero and monto_retencion_atp is None
-        else _validar_decimal_estricto(
-            monto_retencion_atp, "monto_retencion_atp", permitir_cero=True
-        )
+    monto_ret_raw = Decimal("0.00") if monto_retencion_atp is None else monto_retencion_atp
+    valid_retencion = _validar_decimal_estricto(
+        monto_ret_raw, "monto_retencion_atp", permitir_cero=True
     )
 
     if importe != (valid_bruto - valid_retencion):

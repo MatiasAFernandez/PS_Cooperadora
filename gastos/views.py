@@ -994,13 +994,11 @@ class SolicitudGastoPagoView(View):
         almacenada y no autoriza ni muta el pago.
         """
         try:
-            kwargs_atp: dict[str, Any] = {}
-            if request.POST.get("monto_bruto"):
-                kwargs_atp["monto_bruto"] = request.POST.get("monto_bruto")
-            if request.POST.get("monto_retencion_atp"):
-                kwargs_atp["monto_retencion_atp"] = request.POST.get("monto_retencion_atp")
-            if request.POST.get("referencia_atp"):
-                kwargs_atp["referencia_atp"] = request.POST.get("referencia_atp")
+            kwargs_atp: dict[str, Any] = {
+                "monto_bruto": request.POST.get("monto_bruto") or None,
+                "monto_retencion_atp": request.POST.get("monto_retencion_atp") or Decimal("0.00"),
+                "referencia_atp": request.POST.get("referencia_atp") or "",
+            }
 
             registrar_pago_externo(
                 actor=actor,

@@ -118,6 +118,38 @@ def test_validate_retencion_atp_input_casos() -> None:
             monto_retencion_atp=Decimal("-5.00"),
         )
 
+    # Rechazo estricto de tipos no permitidos (bool, float) para retención
+    with pytest.raises(PaymentInvalidInputError):
+        validate_retencion_atp_input(
+            importe=Decimal("100.00"),
+            monto_bruto=Decimal("100.00"),
+            monto_retencion_atp=0.0,
+        )
+
+    with pytest.raises(PaymentInvalidInputError):
+        validate_retencion_atp_input(
+            importe=Decimal("100.00"),
+            monto_bruto=Decimal("100.00"),
+            monto_retencion_atp=False,
+        )
+
+    # Longitud y caracteres nulos en referencia_atp
+    with pytest.raises(PaymentInvalidInputError, match="128 caracteres"):
+        validate_retencion_atp_input(
+            importe=Decimal("100.00"),
+            monto_bruto=Decimal("100.00"),
+            monto_retencion_atp=Decimal("0.00"),
+            referencia_atp="X" * 129,
+        )
+
+    with pytest.raises(PaymentInvalidInputError, match="caracteres nulos"):
+        validate_retencion_atp_input(
+            importe=Decimal("100.00"),
+            monto_bruto=Decimal("100.00"),
+            monto_retencion_atp=Decimal("0.00"),
+            referencia_atp="CERT\x00123",
+        )
+
 
 def test_pago_sin_retencion_retrocompatible(
     actor_factory: Any,
