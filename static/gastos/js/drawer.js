@@ -88,16 +88,25 @@ function copiarAlPortapapeles(texto, boton) {
     return;
   }
 
+  // Idempotencia visual: prevenir doble clic rápido
+  if (boton && boton.classList.contains("copied")) {
+    return;
+  }
+
   function mostrarFeedback() {
     if (!boton) {
       return;
     }
-    const textoOriginal = boton.innerHTML;
+    if (!boton.dataset.originalText) {
+      boton.dataset.originalText = boton.innerHTML;
+    }
+    const textoOriginal = boton.dataset.originalText;
     boton.classList.add("copied");
     boton.innerHTML = "✓ Copiado";
     setTimeout(() => {
       boton.classList.remove("copied");
       boton.innerHTML = textoOriginal;
+      delete boton.dataset.originalText;
     }, 2000);
   }
 

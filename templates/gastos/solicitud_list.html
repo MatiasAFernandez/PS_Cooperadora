@@ -69,11 +69,11 @@
                             ${{ s.monto_estimado }}
                         </td>
                         <td style="padding: 0.65rem 0.75rem; text-align: center;">
-                            {% if s.estado == "ACEPTADA" %}
+                            {% if s.estado == "aceptada" or s.estado == "ACEPTADA" %}
                                 <span class="badge" style="background: var(--color-success-bg, #effaf2); color: var(--color-success, #166534); border: 1px solid var(--color-success-border, #bbf7d0);">{{ s.get_estado_display }}</span>
-                            {% elif s.estado == "RECHAZADA" %}
+                            {% elif s.estado == "rechazada" or s.estado == "RECHAZADA" %}
                                 <span class="badge" style="background: var(--color-error-bg, #fff1f2); color: var(--color-error, #9f1239); border: 1px solid var(--color-error-border, #fecdd3);">{{ s.get_estado_display }}</span>
-                            {% elif s.estado == "CANCELADA" %}
+                            {% elif s.estado == "cancelada" or s.estado == "CANCELADA" %}
                                 <span class="badge" style="background: var(--color-neutral-bg, #f1f5f9); color: var(--color-neutral, #475569); border: 1px solid var(--color-neutral-border, #cbd5e1);">{{ s.get_estado_display }}</span>
                             {% else %}
                                 <span class="badge" style="background: var(--color-info-bg, #eff8ff); color: var(--color-info, #075985); border: 1px solid var(--color-info-border, #bae6fd);">{{ s.get_estado_display }}</span>
@@ -210,7 +210,7 @@
                     {% else %}
                         <div style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem); color: #64748b;">
                             <em>Sin pago registrado aún.</em>
-                            {% if s.estado == "ACEPTADA" and actor and "gastos.registrar_pago" in actor.capabilities %}
+                            {% if s.estado == "aceptada" and not s.pago_externo and actor and "gastos.registrar_pago" in actor.capabilities %}
                                 <div style="margin-top: 0.5rem;">
                                     <a href="{% url 'gastos:pagar' pk=s.pk %}" class="btn" style="padding: 0.35rem 0.75rem; font-size: var(--text-xs, 0.75rem);">
                                         Registrar Pago
