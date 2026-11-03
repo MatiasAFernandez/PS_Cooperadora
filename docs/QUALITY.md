@@ -52,6 +52,8 @@ visible con el otro circuito. Si falta una base común, delimitar el ajuste mín
 o su tarea de integración, sin resolver cada pantalla como un diseño independiente
 ni bloquear una entrega funcional por un rediseño general.
 
+- **Definición de simplicidad en Frontend:** La regla de 'solución más sencilla' **no significa** maquetación cruda del año 2000. Significa lograr una experiencia de usuario (UX) moderna, ágil y atractiva sin introducir cadenas de compilación complejas (sin Node.js, npm ni frameworks SPA). La interactividad moderna (paneles deslizantes, diálogos, copiado al portapapeles y notificaciones) se resuelve con HTML5 semántico, CSS moderno (`backdrop-filter`, `transform`, `transitions`) y JavaScript nativo (ES6+) modular y sin dependencias.
+
 ## Aplicación al flujo existente
 
 **Plan:** señalar resultado, componentes afectados, decisiones relevantes,

@@ -1,0 +1,497 @@
+/**
+ * Sistema de Diseño Visual Institucional — PS_Cooperadora
+ * Basado en la ingeniería inversa visual de UTN FRRe (octubre 2026).
+ * Estándar UI/UX 2026: Alta densidad, accesibilidad WCAG 2.1 AA (>6:1 contrast), grilla de 1140px.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* -------------------------------------------------------------------------
+   * 1. Paleta Institucional UTN FRRe (Tokens de Referencia)
+   * ------------------------------------------------------------------------- */
+  --ref-deep-blue: #090979;        /* Fondo inicial de cabeceras, pie y gradientes */
+  --ref-blue: #084298;             /* Azul institucional primario para acciones y enlaces */
+  --ref-bright-blue: #0d6efd;      /* Acentos interactivos, foco y bordes activos */
+  --ref-text: #444444;             /* Color de texto principal para lectura óptima */
+  --ref-heading: #37423b;          /* Títulos y encabezados de alta legibilidad */
+  --ref-nav: #272828;              /* Elementos de barra de navegación */
+  --ref-white: #ffffff;            /* Fondo de superficie blanca pura */
+  --ref-bg-surface: #ffffff;       /* Fondo de contenedores y tarjetas */
+  --ref-bg-muted: #f8fafc;         /* Fondo alternado de tablas y paneles sutiles */
+  --ref-border: #e2e8f0;           /* Bordes suaves de 1px para separación limpia */
+
+  /* -------------------------------------------------------------------------
+   * 2. Tokens Semánticos de Estado (Contraste verificado >6:1)
+   * ------------------------------------------------------------------------- */
+  --color-success: #166534;        /* Verde oscuro para texto/iconos de éxito */
+  --color-success-bg: #effaf2;     /* Verde pastel para fondos de badges y alertas */
+  --color-success-border: #bbf7d0;
+
+  --color-warning: #854d0e;        /* Ámbar para advertencias de deuda/mora */
+  --color-warning-bg: #fffbeb;     /* Fondo atenuado de advertencias */
+  --color-warning-border: #fef08a;
+
+  --color-error: #9f1239;          /* Carmesí para rechazos, cancelaciones y errores */
+  --color-error-bg: #fff1f2;       /* Fondo atenuado de errores */
+  --color-error-border: #fecdd3;
+
+  --color-info: #075985;           /* Azul para estados en revisión o informativos */
+  --color-info-bg: #eff8ff;        /* Fondo atenuado de información */
+  --color-info-border: #bae6fd;
+
+  --color-neutral: #475569;        /* Pizarra para estados cerrados o secundarios */
+  --color-neutral-bg: #f1f5f9;     /* Fondo de chips neutros */
+  --color-neutral-border: #cbd5e1;
+
+  /* -------------------------------------------------------------------------
+   * 3. Tipografía y Escala
+   * ------------------------------------------------------------------------- */
+  --font-sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+
+  --text-xs: 0.75rem;     /* 12px - Badges pequeños, captions, metadatos */
+  --text-sm: 0.875rem;    /* 14px - Contenido de tablas densas, inputs, tooltips */
+  --text-base: 1rem;      /* 16px - Texto de lectura principal */
+  --text-lg: 1.125rem;    /* 18px - Subtítulos, encabezados de tarjeta */
+  --text-xl: 1.25rem;     /* 20px - Títulos de sección */
+  --text-2xl: 1.5rem;     /* 24px - Títulos de página / vista */
+  --text-3xl: 2rem;       /* 32px - Hero titles */
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* -------------------------------------------------------------------------
+   * 4. Geometría, Layout y Espaciado
+   * ------------------------------------------------------------------------- */
+  --content-width: 1140px;         /* Grilla estándar institucional */
+  --radius-sm: 0.25rem;            /* 4px - Inputs, badges */
+  --radius-md: 0.375rem;           /* 6px - Botones, tarjetas, selects */
+  --radius-lg: 0.5rem;             /* 8px - Modales, paneles, drawer */
+  --radius-full: 9999px;           /* Píldoras y avatares */
+
+  --row-height-dense: 44px;        /* Altura ergonómica estándar WCAG para filas de tabla y botones */
+  --drawer-width: 520px;           /* Ancho estándar del drawer lateral Master-Detail */
+
+  /* -------------------------------------------------------------------------
+   * 5. Elevaciones y Sombras (Efectos de Profundidad 2026)
+   * ------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-drawer: -4px 0 24px -2px rgb(0 0 0 / 0.15);
+
+  /* -------------------------------------------------------------------------
+   * 6. Animaciones y Micro-interacciones
+   * ------------------------------------------------------------------------- */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reseteo Semántico y Accesibilidad
+ * --------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--ref-text);
+  background-color: var(--ref-bg-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ref-bright-blue);
+  outline-offset: 2px;
+}
+
+/* Contenedor centralizado a 1140px */
+.page-width,
+.container-1140 {
+  width: min(100% - 2rem, var(--content-width));
+  margin-inline: auto;
+}
+
+/* Enlaces institucionales */
+a {
+  color: var(--ref-blue);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--ref-deep-blue);
+  text-decoration-thickness: 0.14em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Botones y Acciones de Alta Densidad (min 44px touch target)
+ * --------------------------------------------------------------------------- */
+.button,
+.btn {
+  min-height: var(--row-height-dense);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  line-height: 1.25;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: all var(--transition-fast);
+}
+
+.button-primary,
+.btn-primary {
+  color: var(--ref-white);
+  background-color: var(--ref-blue);
+  border-color: var(--ref-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.button-primary:hover,
+.btn-primary:hover {
+  background-color: var(--ref-deep-blue);
+  border-color: var(--ref-deep-blue);
+}
+
+.button-outline,
+.btn-outline,
+.btn-secondary {
+  color: var(--ref-blue);
+  background-color: var(--ref-white);
+  border-color: var(--ref-border);
+}
+
+.button-outline:hover,
+.btn-outline:hover,
+.btn-secondary:hover {
+  background-color: #f1f5f9;
+  border-color: var(--ref-bright-blue);
+  color: var(--ref-deep-blue);
+}
+
+.button-muted,
+.btn:disabled {
+  color: #94a3b8;
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.button-small {
+  min-height: 36px;
+  padding: 0.35rem 0.75rem;
+  font-size: var(--text-xs);
+}
+
+/* ---------------------------------------------------------------------------
+ * Chips y Píldoras de Estado (Badges)
+ * --------------------------------------------------------------------------- */
+.badge,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.625rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.badge-success,
+.status-success {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+}
+
+.badge-warning,
+.status-warning {
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+}
+
+.badge-error,
+.status-error {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+  border-color: var(--color-error-border);
+}
+
+.badge-info,
+.status-info,
+.status-review {
+  color: var(--color-info);
+  background-color: var(--color-info-bg);
+  border-color: var(--color-info-border);
+}
+
+.badge-neutral,
+.status-neutral {
+  color: var(--color-neutral);
+  background-color: var(--color-neutral-bg);
+  border-color: var(--color-neutral-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tablas Densas Ergonómicas (Master Table 2026)
+ * --------------------------------------------------------------------------- */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--ref-white);
+  border: 1px solid var(--ref-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.table-dense {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.table-dense thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: var(--ref-heading);
+  background-color: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-weight: var(--font-semibold);
+  border-bottom: 1px solid var(--ref-border);
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+}
+
+.table-dense tbody tr {
+  min-height: var(--row-height-dense);
+  border-bottom: 1px solid var(--ref-border);
+  transition: background-color var(--transition-fast);
+}
+
+.table-dense tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table-dense tbody tr:hover {
+  background-color: #f8fafc;
+  cursor: pointer;
+}
+
+.table-dense tbody tr.is-selected {
+  background-color: #eff6ff;
+  border-left: 3px solid var(--ref-bright-blue);
+}
+
+.table-dense td {
+  padding: 0.65rem 1rem;
+  vertical-align: middle;
+}
+
+/* ---------------------------------------------------------------------------
+ * Paneles, Tarjetas y Mensajes
+ * --------------------------------------------------------------------------- */
+.card,
+.panel {
+  background: var(--ref-white);
+  border: 1px solid var(--ref-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.message {
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.message-info {
+  color: var(--color-info);
+  background-color: var(--color-info-bg);
+  border-color: var(--color-info-border);
+}
+
+.message-success {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+}
+
+.message-warning {
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+}
+
+.message-error {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+  border-color: var(--color-error-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Formularios e Inputs Modernos
+ * --------------------------------------------------------------------------- */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--ref-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.form-control,
+input[type="text"],
+input[type="number"],
+input[type="search"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  min-height: var(--row-height-dense);
+  padding: 0.55rem 0.85rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ref-text);
+  background-color: var(--ref-white);
+  border: 1px solid var(--ref-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-control:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--ref-bright-blue);
+  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
+  outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Drawer Lateral (Master-Detail) — Base Arquitectónica para Issue #92
+ * --------------------------------------------------------------------------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgb(15 23 42 / 0.4);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+}
+
+.drawer-backdrop.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101;
+  width: 100%;
+  max-width: var(--drawer-width);
+  background: var(--ref-white);
+  box-shadow: var(--shadow-drawer);
+  transform: translateX(100%);
+  transition: transform var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.drawer-backdrop.is-open .drawer-panel,
+.drawer-panel.is-open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--ref-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--ref-bg-muted);
+}
+
+.drawer-body {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawer-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--ref-border);
+  background-color: var(--ref-bg-muted);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Botón Copiado Rápido (Clipboard) con Feedback
+ * --------------------------------------------------------------------------- */
+.btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f1f5f9;
+  border: 1px solid var(--ref-border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  color: var(--ref-blue);
+  transition: all var(--transition-fast);
+}
+
+.btn-copy:hover {
+  background: #e2e8f0;
+  color: var(--ref-deep-blue);
+}
+
+.btn-copy.copied {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}

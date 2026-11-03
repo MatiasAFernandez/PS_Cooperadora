@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Muestrario y catálogo de componentes de diseño institucional para PS_Cooperadora.">
+  <title>Muestrario de Interfaz — Sistema de Diseño Institucional</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+  <a class="skip-link" href="#contenido" style="position: fixed; z-index: 120; top: 0.5rem; left: 0.5rem; padding: 0.75rem 1rem; color: #fff; background: var(--ref-deep-blue); border-radius: var(--radius-md); transform: translateY(-160%); transition: transform var(--transition-fast);">Saltar al contenido</a>
+
+  <header class="site-header" id="inicio" style="background: var(--ref-white); border-bottom: 1px solid var(--ref-border); padding: 1rem 0;">
+    <div class="page-width header-row" style="display: flex; align-items: center; justify-content: space-between;">
+      <a class="wordmark" href="#inicio" style="text-decoration: none; display: flex; flex-direction: column;">
+        <span class="wordmark-title" style="font-size: 1.2rem; font-weight: 700; color: var(--ref-deep-blue);">PS_Cooperadora</span>
+        <span class="wordmark-note" style="font-size: 0.8rem; color: #64748b;">Sistema de Diseño Institucional UTN FRRe</span>
+      </a>
+
+      <nav class="desktop-nav" aria-label="Navegación principal" style="display: flex; gap: 1.5rem;">
+        <a href="#referencia">Paleta</a>
+        <a href="#acciones">Acciones y Estados</a>
+        <a href="#formulario">Formularios</a>
+        <a href="#tabla">Tablas Densas</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="page-hero" id="referencia" style="color: var(--ref-white); background: linear-gradient(135deg, var(--ref-deep-blue), var(--ref-blue)); padding: 2.5rem 0;">
+      <div class="page-width hero-content" style="text-align: center;">
+        <p class="eyebrow" style="text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.08em; opacity: 0.9;">Guía Visual 2026 · Ancho Grilla 1140px</p>
+        <h1 id="page-title" style="margin: 0.5rem 0; font-size: 2.25rem; font-weight: 700; color: #ffffff;">Catálogo Vivo de Componentes</h1>
+        <p class="hero-summary" style="max-width: 600px; margin: 0 auto; opacity: 0.95;">Patrones ergonómicos, alta densidad, contraste accesible WCAG (>6:1) y micro-interacciones sin dependencias de frameworks.</p>
+      </div>
+    </section>
+
+    <div class="page-width" style="display: flex; flex-direction: column; gap: 2.5rem; padding: 2.5rem 0;">
+      <!-- Callout Informativo -->
+      <div class="message message-info">
+        <div>
+          <strong>Estándar de Calidad Frontend 2026:</strong>
+          <p style="margin: 0.25rem 0 0;">Esta guía fija los tokens institucionales, dimensiones ergonómicas (touch target 44px) y pautas visuales a utilizar obligatoriamente en todas las plantillas de <code>templates/</code>.</p>
+        </div>
+      </div>
+
+      <!-- Sección 1: Botones y Acciones -->
+      <section id="acciones" class="card">
+        <h2 style="margin-top: 0; color: var(--ref-heading);">1. Acciones y Botones de Alta Densidad</h2>
+        <p style="color: var(--ref-text);">Diseñados con altura mínima de 44px, estados de foco visibles y esquinas suavizadas (<code>radius-md</code>).</p>
+        
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin: 1.5rem 0;">
+          <button class="button button-primary" type="button">Acción Principal (Guardar / Pagar)</button>
+          <button class="button button-outline" type="button">Acción Secundaria (Cancelar / Volver)</button>
+          <button class="button button-muted" type="button" disabled>Acción Deshabilitada</button>
+          <button class="btn-copy" type="button"><span>📋</span><span>Copiar CBU</span></button>
+          <button class="btn-copy copied" type="button"><span>✓</span><span>CBU Copiado</span></button>
+        </div>
+
+        <h3 style="color: var(--ref-heading); margin-top: 2rem;">Chips y Píldoras de Estado (Badges)</h3>
+        <p style="color: var(--ref-text);">Contrastes certificados para lectura rápida en listados operativos.</p>
+        
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem;">
+          <span class="badge badge-success">✓ Aceptada / Pagado</span>
+          <span class="badge badge-warning">⚠ Con Deuda / Pendiente</span>
+          <span class="badge badge-error">✕ Rechazada / Anulado</span>
+          <span class="badge badge-info">ℹ En Revisión Documental</span>
+          <span class="badge badge-neutral">● Cerrada / Finalizado</span>
+        </div>
+      </section>
+
+      <!-- Sección 2: Mensajes y Alertas -->
+      <section class="card">
+        <h2 style="margin-top: 0; color: var(--ref-heading);">2. Notificaciones y Banners de Contexto</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem;">
+          <div class="message message-success">
+            <div><strong>Operación Confirmada:</strong> Se registró la rendición con éxito.</div>
+          </div>
+          <div class="message message-warning">
+            <div><strong>Advertencia Operativa:</strong> Existen 2 comprobantes en mora de rendición.</div>
+          </div>
+          <div class="message message-error">
+            <div><strong>Bloqueo Determinista:</strong> Superado el límite de trámites sin rendir.</div>
+          </div>
+          <div class="message message-info">
+            <div><strong>Parámetros ATP:</strong> Base imponible actualizada a $90.000,00.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sección 3: Formularios e Inputs -->
+      <section id="formulario" class="card">
+        <h2 style="margin-top: 0; color: var(--ref-heading);">3. Controles de Formulario</h2>
+        <p style="color: var(--ref-text);">Etiquetas persistentes, foco accesible y validaciones integradas.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+          <div class="form-group">
+            <label for="sample-concepto">Concepto o Necesidad:</label>
+            <input type="text" id="sample-concepto" class="form-control" value="Insumos de laboratorio para cátedra">
+          </div>
+
+          <div class="form-group">
+            <label for="sample-monto">Importe Estimado (ARS):</label>
+            <input type="text" id="sample-monto" class="form-control" value="$ 75.000,00">
+          </div>
+
+          <div class="form-group">
+            <label for="sample-modalidad">Modalidad de Gasto:</label>
+            <select id="sample-modalidad" class="form-control">
+              <option>Compra directa a proveedor (con presupuesto)</option>
+              <option>Reintegro a solicitante (con factura fiscal)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sample-cc">Centro de Costo:</label>
+            <select id="sample-cc" class="form-control">
+              <option>Laboratorio de Química (lab-quimica)</option>
+              <option>Departamento de Sistemas (dpto-sistemas)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sección 4: Tablas Densas Ergonómicas (Master Table) -->
+      <section id="tabla" class="card">
+        <h2 style="margin-top: 0; color: var(--ref-heading);">4. Tabla Densa Master-Detail (Estándar 2026)</h2>
+        <p style="color: var(--ref-text);">Encabezados pegajosos (sticky), filas de 44px, fila seleccionada con borde azul de foco y badges legibles.</p>
+
+        <div class="table-container" style="margin-top: 1rem;">
+          <table class="table-dense">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Concepto / Justificación</th>
+                <th>Modalidad</th>
+                <th>Centro de Costo</th>
+                <th>Monto (ARS)</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="is-selected">
+                <td><strong>#104</strong></td>
+                <td>Reactivos para laboratorio de química</td>
+                <td><span class="badge badge-info">Compra Directa</span></td>
+                <td>Lab. Química</td>
+                <td>$ 92.500,00</td>
+                <td><span class="badge badge-warning">Pendiente Factura</span></td>
+                <td>03/11/2026</td>
+                <td style="text-align: right;"><button class="button button-small button-outline">Ver en Drawer</button></td>
+              </tr>
+              <tr>
+                <td><strong>#103</strong></td>
+                <td>Insumos de oficina y papelería</td>
+                <td><span class="badge badge-neutral">Reintegro</span></td>
+                <td>Sec. Académica</td>
+                <td>$ 18.200,00</td>
+                <td><span class="badge badge-success">Pagado</span></td>
+                <td>02/11/2026</td>
+                <td style="text-align: right;"><button class="button button-small button-outline">Ver en Drawer</button></td>
+              </tr>
+              <tr>
+                <td><strong>#102</strong></td>
+                <td>Repuestos para instrumental de física</td>
+                <td><span class="badge badge-info">Compra Directa</span></td>
+                <td>Lab. Física</td>
+                <td>$ 145.000,00</td>
+                <td><span class="badge badge-info">Aceptada</span></td>
+                <td>01/11/2026</td>
+                <td style="text-align: right;"><button class="button button-small button-outline">Ver en Drawer</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer style="background: var(--ref-deep-blue); color: var(--ref-white); padding: 1.5rem 0; margin-top: 3rem;">
+    <div class="page-width" style="display: flex; justify-content: space-between; align-items: center; font-size: var(--text-sm);">
+      <p style="margin: 0;">PS_Cooperadora · Asociación Cooperadora Facultad Regional Resistencia (UTN)</p>
+      <p style="margin: 0; opacity: 0.8;">Tokens y componentes UI/UX Calidad 2026</p>
+    </div>
+  </footer>
+</body>
+</html>
