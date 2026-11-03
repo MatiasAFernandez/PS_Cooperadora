@@ -1,21 +1,23 @@
 """Servicios de negocio para el módulo de gastos."""
 
 from collections.abc import Mapping
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 
 from comunes.models import Circuito, TramiteBase
 from gastos.auth import has_capability
 from gastos.datos_transferencia import validar_datos_transferencia
 from gastos.models import (
+    CentroCosto,
     DecisionGasto,
     EstadoSolicitud,
     ParametroOperativo,
     RevisionDatosTransferencia,
     SolicitudGasto,
+    TipoFlujoGasto,
 )
 from gastos.queries import visible_expenses
 
@@ -259,18 +261,40 @@ def crear_solicitud_gasto(
     concepto: str,
     monto_estimado: Any,
     unidad_requirente: str,
+    tipo_flujo: str = TipoFlujoGasto.COMPRA_DIRECTA,
+    centro_costo: Any = None,
     datos_transferencia: Mapping[str, Any] | None = None,
 ) -> SolicitudGasto:
     """Crea cabecera y solicitud juntas con valores fijados por el servidor.
 
     La capacidad se revalida dentro del servicio, el número público se reserva
-    con la secuencia de PostgreSQL y el centro de costo institucional queda NULL:
-    la unidad requirente no acredita un centro de costo. Si se informa un bloque
-    completo de datos de transferencia, se crea su primera revisión en la misma
-    transacción; un bloque parcial se rechaza antes de reservar el número.
+    con la secuencia de PostgreSQL. Admite la especificación de la modalidad
+    operativa (tipo_flujo) y la imputación a un centro de costo del catálogo.
+    Si se selecciona un centro de costo y no se ingresó texto libre en la
+    transferencia, el nombre del centro se sincroniza automáticamente en la
+    revisión de datos de transferencia.
     """
     if not has_capability(actor, "gastos.presentar"):
         raise PermissionDenied("El actor no posee la capacidad 'gastos.presentar'.")
+
+    if tipo_flujo not in TipoFlujoGasto.values:
+        tipo_flujo = TipoFlujoGasto.COMPRA_DIRECTA
+
+    centro_costo_obj = None
+    if isinstance(centro_costo, CentroCosto):
+        centro_costo_obj = centro_costo
+    elif isinstance(centro_costo, int):
+        centro_costo_obj = CentroCosto.objects.filter(pk=centro_costo).first()
+
+    # Sincronización automática de Centro de Costo (GAST-R02)
+    if (
+        centro_costo_obj is not None
+        and datos_transferencia
+        and isinstance(datos_transferencia, Mapping)
+        and not (datos_transferencia.get("centro_costo") or "").strip()
+    ):
+        datos_transferencia = dict(datos_transferencia)
+        datos_transferencia["centro_costo"] = centro_costo_obj.nombre
 
     datos_validos = validar_datos_transferencia(datos_transferencia)
 
@@ -279,7 +303,7 @@ def crear_solicitud_gasto(
         circuito=Circuito.GASTO,
         numero_publico=numero,
         solicitante_actor_id=str(actor.subject_id),
-        centro_costo_codigo=None,
+        centro_costo_codigo=centro_costo_obj.codigo[:50] if centro_costo_obj else None,
     )
     solicitud = SolicitudGasto.objects.create(
         pk=numero,
@@ -288,6 +312,8 @@ def crear_solicitud_gasto(
         monto_estimado=monto_estimado,
         unidad_requirente=unidad_requirente,
         solicitante_id=actor.subject_id,
+        tipo_flujo=tipo_flujo,
+        centro_costo=centro_costo_obj,
         estado=EstadoSolicitud.PRESENTADA,
         version=0,
     )
@@ -321,7 +347,7 @@ def obtener_parametro_decimal(clave: str, default: Decimal) -> Decimal:
         )
         if valor is not None:
             return Decimal(str(valor))
-    except Exception:
+    except (DatabaseError, InvalidOperation, TypeError, ValueError):
         pass
     return default
 
@@ -355,4 +381,27 @@ def actualizar_parametro_decimal(
         },
     )
     return param
+
+
+@transaction.atomic
+def actualizar_parametros_atp(
+    *,
+    base_imponible: Decimal,
+    alicuota: Decimal,
+    actor: Any = None,
+) -> tuple[ParametroOperativo, ParametroOperativo]:
+    """Actualiza de forma atómica y conjunta ambos parámetros operativos de ATP."""
+    p_base = actualizar_parametro_decimal(
+        clave=CLAVE_PARAMETRO_ATP_BASE,
+        valor=base_imponible,
+        actor=actor,
+        descripcion="Base imponible mínima sujeta a retención ATP",
+    )
+    p_alicuota = actualizar_parametro_decimal(
+        clave=CLAVE_PARAMETRO_ATP_ALICUOTA,
+        valor=alicuota,
+        actor=actor,
+        descripcion="Alícuota porcentual por defecto para retención ATP",
+    )
+    return p_base, p_alicuota
 

@@ -16,9 +16,9 @@ from django.db import transaction
 
 from gastos.auth import has_capability
 from gastos.contracts import (
-    TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
     DocumentVerificationError,
     DocumentVerificationPort,
+    tipos_documento_admitidos_para_flujo,
 )
 from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
 from gastos.queries import visible_expenses
@@ -335,11 +335,14 @@ def registrar_pago_externo(
     ):
         raise PaymentInvalidInputError("Se requiere un puerto proveedor documental obligatorio.")
 
+    tipos_admitidos = tipos_documento_admitidos_para_flujo(
+        getattr(solicitud, "tipo_flujo", None)
+    )
     doc_verificado = document_provider.verificar_y_bloquear_documento(
         actor=actor,
         gasto=solicitud,
         referencia_documental=valid_doc_ref,
-        tipos_admitidos=TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
+        tipos_admitidos=tipos_admitidos,
     )
     if doc_verificado is None:
         raise DocumentVerificationError(
@@ -353,12 +356,11 @@ def registrar_pago_externo(
     if (
         evidencia_solicitud_id != solicitud.pk
         or getattr(doc_verificado, "referencia_documental", None) != valid_doc_ref
-        or getattr(doc_verificado, "tipo_documento", None)
-        not in TIPOS_DOCUMENTO_ADMITIDOS_PAGO
+        or getattr(doc_verificado, "tipo_documento", None) not in tipos_admitidos
     ):
         raise DocumentVerificationError(
             "La evidencia documental no corresponde al gasto bloqueado, a la referencia "
-            "solicitada o posee un tipo no admitido."
+            "solicitada o posee un tipo no admitido para la modalidad de gasto."
         )
 
     # 7. Escritura conjunta atómica de pago y evento autoritativo

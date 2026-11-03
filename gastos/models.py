@@ -21,6 +21,11 @@ class EstadoSolicitud(models.TextChoices):
     RECHAZADA = "rechazada", "Rechazada"
 
 
+class TipoFlujoGasto(models.TextChoices):
+    COMPRA_DIRECTA = "COMPRA_DIRECTA", "Compra directa a proveedor"
+    REINTEGRO = "REINTEGRO", "Reintegro a solicitante"
+
+
 _SOLICITUD_GASTO_CAMPOS_INMUTABLES = {
     "id",
     "pk",
@@ -90,6 +95,21 @@ class SolicitudGasto(models.Model):
         choices=EstadoSolicitud.choices,
         default=EstadoSolicitud.PRESENTADA,
         help_text="Estado del trámite (inicial: presentada).",
+    )
+    tipo_flujo = models.CharField(
+        max_length=20,
+        choices=TipoFlujoGasto.choices,
+        default=TipoFlujoGasto.COMPRA_DIRECTA,
+        db_index=True,
+        help_text="Modalidad operativa del gasto (compra directa o reintegro).",
+    )
+    centro_costo = models.ForeignKey(
+        "gastos.CentroCosto",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitudes",
+        help_text="Centro de costo institucional imputado opcionalmente.",
     )
     version = models.PositiveIntegerField(
         default=0,

@@ -40,6 +40,16 @@
             <td><span class="badge">{{ solicitud.get_estado_display }}</span></td>
         </tr>
         <tr>
+            <th>Modalidad de Gasto</th>
+            <td><span class="badge">{{ solicitud.get_tipo_flujo_display }}</span></td>
+        </tr>
+        {% if solicitud.centro_costo %}
+        <tr>
+            <th>Centro de Costo</th>
+            <td>{{ solicitud.centro_costo.nombre }} ({{ solicitud.centro_costo.codigo }})</td>
+        </tr>
+        {% endif %}
+        <tr>
             <th>Fecha de Presentación</th>
             <td>{{ solicitud.fecha_creacion|date:"d/m/Y H:i:s" }}</td>
         </tr>

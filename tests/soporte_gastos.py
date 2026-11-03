@@ -49,11 +49,12 @@ def crear_gasto_sintetico(
     with transaction.atomic():
         numero = pk if pk is not None else reservar_numero_solicitud_gasto()
         if tramite_base is None:
+            cc = kwargs.get("centro_costo")
             tramite_base = TramiteBase.objects.create(
                 circuito=Circuito.GASTO,
                 numero_publico=numero,
                 solicitante_actor_id=str(solicitante_id),
-                centro_costo_codigo=None,
+                centro_costo_codigo=cc.codigo[:50] if cc else None,
             )
         datos = {
             "concepto": "Gasto sintético de prueba",
