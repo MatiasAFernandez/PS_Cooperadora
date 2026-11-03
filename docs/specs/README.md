@@ -63,6 +63,7 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [016](016-matias-preparacion-identidad-institucional.md) | Contrato y preparación del origen institucional | Evolución RF-001; #79 |
 | [017](017-matias-historicos-proyecciones.md) | Historia importada y proyección, dos tramos por definir | Alcance nuevo de demo; #82/#83 |
 | [018](018-matias-registro-externo-simplificado.md) | Referencias Xubio, trazabilidad y cierre sin duplicar archivos | Evolución RF-002/004/006; #76 |
+| [019](019-franco-doble-flujo-atp-ux.md) | Doble flujo de gastos, retención ATP parametrizada, alertas preventivas y panel operativo compacto | Incremento I3; #89–#95 |
 
 La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) aporta necesidades,
 confirmaciones parciales y preguntas abiertas. SPEC-014–018 son cambios
