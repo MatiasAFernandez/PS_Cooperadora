@@ -1,7 +1,7 @@
 # SPEC-020 — Doble flujo de gastos, retención ATP parametrizada, alertas preventivas y panel operativo compacto
 
-- **Estado:** Listo para implementación (aprobado con ajustes de auditoría técnica).
-- **Fecha:** 02/11/2026.
+- **Estado:** Implementada y verificada integralmente (Incremento I3 cerrado con 784 pruebas en verde, muestra determinista intacta y evidencia E2E aprobada).
+- **Fecha:** 02/11/2026 (Diseño) — 03/11/2026 (Cierre y verificación de entrega).
 - **Responsable principal:** Franco Damián Sánchez (Gastos y Pagos).
 - **Rol del compañero:** Matías Alejandro Fernández (revisión cruzada de interfaces comunes y C01).
 - **Validador:** Marcos Valussi (Director Cooperadora), Elvia (Cooperadora) y Nicolás Tortosa (Tutor Técnico / Sistemas).
@@ -136,3 +136,19 @@ Sino:
 - **Pruebas de regresión:** Ejecución completa de la suite de `gastos/` y suite de integración (`test_c04_pago_real_proyeccion.py`, `test_muestra_entrega.py`).
 - **Verificación de muestra:** `python manage.py muestra_entrega crear` y `muestra_entrega verificar`.
 - **Auditoría de estilo:** `ruff check .` sin observaciones.
+
+---
+
+## 9. Estado de Cierre y Verificación (03/11/2026)
+
+- **Issues atómicas implementadas:**
+  - Issue #89: Catálogos dinámicos (`CentroCosto`) y parámetros con fallback (`ParametroOperativo`).
+  - Issue #90: Doble flujo (`COMPRA_DIRECTA` / `REINTEGRO`), sincronización con `RevisionDatosTransferencia` y contrato C01.
+  - Issue #91: Cálculo de retención ATP, `CheckConstraint` SQL y firma compatible.
+  - Issue #92: Panel compacto Master-Detail (1140px, Montserrat), Drawer lateral y privacidad bancaria SSR (`SPEC-013`).
+  - Issue #93: Política preventiva de comprobantes adeudados (15 días de gracia) y bloqueo por mora (> 2 trámites).
+  - Issue #94: Reportería directiva cuatrimestral agregada (C1, C2, C3) y por centro de costo sin producto cartesiano.
+  - Issue #95: Verificación integral de regresión, determinismo de muestra de entrega y captura E2E consolidada.
+- **Resultado de la Suite:** **784 pruebas en verde (0 regresiones)** en 132.77s.
+- **Informe de evidencia:** [`docs/evidence/i3-95-verificacion-entrega-consolidada.md`](../evidence/i3-95-verificacion-entrega-consolidada.md).
+- **Muestra sintética:** `test_muestra_entrega.py` aprobada con hashes SHA-256 inalterados.

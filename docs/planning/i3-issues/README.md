@@ -23,15 +23,15 @@ El incremento I3 cierra las necesidades operativas de la Asociación Cooperadora
 
 ## 2. Matriz de GitHub Issues (Tareas Atómicas)
 
-| Nro | ID Local | Título | Depende de | Esfuerzo / Prueba | Prioridad |
-|---|---|---|---|---|---|
-| [**#89**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/89) | `I3-01` | `feat(gastos): modelos CentroCosto y ParametroOperativo con fallback determinista y gestión administrativa` | Ninguna (`main`) | Pruebas de modelos, helper con fallback en Python y vista administrativa protegida | MUST |
-| [**#90**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/90) | `I3-02` | `feat(gastos): soporte de doble flujo (Compra Directa vs Reintegro) y sincronización de Centro de Costo` | #89 | Pruebas de tipificación en alta, sincronización con transferencia y contrato C01 para pagos | MUST |
-| [**#91**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/91) | `I3-03` | `feat(gastos): parametrización y cálculo de retención ATP con CheckConstraint SQL y firma compatible` | #89, #90 | Pruebas de CheckConstraint con `models.F`, cálculo neto, compatibilidad de firma y guardas inmutables | MUST |
-| [**#92**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/92) | `I3-04` | `feat(gastos/ui): panel compacto Master-Detail con Drawer lateral, ancho expandido y privacidad bancaria` | #90, #91 | Pruebas de renderizado de drawer, permisos `SPEC-013`, ancho 1140px y optimización contra N+1 | MUST |
-| [**#93**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/93) | `I3-05` | `feat(gastos): política de advertencias visuales y control determinista por comprobantes adeudados` | #90 | Pruebas deterministas con fecha inyectable, banners en listado y excepción `DeudaDocumentalBloqueoError` | MUST |
-| [**#94**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/94) | `I3-06` | `feat(gastos): reportería directiva agregada por cuatrimestre y centro de costo` | #89, #90 | Pruebas de agregación ORM por cuatrimestre (C1, C2, C3) y autorización con `gastos.consultar_todas` | MUST |
-| [**#95**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/95) | `I3-07` | `chore(gastos): verificación integral, regresión suite completa (>650 tests) y entrega I3` | #89 a #94 | Ejecución de suite completa, `muestra_entrega crear/verificar`, `ruff check` y actualización de docs | MUST |
+| Nro | ID Local | Título | Depende de | Esfuerzo / Prueba | Prioridad | Estado |
+|---|---|---|---|---|---|---|
+| [**#89**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/89) | `I3-01` | `feat(gastos): modelos CentroCosto y ParametroOperativo con fallback determinista y gestión administrativa` | Ninguna (`main`) | Pruebas de modelos, helper con fallback en Python y vista administrativa protegida | MUST | **MERGED** (`c8b0108`) |
+| [**#90**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/90) | `I3-02` | `feat(gastos): soporte de doble flujo (Compra Directa vs Reintegro) y sincronización de Centro de Costo` | #89 | Pruebas de tipificación en alta, sincronización con transferencia y contrato C01 para pagos | MUST | **MERGED** (`779f822`) |
+| [**#91**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/91) | `I3-03` | `feat(gastos): parametrización y cálculo de retención ATP con CheckConstraint SQL y firma compatible` | #89, #90 | Pruebas de CheckConstraint con `models.F`, cálculo neto, compatibilidad de firma y guardas inmutables | MUST | **MERGED** (`ea0dcda`) |
+| [**#92**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/92) | `I3-04` | `feat(gastos/ui): panel compacto Master-Detail con Drawer lateral, ancho expandido y privacidad bancaria` | #90, #91 | Pruebas de renderizado de drawer, permisos `SPEC-013`, ancho 1140px y optimización contra N+1 | MUST | **MERGED** (`c9f8edf`) |
+| [**#93**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/93) | `I3-05` | `feat(gastos): política de advertencias visuales y control determinista por comprobantes adeudados` | #90 | Pruebas deterministas con fecha inyectable, banners en listado y excepción `DeudaDocumentalBloqueoError` | MUST | **MERGED** (`0576836`) |
+| [**#94**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/94) | `I3-06` | `feat(gastos): reportería directiva agregada por cuatrimestre y centro de costo` | #89, #90 | Pruebas de agregación ORM por cuatrimestre (C1, C2, C3) y autorización con `gastos.consultar_todas` | MUST | **MERGED** (`e4611b6`) |
+| [**#95**](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/95) | `I3-07` | `chore(gastos): verificación integral, regresión suite completa (>650 tests) y entrega I3` | #89 a #94 | Ejecución de suite completa, `muestra_entrega crear/verificar`, `ruff check` y actualización de docs | MUST | **EN ENTREGA** |
 
 ---
 
