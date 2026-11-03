@@ -20,6 +20,10 @@ urlpatterns = [
     path("", SolicitudGastoListView.as_view(), name="lista"),
     path("presentar/", SolicitudGastoCreateView.as_view(), name="presentar"),
     path(
+        "catalogos/",
+        GestionCatalogosView.as_view(),
+    ),
+    path(
         "administracion/catalogos/",
         GestionCatalogosView.as_view(),
         name="gestion_catalogos",

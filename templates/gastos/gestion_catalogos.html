@@ -3,7 +3,16 @@
 {% block title %}Administración Operativa y Catálogos — PS Cooperadora{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+<style>
+    .catalog-form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .catalog-form-grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; }
+    .catalog-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    @media (max-width: 600px) {
+        .catalog-form-grid-2, .catalog-form-grid-1-2 { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
     <h2>Administración Operativa y Catálogos</h2>
     <a href="{% url 'gastos:lista' %}" class="btn" style="background: #6c757d;">Volver al listado</a>
 </div>
@@ -33,7 +42,7 @@
             <div class="alert-error">{{ atp_form.non_field_errors }}</div>
         {% endif %}
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="catalog-form-grid-2">
             <div class="form-group">
                 <label for="{{ atp_form.base_imponible_atp.id_for_label }}">{{ atp_form.base_imponible_atp.label }}:</label>
                 {{ atp_form.base_imponible_atp }}
@@ -68,45 +77,47 @@
         Desactivar un centro de costo no elimina los trámites históricos asociados (baja lógica).
     </p>
 
-    {% if centros_costo %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nombre descriptivo</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for centro in centros_costo %}
+    <div class="catalog-table-container">
+        {% if centros_costo %}
+            <table>
+                <thead>
                     <tr>
-                        <td><code>{{ centro.codigo }}</code></td>
-                        <td><strong>{{ centro.nombre }}</strong></td>
-                        <td>
-                            {% if centro.activo %}
-                                <span class="badge" style="background: #d1e7dd; color: #0f5132;">Activo</span>
-                            {% else %}
-                                <span class="badge" style="background: #f8d7da; color: #842029;">Inactivo</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <form method="post" action="{% url 'gastos:centro_costo_toggle' pk=centro.pk %}" style="display: inline;">
-                                {% csrf_token %}
-                                {% if centro.activo %}
-                                    <button type="submit" class="btn" style="background: #ffc107; color: #000; padding: 0.25rem 0.5rem; font-size: 0.85em;">Desactivar</button>
-                                {% else %}
-                                    <button type="submit" class="btn" style="background: #198754; color: #fff; padding: 0.25rem 0.5rem; font-size: 0.85em;">Activar</button>
-                                {% endif %}
-                            </form>
-                        </td>
+                        <th>Código</th>
+                        <th>Nombre descriptivo</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p style="color: #6c757d;">No hay centros de costo registrados en el catálogo.</p>
-    {% endif %}
+                </thead>
+                <tbody>
+                    {% for centro in centros_costo %}
+                        <tr>
+                            <td><code>{{ centro.codigo }}</code></td>
+                            <td><strong>{{ centro.nombre }}</strong></td>
+                            <td>
+                                {% if centro.activo %}
+                                    <span class="badge" style="background: #d1e7dd; color: #0f5132;">Activo</span>
+                                {% else %}
+                                    <span class="badge" style="background: #f8d7da; color: #842029;">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="post" action="{% url 'gastos:centro_costo_toggle' pk=centro.pk %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    {% if centro.activo %}
+                                        <button type="submit" class="btn" style="background: #ffc107; color: #000; padding: 0.25rem 0.5rem; font-size: 0.85em;">Desactivar</button>
+                                    {% else %}
+                                        <button type="submit" class="btn" style="background: #198754; color: #fff; padding: 0.25rem 0.5rem; font-size: 0.85em;">Activar</button>
+                                    {% endif %}
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="color: #6c757d;">No hay centros de costo registrados en el catálogo.</p>
+        {% endif %}
+    </div>
 
     <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #dee2e6;">
         <h4>Agregar nuevo centro de costo</h4>
@@ -118,7 +129,7 @@
                 <div class="alert-error">{{ centro_form.non_field_errors }}</div>
             {% endif %}
 
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+            <div class="catalog-form-grid-1-2">
                 <div class="form-group">
                     <label for="{{ centro_form.codigo.id_for_label }}">Código (slug único):</label>
                     {{ centro_form.codigo }}
