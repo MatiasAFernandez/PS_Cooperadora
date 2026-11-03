@@ -21,7 +21,7 @@ from gastos.datos_transferencia import (
     es_cbu_alias_frecuente,
     validar_datos_transferencia,
 )
-from gastos.models import CentroCosto, EstadoSolicitud, SolicitudGasto
+from gastos.models import CentroCosto, EstadoSolicitud, SolicitudGasto, TipoFlujoGasto
 
 
 class FiltroEstadoGastoForm(FiltroFechaForm):
@@ -44,12 +44,50 @@ class FiltroEstadoGastoForm(FiltroFechaForm):
     )
 
 
+class OptionalCentroCostoChoiceField(forms.ModelChoiceField):
+    """Campo de centro de costo de catálogo que tolera valores textuales de transferencia."""
+
+    def to_python(self, value: Any) -> Any:
+        if value in self.empty_values:
+            return None
+        try:
+            return super().to_python(value)
+        except ValidationError:
+            return None
+
+
 class SolicitudGastoForm(forms.ModelForm):
     """Formulario para la presentación de una necesidad de gasto."""
 
+    tipo_flujo = forms.ChoiceField(
+        label="Modalidad de gasto",
+        choices=TipoFlujoGasto.choices,
+        initial=TipoFlujoGasto.COMPRA_DIRECTA,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        help_text=(
+            "Compra Directa (con presupuesto previo y factura posterior) o "
+            "Reintegro (con factura previa ya abonada)."
+        ),
+    )
+    centro_costo = OptionalCentroCostoChoiceField(
+        label="Centro de costo institucional",
+        queryset=CentroCosto.objects.filter(activo=True),
+        required=False,
+        empty_label="-- Seleccionar centro de costo (opcional) --",
+        widget=forms.Select(attrs={"class": "form-control"}),
+        help_text="Centro de costo institucional imputado. Se sincroniza con la transferencia.",
+    )
+
     class Meta:
         model = SolicitudGasto
-        fields = ["concepto", "monto_estimado", "unidad_requirente"]
+        fields = [
+            "concepto",
+            "monto_estimado",
+            "unidad_requirente",
+            "tipo_flujo",
+            "centro_costo",
+        ]
         widgets = {
             "concepto": forms.TextInput(
                 attrs={
@@ -72,6 +110,18 @@ class SolicitudGastoForm(forms.ModelForm):
                 }
             ),
         }
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["centro_costo"].queryset = CentroCosto.objects.filter(activo=True)
+
+    def clean_tipo_flujo(self) -> str:
+        flujo = self.cleaned_data.get("tipo_flujo")
+        if not flujo:
+            return TipoFlujoGasto.COMPRA_DIRECTA
+        if flujo not in TipoFlujoGasto.values:
+            raise ValidationError("Seleccione una modalidad de gasto válida.")
+        return flujo
 
     def clean_concepto(self) -> str:
         concepto = self.cleaned_data.get("concepto", "").strip()
@@ -158,8 +208,9 @@ class DatosTransferenciaForm(forms.Form):
         help_text="Se informa como texto y es independiente de la unidad requirente.",
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, centro_costo_default: str = "", **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self.centro_costo_default = centro_costo_default
         self.datos_transferencia: dict[str, str] | None = None
 
     def clean_cbu_alias(self) -> str:
@@ -182,6 +233,10 @@ class DatosTransferenciaForm(forms.Form):
 
     def clean(self) -> dict[str, Any]:
         datos = super().clean()
+        if not (datos.get("centro_costo") or "").strip() and self.centro_costo_default:
+            datos["centro_costo"] = self.centro_costo_default
+            self.cleaned_data["centro_costo"] = self.centro_costo_default
+
         if not any(datos.get(campo) for campo in CAMPOS_DATOS_TRANSFERENCIA):
             self.datos_transferencia = None
             return datos
@@ -409,6 +464,8 @@ class PagoExternoForm(forms.Form):
         etiqueta = (opcion.etiqueta or "").strip()
         if etiqueta:
             return etiqueta
+        if opcion.tipo_documento == "factura":
+            return "Factura o Ticket-Factura de proveedor"
         return f"Documento de respaldo ({opcion.tipo_documento})"
 
 

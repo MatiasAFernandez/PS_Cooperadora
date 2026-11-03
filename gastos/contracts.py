@@ -16,6 +16,18 @@ TIPOS_DOCUMENTO_ADMITIDOS_PAGO: tuple[str, ...] = (
     "presupuesto",
     "proforma",
 )
+TIPOS_DOCUMENTO_ADMITIDOS_REINTEGRO: tuple[str, ...] = ("factura",)
+
+
+def tipos_documento_admitidos_para_flujo(tipo_flujo: str | None) -> tuple[str, ...]:
+    """Determina los tipos de documento admitidos por C01 según la modalidad de gasto.
+
+    - Flujo REINTEGRO: admite exclusivamente factura/ticket fiscal de proveedor ('factura').
+    - Flujo COMPRA_DIRECTA (o default): admite presupuesto/proforma y factura.
+    """
+    if tipo_flujo == "REINTEGRO":
+        return TIPOS_DOCUMENTO_ADMITIDOS_REINTEGRO
+    return TIPOS_DOCUMENTO_ADMITIDOS_PAGO
 
 
 class DocumentVerificationError(Exception):

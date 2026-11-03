@@ -263,6 +263,15 @@ def registrar_revision_datos_transferencia(
             "posteriores en esta demo."
         )
 
+    if (
+        datos
+        and isinstance(datos, Mapping)
+        and not (datos.get("centro_costo") or "").strip()
+        and getattr(solicitud, "centro_costo", None) is not None
+    ):
+        datos = dict(datos)
+        datos["centro_costo"] = solicitud.centro_costo.nombre
+
     valores = validar_datos_transferencia(datos)
     if valores is None:
         raise DatosTransferenciaInvalidInputError(

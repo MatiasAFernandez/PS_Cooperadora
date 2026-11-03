@@ -22,9 +22,9 @@ from documentos.services import (
 )
 from gastos.auth import has_capability, resolve_actor
 from gastos.contracts import (
-    TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
     DocumentVerificationError,
     OpcionDocumental,
+    tipos_documento_admitidos_para_flujo,
 )
 from gastos.datos_transferencia import (
     DatosTransferenciaBloqueadaError,
@@ -52,6 +52,7 @@ from gastos.models import (
     EstadoSolicitud,
     EventoPagoExterno,
     PagoExterno,
+    TipoFlujoGasto,
 )
 from gastos.payments import (
     PaymentConflictError,
@@ -115,12 +116,15 @@ def _listar_opciones_documentales(
     proveedor: Any, actor: Any, solicitud: Any
 ) -> list[OpcionDocumental] | None:
     """Consulta y valida el listado seguro del proveedor para el gasto visible."""
+    tipos_admitidos = tipos_documento_admitidos_para_flujo(
+        getattr(solicitud, "tipo_flujo", None)
+    )
     try:
         opciones = list(
             proveedor.listar_opciones_para_pago(
                 actor=actor,
                 gasto=solicitud,
-                tipos_admitidos=TIPOS_DOCUMENTO_ADMITIDOS_PAGO,
+                tipos_admitidos=tipos_admitidos,
             )
         )
     except Exception:
@@ -136,7 +140,7 @@ def _listar_opciones_documentales(
             return None
         if "\x00" in referencia or len(referencia) > 255 or referencia in referencias:
             return None
-        if tipo not in TIPOS_DOCUMENTO_ADMITIDOS_PAGO:
+        if tipo not in tipos_admitidos:
             return None
         if not isinstance(etiqueta, str) or not etiqueta.strip():
             return None
@@ -262,7 +266,35 @@ class SolicitudGastoCreateView(View):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
 
         form = SolicitudGastoForm(request.POST)
-        datos_form = DatosTransferenciaForm(request.POST)
+        cc = None
+        centro_costo_nombre = ""
+        centro_costo_id = request.POST.get("centro_costo")
+        if centro_costo_id:
+            try:
+                cc = CentroCosto.objects.filter(pk=centro_costo_id, activo=True).first()
+                if cc:
+                    centro_costo_nombre = cc.nombre
+            except (ValueError, TypeError):
+                cc = None
+
+        tiene_datos_bancarios = any(
+            (request.POST.get(c) or "").strip()
+            for c in ("titular_nombre", "identificacion", "cbu_alias", "correo_comprobante")
+        )
+        if tiene_datos_bancarios:
+            datos_post = request.POST.copy()
+            if cc is not None:
+                if (
+                    not (datos_post.get("centro_costo") or "").strip()
+                    or datos_post.get("centro_costo") == str(cc.pk)
+                ):
+                    datos_post["centro_costo"] = cc.nombre
+            datos_form = DatosTransferenciaForm(
+                datos_post,
+                centro_costo_default=centro_costo_nombre,
+            )
+        else:
+            datos_form = DatosTransferenciaForm({})
         form_valido = form.is_valid()
         datos_valido = datos_form.is_valid()
         if not (form_valido and datos_valido):
@@ -279,6 +311,8 @@ class SolicitudGastoCreateView(View):
                 concepto=form.cleaned_data["concepto"],
                 monto_estimado=form.cleaned_data["monto_estimado"],
                 unidad_requirente=form.cleaned_data["unidad_requirente"],
+                tipo_flujo=form.cleaned_data.get("tipo_flujo", TipoFlujoGasto.COMPRA_DIRECTA),
+                centro_costo=form.cleaned_data.get("centro_costo"),
                 datos_transferencia=datos_form.datos_transferencia,
             )
         except DatosTransferenciaInvalidInputError as exc:

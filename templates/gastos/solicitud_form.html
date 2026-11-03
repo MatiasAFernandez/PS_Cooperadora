@@ -38,6 +38,28 @@
         {% endif %}
     </div>
 
+    <div class="form-group">
+        <label for="{{ form.tipo_flujo.id_for_label }}">Modalidad de Gasto:</label>
+        {{ form.tipo_flujo }}
+        {% if form.tipo_flujo.help_text %}
+            <small>{{ form.tipo_flujo.help_text }}</small>
+        {% endif %}
+        {% if form.tipo_flujo.errors %}
+            <div class="alert-error">{{ form.tipo_flujo.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.centro_costo.id_for_label }}">Centro de Costo Institucional (opcional):</label>
+        {{ form.centro_costo }}
+        {% if form.centro_costo.help_text %}
+            <small>{{ form.centro_costo.help_text }}</small>
+        {% endif %}
+        {% if form.centro_costo.errors %}
+            <div class="alert-error">{{ form.centro_costo.errors }}</div>
+        {% endif %}
+    </div>
+
     <fieldset style="margin-top: 1.5rem; padding: 1rem; border: 1px solid #dee2e6; border-radius: 4px;">
         <legend style="font-weight: 600;">Datos de transferencia (opcional)</legend>
         <p style="margin-top: 0;">
