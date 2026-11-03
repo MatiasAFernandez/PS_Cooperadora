@@ -36,3 +36,8 @@ docs/fuentes/
 
 # Respaldo privado de prueba de #19
 private_documents/
+
+# Paquetes de auditoria externa y coordinacion personal
+PAQUETE_*
+*ARGON*
+temp/
