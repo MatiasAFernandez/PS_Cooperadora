@@ -1,5 +1,6 @@
 """Vistas para el circuito de gastos."""
 
+from decimal import Decimal
 from typing import Any
 
 from django.conf import settings
@@ -265,17 +266,42 @@ class SolicitudGastoCreateView(View):
         if not has_capability(actor, "gastos.presentar"):
             raise PermissionDenied("No posee capacidad para presentar gastos.")
 
-        form = SolicitudGastoForm(request.POST)
+        cc_list = request.POST.getlist("centro_costo")
+        cc_catalog_raw = ""
+        cc_transfer_raw = ""
+        if len(cc_list) >= 2:
+            cc_catalog_raw = (cc_list[0] or "").strip()
+            cc_transfer_raw = (cc_list[1] or "").strip()
+        elif len(cc_list) == 1:
+            val = (cc_list[0] or "").strip()
+            if (
+                val
+                and val.isdigit()
+                and CentroCosto.objects.filter(pk=int(val), activo=True).exists()
+            ):
+                cc_catalog_raw = val
+            else:
+                cc_transfer_raw = val
+
         cc = None
         centro_costo_nombre = ""
-        centro_costo_id = request.POST.get("centro_costo")
-        if centro_costo_id:
+        if cc_catalog_raw and cc_catalog_raw.isdigit():
             try:
-                cc = CentroCosto.objects.filter(pk=centro_costo_id, activo=True).first()
+                cc = CentroCosto.objects.filter(pk=int(cc_catalog_raw), activo=True).first()
                 if cc:
                     centro_costo_nombre = cc.nombre
             except (ValueError, TypeError):
                 cc = None
+
+        solicitud_post = request.POST.copy()
+        if cc is not None:
+            solicitud_post["centro_costo"] = str(cc.pk)
+        elif cc_catalog_raw:
+            solicitud_post["centro_costo"] = cc_catalog_raw
+        else:
+            solicitud_post["centro_costo"] = ""
+
+        form = SolicitudGastoForm(solicitud_post)
 
         tiene_datos_bancarios = any(
             (request.POST.get(c) or "").strip()
@@ -283,12 +309,13 @@ class SolicitudGastoCreateView(View):
         )
         if tiene_datos_bancarios:
             datos_post = request.POST.copy()
-            if cc is not None:
-                if (
-                    not (datos_post.get("centro_costo") or "").strip()
-                    or datos_post.get("centro_costo") == str(cc.pk)
-                ):
-                    datos_post["centro_costo"] = cc.nombre
+            if cc_transfer_raw and (cc is None or cc_transfer_raw != str(cc.pk)):
+                datos_post["centro_costo"] = cc_transfer_raw
+            elif cc is not None:
+                datos_post["centro_costo"] = cc.nombre
+            else:
+                datos_post["centro_costo"] = ""
+
             datos_form = DatosTransferenciaForm(
                 datos_post,
                 centro_costo_default=centro_costo_nombre,
@@ -876,6 +903,14 @@ class SolicitudGastoPagoView(View):
             )
 
         try:
+            kwargs_atp: dict[str, Any] = {}
+            if form.cleaned_data.get("monto_bruto"):
+                kwargs_atp["monto_bruto"] = form.cleaned_data["monto_bruto"]
+            if form.cleaned_data.get("monto_retencion_atp"):
+                kwargs_atp["monto_retencion_atp"] = form.cleaned_data["monto_retencion_atp"]
+            if form.cleaned_data.get("referencia_atp"):
+                kwargs_atp["referencia_atp"] = form.cleaned_data["referencia_atp"]
+
             registrar_pago_externo(
                 actor=actor,
                 solicitud_id=solicitud.pk,
@@ -884,6 +919,7 @@ class SolicitudGastoPagoView(View):
                 referencia_externa=form.cleaned_data["referencia_externa"],
                 referencia_documental=form.cleaned_data["referencia_documental"],
                 document_provider=proveedor,
+                **kwargs_atp,
             )
         except PaymentExpenseNotFoundError as exc:
             raise Http404("Solicitud inexistente o no visible.") from exc
@@ -958,6 +994,14 @@ class SolicitudGastoPagoView(View):
         almacenada y no autoriza ni muta el pago.
         """
         try:
+            kwargs_atp: dict[str, Any] = {}
+            if request.POST.get("monto_bruto"):
+                kwargs_atp["monto_bruto"] = request.POST.get("monto_bruto")
+            if request.POST.get("monto_retencion_atp"):
+                kwargs_atp["monto_retencion_atp"] = request.POST.get("monto_retencion_atp")
+            if request.POST.get("referencia_atp"):
+                kwargs_atp["referencia_atp"] = request.POST.get("referencia_atp")
+
             registrar_pago_externo(
                 actor=actor,
                 solicitud_id=solicitud.pk,
@@ -966,6 +1010,7 @@ class SolicitudGastoPagoView(View):
                 referencia_externa=request.POST.get("referencia_externa"),
                 referencia_documental=request.POST.get("referencia_documental"),
                 document_provider=None,
+                **kwargs_atp,
             )
         except PaymentExpenseNotFoundError as exc:
             raise Http404("Solicitud inexistente o no visible.") from exc
@@ -1016,6 +1061,17 @@ class SolicitudGastoPagoView(View):
         *,
         formulario_habilitado: bool = True,
     ) -> dict[str, Any]:
+        base_imponible = obtener_base_imponible_atp()
+        alicuota = obtener_alicuota_atp()
+        aplica_atp = (
+            solicitud.monto_estimado is not None
+            and solicitud.monto_estimado >= base_imponible
+        )
+        monto_retencion_sugerido = (
+            (solicitud.monto_estimado * alicuota / Decimal("100.00")).quantize(Decimal("0.01"))
+            if aplica_atp and solicitud.monto_estimado
+            else Decimal("0.00")
+        )
         return {
             "solicitud": solicitud,
             "actor": actor,
@@ -1026,6 +1082,10 @@ class SolicitudGastoPagoView(View):
                 actor, "documentos.incorporar"
             ),
             "tramite_id": f"gastos:{solicitud.pk}",
+            "base_imponible_atp": base_imponible,
+            "alicuota_atp": alicuota,
+            "aplica_atp": aplica_atp,
+            "monto_retencion_sugerido": monto_retencion_sugerido,
         }
 
 

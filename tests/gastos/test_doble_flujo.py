@@ -24,6 +24,7 @@ from gastos.models import (
     CentroCosto,
     EstadoSolicitud,
     PagoExterno,
+    RevisionDatosTransferencia,
     SolicitudGasto,
     TipoFlujoGasto,
 )
@@ -527,3 +528,127 @@ def test_view_detalle_muestra_tipo_flujo_y_centro_costo(
     assert "Reintegro a solicitante" in contenido
     assert "Secretaría de Posgrado" in contenido
     assert "(secretaria-posgrado)" in contenido
+
+
+def test_view_pagar_reintegro_no_lista_presupuesto(
+    actor_factory: Any,
+    auth_client: Any,
+    settings: Any,
+    capacidad_registrar_pago: Any,
+    monkeypatch: Any,
+) -> None:
+    """Criterio #2: En solicitudes de REINTEGRO, GET /gastos/<pk>/pagar/ excluye presupuestos."""
+    user, actor = actor_factory(
+        ("gastos.consultar_todas", "gastos.registrar_pago", "documentos.ver_metadatos")
+    )
+    monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor)
+    client = auth_client(user, actor)
+
+    solicitud = crear_gasto_sintetico(
+        solicitante=user,
+        tipo_flujo=TipoFlujoGasto.REINTEGRO,
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+
+    opciones = [
+        OpcionDocumental(
+            referencia_documental="ref-factura-001",
+            tipo_documento="factura",
+            etiqueta="Factura A-0001",
+        ),
+        OpcionDocumental(
+            referencia_documental="ref-presupuesto-002",
+            tipo_documento="presupuesto",
+            etiqueta="Presupuesto Prev-002",
+        ),
+    ]
+
+    class ProviderFiltrado(FakeDocumentVerificationPort):
+        def listar_opciones_para_pago(
+            self, *, actor: Any, gasto: Any, tipos_admitidos: Any = ()
+        ) -> list[OpcionDocumental]:
+            return [op for op in opciones if op.tipo_documento in tipos_admitidos]
+
+    settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = ProviderFiltrado(opciones=opciones)
+
+    url = reverse("gastos:pagar", kwargs={"pk": solicitud.pk})
+    response = client.get(url)
+
+    assert response.status_code == 200
+    form = response.context["form"]
+    choices = [c[0] for c in form.fields["referencia_documental"].choices]
+    assert "ref-factura-001" in choices
+    assert "ref-presupuesto-002" not in choices
+
+
+def test_view_presentar_solicitud_con_datos_transferencia_sincroniza_nombre_centro(
+    create_actor: Any,
+    auth_client: Any,
+) -> None:
+    """Previene colisión de centro_costo en POST: inyecta el nombre del centro en transferencia."""
+    user, _ = create_actor("solic_trf_sync", ["gastos.presentar"])
+    client = auth_client(user)
+
+    centro = CentroCosto.objects.create(
+        codigo="lab-electronica",
+        nombre="Laboratorio de Electrónica",
+        activo=True,
+    )
+
+    url = reverse("gastos:presentar")
+    csrf_token = issue_csrf_credentials(client)
+    response = client.post(
+        url,
+        data={
+            "csrfmiddlewaretoken": csrf_token,
+            "concepto": "Osciloscopio digital para laboratorio",
+            "monto_estimado": "120000.00",
+            "unidad_requirente": "Departamento de Electrónica",
+            "tipo_flujo": TipoFlujoGasto.COMPRA_DIRECTA,
+            "centro_costo": str(centro.pk),
+            "titular_nombre": "Carlos Gómez",
+            "identificacion": "20-33445566-7",
+            "cbu_alias": "carlos.gomez.lab",
+            "correo_comprobante": "carlos.gomez@frre.utn.edu.ar",
+        },
+    )
+
+    assert response.status_code == 302
+    solicitud = SolicitudGasto.objects.latest("id")
+    assert solicitud.centro_costo == centro
+
+    rev = RevisionDatosTransferencia.objects.filter(solicitud=solicitud).latest("id")
+    assert rev.centro_costo == "Laboratorio de Electrónica"
+    assert rev.centro_costo != str(centro.pk)
+
+
+def test_crear_solicitud_gasto_con_datos_transferencia_vacios_no_falla(
+    create_actor: Any,
+) -> None:
+    """Guardia ante diccionario de transferencia con campos vacíos: no autocompleta ni falla."""
+    _, solicitante = create_actor("solic_vacio", ["gastos.presentar"])
+    centro = CentroCosto.objects.create(
+        codigo="depto-quimica",
+        nombre="Departamento de Química",
+        activo=True,
+    )
+
+    solicitud = crear_solicitud_gasto(
+        actor=solicitante,
+        concepto="Reactivos para laboratorio",
+        monto_estimado=Decimal("45000.00"),
+        unidad_requirente="Lab Química",
+        centro_costo=centro,
+        datos_transferencia={
+            "titular_nombre": "",
+            "identificacion": "",
+            "cbu_alias": "",
+            "correo_comprobante": "",
+            "centro_costo": "",
+        },
+    )
+
+    assert solicitud.pk is not None
+    assert solicitud.centro_costo == centro
+    assert not RevisionDatosTransferencia.objects.filter(solicitud=solicitud).exists()
+

@@ -23,8 +23,57 @@
 </div>
 {% endif %}
 
+{% if aplica_atp %}
+<div class="message message-warning" role="alert" style="margin-bottom: 1.25rem;">
+    <div>
+        <strong>Aviso preventivo de Retención ATP Chaco:</strong>
+        El importe estimado de la solicitud (${{ solicitud.monto_estimado }}) alcanza o supera la base imponible vigente (${{ base_imponible_atp }}).
+        Alícuota provincial sugerida: <strong>{{ alicuota_atp }}%</strong> (Retención sugerida: <strong>${{ monto_retencion_sugerido }}</strong>).
+        Verifique los importes ingresados (Bruto - Retención = Neto efectivamente transferido).
+    </div>
+</div>
+{% endif %}
+
 <form id="pago-externo-form" method="post" action="{% url 'gastos:pagar' pk=solicitud.pk %}">
     {% csrf_token %}
+
+    <fieldset style="margin-bottom: 1.5rem; padding: 1.25rem; background: var(--ref-bg-muted, #f8fafc); border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px);">
+        <legend style="font-weight: 600; color: var(--ref-heading, #37423b); font-size: var(--text-sm, 0.875rem);">
+            Desglose Impositivo y Retención Provincial ATP (opcional)
+        </legend>
+        <p style="margin-top: 0; margin-bottom: 1rem; font-size: var(--text-sm, 0.875rem); color: var(--ref-text-muted, #64748b);">
+            Si la operación está alcanzada por retención de ATP Chaco, complete el monto bruto y el monto retenido. La identidad contable debe ser exacta: <code>Neto Transferido = Bruto - Retención ATP</code>.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="{{ form.monto_bruto.id_for_label }}">{{ form.monto_bruto.label }}:</label>
+                {{ form.monto_bruto }}
+                {% if form.monto_bruto.errors %}
+                    <div class="alert-error" role="alert">{{ form.monto_bruto.errors|join:", " }}</div>
+                {% endif %}
+                <small style="color: var(--ref-text-muted, #64748b); font-size: 0.8rem;">{{ form.monto_bruto.help_text }}</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="{{ form.monto_retencion_atp.id_for_label }}">{{ form.monto_retencion_atp.label }}:</label>
+                {{ form.monto_retencion_atp }}
+                {% if form.monto_retencion_atp.errors %}
+                    <div class="alert-error" role="alert">{{ form.monto_retencion_atp.errors|join:", " }}</div>
+                {% endif %}
+                <small style="color: var(--ref-text-muted, #64748b); font-size: 0.8rem;">{{ form.monto_retencion_atp.help_text }}</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="{{ form.referencia_atp.id_for_label }}">{{ form.referencia_atp.label }}:</label>
+                {{ form.referencia_atp }}
+                {% if form.referencia_atp.errors %}
+                    <div class="alert-error" role="alert">{{ form.referencia_atp.errors|join:", " }}</div>
+                {% endif %}
+                <small style="color: var(--ref-text-muted, #64748b); font-size: 0.8rem;">{{ form.referencia_atp.help_text }}</small>
+            </div>
+        </div>
+    </fieldset>
 
     <div class="form-group">
         <label for="{{ form.importe.id_for_label }}">{{ form.importe.label }}:</label>
