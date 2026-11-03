@@ -41,6 +41,11 @@ User = get_user_model()
 
 
 def run():
+    if "--reset" in sys.argv:
+        print("--- Reiniciando base de datos (--reset) ---")
+        from django.core.management import call_command
+        call_command("flush", interactive=False)
+
     print("--- 1. Preparando Grupos y Usuarios Demo ---")
     groups = {
         name: Group.objects.get_or_create(name=name)[0]
@@ -129,7 +134,18 @@ def run():
     )
 
     print("--- 3. Creando Solicitudes Representativas ---")
-    
+
+    if SolicitudGasto.objects.filter(concepto="Adquisición Insumos GPU NVIDIA").exists():
+        sol_pago = SolicitudGasto.objects.filter(concepto="Adquisición Insumos GPU NVIDIA").first()
+        sol_pagada = SolicitudGasto.objects.filter(concepto="Reactivos de Laboratorio y Cristalería").first()
+        print("--- Las fixtures de prueba ya se encuentran inicializadas en la base de datos! ---")
+        if sol_pago:
+            print(f"--- Solicitud pendiente de pago disponible con ID: {sol_pago.pk} ---")
+        if sol_pagada:
+            print(f"--- Solicitud pagada disponible con ID: {sol_pagada.pk} ---")
+        print("--- Para reiniciar desde cero, podés ejecutar: python scripts/prepare_e2e_i3_fixtures.py --reset ---")
+        return
+
     # 3.1. Solicitud 1: Pendiente de pago para Issue #91 (Compra directa aceptada)
     sol_pago = crear_solicitud_gasto(
         actor=actor_a,
