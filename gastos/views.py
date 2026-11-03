@@ -38,14 +38,21 @@ from gastos.datos_transferencia import (
 )
 from gastos.document_provider import cargar_proveedor_documental
 from gastos.forms import (
+    CentroCostoForm,
     DatosTransferenciaForm,
     DecisionGastoForm,
     DocumentoGastoForm,
     FiltroEstadoGastoForm,
     PagoExternoForm,
+    ParametrosATPForm,
     SolicitudGastoForm,
 )
-from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
+from gastos.models import (
+    CentroCosto,
+    EstadoSolicitud,
+    EventoPagoExterno,
+    PagoExterno,
+)
 from gastos.payments import (
     PaymentConflictError,
     PaymentExpenseNotFoundError,
@@ -64,9 +71,12 @@ from gastos.services import (
     ExpensePermissionDeniedError,
     InvalidDecisionInputError,
     InvalidTransitionError,
+    actualizar_parametro_decimal,
     can_decide_expense,
     crear_solicitud_gasto,
     decide_expense,
+    obtener_alicuota_atp,
+    obtener_base_imponible_atp,
 )
 
 
@@ -983,3 +993,132 @@ class SolicitudGastoPagoView(View):
             ),
             "tramite_id": f"gastos:{solicitud.pk}",
         }
+
+
+def _puede_administrar_catalogos(actor: Any) -> bool:
+    """Verifica si el actor posee facultades para administrar catálogos y parámetros."""
+    if actor is None:
+        return False
+    return has_capability(actor, "gastos.decidir") or has_capability(
+        actor, "gastos.registrar_pago"
+    )
+
+
+class GestionCatalogosView(View):
+    """Administración de catálogos (centros de costo) y parámetros de Cooperadora."""
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+        if not _puede_administrar_catalogos(actor):
+            raise PermissionDenied("No posee permisos para administrar catálogos y parámetros.")
+        self.actor = actor
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        centros = CentroCosto.objects.all().order_by("nombre")
+        centro_form = CentroCostoForm()
+        atp_form = ParametrosATPForm(
+            initial={
+                "base_imponible_atp": obtener_base_imponible_atp(),
+                "alicuota_atp": obtener_alicuota_atp(),
+            }
+        )
+        return render(
+            request,
+            "gastos/gestion_catalogos.html",
+            {
+                "actor": self.actor,
+                "centros_costo": centros,
+                "centro_form": centro_form,
+                "atp_form": atp_form,
+            },
+        )
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        action = request.POST.get("action", "").strip()
+        centros = CentroCosto.objects.all().order_by("nombre")
+
+        if action == "crear_centro":
+            centro_form = CentroCostoForm(request.POST)
+            atp_form = ParametrosATPForm(
+                initial={
+                    "base_imponible_atp": obtener_base_imponible_atp(),
+                    "alicuota_atp": obtener_alicuota_atp(),
+                }
+            )
+            if centro_form.is_valid():
+                centro_form.save()
+                messages.success(
+                    request,
+                    f"Centro de costo '{centro_form.instance.nombre}' creado exitosamente.",
+                )
+                return redirect(reverse("gastos:gestion_catalogos"))
+            return render(
+                request,
+                "gastos/gestion_catalogos.html",
+                {
+                    "actor": self.actor,
+                    "centros_costo": centros,
+                    "centro_form": centro_form,
+                    "atp_form": atp_form,
+                },
+                status=400,
+            )
+
+        if action == "actualizar_atp":
+            atp_form = ParametrosATPForm(request.POST)
+            centro_form = CentroCostoForm()
+            if atp_form.is_valid():
+                actualizar_parametro_decimal(
+                    clave="ATP_BASE_IMPONIBLE",
+                    valor=atp_form.cleaned_data["base_imponible_atp"],
+                    actor=self.actor,
+                    descripcion="Base imponible de retención provincial ATP",
+                )
+                actualizar_parametro_decimal(
+                    clave="ATP_ALICUOTA_DEFECTO",
+                    valor=atp_form.cleaned_data["alicuota_atp"],
+                    actor=self.actor,
+                    descripcion="Alícuota sugerida por defecto para retención provincial ATP",
+                )
+                messages.success(
+                    request,
+                    "Parámetros de retención ATP actualizados exitosamente.",
+                )
+                return redirect(reverse("gastos:gestion_catalogos"))
+            return render(
+                request,
+                "gastos/gestion_catalogos.html",
+                {
+                    "actor": self.actor,
+                    "centros_costo": centros,
+                    "centro_form": centro_form,
+                    "atp_form": atp_form,
+                },
+                status=400,
+            )
+
+        return redirect(reverse("gastos:gestion_catalogos"))
+
+
+class CentroCostoToggleActivoView(View):
+    """Activa o desactiva (baja lógica) un centro de costo existente."""
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+        if not _puede_administrar_catalogos(actor):
+            raise PermissionDenied("No posee permisos para administrar catálogos.")
+
+        centro = get_object_or_404(CentroCosto, pk=pk)
+        centro.activo = not centro.activo
+        centro.save(update_fields=["activo"])
+        estado_desc = "activado" if centro.activo else "desactivado"
+        messages.info(request, f"Centro de costo '{centro.nombre}' {estado_desc}.")
+        return redirect(reverse("gastos:gestion_catalogos"))
+

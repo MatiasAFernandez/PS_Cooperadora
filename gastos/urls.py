@@ -3,6 +3,8 @@
 from django.urls import path
 
 from gastos.views import (
+    CentroCostoToggleActivoView,
+    GestionCatalogosView,
     SolicitudGastoCreateView,
     SolicitudGastoDatosTransferenciaView,
     SolicitudGastoDecidirView,
@@ -17,6 +19,16 @@ app_name = "gastos"
 urlpatterns = [
     path("", SolicitudGastoListView.as_view(), name="lista"),
     path("presentar/", SolicitudGastoCreateView.as_view(), name="presentar"),
+    path(
+        "administracion/catalogos/",
+        GestionCatalogosView.as_view(),
+        name="gestion_catalogos",
+    ),
+    path(
+        "administracion/centros-costo/<int:pk>/toggle/",
+        CentroCostoToggleActivoView.as_view(),
+        name="centro_costo_toggle",
+    ),
     path(
         "<int:pk>/datos-transferencia/",
         SolicitudGastoDatosTransferenciaView.as_view(),

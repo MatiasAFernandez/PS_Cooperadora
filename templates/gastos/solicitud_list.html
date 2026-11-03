@@ -5,9 +5,14 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center;">
     <h3>Solicitudes de Gasto</h3>
-    {% if actor and "gastos.presentar" in actor.capabilities %}
-    <a href="{% url 'gastos:presentar' %}" class="btn">Nueva Solicitud</a>
-    {% endif %}
+    <div style="display: flex; gap: 0.5rem;">
+        {% if actor and "gastos.decidir" in actor.capabilities or actor and "gastos.registrar_pago" in actor.capabilities %}
+        <a href="{% url 'gastos:gestion_catalogos' %}" class="btn" style="background: #6c757d;">Catálogos y Parámetros</a>
+        {% endif %}
+        {% if actor and "gastos.presentar" in actor.capabilities %}
+        <a href="{% url 'gastos:presentar' %}" class="btn">Nueva Solicitud</a>
+        {% endif %}
+    </div>
 </div>
 
 <form method="get" action="{% url 'gastos:lista' %}">

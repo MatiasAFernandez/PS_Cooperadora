@@ -1,6 +1,7 @@
 """Servicios de negocio para el módulo de gastos."""
 
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
@@ -12,6 +13,7 @@ from gastos.datos_transferencia import validar_datos_transferencia
 from gastos.models import (
     DecisionGasto,
     EstadoSolicitud,
+    ParametroOperativo,
     RevisionDatosTransferencia,
     SolicitudGasto,
 )
@@ -297,3 +299,60 @@ def crear_solicitud_gasto(
             **datos_validos,
         )
     return solicitud
+
+
+CLAVE_PARAMETRO_ATP_BASE = "ATP_BASE_IMPONIBLE"
+CLAVE_PARAMETRO_ATP_ALICUOTA = "ATP_ALICUOTA_DEFECTO"
+VALOR_DEFECTO_ATP_BASE = Decimal("90000.00")
+VALOR_DEFECTO_ATP_ALICUOTA = Decimal("3.50")
+
+
+def obtener_parametro_decimal(clave: str, default: Decimal) -> Decimal:
+    """Recupera un parámetro decimal de base de datos con fallback determinista en código.
+
+    Garantiza que sobre bases vacías o en ejecuciones de prueba (como muestra_entrega)
+    sin filas en ParametroOperativo no se produzcan excepciones ni se altere el hash.
+    """
+    try:
+        valor = (
+            ParametroOperativo.objects.filter(clave=clave)
+            .values_list("valor_decimal", flat=True)
+            .first()
+        )
+        if valor is not None:
+            return Decimal(str(valor))
+    except Exception:
+        pass
+    return default
+
+
+def obtener_base_imponible_atp() -> Decimal:
+    """Devuelve la base imponible vigente para retenciones de ATP provincial."""
+    return obtener_parametro_decimal(CLAVE_PARAMETRO_ATP_BASE, VALOR_DEFECTO_ATP_BASE)
+
+
+def obtener_alicuota_atp() -> Decimal:
+    """Devuelve la alícuota porcentual sugerida por defecto para retenciones de ATP."""
+    return obtener_parametro_decimal(CLAVE_PARAMETRO_ATP_ALICUOTA, VALOR_DEFECTO_ATP_ALICUOTA)
+
+
+@transaction.atomic
+def actualizar_parametro_decimal(
+    *,
+    clave: str,
+    valor: Decimal,
+    actor: Any = None,
+    descripcion: str = "",
+) -> ParametroOperativo:
+    """Crea o actualiza un parámetro decimal operativo registrando al actor responsable."""
+    user_id = getattr(actor, "subject_id", None) or getattr(actor, "pk", None)
+    param, _ = ParametroOperativo.objects.update_or_create(
+        clave=clave,
+        defaults={
+            "valor_decimal": valor,
+            "descripcion": descripcion,
+            "modificado_por_id": user_id,
+        },
+    )
+    return param
+
