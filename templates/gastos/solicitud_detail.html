@@ -86,7 +86,7 @@
                 <dt>Identificación informada</dt>
                 <dd>{{ datos_transferencia_actual.identificacion }}</dd>
                 <dt>CBU o alias</dt>
-                <dd>{{ datos_transferencia_actual.cbu_alias }}</dd>
+                <dd class="font-mono">{{ datos_transferencia_actual.cbu_alias }}</dd>
                 <dt>Correo para el comprobante</dt>
                 <dd>{{ datos_transferencia_actual.correo_comprobante }}</dd>
                 <dt>Centro de costo informado</dt>
@@ -193,25 +193,25 @@
                 {% if pago_consulta.monto_retencion_atp and pago_consulta.monto_retencion_atp > 0 %}
                 <tr>
                     <th scope="row">Monto Bruto</th>
-                    <td>{{ pago_consulta.monto_bruto }} {{ pago_consulta.moneda }}</td>
+                    <td class="font-tabular">{{ pago_consulta.monto_bruto }} {{ pago_consulta.moneda }}</td>
                 </tr>
                 <tr>
                     <th scope="row">Retención ATP Chaco</th>
                     <td>
-                        {{ pago_consulta.monto_retencion_atp }} {{ pago_consulta.moneda }}
+                        <span class="font-tabular">{{ pago_consulta.monto_retencion_atp }} {{ pago_consulta.moneda }}</span>
                         {% if pago_consulta.referencia_atp %}
-                            <span class="badge badge-warning" style="margin-left: 0.5rem;">Cert: {{ pago_consulta.referencia_atp }}</span>
+                            <span class="badge badge-warning font-mono" style="margin-left: 0.5rem;">Cert: {{ pago_consulta.referencia_atp }}</span>
                         {% endif %}
                     </td>
                 </tr>
                 <tr>
                     <th scope="row">Neto Transferido</th>
-                    <td><strong>{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</strong></td>
+                    <td><strong class="font-tabular">{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</strong></td>
                 </tr>
                 {% else %}
                 <tr>
                     <th scope="row">Importe</th>
-                    <td>{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</td>
+                    <td class="font-tabular">{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</td>
                 </tr>
                 {% endif %}
                 <tr>

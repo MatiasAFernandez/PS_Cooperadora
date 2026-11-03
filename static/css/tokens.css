@@ -495,3 +495,15 @@ textarea:focus {
   border-color: var(--color-success-border);
   color: var(--color-success);
 }
+
+/* ---------------------------------------------------------------------------
+ * 7. Utilidades Tipográficas y Numéricas (Alineación Financiera y Códigos)
+ * --------------------------------------------------------------------------- */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+

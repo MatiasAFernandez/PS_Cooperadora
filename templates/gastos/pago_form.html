@@ -27,8 +27,8 @@
 <div class="message message-warning" role="alert" style="margin-bottom: 1.25rem;">
     <div>
         <strong>Aviso preventivo de Retención ATP Chaco:</strong>
-        El importe estimado de la solicitud (${{ solicitud.monto_estimado }}) alcanza o supera la base imponible vigente (${{ base_imponible_atp }}).
-        Alícuota provincial sugerida: <strong>{{ alicuota_atp }}%</strong> (Retención sugerida: <strong>${{ monto_retencion_sugerido }}</strong>).
+        El importe estimado de la solicitud (<span class="font-tabular">${{ solicitud.monto_estimado }}</span>) alcanza o supera la base imponible vigente (<span class="font-tabular">${{ base_imponible_atp }}</span>).
+        Alícuota provincial sugerida: <strong class="font-tabular">{{ alicuota_atp }}%</strong> (Retención sugerida: <strong class="font-tabular">${{ monto_retencion_sugerido }}</strong>).
         Verifique los importes ingresados (Bruto - Retención = Neto efectivamente transferido).
     </div>
 </div>
