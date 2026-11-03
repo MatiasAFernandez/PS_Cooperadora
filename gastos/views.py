@@ -68,6 +68,7 @@ from gastos.payments import (
 )
 from gastos.proyeccion_documental import proyectar_documentos
 from gastos.queries import visible_expenses
+from gastos.reports import obtener_reporte_cuatrimestral_gastos
 from gastos.services import (
     ConcurrencyConflictError,
     DeudaDocumentalBloqueoError,
@@ -469,6 +470,41 @@ class SolicitudGastoListView(View):
                 "actor": actor,
                 "filtro_form": filtro_form,
                 "resumen_deuda": resumen_deuda,
+            },
+        )
+
+
+class ReporteCuatrimestralGastosView(View):
+    """Vista de agregación directiva de montos solicitados y erogados (GAST-R08)."""
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+
+        if not has_capability(actor, "gastos.consultar_todas"):
+            raise PermissionDenied(
+                "No posee capacidad para consultar el reporte directivo de gastos."
+            )
+
+        anio_param = request.GET.get("anio") or request.GET.get("year")
+        anio = None
+        if anio_param:
+            try:
+                anio = int(anio_param)
+            except (ValueError, TypeError):
+                anio = None
+
+        reporte = obtener_reporte_cuatrimestral_gastos(anio)
+
+        return render(
+            request,
+            "gastos/reporte_cuatrimestral.html",
+            {
+                "actor": actor,
+                "reporte": reporte,
+                "anio_seleccionado": reporte.anio,
             },
         )
 

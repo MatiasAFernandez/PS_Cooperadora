@@ -13,7 +13,10 @@
             Panel de alta densidad y seguimiento operativo Master-Detail.
         </p>
     </div>
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        {% if actor and "gastos.consultar_todas" in actor.capabilities %}
+        <a href="{% url 'gastos:reporte_cuatrimestral' %}" class="btn" style="background: var(--ref-deep-blue, #090979);">Reporte Cuatrimestral</a>
+        {% endif %}
         {% if actor and "gastos.decidir" in actor.capabilities or actor and "gastos.registrar_pago" in actor.capabilities %}
         <a href="{% url 'gastos:gestion_catalogos' %}" class="btn" style="background: #6c757d;">Catálogos y Parámetros</a>
         {% endif %}
