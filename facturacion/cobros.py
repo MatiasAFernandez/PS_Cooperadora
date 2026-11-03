@@ -19,10 +19,15 @@ from .workflow import ConflictoConcurrenciaError
 
 
 def puede_confirmar_al_registrar(actor):
-    return all(has_capability(actor, c) for c in (
-        "facturacion.registrar_cobro", "facturacion.verificar_cobro",
-        "documentos.revisar", "documentos.consultar_metadatos",
-    ))
+    return all(
+        has_capability(actor, c)
+        for c in (
+            "facturacion.registrar_cobro",
+            "facturacion.verificar_cobro",
+            "documentos.revisar",
+            "documentos.consultar_metadatos",
+        )
+    )
 
 
 def autorizar_cobro(actor, numero, *, verificar=False):
@@ -30,6 +35,7 @@ def autorizar_cobro(actor, numero, *, verificar=False):
     if solicitud is None:
         raise ObjetoNoVisibleError
     from .seguimiento import exigir_abierta
+
     exigir_abierta(solicitud)
     capacidades = (
         ("facturacion.verificar_cobro",)
@@ -124,7 +130,9 @@ def registrar_cobro(*, actor, numero, datos, archivo=None):
                         )
                     try:
                         revisar(
-                            actor=actor, documento_id=documento.pk, resultado="ACEPTADO",
+                            actor=actor,
+                            documento_id=documento.pk,
+                            resultado="ACEPTADO",
                             motivo=(
                                 "Conformidad del respaldo declarada al registrar el cobro; "
                                 "mismo actor que informa y verifica el ingreso."
@@ -134,7 +142,9 @@ def registrar_cobro(*, actor, numero, datos, archivo=None):
                     except ConflictoRevision as exc:
                         raise ConflictoConcurrenciaError(str(exc)) from exc
                 verificar_cobro(
-                    actor=actor, numero=numero, cobro_id=cobro.pk,
+                    actor=actor,
+                    numero=numero,
+                    cobro_id=cobro.pk,
                     datos={
                         "resultado": "CONFIRMADO",
                         "motivo": "Ingreso externo cotejado y confirmado al registrar el cobro.",
@@ -161,7 +171,11 @@ def verificar_cobro(*, actor, numero, cobro_id, datos):
         raise ValidationError({k: list(v) for k, v in form.errors.items()})
     with transaction.atomic():
         TramiteBase.objects.select_for_update().get(pk=solicitud.tramite_base_id)
-        cobro = CobroExterno.objects.select_for_update().get(pk=cobro_id, solicitud=solicitud)
+        cobro = CobroExterno.objects.select_for_update().filter(
+            pk=cobro_id, solicitud=solicitud
+        ).first()
+        if cobro is None:
+            raise ConflictoConcurrenciaError("El cobro cambió. Recargá la solicitud.")
         autorizar_cobro(actor, numero, verificar=True)
         if VerificacionCobro.objects.filter(cobro=cobro).exists():
             raise ConflictoConcurrenciaError("Ese ingreso ya fue verificado. Recargá el detalle.")
@@ -174,10 +188,98 @@ def resumen_cobros(solicitud):
     cobros = list(solicitud.cobros.select_related("verificacion", "documento"))
     totales = {r: Decimal("0.00") for r in ("PENDIENTE", "CONFIRMADO", "RECHAZADO")}
     eventos = []
-    for numero, cobro in enumerate(cobros, start=1):
-        cobro.numero_en_solicitud = numero
-        totales[cobro.resultado] += cobro.importe
+    for cobro in CobroExterno.todos.filter(solicitud=solicitud).select_related(
+        "verificacion", "documento", "reemplaza"
+    ):
+        numero = cobro.numero_en_solicitud
+        if not cobro.sustituido:
+            totales[cobro.resultado] += cobro.importe
         eventos.append(cobro.como_historial(numero_cobro=numero))
         if cobro.resultado != "PENDIENTE":
             eventos.append(cobro.verificacion.como_historial(numero_cobro=numero))
     return cobros, totales, eventos
+
+
+def puede_corregir_cobro(actor, cobro):
+    from identidad.services import has_capability
+
+    return (
+        has_capability(actor, "facturacion.informar_cobro")
+        and has_capability(actor, "documentos.incorporar")
+        and cobro.actor_id == actor.subject_id
+        and cobro.procedencia == "SOLICITANTE"
+        and cobro.solicitud.tramite_base.solicitante_actor_id == str(actor.subject_id)
+        and not cobro.sustituido
+        and cobro.resultado in {"PENDIENTE", "RECHAZADO"}
+        and cobro.solicitud.estado not in {"CERRADA", "ANULADA"}
+    )
+
+
+def corregir_cobro(*, actor, numero, cobro_id, datos, archivo=None):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from documentos.services import almacenamiento
+
+    from .forms_cobros import CorreccionCobroForm
+    from .seguimiento import respaldo_actual
+
+    solicitud = autorizar_cobro(actor, numero)
+    form = CorreccionCobroForm(datos, {"archivo": archivo} if archivo else None)
+    if not form.is_valid():
+        raise ValidationError({k: list(v) for k, v in form.errors.items()})
+    d = form.cleaned_data
+    try:
+        with operacion_documental() as escrituras:
+            TramiteBase.objects.select_for_update().get(pk=solicitud.tramite_base_id)
+            solicitud = autorizar_cobro(actor, numero)
+            previo = (
+                CobroExterno.objects.select_for_update()
+                .filter(pk=cobro_id, solicitud_id=numero)
+                .first()
+            )
+            if previo is None:
+                raise ConflictoConcurrenciaError("El cobro cambió. Recargá la solicitud.")
+            if not puede_corregir_cobro(actor, previo):
+                raise PermissionDenied("Sólo podés corregir tus cobros pendientes o rechazados.")
+            if (
+                CobroExterno.objects.exclude(pk=previo.pk)
+                .filter(medio=d["medio"], numero_operacion=d["numero_operacion"])
+                .exists()
+            ):
+                raise ValidationError("Esa operación ya está registrada en otro cobro.")
+            anterior = respaldo_actual(previo)
+            if archivo is None:
+                with almacenamiento().open(anterior.archivo, "rb") as origen:
+                    archivo = SimpleUploadedFile(
+                        anterior.nombre_original, origen.read(), anterior.formato
+                    )
+            # La versión anterior permanece: sólo se marca su sustitución.
+            CobroExterno.objects.filter(pk=previo.pk).update(sustituido=True)
+            documento = incorporar(
+                actor=actor,
+                referencia=f"facturacion:{numero}",
+                archivo=archivo,
+                tipo="COMPROBANTE_COBRO",
+                procedencia="SOLICITANTE",
+                reemplaza_id=anterior.pk,
+                _escrituras=escrituras,
+            )
+            return CobroExterno.objects.create(
+                solicitud=solicitud,
+                medio=d["medio"],
+                numero_operacion=d["numero_operacion"],
+                fecha_operacion=d["fecha_operacion"],
+                importe=d["importe"],
+                documento=documento,
+                actor_id=actor.subject_id,
+                procedencia="SOLICITANTE",
+                reemplaza=previo,
+                motivo_correccion=d["motivo"],
+            )
+    except IntegrityError as exc:
+        if getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None) in {
+            "uq_cobro_operacion_global",
+            "facturacion_cobroexterno_reemplaza_id_key",
+        }:
+            raise ConflictoConcurrenciaError("El cobro o la operación cambió. Recargá.") from exc
+        raise

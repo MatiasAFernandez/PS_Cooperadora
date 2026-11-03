@@ -1,5 +1,11 @@
 # SPEC-006 — Registro de cobros y comprobantes de ingreso
 
+La corrección de cobros propios pendientes o rechazados se amplía por solicitud
+expresa de Matías del 02/11/2026 en [SPEC-019](019-matias-correccion-cobros.md)/#87.
+Cada versión y verificación conserva sus datos; sólo un sucesor vigente cuenta
+en saldo y mantiene la unicidad de operación entre cobros vigentes. No se
+modifican ingresos confirmados ni se ejecutan cobros externos.
+
 ## Validación y alcance posterior al 29/10/2026
 
 La [demo](../evidence/demo-2026-10-29.md) confirma ARS, cobro inicial posible antes de factura y cobro único como caso habitual, sin eliminar parciales. La acción conjunta explícita del 25/10 ya formaba parte del código presentado: exponer pasos separados no acredita ausencia de esa capacidad. #80 revisa descubribilidad/recorrido; #76 simplifica comprobantes externos. No quedan validadas todas las diferencias, retenciones/comisiones, imputaciones o anulaciones. La mera carga no acredita ingreso.
@@ -43,8 +49,9 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 - Ejecutar cobros bancarios o conciliar automáticamente extractos.
 - Integración directa por API con bancos, Exubio o ATP.
 - Imputar un cobro a solicitudes diferentes durante I2.
-- Descuentos, retenciones, comisiones, conversión monetaria y corrección/anulación
-  de cobros o verificaciones. No se cuentan importes no recibidos como ingresos.
+- Descuentos, retenciones, comisiones, conversión monetaria y anulación o
+  regularización de ingresos confirmados. No se cuentan importes no recibidos
+  como ingresos. Correcciones de pendientes/rechazados: SPEC-019.
 
 ## Requisitos verificables
 
@@ -65,7 +72,8 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
 - Sólo ARS, importes positivos hasta 9999999999,99 con hasta dos decimales exactos.
   Se admiten varios parciales y anticipos antes de emitir la factura. Todos se
   relacionan con la factura única por la solicitud; ninguna FK se reasigna después.
-- Identidad global: medio/cuenta de destino + número de operación obligatorio.
+- Identidad de operación vigente: medio/cuenta de destino + número obligatorio.
+  Las versiones históricas sustituidas conservan la referencia previa.
   Medios del perfil: Mercado Pago, BNA común, BNA UVT y NBCH. Cuenta corriente
   describe ausencia de cobro y no se admite como medio de ingreso. La referencia
   conserva mayúsculas, ceros y separadores; sólo se recortan espacios exteriores.

@@ -64,6 +64,14 @@ class SolicitudFacturacionForm(forms.Form):
     def __init__(self, *args, documento_actual=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.documento_actual = documento_actual
+        self.fields["centro_costo"].choices = [
+            (valor, etiqueta) for valor, etiqueta in CentroCosto.choices
+            if valor != "OPCION_35"
+        ]
+        orden = list(self.fields)
+        orden.remove("presento_comprobante_pago")
+        orden.insert(orden.index("fecha_operacion_declarada"), "presento_comprobante_pago")
+        self.order_fields(orden)
 
     def clean(self):
         data = super().clean()

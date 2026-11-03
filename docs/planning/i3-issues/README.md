@@ -3,7 +3,7 @@
 - **Período de ejecución:** 03/11/2026 al 08/11/2026.
 - **Responsable principal:** Franco Damián Sánchez (Gastos y Pagos).
 - **Revisión de interfaces comunes:** Matías Alejandro Fernández.
-- **Especificación canónica:** [SPEC-019](../../specs/019-franco-doble-flujo-atp-ux.md).
+- **Especificación canónica:** [SPEC-020](../../specs/020-franco-doble-flujo-atp-ux.md).
 - **Base técnica inicial:** `main` en commit `0880dee` (con PR #75 y #86 integradas, suite de 601 pruebas en verde).
 - **Estado metodológico:** Aprobado con ajustes por la auditoría técnica externa (Gemini Argon).
 

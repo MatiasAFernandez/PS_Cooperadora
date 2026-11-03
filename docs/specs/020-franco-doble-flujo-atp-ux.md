@@ -1,4 +1,4 @@
-# SPEC-019 — Doble flujo de gastos, retención ATP parametrizada, alertas preventivas y panel operativo compacto
+# SPEC-020 — Doble flujo de gastos, retención ATP parametrizada, alertas preventivas y panel operativo compacto
 
 - **Estado:** Listo para implementación (aprobado con ajustes de auditoría técnica).
 - **Fecha:** 02/11/2026.

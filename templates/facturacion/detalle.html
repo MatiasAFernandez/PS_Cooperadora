@@ -1,5 +1,11 @@
 {% extends "facturacion/base.html" %}
-{% block content %}<h2>Solicitud {{ solicitud.numero_solicitante }} de {{ solicitud.correo_solicitante }}</h2>
+{% block content %}
+<section class="panel" aria-labelledby="titulo-acciones">
+<h3 id="titulo-acciones">Acciones inmediatas</h3>
+<ol>{% for accion in acciones_inmediatas %}<li><p><a class="btn" href="{{ accion.url }}">{{ accion.texto }}</a></p></li>
+{% empty %}<li>No tenés acciones pendientes en este momento.</li>{% endfor %}</ol>
+</section>
+<h2>Solicitud {{ solicitud.numero_solicitante }} de {{ solicitud.correo_solicitante }}</h2>
 <p><a class="btn" href="{% url 'facturacion:exportar_pdf' solicitud.pk %}">Exportar solicitud a PDF</a></p>
 <p><strong>{{ solicitud.get_estado_display }}</strong> — versión {{ solicitud.version_concurrencia }}.
 Seguimiento: <strong>{{ solicitud.estado_seguimiento }}</strong>.</p>

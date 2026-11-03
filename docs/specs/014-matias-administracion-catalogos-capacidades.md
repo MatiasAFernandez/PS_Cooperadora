@@ -1,5 +1,11 @@
 # SPEC-014 — Administración de catálogos y capacidades operativas
 
+Ajuste puntual solicitado por Matías el 02/11/2026: retirar Opción 35 de las
+opciones elegibles del formulario de facturación. Se mantiene el código histórico
+en datos y catálogos internos para no reescribir trámites previos. Una nueva
+presentación/corrección debe seleccionar otra opción válida. Este ajuste no
+implementa el editor de catálogos ni completa #77.
+
 - Estado: para validar matriz y catálogo exactos.
 - Issue: [#77](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/77), [#85](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/85).
 - Responsable principal: Matías Alejandro Fernández.

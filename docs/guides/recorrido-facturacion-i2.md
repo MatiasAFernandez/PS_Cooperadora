@@ -1,5 +1,26 @@
 # Recorrido local de facturación — solicitudes y comprobantes externos
 
+## Acceso y atención — ajuste de #80/#78/#87
+
+El solicitante entra por Solicitud de Facturación; Nueva solicitud permanece
+dentro del listado. Las tarjetas previas a los filtros muestran como máximo
+dos trámites con acciones propias; Cooperadora ve hasta tres y su siguiente
+acción. El detalle comienza con las acciones inmediatas. El listado muestra
+cuatro filas con desplazamiento vertical, manteniendo paginación y filtros.
+
+En el formulario, elegir Sí en comprobante de pago muestra fecha, operación y
+archivo; elegir No los oculta y no envía esos campos. Alternar no borra lo
+escrito en pantalla. Opción 35 ya no se ofrece para nuevas cargas/correcciones.
+
+Para un cobro propio pendiente o rechazado, usar Corregir cobro en el detalle
+o desde la tarjeta cuando tenga rechazo/documentación observada. Completar
+datos y motivo; el archivo nuevo es opcional. Se conserva la versión anterior
+y la nueva vuelve a revisión documental/verificación. El ordinal visible no
+cambia. Un cobro confirmado no admite este flujo; requiere intervención de
+Cooperadora. Consultar [SPEC-019](../specs/019-matias-correccion-cobros.md).
+
+## Recorrido base
+
 Usar exclusivamente datos y documentos sintéticos. Este recorrido cubre la
 presentación, observación y corrección de solicitudes, el registro de comprobantes
 y cobros externos, la verificación independiente del ingreso y la resolución

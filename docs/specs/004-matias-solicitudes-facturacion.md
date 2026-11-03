@@ -1,5 +1,20 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
+## Ajuste de interfaz solicitado el 02/11/2026 — #80
+
+La pregunta sobre comprobante de pago se ubica inmediatamente antes de fecha,
+número y archivo declarados. Con JavaScript esos tres campos sólo se muestran
+y se envían al elegir Sí; cambiar a No conserva lo escrito en pantalla, pero
+deshabilita su envío. La corrección conserva el respaldo previo salvo retirada
+explícita, manteniendo su historia. La validación D01 del servidor no se sustituye
+por el comportamiento de interfaz ni se amplía a un nuevo permiso documental.
+
+Las columnas del listado se llaman ID de Solicitud y Fecha de Presentación; el
+número conserva su significado por titular, sin reasignar claves. Una columna
+Detalle ofrece Ver Detalle y el identificador deja de ser enlace. La región
+accesible muestra cuatro filas y permite desplazamiento vertical; se conserva
+la paginación de 25 registros y los filtros para todos los perfiles.
+
 ## Validación y alcance posterior al 29/10/2026
 
 La [demo](../evidence/demo-2026-10-29.md) recorre presentación/observación/corrección y confirma poder aportar comprobante inicial cuando ya hubo pago. No valida individualmente todas las obligatoriedades ni delegaciones. #80 sigue la unificación de formularios comunidad/grupos y el recorrido compacto; [SPEC-015](015-matias-avisos-pendientes.md)/#78 especifica avisos y acceso a pendientes. Son cambios por realizar; el cierre técnico de #23 se conserva.

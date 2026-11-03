@@ -17,7 +17,7 @@ from documentos.services import bloquear_serie, incorporar
 from identidad.services import has_capability
 
 from .choices import ModalidadCobro
-from .models import ActualizacionRespaldo, SolicitudFacturacion
+from .models import ActualizacionRespaldo, CobroExterno, SolicitudFacturacion
 from .permissions import ObjetoNoVisibleError, filtrar_solicitudes_visibles
 from .workflow import ConflictoConcurrenciaError, _evento, _serializar
 
@@ -81,11 +81,10 @@ def diagnostico(solicitud):
     if (
         solicitud.presento_comprobante_pago
         and solicitud.modalidad_cobro in {"MERCADO_PAGO", "BNA_COMUN", "BNA_UVT", "NBCH"}
-        and not any(
-            c.medio == solicitud.modalidad_cobro
-            and c.numero_operacion == solicitud.numero_operacion_declarado.strip()
-            for c in cobros
-        )
+        and not CobroExterno.todos.filter(
+            solicitud=solicitud, medio=solicitud.modalidad_cobro,
+            numero_operacion=solicitud.numero_operacion_declarado.strip(),
+        ).exists()
     ):
         mensaje = (
             "La operación declarada inicialmente aún debe registrarse y verificarse como cobro."

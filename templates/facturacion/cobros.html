@@ -10,6 +10,7 @@
 <p>Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
 {% if cobro.resultado != "PENDIENTE" %}<p>Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}</p>{% endif %}
 <div class="record-actions" role="group" aria-label="Acciones del cobro {{ cobro.numero_en_solicitud }}">
+{% if cobro.puede_corregir %}<a class="btn" href="{% url 'facturacion:corregir_cobro' solicitud.pk cobro.pk %}">Corregir cobro</a>{% endif %}
 {% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' cobro.respaldo_vinculado.pk %}">Descargar respaldo vinculado</a>{% endif %}
 {% if puede_ver_revision %}<a class="btn btn-secondary" href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}">Consultar revisión documental</a>{% endif %}
 {% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" and not diagnostico.terminal %}<a class="btn" href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>{% endif %}
