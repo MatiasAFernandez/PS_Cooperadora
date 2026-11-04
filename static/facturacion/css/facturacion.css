@@ -1,0 +1,81 @@
+/* Presentación del circuito: reutiliza los tokens institucionales compartidos. */
+.facturacion { color: var(--ref-text); }
+.facturacion h2 { margin: 0 0 .5rem; color: var(--ref-deep-blue); font-size: var(--text-2xl); line-height: 1.3; }
+.facturacion h2, .facturacion .record-card p, .facturacion .fac-header p { overflow-wrap: anywhere; }
+.facturacion h3 { color: var(--ref-heading); font-size: var(--text-lg); }
+.facturacion h4 { color: var(--ref-heading); font-size: var(--text-sm); }
+.facturacion p { font-size: var(--text-sm); }
+.facturacion .fac-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+.facturacion .fac-header p { margin: .25rem 0 0; }
+.facturacion .fac-muted, .facturacion small { color: var(--color-neutral); }
+.facturacion .panel, .facturacion .fac-form { border-radius: var(--radius-md); }
+.facturacion .fac-filters { padding: 1rem 1.25rem; }
+.facturacion .filter-actions { flex-wrap: wrap; margin-top: 1rem; }
+.facturacion .btn, .facturacion button, .facturacion .filter-actions a,
+.facturacion input:not([type=hidden]):not([type=checkbox]):not([type=radio]),
+.facturacion select, .facturacion summary { min-height: var(--row-height-dense); }
+.facturacion button { font-size: var(--text-sm); font-weight: var(--font-semibold); }
+.facturacion button, .facturacion .btn { max-width: 100%; }
+.facturacion .fac-form-fields label:has(+ input[type=checkbox]) { display: inline-flex; align-items: center; min-height: var(--row-height-dense); }
+.facturacion .btn-danger { color: var(--color-error); background: var(--color-error-bg); border: 1px solid var(--color-error-border); }
+.facturacion .btn-danger:hover { background: var(--color-error-border); }
+.facturacion .fac-statuses { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .75rem 0; }
+.facturacion .fac-statuses p { margin: 0; }
+.facturacion .fac-attention .record-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: .75rem; }
+.facturacion .fac-attention .record-card { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin: 0; border-top: 3px solid var(--color-warning-border); }
+.facturacion .fac-attention .record-card > p { flex: 1 1 200px; margin: 0; }
+.facturacion .fac-attention .record-actions { margin: 0; }
+.facturacion .fac-attention h3 { margin-bottom: .25rem; }
+.facturacion .solicitudes-scroll { overflow: auto; border-radius: var(--radius-md); }
+.facturacion .solicitudes-tabla { min-width: 780px; }
+.facturacion .solicitudes-tabla th { font-size: var(--text-xs); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.facturacion .solicitudes-tabla td { height: var(--row-height-dense); padding: .5rem 1rem; }
+.facturacion .solicitudes-tabla small { display: block; margin-top: .2rem; }
+.facturacion .solicitudes-tabla td:first-child small { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.facturacion .fac-number { color: var(--ref-blue); font-weight: var(--font-semibold); font-variant-numeric: tabular-nums; }
+.facturacion .fac-date, .facturacion .fac-amount { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.facturacion .fac-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; font-size: var(--text-sm); }
+.facturacion .fac-empty { padding: 1.5rem; color: var(--color-neutral); text-align: center; }
+.facturacion .fac-actions-list { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; padding: 0; margin: 0; }
+.facturacion .fac-actions-list p { margin: 0; }
+.facturacion .detail-grid { border: 0; font-size: var(--text-sm); }
+.facturacion .detail-grid dt, .facturacion .detail-grid dd { padding: .65rem .85rem; border: 0; border-bottom: 1px solid var(--ref-border); overflow-wrap: anywhere; }
+.facturacion .detail-grid dt { background: var(--ref-bg-muted); }
+.facturacion .fac-form { background: var(--ref-bg-surface); padding: 1.25rem; border: 1px solid var(--ref-border); box-shadow: var(--shadow-sm); margin: 1.25rem 0; }
+.facturacion .fac-form > label:not(:first-child) { margin-top: 1rem; }
+.facturacion textarea + button, .facturacion .panel form > button { margin-top: .75rem; }
+.facturacion .fac-form > .errorlist { padding: .75rem 1.5rem; background: var(--color-error-bg); border: 1px solid var(--color-error-border); border-radius: var(--radius-md); }
+.facturacion .fac-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; margin-bottom: 1.25rem; }
+.facturacion .fac-form-fields > p, .facturacion .fac-form-fields > .form-group { margin: 0; min-width: 0; }
+.facturacion .fac-form-fields > .errorlist, .facturacion .fac-form-fields > p:has(textarea),
+.facturacion .fac-form-fields > p:has(input[type=file]), .facturacion .fac-form-fields > p:has(input[type=checkbox]),
+.facturacion .fac-form-fields > .form-group:has(textarea), .facturacion .fac-form-fields > .form-group:has(input[type=file]),
+.facturacion .fac-form-fields > .form-group:has(input[type=checkbox]) { grid-column: 1 / -1; }
+.facturacion .fac-form-fields .form-group p { margin: 0; }
+.facturacion .fac-form-fields > [hidden] { display: none; }
+.facturacion textarea { height: 7rem; min-height: 7rem; resize: vertical; }
+.facturacion .helptext { display: block; font-size: var(--text-xs); color: var(--color-neutral); margin-top: .35rem; }
+.facturacion .notice { background: var(--color-info-bg); color: var(--color-info); border-color: var(--color-info-border); }
+.facturacion [role=alert] { padding: .75rem 1.5rem; color: var(--color-error); background: var(--color-error-bg); border: 1px solid var(--color-error-border); border-radius: var(--radius-md); }
+.facturacion .fac-warning { background: var(--color-warning-bg); color: var(--color-warning); border-color: var(--color-warning-border); }
+.facturacion .fac-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 1rem 0; }
+.facturacion .fac-total { padding: .85rem 1rem; background: var(--ref-bg-muted); border: 1px solid var(--ref-border); border-radius: var(--radius-md); }
+.facturacion .fac-total dt { font-size: var(--text-xs); color: var(--color-neutral); }
+.facturacion .fac-total dd { margin: .35rem 0 0; font-size: var(--text-lg); font-weight: var(--font-semibold); font-variant-numeric: tabular-nums; }
+.facturacion .fac-total-success { background: var(--color-success-bg); border-color: var(--color-success-border); color: var(--color-success); }
+.facturacion .fac-total-warning { background: var(--color-warning-bg); border-color: var(--color-warning-border); color: var(--color-warning); }
+.facturacion .fac-total-error { background: var(--color-error-bg); border-color: var(--color-error-border); color: var(--color-error); }
+.facturacion .fac-record-heading { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .75rem; }
+.facturacion .fac-record-heading p { margin: 0; }
+.facturacion .fac-documents { list-style: none; padding: 0; }
+.facturacion .fac-documents li { padding: .75rem 0; border-bottom: 1px solid var(--ref-border); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.facturacion .fac-documents a { display: inline-flex; align-items: center; min-height: var(--row-height-dense); }
+.facturacion .fac-versions > details { border-bottom: 1px solid var(--ref-border); padding: .5rem 0; }
+.facturacion summary { cursor: pointer; padding: .65rem .75rem; color: var(--ref-blue); font-size: var(--text-sm); }
+@media (max-width: 640px) {
+    .facturacion .fac-form-fields, .facturacion .fac-totals { grid-template-columns: minmax(0, 1fr); }
+    .facturacion .detail-grid { grid-template-columns: minmax(0, 1fr); }
+    .facturacion .detail-grid dt { border: 0; padding-bottom: .25rem; }
+    .facturacion .fac-header > *, .facturacion .record-actions .btn { max-width: 100%; overflow-wrap: anywhere; }
+    .facturacion .record-actions .btn { flex: 1 1 100%; }
+}

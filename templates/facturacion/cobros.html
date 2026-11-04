@@ -2,10 +2,15 @@
 <h3>Cobros externos (ARS)</h3>
 <p class="notice">Aceptar el comprobante sólo registra su revisión documental. Para confirmar un cobro pendiente, usá «Verificar ingreso» después de cotejar el ingreso externo. Al cargar un cobro interno, también podés confirmar ingreso y respaldo en el mismo formulario si tenés los permisos.</p>
 {% if puede_informar_cobro and not diagnostico.terminal %}<p><a class="btn" href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a></p>{% endif %}
-<p>Confirmado: {{ totales_cobros.CONFIRMADO }} ARS. Pendiente: {{ totales_cobros.PENDIENTE }} ARS. Rechazado: {{ totales_cobros.RECHAZADO }} ARS.</p>
+<dl class="fac-totals" aria-label="Totales de cobros por resultado">
+<div class="fac-total fac-total-success"><dt>Confirmado:</dt><dd>{{ totales_cobros.CONFIRMADO }} ARS</dd></div>
+<div class="fac-total fac-total-warning"><dt>Pendiente:</dt><dd>{{ totales_cobros.PENDIENTE }} ARS</dd></div>
+<div class="fac-total fac-total-error"><dt>Rechazado:</dt><dd>{{ totales_cobros.RECHAZADO }} ARS</dd></div>
+</dl>
 <p>Estos totales no confirman cancelación ni cierre. {% if comprobantes %}Los cobros corresponden a la factura de esta solicitud, mostrada arriba.{% else %}Sin factura registrada: los ingresos se conservan como anticipos de esta solicitud.{% endif %}</p>
 <ul class="record-list">{% for cobro in cobros %}<li class="record-card">
-<p>Cobro #{{ cobro.numero_en_solicitud }}: {{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }} — Ingreso: <strong>{{ cobro.resultado }}</strong>.</p>
+<div class="fac-record-heading"><p><strong>Cobro #{{ cobro.numero_en_solicitud }}: {{ cobro.importe }} ARS</strong></p><p>Ingreso: {% include "facturacion/estado.html" with estado=cobro.resultado only %}</p></div>
+<p>{{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }}.</p>
 {% if cobro.resultado == "PENDIENTE" %}<p>Falta verificar el ingreso externo, aunque el comprobante esté aceptado.</p>{% endif %}
 <p>Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
 {% if cobro.resultado != "PENDIENTE" %}<p>Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}</p>{% endif %}

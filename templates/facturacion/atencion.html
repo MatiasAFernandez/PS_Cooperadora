@@ -1,15 +1,14 @@
 {% if atencion %}
-<section class="panel" aria-labelledby="titulo-atencion">
+<section class="panel fac-attention" aria-labelledby="titulo-atencion">
 <h3 id="titulo-atencion">Solicitudes que requieren atención</h3>
 <ul class="record-list">
 {% for tarjeta in atencion %}
 <li class="record-card">
-<p>Solicitud {{ tarjeta.solicitud.numero_solicitante }} — {{ tarjeta.solicitud.correo_solicitante }}</p>
-<p><strong>{{ tarjeta.solicitud.estado_seguimiento }}</strong> — {{ tarjeta.fecha }}</p>
-{% if tarjeta.cierre_mes %}<p class="notice">Se aproxima el cierre de mes: completá la acción pendiente.</p>{% endif %}
-<p>{{ tarjeta.accion.texto }}</p>
-<a class="btn" href="{{ tarjeta.accion.url }}">{{ tarjeta.accion.texto }}</a>
-<a href="{% url 'facturacion:detalle' tarjeta.solicitud.pk %}">Ver Detalle</a>
+<p><strong class="fac-number">Solicitud {{ tarjeta.solicitud.numero_solicitante }}</strong><br><span class="fac-muted">{{ tarjeta.solicitud.correo_solicitante }}</span></p>
+<p>{% include "facturacion/estado.html" with estado=tarjeta.solicitud.estado_seguimiento only %}<br><small>{{ tarjeta.fecha|date:"d/m/Y H:i" }}</small></p>
+{% if tarjeta.cierre_mes %}<p class="notice fac-warning">Se aproxima el cierre de mes: completá la acción pendiente.</p>{% endif %}
+<div class="record-actions"><a class="btn" href="{{ tarjeta.accion.url }}">{{ tarjeta.accion.texto }}</a>
+<a class="btn btn-secondary" href="{% url 'facturacion:detalle' tarjeta.solicitud.pk %}">Ver Detalle</a></div>
 </li>
 {% endfor %}
 </ul>
