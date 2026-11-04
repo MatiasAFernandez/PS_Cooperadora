@@ -2,6 +2,22 @@
 
 ## Acceso y atención — ajuste de #80/#78/#87
 
+### Presentación visual
+
+Facturación reutiliza la tipografía Montserrat, la grilla de 1140 px y los tokens
+de la [guía institucional](../visual-guide/README.md), igual que el circuito de
+gastos. El listado agrupa filtros y tarjetas de atención; el detalle separa datos,
+comprobantes, cobros, resolución e historial en paneles. Los formularios usan dos
+columnas en escritorio y una en pantallas pequeñas. Los controles tienen una
+altura mínima de 44 px; las tablas conservan desplazamiento horizontal.
+
+Las píldoras acompañan el texto del estado: observaciones y cobros pendientes en
+ámbar, ingresos confirmados en verde, rechazados en rojo y trámites terminales
+en neutro. La revisión documental y la confirmación del ingreso siguen siendo
+acciones independientes; el color no modifica permisos ni condiciones de cierre.
+
+### Recorrido de atención
+
 El solicitante entra por Solicitud de Facturación; Nueva solicitud permanece
 dentro del listado. Las tarjetas previas a los filtros muestran como máximo
 dos trámites con acciones propias; Cooperadora ve hasta tres y su siguiente

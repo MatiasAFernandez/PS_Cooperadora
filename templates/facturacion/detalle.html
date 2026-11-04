@@ -1,21 +1,26 @@
 {% extends "facturacion/base.html" %}
-{% block content %}
+{% block facturacion_content %}
+<header class="fac-header">
+<div><h2 aria-label="Solicitud {{ solicitud.numero_solicitante }} de {{ solicitud.correo_solicitante }}">Solicitud {{ solicitud.numero_solicitante }}</h2><p class="fac-muted">{{ solicitud.correo_solicitante }}</p></div>
+<a class="btn btn-secondary" href="{% url 'facturacion:lista' %}">Volver a solicitudes</a>
+</header>
 <section class="panel" aria-labelledby="titulo-acciones">
 <h3 id="titulo-acciones">Acciones inmediatas</h3>
-<ol>{% for accion in acciones_inmediatas %}<li><p><a class="btn" href="{{ accion.url }}">{{ accion.texto }}</a></p></li>
+<ol class="fac-actions-list">{% for accion in acciones_inmediatas %}<li><p><a class="btn" href="{{ accion.url }}">{{ accion.texto }}</a></p></li>
 {% empty %}<li>No tenés acciones pendientes en este momento.</li>{% endfor %}</ol>
 </section>
-<h2>Solicitud {{ solicitud.numero_solicitante }} de {{ solicitud.correo_solicitante }}</h2>
-<p><a class="btn" href="{% url 'facturacion:exportar_pdf' solicitud.pk %}">Exportar solicitud a PDF</a></p>
-<p><strong>{{ solicitud.get_estado_display }}</strong> — versión {{ solicitud.version_concurrencia }}.
-Seguimiento: <strong>{{ solicitud.estado_seguimiento }}</strong>.</p>
+<section class="panel" aria-labelledby="titulo-solicitud">
+<div class="fac-header"><h3 id="titulo-solicitud">Datos de la solicitud</h3>
+<a class="btn btn-secondary" href="{% url 'facturacion:exportar_pdf' solicitud.pk %}">Exportar solicitud a PDF</a></div>
+<div class="fac-statuses">{% include "facturacion/estado.html" with estado=solicitud.estado etiqueta=solicitud.get_estado_display only %}
+<p>Seguimiento: <strong>{{ solicitud.estado_seguimiento }}</strong>.</p><small>Versión {{ solicitud.version_concurrencia }}</small></div>
 <dl class="detail-grid"><dt>Presentación</dt><dd>{{ solicitud.fecha_presentacion }} — {{ solicitud.correo_solicitante }}</dd>
 <dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd>
 <dt>Receptor</dt><dd>{{ solicitud.nombre_receptor }} — CUIT {{ solicitud.cuit_receptor }}</dd>
 <dt>Condición IVA</dt><dd>{{ solicitud.get_condicion_iva_display }}</dd>
 <dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd>
 <dt>Detalle</dt><dd>{{ solicitud.detalle_factura|linebreaksbr }}</dd>
-<dt>Importe solicitado</dt><dd>{{ solicitud.importe_factura }}</dd>
+<dt>Importe solicitado</dt><dd class="fac-amount">{{ solicitud.importe_factura }} ARS</dd>
 <dt>Producto/servicio</dt><dd>{{ solicitud.get_producto_servicio_display }}</dd>
 <dt>Centro de costo</dt><dd>{{ solicitud.centro_costo }}</dd>
 <dt>Modalidad</dt><dd>{{ solicitud.get_modalidad_cobro_display }}</dd>
@@ -24,24 +29,25 @@ Seguimiento: <strong>{{ solicitud.estado_seguimiento }}</strong>.</p>
 <dt>Observaciones del solicitante</dt><dd>{{ solicitud.observaciones|linebreaksbr }}</dd></dl>
 {% if solicitud.documento_comprobante_inicial_id and puede_descargar %}
 <p><a href="{% url 'documentos:archivo' solicitud.documento_comprobante_inicial_id %}">Descargar respaldo vigente</a></p>{% endif %}
-{% if solicitud.observacion_vigente %}<p class="notice"><strong>Observación pendiente:</strong> {{ solicitud.observacion_vigente }}</p>{% endif %}
-{% if puede_corregir %}<p><a href="{% url 'facturacion:corregir' solicitud.pk %}">Corregir solicitud</a></p>{% endif %}
+{% if solicitud.observacion_vigente %}<p class="notice fac-warning"><strong>Observación pendiente:</strong> {{ solicitud.observacion_vigente }}</p>{% endif %}
+{% if puede_corregir %}<p><a class="btn" href="{% url 'facturacion:corregir' solicitud.pk %}">Corregir solicitud</a></p>{% endif %}
 {% if puede_observar %}<h3>Observar solicitud</h3><form method="post" action="{% url 'facturacion:observar' solicitud.pk %}">{% csrf_token %}
 <input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">
 <label for="motivo">Motivo de observación</label><textarea id="motivo" name="motivo" required></textarea>
 <button type="submit">Registrar observación</button></form>{% endif %}
+</section>
 {% include "facturacion/comprobantes.html" %}
 {% include "facturacion/cobros.html" %}
 {% include "facturacion/resolucion.html" %}
-<h3>Historial</h3>{% include "facturacion/historial.html" %}
-{% if puede_ver_revision %}<h3>Revisión de respaldos</h3><ul>
+<section class="panel"><h3>Historial</h3>{% include "facturacion/historial.html" %}</section>
+{% if puede_ver_revision %}<section class="panel"><h3>Revisión de respaldos</h3><ul class="fac-documents">
 {% for documento in pendientes_revision %}<li>{{ documento.get_tipo_display }} — <a href="{% url 'documentos:revision' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a> — {{ documento.resultado_revision|default:"Pendiente" }}</li>
-{% empty %}<li>Sin versiones vigentes pendientes, observadas o rechazadas.</li>{% endfor %}</ul>{% endif %}
-{% if puede_descargar %}<h3>Respaldos conservados</h3><ul>
+{% empty %}<li>Sin versiones vigentes pendientes, observadas o rechazadas.</li>{% endfor %}</ul></section>{% endif %}
+{% if puede_descargar %}<section class="panel"><h3>Respaldos conservados</h3><ul class="fac-documents">
 {% for documento in respaldos %}<li><a href="{% url 'documentos:archivo' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a>
 — {{ documento.fecha_incorporacion }}</li>{% empty %}<li>Sin archivos.</li>{% endfor %}
-</ul>{% endif %}
-<h3>Versiones conservadas</h3>{% for version in versiones %}<details><summary>{{ version.tipo }} — {{ version.fecha }}</summary>
+</ul></section>{% endif %}
+<section class="panel fac-versions"><h3>Versiones conservadas</h3>{% for version in versiones %}<details><summary>{{ version.tipo }} — {{ version.fecha }}</summary>
 {% if version.antes %}<h4>Antes</h4><dl>{% for etiqueta, valor in version.antes %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>{% endif %}
 <h4>Después</h4><dl>{% for etiqueta, valor in version.despues %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>
-</details>{% endfor %}{% endblock %}
+</details>{% endfor %}</section>{% endblock %}

@@ -15,7 +15,7 @@ Los cobros pendientes de verificación no se incluyen en el ingreso confirmado.<
 <input type="hidden" name="revision" value="{{ diagnostico.revision }}">
 <label for="motivo-resolucion">Motivo de resolución</label><textarea id="motivo-resolucion" name="motivo" required maxlength="2000"></textarea>
 {% if puede_cerrar %}<button name="accion" value="cerrar">Cerrar trámite</button>{% endif %}
-{% if puede_anular %}<button name="accion" value="anular">Anular trámite</button>{% endif %}
+{% if puede_anular %}<button class="btn btn-danger" name="accion" value="anular">Anular trámite</button>{% endif %}
 </form>{% endif %}
 {% endif %}
 

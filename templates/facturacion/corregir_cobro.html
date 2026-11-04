@@ -1,11 +1,11 @@
 {% extends "facturacion/base.html" %}
-{% block content %}
+{% block facturacion_content %}
 <h2>Corregir cobro #{{ cobro.numero_en_solicitud }}</h2>
 <p>La versión anterior y su revisión se conservan. La corrección quedará pendiente
 de verificación por Cooperadora. No se pueden corregir ingresos ya confirmados.</p>
-<form method="post" enctype="multipart/form-data">{% csrf_token %}
-{{ form.as_p }}
+<form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}
+<div class="fac-form-fields">{{ form.as_p }}</div>
 {% if form.errors %}<p>Si elegiste un archivo nuevo, volvé a seleccionarlo.</p>{% endif %}
 <button type="submit">Presentar corrección</button></form>
-<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+<p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
 {% endblock %}
