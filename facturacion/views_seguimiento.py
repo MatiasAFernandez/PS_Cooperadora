@@ -1,19 +1,19 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
 
-from documentos.acceso import documentos_visibles
 from documentos.policy import ArchivoInvalido
-from identidad.services import has_capability
 
 from .seguimiento import (
     actualizar_respaldo,
     diagnostico,
     diagnostico_visible,
     exigir_abierta,
+    puede_actualizar_respaldo,
     resolver_tramite,
     respaldo_actual,
+    sucesores_respaldo,
 )
-from .views import FacturacionView
+from .views import FacturacionView, _mensaje_archivo
 from .workflow import ConflictoConcurrenciaError
 
 
@@ -49,10 +49,7 @@ class ActualizarRespaldoView(FacturacionView):
     def contexto(self, request, numero, clase, objeto_id):
         solicitud = self.objeto(numero)
         exigir_abierta(solicitud)
-        if not all(
-            has_capability(self.actor, c)
-            for c in ("facturacion.actualizar_respaldo", "documentos.consultar_metadatos")
-        ):
+        if not puede_actualizar_respaldo(self.actor):
             raise PermissionDenied
         if clase not in {"comprobante", "cobro"}:
             from django.http import Http404
@@ -68,12 +65,7 @@ class ActualizarRespaldoView(FacturacionView):
         if objeto is None:
             raise Http404
         anterior = respaldo_actual(objeto)
-        opciones = documentos_visibles(self.actor).filter(
-            serie=anterior.serie,
-            tipo=anterior.tipo,
-            version__gt=anterior.version,
-            sucesor__isnull=True,
-        )
+        opciones = sucesores_respaldo(self.actor, anterior)
         return dict(
             actor=self.actor,
             solicitud=solicitud,
@@ -83,6 +75,8 @@ class ActualizarRespaldoView(FacturacionView):
         )
 
     def get(self, request, numero, clase, objeto_id):
+        if clase == "cobro":
+            return redirect("facturacion:corregir_cobro", numero=numero, cobro_id=objeto_id)
         return render(
             request,
             "facturacion/actualizar_respaldo.html",
@@ -106,8 +100,13 @@ class ActualizarRespaldoView(FacturacionView):
                 revision_esperada=request.POST.get("revision"),
             )
         except (ValidationError, ArchivoInvalido, ConflictoConcurrenciaError) as exc:
+            if isinstance(exc, ArchivoInvalido):
+                contexto["error_archivo"] = _mensaje_archivo(exc, solo_pdf=clase == "comprobante")
+            else:
+                contexto["errores"] = (
+                    exc.messages if isinstance(exc, ValidationError) else [str(exc)]
+                )
             contexto.update(
-                errores=exc.messages if isinstance(exc, ValidationError) else [str(exc)],
                 motivo=request.POST.get("motivo", ""),
                 nuevo_id=request.POST.get("nuevo_id"),
             )

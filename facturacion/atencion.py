@@ -2,7 +2,6 @@
 
 from calendar import monthrange
 from dataclasses import dataclass
-from decimal import Decimal
 
 from django.db.models import CharField, DateTimeField, F, OuterRef, Subquery
 from django.db.models.functions import Cast, Coalesce, Greatest
@@ -10,18 +9,50 @@ from django.urls import reverse
 from django.utils import timezone
 
 from documentos.models import Documento, RevisionDocumento
-from documentos.revision import ultima_revision
+from documentos.revision import ultima_revision, version_aceptada
 from documentos.services import documentos_visibles
 from identidad.services import has_capability
 
-from .models import CobroExterno, ComprobanteExterno, EventoFacturacion, VerificacionCobro
-from .seguimiento import TERMINALES, diagnostico_visible, respaldo_actual
+from .models import (
+    CobroExterno,
+    ComprobanteExterno,
+    EventoFacturacion,
+    RectificacionCobro,
+    VerificacionCobro,
+)
+from .seguimiento import (
+    TERMINALES,
+    diagnostico_visible,
+    importes_cobro,
+    puede_actualizar_respaldo,
+    respaldo_actual,
+    respaldos_solo_rectificados,
+)
 
 
 @dataclass(frozen=True)
 class Accion:
     texto: str
     url: str
+    descripcion: str = ""
+
+
+def mensaje_espera(actor, solicitud, importes):
+    if solicitud.estado in TERMINALES:
+        return ""
+    if has_capability(actor, "facturacion.consultar_todas"):
+        if solicitud.estado == "OBSERVADA":
+            return "El solicitante debe corregir la observación para continuar."
+        if importes["hay_factura"] and not importes["registrado"] and importes["neto"] > 0:
+            return "El solicitante aún no cargó el cobro correspondiente."
+        if importes["hay_factura"] and importes["registrado"] < importes["neto"]:
+            return "El solicitante aún debe registrar el cobro del importe restante."
+    elif solicitud.tramite_base.solicitante_actor_id == str(actor.subject_id):
+        if not importes["hay_factura"]:
+            return "Estamos creando la factura, te notificaremos cuando esté lista."
+        if importes["pendiente"]:
+            return "Estamos validando tus cobros, te notificaremos cuando estén listos."
+    return ""
 
 
 def acciones_inmediatas(actor, solicitud):
@@ -56,13 +87,8 @@ def acciones_inmediatas(actor, solicitud):
     acciones = []
     comprobantes = list(solicitud.comprobantes.all())
     cobros = list(solicitud.cobros.all())
-    factura = any(c.tipo == "FACTURA" for c in comprobantes)
-    neto = sum(
-        (-c.importe if c.tipo == "NOTA_CREDITO" else c.importe for c in comprobantes), Decimal("0")
-    )
-    cubierto = sum(
-        (c.importe for c in cobros if c.resultado in {"PENDIENTE", "CONFIRMADO"}), Decimal("0")
-    )
+    importes = importes_cobro(comprobantes, cobros)
+    factura, neto, cubierto = importes["hay_factura"], importes["neto"], importes["registrado"]
     if operador:
         if (
             not factura
@@ -71,51 +97,56 @@ def acciones_inmediatas(actor, solicitud):
         ):
             acciones.append(
                 Accion(
-                    "Revisar los datos y registrar la factura externa",
+                    "Registrar factura externa",
                     reverse("facturacion:registrar_comprobante", args=[solicitud.pk]),
+                    "Revisá los datos en Ver Detalle y registrá el comprobante emitido.",
                 )
             )
         if capacidad("documentos.consultar_metadatos") and capacidad("documentos.revisar"):
             for documento in (
                 documentos_visibles(actor)
                 .filter(tramite_base=solicitud.tramite_base, sucesor__isnull=True)
+                .exclude(pk__in=respaldos_solo_rectificados(cobros))
                 .prefetch_related("revisiones")
             ):
                 revision = ultima_revision(documento)
                 if revision is None:
                     acciones.append(
                         Accion(
-                            "Revisar el respaldo " + documento.nombre_original,
+                            "Revisar el documento de respaldo",
                             reverse("documentos:revision", args=[documento.pk]),
+                            f"Revisá el documento {documento.nombre_original}.",
                         )
                     )
                 # Observado/rechazado espera un reemplazo, no otra aprobación sugerida.
         for cobro in cobros:
-            if cobro.resultado == "PENDIENTE" and capacidad("facturacion.verificar_cobro"):
+            if cobro.resultado == "RECTIFICADO":
+                continue
+            if (
+                cobro.resultado == "PENDIENTE"
+                and capacidad("facturacion.verificar_cobro")
+                and version_aceptada(respaldo_actual(cobro))
+            ):
                 acciones.append(
                     Accion(
-                        "Verificar el ingreso de la operación " + cobro.numero_operacion,
+                        "Constatar Ingreso",
                         reverse("facturacion:verificar_cobro", args=[solicitud.pk, cobro.pk]),
+                        f"Cotejá el movimiento de la operación {cobro.numero_operacion}.",
                     )
                 )
-            if capacidad("facturacion.actualizar_respaldo") and capacidad(
-                "documentos.consultar_metadatos"
-            ):
+            if puede_actualizar_respaldo(actor):
                 anterior = respaldo_actual(cobro)
                 revision = ultima_revision(anterior)
                 if revision and revision.resultado in {"OBSERVADO", "RECHAZADO"}:
                     acciones.append(
                         Accion(
-                            "Actualizar el respaldo de la operación " + cobro.numero_operacion,
-                            reverse(
-                                "facturacion:actualizar_respaldo",
-                                args=[solicitud.pk, "cobro", cobro.pk],
-                            ),
+                            "Modificar cobro",
+                            reverse("facturacion:corregir_cobro", args=[solicitud.pk, cobro.pk]),
+                            "Vinculá un documento de respaldo válido a la operación "
+                            f"{cobro.numero_operacion}.",
                         )
                     )
-        if capacidad("facturacion.actualizar_respaldo") and capacidad(
-            "documentos.consultar_metadatos"
-        ):
+        if puede_actualizar_respaldo(actor):
             for comprobante in comprobantes:
                 documento = respaldo_actual(comprobante)
                 revision = ultima_revision(documento)
@@ -124,11 +155,13 @@ def acciones_inmediatas(actor, solicitud):
                 ):
                     acciones.append(
                         Accion(
-                            "Actualizar el respaldo del comprobante " + comprobante.identificacion,
+                            "Modificar comprobante externo",
                             reverse(
-                                "facturacion:actualizar_respaldo",
-                                args=[solicitud.pk, "comprobante", comprobante.pk],
+                                "facturacion:modificar_comprobante",
+                                args=[solicitud.pk, comprobante.pk],
                             ),
+                            "Vinculá el documento de respaldo vigente a "
+                            f"{comprobante.identificacion}.",
                         )
                     )
         if (
@@ -139,24 +172,34 @@ def acciones_inmediatas(actor, solicitud):
         ):
             acciones.append(
                 Accion(
-                    "Registrar el ingreso declarado y su respaldo",
+                    "Registrar cobro declarado",
                     reverse("facturacion:registrar_cobro", args=[solicitud.pk]),
+                    "Registrá el ingreso declarado y vinculá su documento de respaldo.",
                 )
             )
         if (
             factura
-            and cubierto == neto
+            and 0 < neto <= importes["confirmado"]
+            and not importes["pendiente"]
             and capacidad("facturacion.cerrar")
             and capacidad("documentos.consultar_metadatos")
         ):
             diagnostico = diagnostico_visible(actor, solicitud)
             if not diagnostico["faltas_cierre"]:
-                acciones.append(Accion("Revisar y cerrar la solicitud", detalle + "#resolucion"))
+                acciones.append(
+                    Accion(
+                        "Ir a resolución",
+                        detalle + "#resolucion",
+                        "El neto está cubierto y los documentos de respaldo están aceptados.",
+                    )
+                )
         return acciones
     if titular and capacidad("facturacion.informar_cobro") and capacidad("documentos.incorporar"):
         from .cobros import puede_corregir_cobro
 
         for cobro in cobros:
+            if cobro.resultado == "RECTIFICADO":
+                continue
             revision = ultima_revision(respaldo_actual(cobro))
             if puede_corregir_cobro(actor, cobro) and (
                 cobro.resultado == "RECHAZADO"
@@ -164,8 +207,10 @@ def acciones_inmediatas(actor, solicitud):
             ):
                 acciones.append(
                     Accion(
-                        "Corregir el cobro de la operación " + cobro.numero_operacion,
+                        "Modificar cobro",
                         reverse("facturacion:corregir_cobro", args=[solicitud.pk, cobro.pk]),
+                        f"Revisá los datos y el documento de la operación "
+                        f"{cobro.numero_operacion}.",
                     )
                 )
         # No pedir un segundo ingreso cuando el existente sólo espera a Cooperadora.
@@ -219,6 +264,10 @@ def solicitudes_atencion(actor, visibles):
             ),
             (ComprobanteExterno.objects.filter(solicitud_id=OuterRef("pk")), "fecha_registro"),
             (VerificacionCobro.objects.filter(cobro__solicitud_id=OuterRef("pk")), "fecha"),
+            (
+                RectificacionCobro.objects.filter(verificacion__cobro__solicitud_id=OuterRef("pk")),
+                "fecha",
+            ),
         ]
     fechas = [
         Coalesce(
@@ -232,7 +281,7 @@ def solicitudes_atencion(actor, visibles):
     consulta = (
         visibles.exclude(estado__in=TERMINALES)
         .annotate(ultima_atencion=Greatest(*fechas))
-        .prefetch_related("comprobantes", "cobros__verificacion")
+        .prefetch_related("comprobantes", "cobros__verificacion__rectificacion")
         .order_by("-ultima_atencion", "-pk")
     )
     tarjetas = []

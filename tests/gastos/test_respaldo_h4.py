@@ -153,7 +153,7 @@ def test_sin_capacidad_incorporar_no_ve_enlace_ni_formulario(
     cliente = auth_client(accounts["demo_a"])
     contenido = cliente.get(reverse("gastos:detalle", kwargs={"pk": solicitud.pk})).content.decode()
 
-    assert "Cargar o reemplazar un respaldo" not in contenido
+    assert "Cargar o reemplazar un documento de respaldo" not in contenido
     assert 'type="file"' not in contenido
     assert cliente.get(reverse("gastos:documentos", kwargs={"pk": solicitud.pk})).status_code == 403
 

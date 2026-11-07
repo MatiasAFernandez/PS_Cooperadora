@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Respaldo documental — Solicitud #{{ solicitud.pk }}{% endblock %}
+{% block title %}Documento de respaldo — Solicitud #{{ solicitud.pk }}{% endblock %}
 
 {% block content %}
 <p><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a></p>
 
-<h3>Cargar o reemplazar un respaldo</h3>
+<h3>Cargar o reemplazar un documento de respaldo</h3>
 <p>Solicitud #{{ solicitud.pk }} — {{ solicitud.concepto }}</p>
 
 <section aria-labelledby="ayuda-documentos" style="max-width: 600px; margin: 18px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 4px; background-color: #f8f9fa;">

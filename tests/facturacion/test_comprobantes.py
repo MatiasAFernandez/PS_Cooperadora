@@ -6,6 +6,7 @@ from decimal import Decimal
 from threading import Barrier
 
 import pytest
+from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import DatabaseError, IntegrityError, connection, connections, transaction
@@ -13,18 +14,20 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
 from django.urls import reverse
 
-from documentos.models import Documento
+from documentos.models import Documento, RevisionDocumento
 from documentos.policy import ArchivoInvalido
 from documentos.services import incorporar
 from facturacion import comprobantes
 from facturacion.comprobantes import registrar_comprobante, resumen_comprobantes
 from facturacion.models import ComprobanteExterno, EventoFacturacion
 from facturacion.permissions import ObjetoNoVisibleError
+from facturacion.seguimiento import diagnostico, respaldo_actual
 from facturacion.workflow import (
     ConflictoConcurrenciaError,
     emitir_token,
     presentar_solicitud_facturacion,
 )
+from tests.facturacion.test_cierre import aceptar, cobro, resolver
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -64,6 +67,81 @@ def registrar(e, solicitud, entrada, **cambios):
     )
 
 
+@pytest.mark.parametrize("tipo", ["FACTURA", "NOTA_CREDITO", "NOTA_DEBITO"])
+def test_http_acepta_el_pdf_al_registrar(escenario, solicitud, entrada, tipo):
+    if tipo != "FACTURA":
+        registrar(escenario, solicitud, entrada)
+    operador = escenario.usuarios["o"]
+    cliente = Client()
+    cliente.force_login(operador)
+    url = reverse("facturacion:registrar_comprobante", args=[solicitud.pk])
+    datos = dict(entrada, tipo=tipo, importe="75.50", aceptar_respaldo="on")
+    form = cliente.get(url).context["form"]
+    assert form["importe"].value() == solicitud.importe_factura
+    assert "aceptar_respaldo" not in form.fields
+    assert cliente.post(url, dict(datos, archivo_pdf=pdf())).status_code == 403
+    operador.groups.add(Group.objects.get(name="demo_documentos_revision"))
+    assert cliente.get(url).context["form"]["aceptar_respaldo"].value() is True
+    respuesta = cliente.post(url, dict(datos, archivo_pdf=pdf()), follow=True)
+    assert respuesta.redirect_chain == [(reverse("facturacion:detalle", args=[solicitud.pk]), 302)]
+    assert "Revisión documental:" in respuesta.content.decode()
+    assert "Consultar revisión documental" in respuesta.content.decode()
+    assert b">ACEPTADO<" in respuesta.content
+    comprobante = solicitud.comprobantes.get(tipo=tipo)
+    assert comprobante.importe == Decimal("75.50")
+    revision = comprobante.documento.revisiones.get()
+    assert revision.resultado == "ACEPTADO" and revision.actor_id == operador.pk
+
+
+@pytest.mark.parametrize(
+    ("nombre", "contenido", "mime"),
+    [
+        ("comprobante.txt", b"Texto", "text/plain"),
+        ("comprobante.png", b"\x89PNG\r\n\x1a\n", "image/png"),
+    ],
+)
+def test_http_tipo_de_comprobante_invalido_se_indica_junto_al_archivo(
+    escenario, solicitud, entrada, nombre, contenido, mime
+):
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    url = reverse("facturacion:registrar_comprobante", args=[solicitud.pk])
+    archivo = SimpleUploadedFile(nombre, contenido, mime)
+    respuesta = cliente.post(url, dict(entrada, archivo_pdf=archivo))
+    assert respuesta.status_code == 400
+    mensaje = "Tipo de archivo no soportado. Adjuntá un archivo en formato PDF (.pdf)."
+    form = respuesta.context["form"]
+    assert form["archivo_pdf"].errors == [mensaje]
+    assert not form.non_field_errors()
+    html = respuesta.content.decode()
+    assert html.index('id="id_archivo_pdf"') < html.index(mensaje)
+    assert not solicitud.comprobantes.exists()
+
+
+def test_fallo_de_conformidad_revierte_comprobante_y_pdf(
+    escenario, solicitud, entrada, monkeypatch
+):
+    actor = replace(
+        escenario.actores["o"],
+        capabilities=escenario.actores["o"].capabilities | {"documentos.revisar"},
+    )
+    revisar = comprobantes.revisar
+
+    def fallar(**kwargs):
+        revisar(**kwargs)
+        raise ValidationError("Fallo sintético después de revisar")
+
+    monkeypatch.setattr(comprobantes, "revisar", fallar)
+    with pytest.raises(ValidationError, match="Fallo sintético"):
+        registrar_comprobante(
+            actor=actor, numero_publico=solicitud.pk,
+            datos=dict(entrada, aceptar_respaldo=True), archivo_pdf=pdf(),
+        )
+    assert not ComprobanteExterno.objects.exists() and not Documento.objects.exists()
+    assert not RevisionDocumento.objects.exists()
+    assert not any(p.is_file() for p in escenario.raiz.rglob("*"))
+
+
 def test_factura_notas_neto_historial_y_estado(escenario, solicitud, entrada):
     factura = registrar(escenario, solicitud, entrada)
     credito = registrar(escenario, solicitud, entrada, tipo="NOTA_CREDITO", importe="10.10")
@@ -84,6 +162,100 @@ def test_factura_notas_neto_historial_y_estado(escenario, solicitud, entrada):
     detalle = c.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     assert len(detalle.context["historial"]) == 5
     assert b"90,20" in detalle.content and b"Nota de" in detalle.content
+    assert "Realizar revisión documental" not in detalle.content.decode()
+    operador = escenario.usuarios["o"]
+    operador.groups.add(Group.objects.get(name="demo_documentos_revision"))
+    c.force_login(operador)
+    detalle = c.get(reverse("facturacion:detalle", args=[solicitud.pk]))
+    assert detalle.content.decode().count("Realizar revisión documental") == 4
+
+
+def test_http_corrige_factura_y_nota_preservando_historial_y_cobro(
+    escenario, solicitud, entrada
+):
+    factura = registrar(escenario, solicitud, entrada)
+    nota = registrar(escenario, solicitud, entrada, tipo="NOTA_CREDITO", importe="10.00")
+    aceptar(escenario, factura.documento)
+    aceptar(escenario, nota.documento)
+    ingreso = cobro(escenario, solicitud)
+    cliente = Client()
+    url = reverse("facturacion:modificar_comprobante", args=[solicitud.pk, factura.pk])
+    cliente.force_login(escenario.usuarios["a"])
+    assert cliente.get(url).status_code == 403
+    cliente.force_login(escenario.usuarios["o"])
+    pagina = cliente.get(url)
+    assert pagina.status_code == 200 and "Modificar comprobante externo" in pagina.content.decode()
+    datos = dict(entrada, motivo="Importe y número mal transcritos")
+    datos["revision"] = pagina.context["form"].initial["revision"]
+    assert cliente.post(url, dict(datos, letra="B")).status_code == 400
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ComprobanteExterno.objects.filter(pk=factura.pk).update(sustituido=True)
+    respuesta = cliente.post(url, dict(datos, importe="120.25", numero="9", archivo_pdf=pdf()))
+    assert respuesta.status_code == 302
+    nueva_factura = solicitud.comprobantes.get(tipo="FACTURA")
+    assert nueva_factura.reemplaza_id == factura.pk
+    assert ComprobanteExterno.todos.get(pk=factura.pk).importe == Decimal("100.25")
+    assert not nueva_factura.documento.revisiones.exists()
+    assert cliente.get(url).status_code == 404
+    estado = diagnostico(solicitud)
+    assert estado["neto"] == Decimal("110.25")
+    assert estado["confirmado"] == ingreso.importe
+    assert "El total confirmado debe cubrir al menos el neto." in estado["faltas_cierre"]
+    detalle = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk]))
+    assert "Vinculada a Factura A 00001-00000009" in detalle.content.decode()
+    assert "Comprobante externo corregido" in detalle.content.decode()
+    url_nota = reverse("facturacion:modificar_comprobante", args=[solicitud.pk, nota.pk])
+    assert cliente.post(
+        url_nota, dict(datos, importe="25.00", revision=estado["revision"])
+    ).status_code == 302
+    nueva_nota = solicitud.comprobantes.get(tipo="NOTA_CREDITO")
+    assert nueva_nota.factura_origen_id == nueva_factura.pk
+    assert nueva_nota.reemplaza_id == nota.pk and nueva_nota.tipo == nota.tipo
+    aceptar(escenario, nueva_factura.documento)
+    aceptar(escenario, nueva_nota.documento)
+    assert diagnostico(solicitud)["neto"] == Decimal("95.25")
+    assert not diagnostico(solicitud)["faltas_cierre"]
+    resolver(escenario, solicitud)
+
+
+@pytest.mark.parametrize("version_existente", [False, True])
+def test_http_modifica_solo_pdf_con_permiso_documental(
+    escenario, solicitud, entrada, version_existente
+):
+    factura = registrar(escenario, solicitud, entrada)
+    sucesor = None
+    if version_existente:
+        sucesor = incorporar(
+            actor=escenario.actores["o"],
+            referencia=f"facturacion:{solicitud.pk}",
+            archivo=pdf(),
+            tipo=factura.documento.tipo,
+            procedencia=factura.procedencia,
+            reemplaza_id=factura.documento_id,
+        )
+    operador = escenario.usuarios["o"]
+    operador.groups.add(
+        Group.objects.get(name="demo_resolucion_facturacion"),
+        Group.objects.get(name="demo_facturacion_lectura"),
+    )
+    operador.groups.remove(Group.objects.get(name="demo_facturacion_operadora"))
+    cliente = Client()
+    cliente.force_login(operador)
+    url = reverse("facturacion:modificar_comprobante", args=[solicitud.pk, factura.pk])
+    form = cliente.get(url).context["form"]
+    assert form.fields["importe"].disabled
+    datos = dict(revision=form.initial["revision"], motivo="PDF legible")
+    assert cliente.post(url, dict(datos, importe="70.00", archivo_pdf=pdf())).status_code == 403
+    if sucesor:
+        assert form.fields["nuevo"].queryset.get() == sucesor
+        assert cliente.post(url, dict(datos, nuevo=sucesor.pk)).status_code == 302
+        assert respaldo_actual(factura) == sucesor
+    else:
+        assert cliente.post(url, dict(datos, archivo_pdf=pdf())).status_code == 302
+    assert ComprobanteExterno.todos.get().pk == factura.pk
+    assert respaldo_actual(factura).version == 2
+    assert not respaldo_actual(factura).revisiones.exists()
+    assert diagnostico(solicitud)["neto"] == factura.importe
 
 
 @pytest.mark.parametrize(
@@ -260,8 +432,9 @@ def test_sql_protege_inmutabilidad_e_importe_no_finito(escenario, solicitud, ent
         cursor.execute(
             "INSERT INTO facturacion_comprobanteexterno "
             "(solicitud_id,tipo,cuit_emisor,letra,punto_venta,numero,fecha_emision,importe,"
-            "procedencia,factura_origen_id,documento_id,actor_id,fecha_registro) "
-            "VALUES (%s,'NOTA_DEBITO',%s,'A',1,2,%s,%s,'EXTERNO_XUBIO',%s,%s,%s,NOW())",
+            "procedencia,factura_origen_id,documento_id,actor_id,fecha_registro,"
+            "sustituido,motivo_correccion) "
+            "VALUES (%s,'NOTA_DEBITO',%s,'A',1,2,%s,%s,'EXTERNO_XUBIO',%s,%s,%s,NOW(),false,'')",
             [
                 solicitud.pk,
                 registro.cuit_emisor,

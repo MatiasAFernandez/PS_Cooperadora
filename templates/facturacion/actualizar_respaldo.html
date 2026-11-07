@@ -1,13 +1,26 @@
 {% extends "facturacion/base.html" %}{% block facturacion_content %}
-<h2>Actualizar vínculo documental</h2><p>Versión vinculada: {{ anterior.nombre_original }} — {{ anterior.version }}.</p>
-<p>Esta acción conserva el archivo anterior y deja un evento. No modifica importes ni confirma el ingreso o la revisión documental.</p>
+<header class="fac-page-title fac-has-help">
+<h2>Actualizar vínculo documental</h2>
+{% include "facturacion/ayuda.html" with id="ayuda-vinculo" etiqueta="Actualizar vínculo documental" texto="Vinculá una versión vigente o adjuntá una nueva. El archivo anterior queda en el historial y la nueva versión requiere revisión." only %}
+</header>
+<p>Versión vinculada: {{ anterior.nombre_original }} — {{ anterior.version }}.</p>
 {% if errores %}<ul role="alert">{% for error in errores %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
 <form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
-<label for="nuevo">Versión sucesora vigente existente</label><select id="nuevo" name="nuevo_id"><option value="">Seleccioná una versión o adjuntá un archivo nuevo</option>
+<div class="fac-field-label fac-has-help">
+    <label for="nuevo">Versión sucesora vigente existente</label>
+    {% if anterior.tipo == "COMPROBANTE_COBRO" %}
+        {% include "facturacion/ayuda.html" with id="ayuda-version-sucesora" etiqueta="Versión sucesora vigente existente" texto="Si el cobro sigue vinculado a la versión 1 y ya se subió la versión 2 como reemplazo, elegí la versión 2. Si la lista está vacía, adjuntá un documento de respaldo nuevo." only %}
+    {% else %}
+        {% include "facturacion/ayuda.html" with id="ayuda-version-sucesora" etiqueta="Versión sucesora vigente existente" texto="Si la factura o nota externa sigue vinculada a la versión 1 de su PDF y ya se subió la versión 2 como reemplazo, elegí la versión 2. Si la lista está vacía, adjuntá un PDF nuevo." only %}
+    {% endif %}
+</div>
+<select id="nuevo" name="nuevo_id" aria-describedby="ayuda-version-sucesora"><option value="">Seleccioná una versión o adjuntá un archivo nuevo</option>
 {% for documento in opciones %}<option value="{{ documento.pk }}"{% if nuevo_id == documento.pk|stringformat:"s" %} selected{% endif %}>{{ documento.nombre_original }} — versión {{ documento.version }}</option>{% endfor %}</select>
-<label for="archivo">O adjuntá un respaldo nuevo (comprobante externo: PDF; cobro: PDF/JPEG/PNG; hasta 10 MiB)</label><input id="archivo" name="archivo" type="file">
+<div class="fac-field-label fac-has-help"><label for="archivo">O adjuntá un documento de respaldo nuevo</label>
+{% include "facturacion/ayuda.html" with id="ayuda-archivo" etiqueta="Documento de respaldo nuevo" texto="Adjuntá un PDF para comprobantes externos o un PDF, JPEG o PNG para cobros. Máximo 10 MiB. Volvé a seleccionar el archivo si el formulario devuelve un error." only %}</div>
+<input id="archivo" name="archivo" type="file" aria-describedby="ayuda-archivo{% if error_archivo %} archivo-error{% endif %}"{% if error_archivo %} aria-invalid="true"{% endif %}>
+{% if error_archivo %}<ul id="archivo-error" class="errorlist"><li>{{ error_archivo }}</li></ul>{% endif %}
 <label for="motivo">Motivo</label><textarea id="motivo" name="motivo" required maxlength="2000">{{ motivo }}</textarea>
 <button type="submit">Actualizar vínculo</button></form>
-<p>Un archivo nuevo crea la versión sucesora y el vínculo en una operación. Requiere permiso de incorporación; la nueva versión empieza sin revisión. El cierre exigirá su aceptación. Ante error, volvé a seleccionar el archivo.</p>
 <p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
 {% endblock %}

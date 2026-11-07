@@ -3,7 +3,7 @@
 <form class="fac-form" method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
 <input type="hidden" name="revision" value="{{ diagnostico.revision }}">
 <input type="hidden" name="accion" value="{{ accion }}">
-<label for="motivo">Motivo de resolución</label><textarea id="motivo" name="motivo" required maxlength="2000">{{ motivo }}</textarea>
+{% if accion == "anular" %}<label for="motivo">Motivo de anulación</label><textarea id="motivo" name="motivo" required maxlength="2000">{{ motivo }}</textarea>{% endif %}
 <button type="submit">Reintentar tras revisar los pendientes</button></form>
 <p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver al detalle y revisar los pendientes antes de reintentar</a></p>
 {% endblock %}

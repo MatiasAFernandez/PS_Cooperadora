@@ -229,6 +229,8 @@ def test_http_csrf_resultados_historial_y_revocacion(revision):
     url = reverse("documentos:revision", args=[e.documento.pk])
     respuesta = cliente.get(url)
     assert respuesta.status_code == 200 and b"Pendiente" in respuesta.content
+    vuelta = reverse("gastos:detalle", args=[e.gasto.pk])
+    assert f'href="{vuelta}">Volver a la solicitud</a>' in respuesta.content.decode()
     assert respuesta["Cache-Control"] == "private, no-store"
     datos = {
         "resultado": "RECHAZADO",
@@ -242,6 +244,7 @@ def test_http_csrf_resultados_historial_y_revocacion(revision):
     assert cliente.post(url, datos).status_code == 302
     assert cliente.post(url, datos).status_code == 409
     html = cliente.get(url).content.decode()
+    assert f'href="{vuelta}">Volver a la solicitud</a>' in html
     assert "RECHAZADO" in html and "&lt;script&gt;" in html
     assert "<script>ficticio</script>" not in html
     e.staff.groups.remove(Group.objects.get(name="demo_documentos_revision"))

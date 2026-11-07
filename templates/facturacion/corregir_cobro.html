@@ -1,11 +1,29 @@
 {% extends "facturacion/base.html" %}
+{% load static %}
+{% block extra_head %}
+{{ block.super }}
+<script src="{% static 'facturacion/js/modificar_cobro.js' %}" defer></script>
+{% endblock %}
 {% block facturacion_content %}
-<h2>Corregir cobro #{{ cobro.numero_en_solicitud }}</h2>
-<p>La versión anterior y su revisión se conservan. La corrección quedará pendiente
-de verificación por Cooperadora. No se pueden corregir ingresos ya confirmados.</p>
-<form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}
-<div class="fac-form-fields">{{ form.as_p }}</div>
+<header class="fac-page-title fac-has-help">
+<h2>Modificar cobro #{{ cobro.numero_en_solicitud }}</h2>
+{% if cobro.resultado == "RECHAZADO" and puede_corregir or cobro.resultado == "PENDIENTE" and not puede_solo_documento %}
+{% include "facturacion/ayuda.html" with id="ayuda-correccion" etiqueta="Modificar cobro" texto="Podés corregir los datos o adjuntar otro documento de respaldo. Cooperadora revisará el documento y verificará la nueva versión." only %}
+{% elif puede_solo_documento %}
+{% include "facturacion/ayuda.html" with id="ayuda-correccion" etiqueta="Modificar cobro" texto="Podés cambiar el documento de respaldo. Si el ingreso ya está confirmado, conserva su confirmación mientras se revisa el documento. Si corregís los datos, se verificará la nueva versión." only %}
+{% else %}
+{% include "facturacion/ayuda.html" with id="ayuda-correccion" etiqueta="Modificar cobro" texto="Corregí los datos del cobro y, si hace falta, cambiá el documento de respaldo en la misma operación. Cooperadora revisará el documento y verificará la nueva versión." only %}
+{% endif %}
+</header>
+<form class="fac-form" method="post" enctype="multipart/form-data" data-modificar-cobro>{% csrf_token %}
+{% if documento_actual %}
+<p>Documento de respaldo vinculado: <strong>{{ documento_actual.nombre_original }}</strong> · versión {{ documento_actual.version }}.</p>
+{% endif %}
+{% include "facturacion/campos_formulario.html" %}
 {% if form.errors %}<p>Si elegiste un archivo nuevo, volvé a seleccionarlo.</p>{% endif %}
-<button type="submit">Presentar corrección</button></form>
+{% if cobro.resultado == "CONFIRMADO" and puede_corregir %}
+<p class="notice fac-warning" data-aviso-rectificacion role="status">Si modificás los datos del cobro, se rectificará la confirmación anterior y Cooperadora deberá verificar el ingreso corregido.</p>
+{% endif %}
+<button type="submit">Guardar cambios</button></form>
 <p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
 {% endblock %}

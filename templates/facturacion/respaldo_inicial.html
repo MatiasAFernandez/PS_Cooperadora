@@ -1,0 +1,15 @@
+<div class="form-group" data-respaldo-inicial>
+    {{ field.errors }}
+    <div class="fac-total fac-file-card">
+        <div aria-live="polite">
+            <strong data-nombre-respaldo>{{ nombre_respaldo_inicial }}</strong>
+            <small data-estado-respaldo>Documento de respaldo guardado</small>
+        </div>
+        <div data-accion-respaldo hidden>
+            <button class="btn btn-secondary" type="button" aria-label="Quitar documento de respaldo">×</button>
+        </div>
+    </div>
+    <div data-retiro-respaldo>
+        {{ field }} {{ field.label_tag }}
+    </div>
+</div>

@@ -40,7 +40,8 @@ compartidos y de gastos requieren revisión de Franco según el flujo existente.
   o cobro por medio y operación, más archivo y versión. Sin metadatos se mantiene
   el mensaje neutral existente, sin revelar nombres.
 - Facturas, notas de crédito y de débito admiten origen Xubio (predeterminado) u
-  Otro con aclaración obligatoria. Los registros anteriores conservan Xubio.
+  Otro. El formulario muestra y exige la aclaración al elegir Otro. Los registros
+  anteriores conservan Xubio.
   El origen no integra ni debilita la unicidad fiscal existente. Registros y
   versiones siguen inmutables; reemplazos no modifican el origen del comprobante.
 - Los códigos documentales históricos terminados en `_XUBIO` se conservan para
