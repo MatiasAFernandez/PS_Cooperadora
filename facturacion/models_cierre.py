@@ -56,6 +56,6 @@ class ActualizacionRespaldo(models.Model):
             estado_resultante="ACTUALIZADO",
             motivo_o_detalle=(
                 f"{'Comprobante' if self.comprobante_id else 'Cobro'} #{objeto.pk}. "
-                f"Respaldo #{self.anterior_id} → #{self.nuevo_id}. {self.motivo}"
+                f"Documento de respaldo #{self.anterior_id} → #{self.nuevo_id}. {self.motivo}"
             ),
         )

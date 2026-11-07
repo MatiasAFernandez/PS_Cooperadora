@@ -197,6 +197,8 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
         == 302
     )
     cobro = s.cobros.get()
+    for documento in (s.comprobantes.get().documento, cobro.documento):
+        aceptar_documento(o, documento)
     assert (
         o.post(
             reverse("facturacion:verificar_cobro", args=[s.pk, cobro.pk]),
@@ -204,8 +206,6 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
         ).status_code
         == 302
     )
-    for documento in (s.comprobantes.get().documento, cobro.documento):
-        aceptar_documento(o, documento)
     s.refresh_from_db()
     assert s.estado == "PRESENTADA"
     detalle_url = reverse("facturacion:detalle", args=[s.pk])

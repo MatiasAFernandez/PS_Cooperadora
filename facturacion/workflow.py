@@ -174,12 +174,14 @@ def _adjuntar(solicitud, actor, limpio, archivo, escrituras):
     elif actual is not None:
         documentos.bloquear_serie(actual)
         if actual.tramite_base_id != solicitud.tramite_base_id:
-            raise ValidationError("El respaldo no pertenece a la solicitud.")
+            raise ValidationError("El documento de respaldo no pertenece a la solicitud.")
         if (
             actual.tipo != "COMPROBANTE_COBRO"
             or actual.__class__.objects.filter(reemplaza=actual).exists()
         ):
-            raise ValidationError("El respaldo fue reemplazado. Actualizá la solicitud.")
+            raise ValidationError(
+                "El documento de respaldo fue reemplazado. Actualizá la solicitud."
+            )
 
 
 def presentar_solicitud_facturacion(*, actor, datos, token_presentacion, archivo_comprobante=None):

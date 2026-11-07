@@ -6,13 +6,7 @@ from django import forms
 
 from comunes.filtros import FiltroFechaForm
 
-from .choices import (
-    MEDIOS_PAGO_EFECTIVOS,
-    CentroCosto,
-    CondicionIVA,
-    ModalidadCobro,
-    ProductoServicio,
-)
+from .choices import CentroCosto, CondicionIVA, ModalidadCobro, ProductoServicio
 from .validation import validar_cuit
 
 
@@ -22,6 +16,9 @@ class SolicitudFacturacionForm(forms.Form):
         choices=[("", "Seleccioná…"), ("True", "Sí"), ("False", "No")],
         coerce=lambda val: val == "True",
         empty_value=None,
+        help_text=(
+            "Si elegís Sí, completá la fecha y el número de operación y adjuntá el comprobante."
+        ),
     )
     nombre_solicitante = forms.CharField(label="Nombre del solicitante", max_length=200)
     cuit_receptor = forms.CharField(
@@ -29,7 +26,11 @@ class SolicitudFacturacionForm(forms.Form):
     )
     nombre_receptor = forms.CharField(label="Nombre o razón social del receptor", max_length=255)
     condicion_iva = forms.ChoiceField(label="Condición ante el IVA", choices=CondicionIVA.choices)
-    email_envio_factura = forms.EmailField(label="Correo para enviar la factura", max_length=254)
+    email_envio_factura = forms.EmailField(
+        label="Correo para enviar la factura",
+        max_length=254,
+        help_text="Cooperadora enviará la factura a esta dirección.",
+    )
     detalle_factura = forms.CharField(label="Detalle de la factura", widget=forms.Textarea)
     importe_factura = forms.DecimalField(
         label="Importe solicitado",
@@ -55,9 +56,13 @@ class SolicitudFacturacionForm(forms.Form):
         max_length=100,
         required=False,
     )
-    archivo_comprobante = forms.FileField(label="Comprobante de pago declarado", required=False)
+    archivo_comprobante = forms.FileField(
+        label="Comprobante de pago declarado",
+        required=False,
+        help_text="PDF, JPEG o PNG de hasta 10 MiB. El archivo anterior queda en el historial.",
+    )
     retirar_comprobante = forms.BooleanField(
-        label="Retirar el respaldo vigente (se conserva en el historial)",
+        label="Retirar el documento de respaldo vigente (se conserva en el historial)",
         required=False,
     )
 
@@ -77,21 +82,21 @@ class SolicitudFacturacionForm(forms.Form):
         data = super().clean()
         if data.get("retirar_comprobante") and data.get("archivo_comprobante"):
             self.add_error("retirar_comprobante", "Elegí retirar o reemplazar, no ambas acciones.")
-        if data.get("presento_comprobante_pago") and data.get("modalidad_cobro") in (
-            MEDIOS_PAGO_EFECTIVOS
-        ):
+        if data.get("presento_comprobante_pago"):
             for field in ("fecha_operacion_declarada", "numero_operacion_declarado"):
-                if not data.get(field):
-                    self.add_error(field, "Obligatorio al declarar pago por banco o Mercado Pago.")
+                if not data.get(field) and not self.has_error(field):
+                    self.add_error(field, "Este dato es obligatorio al declarar un pago.")
             conserva = self.documento_actual and not data.get("retirar_comprobante")
-            if not data.get("archivo_comprobante") and not conserva:
+            if not data.get("archivo_comprobante") and not conserva and not self.has_error(
+                "archivo_comprobante"
+            ):
                 self.add_error("archivo_comprobante", "Adjuntá el comprobante del pago declarado.")
         return data
 
 
 class FiltroFacturacionForm(FiltroFechaForm):
     estado = forms.ChoiceField(
-        label="Estado / seguimiento",
+        label="Estado",
         required=False,
         choices=[
             ("", "Todos los estados"),

@@ -11,9 +11,9 @@ from django.utils.functional import cached_property
 
 from comunes.contracts import EventoHistorialDTO
 
-from .choices import MEDIOS_PAGO_EFECTIVOS, CondicionIVA, ModalidadCobro, ProductoServicio
+from .choices import CondicionIVA, ModalidadCobro, ProductoServicio
 from .models_cierre import ActualizacionRespaldo  # noqa: F401
-from .models_cobros import CobroExterno, VerificacionCobro  # noqa: F401
+from .models_cobros import CobroExterno, RectificacionCobro, VerificacionCobro  # noqa: F401
 from .validation import validar_cuit
 
 
@@ -170,14 +170,14 @@ class SolicitudFacturacion(models.Model):
                 errors[field] = "Este campo es obligatorio."
         if type(self.presento_comprobante_pago) is not bool:
             errors["presento_comprobante_pago"] = "Seleccioná Sí o No."
-        if self.presento_comprobante_pago and self.modalidad_cobro in MEDIOS_PAGO_EFECTIVOS:
+        if self.presento_comprobante_pago:
             for field in (
                 "fecha_operacion_declarada",
                 "numero_operacion_declarado",
                 "documento_comprobante_inicial",
             ):
                 if not getattr(self, field):
-                    errors[field] = "Obligatorio al declarar pago por banco o Mercado Pago."
+                    errors[field] = "Este dato es obligatorio al declarar un pago."
         if errors:
             raise ValidationError(errors)
 
@@ -225,6 +225,11 @@ class EventoFacturacion(models.Model):
         )
 
 
+class ComprobanteVigenteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(sustituido=False)
+
+
 class ComprobanteExterno(models.Model):
     """Registro inmutable de un comprobante ya emitido; es su propio hecho auditable."""
 
@@ -255,6 +260,13 @@ class ComprobanteExterno(models.Model):
     documento = models.OneToOneField("documentos.Documento", on_delete=models.PROTECT)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_registro = models.DateTimeField(auto_now_add=True)
+    sustituido = models.BooleanField(default=False, editable=False)
+    reemplaza = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="correccion"
+    )
+    motivo_correccion = models.TextField(blank=True, max_length=2000)
+    objects = ComprobanteVigenteManager()
+    todos = models.Manager()
 
     class Meta:
         ordering = ["fecha_registro", "id"]
@@ -266,11 +278,12 @@ class ComprobanteExterno(models.Model):
             ),
             models.UniqueConstraint(
                 fields=["cuit_emisor", "tipo", "letra", "punto_venta", "numero"],
+                condition=models.Q(sustituido=False),
                 name="uq_comprobante_identidad_externa",
             ),
             models.UniqueConstraint(
                 fields=["solicitud"],
-                condition=models.Q(tipo="FACTURA"),
+                condition=models.Q(tipo="FACTURA", sustituido=False),
                 name="uq_una_factura_por_solicitud",
             ),
             models.CheckConstraint(
@@ -314,12 +327,16 @@ class ComprobanteExterno(models.Model):
         return EventoHistorialDTO(
             evento_id=self.pk,
             tramite_ref=f"facturacion:{self.solicitud_id}",
-            tipo_evento="comprobante_externo_registrado",
+            tipo_evento=(
+                "comprobante_externo_corregido" if self.reemplaza_id
+                else "comprobante_externo_registrado"
+            ),
             actor_id=str(self.actor_id),
             fecha_hora=self.fecha_registro,
             estado_resultante="REGISTRADO",
             motivo_o_detalle=(
                 f"{self.identificacion}. Emisor: {self.cuit_emisor}. "
-                f"Origen: {self.origen_mostrado}."
+                f"Emisión: {self.fecha_emision:%d/%m/%Y}. Importe: {self.importe:.2f} ARS. "
+                f"Origen: {self.origen_mostrado}. {self.motivo_correccion}"
             ),
         )

@@ -28,6 +28,11 @@ registrar factura, revisar respaldo, verificar ingreso, actualizar vínculo y
 cierre explícito. La sugerencia no ejecuta acciones ni acredita una revisión.
 Los envíos por correo y sus definiciones siguen fuera de este tramo.
 
+En el detalle, **Acciones inmediatas** explica la espera cuando el titular no
+tiene un paso que ejecutar y Cooperadora debe cargar la factura o verificar los
+cobros. La operadora ve si falta que el titular registre el cobro o corrija una
+observación. Las tarjetas de atención explican el siguiente paso junto al botón.
+
 - Estado: para validar eventos y destinatarios; necesidad confirmada.
 - Issue: [#78](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/78).
 - Responsable principal: Matías Alejandro Fernández.

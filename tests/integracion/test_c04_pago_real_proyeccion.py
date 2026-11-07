@@ -203,7 +203,7 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert "ARS" in contenido_detalle
     assert "SINTETICA-C04-001" in contenido_detalle
     assert "16/10/2026" in contenido_detalle
-    assert "Registro informativo de la demo" in contenido_detalle
+    assert "Registro informativo del pago" in contenido_detalle
 
     # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
     assert (

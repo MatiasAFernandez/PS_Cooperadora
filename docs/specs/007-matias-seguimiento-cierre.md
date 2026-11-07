@@ -56,6 +56,7 @@ de cancelación y documentación, sin perder observaciones ni operaciones previa
   rechaza sin aplicar cambios parciales ni duplicar eventos.
 - `SEG-R04`: los pendientes y la cancelación son verificables desde facturas,
   notas, cobros y documentos asociados, conforme a reglas validadas.
+  El detalle enlaza cada pendiente con la sección o el registro relacionado.
 - `SEG-R05`: sólo una persona con capacidad de cierre puede cerrar un trámite que
   satisface las condiciones acordadas.
 
@@ -73,10 +74,11 @@ PRESENTADA y OBSERVADA conservan el flujo de #23. Corregir una observación vuel
 a PRESENTADA. Mientras está PRESENTADA, el seguimiento se deriva de hechos:
 sin factura, Presentada; con factura y cobertura insuficiente,
 FACTURADA_PENDIENTE_COBRO; con neto no negativo cubierto,
-COBRADA_EN_REVISION. Cerrar exige igualdad exacta aunque el seguimiento indique
-cobertura por exceso. Neto negativo bloquea resolución y requiere regularización.
+COBRADA_EN_REVISION. El cierre admite cobertura exacta o con excedente y exige
+neto positivo.
 
-La lista y el detalle muestran el estado de solicitud y su seguimiento. Estos
+La lista, las tarjetas de atención, el resumen lateral, el detalle y el PDF
+muestran un solo estado vigente por solicitud. Los estados financieros
 intermedios se calculan al consultar; no se duplican columnas ni se escriben
 transiciones durante GET, ni se inventan eventos o actores para datos históricos.
 OBSERVADA conserva prioridad y bloquea el cierre normal hasta corregirse.
@@ -89,25 +91,30 @@ conservan historial, metadatos y descargas según sus capacidades independientes
 ### Cierre normal
 
 - Factura registrada y neto estrictamente positivo en ARS.
-- Cobros CONFIRMADOS exactamente iguales al neto, sin tolerancia ni redondeo
-  adicional. Pendientes bloquean; rechazados no cuentan como ingreso.
+- Cobros CONFIRMADOS por un total mayor o igual al neto, sin tolerancia ni redondeo
+  adicional. Los pendientes bloquean el cierre y los rechazados no cuentan como ingreso.
+- Al verificar un cobro, se advierte si su importe supera el solicitado o si su
+  confirmación haría que el total confirmado supere el neto. El detalle muestra
+  el excedente confirmado y presenta un saldo pendiente de cero cuando hay cobertura.
 - Respaldos vinculados de factura, todas sus notas y todos los cobros confirmados
   vigentes con última revisión ACEPTADO. Archivos históricos o sin relación con
   esos hechos no se convierten en requisitos adicionales.
 - La operación bancaria/Mercado Pago declarada inicialmente debe registrarse como
   cobro con su medio/cuenta y operación y recibir verificación explícita. No se
   ignora la declaración ni se convierte automáticamente su importe en recibido.
-- Descuentos, retenciones, comisiones y diferencias siguen fuera del perfil.
+- El cierre con excedente registra la resolución del trámite. Descuentos,
+  retenciones, comisiones y regularizaciones monetarias siguen fuera del perfil.
 
 ### Anulación
 
-Se admite sin factura y sin ingresos pendientes/confirmados; o con factura cuyo
-neto sea exactamente cero por notas, con todos sus respaldos vigentes aceptados
-y sin ingresos pendientes/confirmados. La operación declarada inicialmente
-también requiere resolución como cobro. Los rechazados quedan auditados.
-Una nota de crédito no acredita devolución: si hubo ingreso confirmado, se
-bloquea hasta definir regularización. Neto negativo no se anula ni se cierra.
-La anulación del trámite no ejecuta una anulación fiscal en Xubio.
+Se admite con cualquier neto y con ingresos ya verificados. Los ingresos
+pendientes de verificación bloquean la anulación. Si hay factura o notas, sus
+respaldos vigentes deben estar aceptados. La operación declarada inicialmente
+también requiere resolución como cobro.
+La anulación conserva los cobros y sus resultados. Las devoluciones y
+regularizaciones se gestionan fuera del sistema y, si corresponde, pueden
+mencionarse en el motivo de anulación. La anulación del trámite no ejecuta una
+anulación fiscal en Xubio.
 
 ### Actualización trazable de respaldo
 
@@ -135,7 +142,11 @@ Resolver o actualizar requiere también metadatos y cada acción exige acceso al
 Una cuenta sin metadatos consulta el diagnóstico financiero autorizado, pero no
 recibe los motivos de actualizaciones, identificadores ni resultados documentales;
 la sección documental se presenta neutral, sin inferir presencia o suficiencia.
-Las tres acciones exigen motivo con texto de hasta 2000 caracteres.
+La anulación y la actualización de respaldo exigen motivo de hasta 2000
+caracteres. El cierre registra la completitud del trámite sin exigir motivo.
+La interfaz pide el motivo de resolución únicamente al elegir anular.
+El detalle de una solicitud cerrada omite Acciones inmediatas. Para una
+solicitud anulada, ese lugar muestra el motivo del evento de anulación.
 
 La resolución recibe una huella de revisión calculada desde estado/versión,
 comprobantes, cobros/verificaciones, aportes/revisiones y actualizaciones de vínculo.
@@ -144,7 +155,7 @@ anterior (409). La huella controla frescura, no sustituye autorización.
 Facturación toma cabecera antes de solicitud y raíces documentales. Revisión y
 reemplazo de facturación toman la misma cabecera antes de la raíz; gastos/C01
 mantienen su contrato y orden. SQL protege operaciones posteriores a terminales,
-las condiciones de resolución, motivo y preservación del evento terminal.
+las condiciones de resolución, el motivo de anulación y la preservación del evento terminal.
 
 ## Criterios de aceptación
 
@@ -185,8 +196,6 @@ las condiciones de resolución, motivo y preservación del evento terminal.
 ## Preguntas abiertas
 
 - Validación institucional del perfil y de las personas/cargos facultados.
-- Regularización de excesos, faltantes, devoluciones, retenciones y comisiones;
-  quedan bloqueados los cierres/anulaciones que los requieren, sin inferir reglas.
 
 ## Decisiones
 

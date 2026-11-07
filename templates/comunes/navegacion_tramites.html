@@ -17,7 +17,7 @@
             {% endif %}
         {% endif %}
         {% if actor %}
-        <li><a href="{% url 'identidad:inicio' %}" class="nav-link">Inicio de demo</a></li>
+        <li><a href="{% url 'identidad:inicio' %}" class="nav-link">Inicio</a></li>
         <li>
             <form method="post" action="{% url 'identidad:logout' %}" style="margin: 0; display: inline;">
                 {% csrf_token %}

@@ -101,7 +101,7 @@ def _enforce_actor(request: HttpRequest) -> Any:
     if demo_enabled:
         return redirect_to_login(request.get_full_path())
 
-    raise PermissionDenied("Identidad no configurada o demo deshabilitada.")
+    raise PermissionDenied("El acceso a trámites no está habilitado.")
 
 
 def _pago_externo_registrado(solicitud: Any) -> bool:
@@ -1094,7 +1094,7 @@ class SolicitudGastoPagoView(View):
                 form = PagoExternoForm(
                     request.POST, opciones_documentales=opciones_actualizadas
                 )
-            form.add_error(None, "No se pudo verificar el respaldo documental del pago.")
+            form.add_error(None, "No se pudo verificar el documento de respaldo del pago.")
             return render(
                 request,
                 self.template_name,
@@ -1154,7 +1154,7 @@ class SolicitudGastoPagoView(View):
             return HttpResponse(str(exc), status=409)
         except DocumentVerificationError:
             return HttpResponse(
-                "No se pudo verificar el respaldo documental del pago.",
+                "No se pudo verificar el documento de respaldo del pago.",
                 status=409,
             )
 

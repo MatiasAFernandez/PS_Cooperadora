@@ -3,11 +3,12 @@
 ## Ajuste de interfaz solicitado el 02/11/2026 — #80
 
 La pregunta sobre comprobante de pago se ubica inmediatamente antes de fecha,
-número y archivo declarados. Con JavaScript esos tres campos sólo se muestran
-y se envían al elegir Sí; cambiar a No conserva lo escrito en pantalla, pero
-deshabilita su envío. La corrección conserva el respaldo previo salvo retirada
-explícita, manteniendo su historia. La validación D01 del servidor no se sustituye
-por el comportamiento de interfaz ni se amplía a un nuevo permiso documental.
+número y archivo declarados. Con JavaScript, al cambiar a No se deshabilitan
+los datos de operación y se conserva lo escrito para volver a elegir Sí.
+La corrección conserva el respaldo previo salvo retirada
+explícita, manteniendo su historia. Al elegir Sí, la interfaz y el servidor
+exigen fecha, número de operación y comprobante con cualquier medio o cuenta.
+En una corrección, el comprobante vigente satisface el requisito si se conserva.
 
 Las columnas del listado se llaman ID de Solicitud y Fecha de Presentación; el
 número conserva su significado por titular, sin reasignar claves. Una columna
@@ -25,14 +26,13 @@ Observaciones del solicitante es opcional, tanto al presentar como al corregir.
 Puede omitirse o quedar vacío; no se exige texto de relleno. Esto no afecta al
 motivo obligatorio de la operadora al observar una solicitud.
 
-La numeración visible de solicitudes empieza en 1 para cada titular identificado
-por su actor, según el orden de creación de las solicitudes operativas. Se aplica
-también a las existentes y no se recalcula según filtros o paginación. Las vistas
-y la ficha PDF muestran número y correo del titular para distinguir solicitudes
-de distintas personas. Los identificadores globales internos, URLs, vínculos
-documentales e historial de hechos se conservan; no se reasignan claves.
-La búsqueda numérica selecciona ese número dentro de las solicitudes visibles
-o un CUIT exacto; el resto de las búsquedas de texto mantiene su comportamiento.
+Para el titular, la numeración visible empieza en 1 y sigue el orden de sus
+solicitudes operativas. La vista general de Cooperadora muestra el ID único y
+secuencial del circuito de Facturación, independiente de Gastos. Se reutilizan
+los identificadores ya asignados, que pueden tener saltos por operaciones
+revertidas. El listado, el resumen, el detalle y la ficha PDF muestran el
+número que corresponde a la cuenta. La búsqueda numérica usa ese mismo número
+o el CUIT exacto.
 La migración 0014 permite observaciones vacías conservando las demás condiciones
 de datos operativos. No borra ni reescribe solicitudes ni eventos. Su reversa
 exige que no existan solicitudes operativas con observaciones vacías.
@@ -135,8 +135,8 @@ debe poder revisarla, observarla y recibir una corrección trazable.
 - El [relevamiento inicial](../planning/i2-issues/01-relevamiento-fuentes.md)
   identifica 13 preguntas marcadas como obligatorias en la primera página del
   formulario actual. Fecha, número de operación y archivo de la sección de
-  comprobante no llevan `*`. Para I2, los tres campos son obligatorios cuando
-  se declara un pago ya presentado por banco o Mercado Pago. Falta confirmar
+  comprobante no llevan `*` en ese relevamiento. En el sistema, los tres campos
+  son obligatorios al responder Sí, con cualquier medio o cuenta. Falta confirmar
   qué exigencias se conservan para las otras 13 preguntas y completar las
   transiciones y facultades de observación/corrección.
 - Una corrección no borra el historial de lo presentado ni la observación.

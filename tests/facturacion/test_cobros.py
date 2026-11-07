@@ -22,6 +22,7 @@ from facturacion.workflow import (
     emitir_token,
     presentar_solicitud_facturacion,
 )
+from tests.facturacion.test_cierre import aceptar
 
 
 def pdf():
@@ -116,13 +117,22 @@ def test_alta_confirmada_http_y_solicitante_no_puede_confirmar(escenario, solici
     assert "confirmar_al_registrar" not in cliente.get(url).context["form"].fields
     respuesta = cliente.post(url, dict(entrada, confirmar_al_registrar="on", archivo=pdf()))
     assert respuesta.status_code == 403
+    archivo = SimpleUploadedFile("cobro.txt", b"Texto", "text/plain")
+    respuesta = cliente.post(url, dict(entrada, archivo=archivo))
+    assert respuesta.status_code == 400
+    mensaje = (
+        "Tipo de archivo no soportado. Adjuntá un archivo en formato "
+        "PDF (.pdf), JPEG (.jpg, .jpeg) o PNG (.png)."
+    )
+    assert respuesta.context["form"]["archivo"].errors == [mensaje]
+    assert not respuesta.context["form"].non_field_errors()
     escenario.usuarios["o"].groups.add(
         Group.objects.get(name="demo_verificacion_cobros"),
         Group.objects.get(name="demo_documentos_revision"),
     )
     cliente.force_login(escenario.usuarios["o"])
     formulario = cliente.get(url).context["form"]
-    assert not formulario["confirmar_al_registrar"].value()
+    assert formulario["confirmar_al_registrar"].value()
     respuesta = cliente.post(url, dict(entrada, confirmar_al_registrar="on", archivo=pdf()))
     assert respuesta.status_code == 302
     assert CobroExterno.objects.get().resultado == "CONFIRMADO"
@@ -223,6 +233,7 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     assert [c.numero_en_solicitud for c in (primero, intercalado, segundo)] == [1, 1, 2]
     assert intercalado.como_historial().motivo_o_detalle.startswith("Cobro #1.")
     assert segundo.como_historial().motivo_o_detalle.startswith("Cobro #2.")
+    aceptar(escenario, segundo.documento)
     verificacion = verificar_cobro(
         actor=revisor(escenario), numero=solicitud.pk, cobro_id=segundo.pk,
         datos={"resultado": "CONFIRMADO"},
@@ -247,13 +258,29 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     cliente.force_login(escenario.usuarios["o"])
     respuesta = cliente.get(reverse("facturacion:verificar_cobro", args=[otra.pk, intercalado.pk]))
     assert respuesta.status_code == 200
-    assert "Verificar ingreso del cobro #1" in respuesta.content.decode()
+    assert "Constatar Ingreso del cobro #1" in respuesta.content.decode()
 
 
 def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada):
     from documentos.revision import revisar
 
     cobro = alta(escenario, solicitud, entrada)
+    cliente = Client()
+    escenario.usuarios["o"].groups.add(
+        Group.objects.get(name="demo_documentos_revision"),
+        Group.objects.get(name="demo_verificacion_cobros"),
+    )
+    cliente.force_login(escenario.usuarios["o"])
+    detalle = reverse("facturacion:detalle", args=[solicitud.pk])
+    contenido = cliente.get(detalle).content.decode()
+    assert "Realizar revisión documental" in contenido
+    assert "Constatar Ingreso</a>" in contenido
+    revision_url = reverse("documentos:revision", args=[cobro.documento_id])
+    contenido = cliente.get(revision_url).content.decode()
+    assert "Datos ingresados del cobro" in contenido
+    assert "Banco Nación Cuenta Comun" in contenido
+    assert entrada["numero_operacion"] in contenido
+    assert "22/10/2026" in contenido and "60,10 ARS" in contenido
     actor = replace(
         escenario.actores["o"],
         capabilities=escenario.actores["o"].capabilities | {"documentos.revisar"},
@@ -263,13 +290,16 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
         motivo="", revision_esperada=0,
     )
     assert resumen_cobros(solicitud)[1]["PENDIENTE"] == Decimal("60.10")
-    cliente = Client()
-    cliente.force_login(escenario.usuarios["o"])
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
-    assert "Falta verificar el ingreso externo" in contenido
-    respuesta = cliente.get(reverse("documentos:revision", args=[cobro.documento_id]))
+    assert "Falta constatar el ingreso externo" in contenido
+    assert "Constatar Ingreso</a>" in contenido
+    assert "Revisión documental:" in contenido and ">ACEPTADO<" in contenido
+    assert "Consultar revisión documental" in contenido
+    respuesta = cliente.get(revision_url)
     contenido = respuesta.content.decode()
     assert "Aceptar este comprobante no confirma el cobro" in contenido
+    vuelta = reverse("facturacion:detalle", args=[solicitud.pk])
+    assert f'href="{vuelta}">Volver a la solicitud</a>' in contenido
     verificar_cobro(
         actor=revisor(escenario), numero=solicitud.pk, cobro_id=cobro.pk,
         datos={"resultado": "CONFIRMADO"},
@@ -289,6 +319,7 @@ def test_anticipos_parciales_verificacion_y_factura_posterior(escenario, solicit
     assert not RevisionDocumento.objects.exists()
     assert resumen_cobros(solicitud)[1]["PENDIENTE"] == Decimal("101.26")
     for c in (c1, c2):
+        aceptar(escenario, c.documento)
         verificar_cobro(
             actor=revisor(escenario),
             numero=solicitud.pk,
@@ -448,11 +479,22 @@ def test_http_csrf_conflicto_y_descarga(escenario, solicitud, entrada, datos):
     operador = Client(enforce_csrf_checks=True)
     operador.force_login(escenario.usuarios["o"])
     url = reverse("facturacion:verificar_cobro", args=[solicitud.pk, cobro.pk])
-    assert operador.get(url).status_code == 200
+    verificacion = operador.get(url)
+    assert verificacion.status_code == 200
+    assert "CONFIRMADO" not in dict(verificacion.context["form"].fields["resultado"].choices)
     assert operador.post(url, {"resultado": "CONFIRMADO"}).status_code == 403
     datos_post = dict(
         resultado="CONFIRMADO", csrfmiddlewaretoken=operador.cookies["csrftoken"].value
     )
+    assert operador.post(url, datos_post).status_code == 400
+    with (
+        pytest.raises(IntegrityError, match="exige respaldo vigente aceptado"),
+        transaction.atomic(),
+    ):
+        VerificacionCobro.objects.create(
+            cobro=cobro, resultado="CONFIRMADO", actor=escenario.usuarios["o"]
+        )
+    aceptar(escenario, cobro.documento)
     assert operador.post(url, datos_post).status_code == 302
     assert operador.post(url, datos_post).status_code == 409
     escenario.usuarios["o"].groups.remove(Group.objects.get(name="demo_verificacion_cobros"))
@@ -504,6 +546,7 @@ def test_rollback_de_alta_compensa_pdf(escenario, solicitud, entrada, monkeypatc
 
 def test_sql_historia_y_reversa(escenario, solicitud, entrada):
     c = alta(escenario, solicitud, entrada)
+    aceptar(escenario, c.documento)
     v = verificar_cobro(
         actor=revisor(escenario),
         numero=solicitud.pk,
@@ -558,6 +601,7 @@ def test_carrera_global_compensa_perdedor(escenario, solicitud, entrada, datos, 
 
 def test_carrera_verificacion_unico_hecho(escenario, solicitud, entrada):
     c = alta(escenario, solicitud, entrada)
+    aceptar(escenario, c.documento)
 
     def worker(resultado):
         try:
@@ -582,6 +626,7 @@ def test_fallo_verificacion_revierte_solo_el_nuevo_hecho(
     escenario, solicitud, entrada, monkeypatch
 ):
     c = alta(escenario, solicitud, entrada)
+    aceptar(escenario, c.documento)
     crear = VerificacionCobro.objects.create
 
     def fallar(**kwargs):

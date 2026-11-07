@@ -28,7 +28,7 @@ class DemoLogoutView(LogoutView):
     def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         response = super().post(request, *args, **kwargs)
         if not settings.DEMO_IDENTITY_ENABLED:
-            return HttpResponse("Sesión de demostración cerrada.")
+            return HttpResponse("Sesión cerrada.")
         return response
 
 

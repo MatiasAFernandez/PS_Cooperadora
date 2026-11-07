@@ -15,7 +15,9 @@ from .forms import SolicitudFacturacionForm
 from .views import FacturacionView
 
 
-def generar_pdf(solicitud):
+def generar_pdf(solicitud, *, numero_visible=None):
+    if numero_visible is None:
+        numero_visible = solicitud.numero_solicitante
     salida = BytesIO()
     estilos = getSampleStyleSheet()
     normal = ParagraphStyle("Texto", parent=estilos["BodyText"], fontSize=10, leading=14)
@@ -66,12 +68,12 @@ def generar_pdf(solicitud):
         Paragraph("Solicitud para preparar facturación", titulo),
         texto("No es comprobante fiscal"),
         Spacer(1, 5 * mm),
-        texto(f"Solicitud {solicitud.numero_solicitante} de {solicitud.correo_solicitante}"),
+        texto(f"Solicitud {numero_visible} de {solicitud.correo_solicitante}"),
         texto(
             f"Referencia interna facturacion:{solicitud.pk} · "
             f"Versión {solicitud.version_concurrencia}"
         ),
-        texto(f"Estado: {solicitud.get_estado_display()}"),
+        texto(f"Estado: {solicitud.estado_seguimiento}"),
         texto(
             "Presentada: "
             + timezone.localtime(solicitud.fecha_presentacion).strftime("%d/%m/%Y %H:%M")
@@ -92,7 +94,7 @@ def generar_pdf(solicitud):
         canvas.drawCentredString(
             A4[0] / 2,
             12 * mm,
-            f"Solicitud {solicitud.numero_solicitante} · No es comprobante fiscal · "
+            f"Solicitud {numero_visible} · No es comprobante fiscal · "
             f"Página {doc.page}",
         )
         canvas.restoreState()
@@ -104,7 +106,7 @@ def generar_pdf(solicitud):
         leftMargin=18 * mm,
         topMargin=18 * mm,
         bottomMargin=22 * mm,
-        title=f"Solicitud de facturación {solicitud.numero_solicitante}",
+        title=f"Solicitud de facturación {numero_visible}",
     ).build(contenido, onFirstPage=pie, onLaterPages=pie)
     return salida.getvalue()
 
@@ -112,9 +114,12 @@ def generar_pdf(solicitud):
 class ExportarSolicitudPDFView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
-        respuesta = HttpResponse(generar_pdf(solicitud), content_type="application/pdf")
+        numero_visible = solicitud.numero_visible
+        respuesta = HttpResponse(
+            generar_pdf(solicitud, numero_visible=numero_visible), content_type="application/pdf"
+        )
         respuesta["Content-Disposition"] = (
-            f'attachment; filename="solicitud-facturacion-{solicitud.numero_solicitante}.pdf"'
+            f'attachment; filename="solicitud-facturacion-{numero_visible}.pdf"'
         )
         respuesta["Cache-Control"] = "private, no-store"
         respuesta["X-Content-Type-Options"] = "nosniff"

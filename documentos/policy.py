@@ -11,6 +11,10 @@ class ArchivoInvalido(ValueError):
     pass
 
 
+class TipoArchivoNoSoportado(ArchivoInvalido):
+    pass
+
+
 @dataclass(frozen=True)
 class ArchivoValidado:
     contenido: bytes
@@ -50,8 +54,8 @@ def validar_archivo(archivo: object) -> ArchivoValidado:
         "image/png": {".png"},
     }
     if formato is None or extension not in extensiones[formato]:
-        raise ArchivoInvalido("Tipo o extensión no permitidos.")
+        raise TipoArchivoNoSoportado("Tipo o extensión no permitidos.")
     declarado = getattr(archivo, "content_type", None)
     if declarado != formato:
-        raise ArchivoInvalido("El tipo MIME declarado no coincide con el contenido.")
+        raise TipoArchivoNoSoportado("El tipo MIME declarado no coincide con el contenido.")
     return ArchivoValidado(contenido, formato, nombre, hashlib.sha256(contenido).hexdigest())

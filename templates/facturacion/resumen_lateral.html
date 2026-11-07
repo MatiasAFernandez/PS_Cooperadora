@@ -1,0 +1,36 @@
+<dialog class="fac-drawer" id="resumen-facturacion" aria-labelledby="titulo-resumen-facturacion">
+    <div class="drawer-header">
+        <h3 id="titulo-resumen-facturacion"></h3>
+        <form method="dialog"><button type="submit" class="drawer-close" aria-label="Cerrar resumen" autofocus>✕</button></form>
+    </div>
+    <div class="drawer-body" data-contenido-resumen></div>
+</dialog>
+{% for solicitud, importes in resumenes %}
+<template id="resumen-solicitud-{{ solicitud.pk }}" data-titulo="Solicitud #{{ solicitud.numero_visible }}">
+    <div class="fac-statuses">
+        {% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}
+    </div>
+    <dl class="detail-grid">
+        <dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd>
+        <dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd>
+        <dt>Centro de costo</dt><dd>{{ solicitud.centro_costo|default:"—" }}</dd>
+        <dt>Producto o servicio</dt><dd>{{ solicitud.get_producto_servicio_display }}</dd>
+        <dt>Importe solicitado</dt><dd>$ {{ solicitud.importe_factura|floatformat:2 }}</dd>
+        <dt>Fecha de creación</dt><dd>{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</dd>
+    </dl>
+    <div class="fac-total">
+        <p class="fac-muted">Neto / cobros registrados</p>
+        <p class="fac-ratio">
+            {% if importes.hay_factura %}<strong>$ {{ importes.neto|floatformat:2 }}</strong>
+            {% else %}<span>Pendiente de factura</span>{% endif %}
+            <span aria-hidden="true">/</span>
+            {% if importes.hay_factura and importes.registrado > 0 and importes.registrado > importes.neto %}
+            <span class="status-pill status-warning">$ {{ importes.registrado|floatformat:2 }} · Excedente</span>
+            {% else %}
+            <span{% if importes.hay_factura and importes.registrado == importes.neto %} class="fac-covered"{% endif %}>$ {{ importes.registrado|floatformat:2 }}</span>
+            {% endif %}
+        </p>
+    </div>
+    <p><a class="btn" href="{% url 'facturacion:detalle' solicitud.pk %}">Ver Detalle</a></p>
+</template>
+{% endfor %}

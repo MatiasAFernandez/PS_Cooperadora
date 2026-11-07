@@ -1,6 +1,7 @@
 """Visibilidad y acciones propias de facturación; independientes de grupos concretos."""
 
 from django.core.exceptions import PermissionDenied
+from django.db.models import F
 
 from identidad.services import has_capability
 
@@ -12,13 +13,15 @@ class ObjetoNoVisibleError(LookupError):
 
 
 def filtrar_solicitudes_visibles(actor):
-    qs = SolicitudFacturacion.objects.operativas().con_numero_solicitante().select_related(
-        "tramite_base"
-    )
+    qs = SolicitudFacturacion.objects.operativas().select_related("tramite_base")
     if has_capability(actor, "facturacion.consultar_todas"):
-        return qs
+        return qs.annotate(numero_visible=F("pk"))
     if has_capability(actor, "facturacion.consultar_propias"):
-        return qs.filter(tramite_base__solicitante_actor_id=str(actor.subject_id))
+        return (
+            qs.filter(tramite_base__solicitante_actor_id=str(actor.subject_id))
+            .con_numero_solicitante()
+            .annotate(numero_visible=F("_numero_solicitante"))
+        )
     return qs.none()
 
 

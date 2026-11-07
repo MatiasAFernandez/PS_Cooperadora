@@ -1,20 +1,15 @@
 {% extends "facturacion/base.html" %}
-{% block facturacion_content %}<h2>{{ titulo }}</h2>
-<p class="notice">Perfil provisional de demostración con datos sintéticos. Un pago declarado queda pendiente de verificación y no acredita un cobro.</p>
+{% block facturacion_content %}
+<header class="fac-page-title fac-has-help">
+<h2>{{ titulo }}</h2>
+{% include "facturacion/ayuda.html" with id="ayuda-presentacion" etiqueta=titulo texto="Completá los datos que Cooperadora necesita para registrar y enviar la factura. Un pago declarado queda pendiente de verificación." only %}
+</header>
 {% if solicitud %}<p><strong>Observación:</strong> {{ solicitud.observacion_vigente }}</p>
-{% if solicitud.documento_comprobante_inicial_id %}<p>El respaldo vigente se conserva si no adjuntás uno nuevo. Un reemplazo conserva la versión anterior.</p>{% endif %}{% endif %}
+{% endif %}
 <form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}
 {% if token %}<input type="hidden" name="token_presentacion" value="{{ token }}">{% endif %}
 {% if solicitud %}<input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">{% endif %}
-{{ form.non_field_errors }}
-<div class="fac-form-fields">
-{% for field in form %}
-<div class="form-group"{% if field.name == "fecha_operacion_declarada" or field.name == "numero_operacion_declarado" or field.name == "archivo_comprobante" %} data-pago-declarado{% endif %}>
-{{ field.errors }}<p>{{ field.label_tag }} {{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}</p>
-</div>
-{% endfor %}
-</div>
-<p>Si declarás pago presentado por banco o Mercado Pago, completá fecha, número y archivo. PDF, JPEG o PNG, hasta 10 MiB.</p>
+{% include "facturacion/campos_formulario.html" %}
 {% if form.errors %}<p>Si habías seleccionado un archivo nuevo, volvé a seleccionarlo antes de reenviar.</p>{% endif %}
 {% if solicitud %}<p><label for="nota_correccion">Nota de corrección (opcional)</label>
 <textarea id="nota_correccion" name="nota_correccion">{{ request.POST.nota_correccion }}</textarea></p>{% endif %}
@@ -24,15 +19,56 @@
 (function () {
     const selector = document.getElementById('id_presento_comprobante_pago');
     const grupos = document.querySelectorAll('[data-pago-declarado]');
+    const archivo = document.getElementById('id_archivo_comprobante');
+    const respaldo = document.querySelector('[data-respaldo-inicial]');
+    const retirar = document.getElementById('id_retirar_comprobante');
+
     function actualizarPago() {
         const visible = selector.value === 'True';
         grupos.forEach(function (grupo) {
-            grupo.hidden = !visible;
-            grupo.querySelectorAll('input').forEach(function (campo) { campo.disabled = !visible; });
+            const habilitado = visible || (respaldo && grupo.contains(archivo));
+            grupo.hidden = !habilitado;
+            grupo.querySelectorAll('input').forEach(function (campo) {
+                campo.disabled = !habilitado;
+                campo.required = visible && (campo !== archivo || !respaldo || retirar.checked);
+            });
         });
     }
     selector.addEventListener('change', actualizarPago);
     actualizarPago();
+
+    if (respaldo) {
+        const nombre = respaldo.querySelector('[data-nombre-respaldo]');
+        const estado = respaldo.querySelector('[data-estado-respaldo]');
+        const original = nombre.textContent;
+        const accion = respaldo.querySelector('[data-accion-respaldo]');
+        const boton = accion.querySelector('button');
+        const seleccionado = () => archivo.files[0];
+
+        function actualizarRespaldo() {
+            const nuevo = seleccionado();
+            nombre.textContent = nuevo ? nuevo.name : original;
+            estado.textContent = nuevo ? 'Reemplazo pendiente de guardar' :
+                retirar.checked ? 'Se retirará al guardar' : 'Documento de respaldo guardado';
+            boton.textContent = retirar.checked ? 'Deshacer' : '×';
+            boton.setAttribute('aria-label', retirar.checked ? 'Deshacer retiro' :
+                nuevo ? 'Quitar archivo nuevo' : 'Quitar documento de respaldo guardado');
+            actualizarPago();
+        }
+
+        respaldo.querySelector('[data-retiro-respaldo]').hidden = true;
+        accion.hidden = false;
+        archivo.addEventListener('change', () => {
+            if (archivo.files.length) retirar.checked = false;
+            actualizarRespaldo();
+        });
+        boton.addEventListener('click', () => {
+            if (!seleccionado()) retirar.checked = !retirar.checked;
+            archivo.value = '';
+            actualizarRespaldo();
+        });
+        actualizarRespaldo();
+    }
 })();
 </script>
 {% endblock %}

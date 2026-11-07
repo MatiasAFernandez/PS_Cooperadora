@@ -1,10 +1,10 @@
 {% extends "facturacion/base.html" %}
 {% block facturacion_content %}
-<h2>Informar cobro externo — solicitud {{ solicitud.numero_solicitante }} de {{ solicitud.correo_solicitante }}</h2>
-<p>Registrá lo efectivamente recibido en ARS. Se admiten anticipos y parciales. No mueve dinero ni cierra el trámite.</p>
-{% if form.confirmar_al_registrar %}<p class="notice">Si ya cotejaste el movimiento externo y el respaldo, podés confirmarlos en esta carga marcando la casilla. Sin marcarla, el ingreso queda pendiente de verificación.</p>{% else %}<p>El ingreso empieza pendiente de verificación por Cooperadora.</p>{% endif %}
-<p>Usá un respaldo existente o adjuntá uno nuevo. El comprobante del formulario inicial no confirma automáticamente el ingreso; indicá el importe recibido, que puede diferir del importe solicitado.</p>
-<form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}<div class="fac-form-fields">{{ form.as_p }}</div>
+<header class="fac-page-title fac-has-help">
+<h2>Informar cobro externo — solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}</h2>
+{% include "facturacion/ayuda.html" with id="ayuda-cobro" etiqueta="Informar cobro externo" texto="Ingresá el importe efectivamente recibido en ARS. Se admiten anticipos y pagos parciales. Elegí un documento de respaldo existente o adjuntá uno nuevo. Cooperadora verifica el ingreso informado." only %}
+</header>
+<form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}{% include "facturacion/campos_formulario.html" %}
 {% if form.errors %}<p>Los campos se conservaron. Si elegiste un archivo, volvé a seleccionarlo.</p>{% endif %}
 <button type="submit">Registrar cobro</button></form>
 <p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
