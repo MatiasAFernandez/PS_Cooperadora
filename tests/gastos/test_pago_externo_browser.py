@@ -38,8 +38,10 @@ def opcion_pago() -> OpcionDocumental:
 
 
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("ancho", [1280, 390])
 def test_recorrido_1_detalle_y_alta_sin_respaldo(
     live_server: Any,
+    ancho: int,
     solicitud_factory: Any,
     actor_pago: Any,
     settings: Any,
@@ -59,7 +61,7 @@ def test_recorrido_1_detalle_y_alta_sin_respaldo(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
-        context = browser.new_context()
+        context = browser.new_context(viewport={"width": ancho, "height": 900})
         context.add_cookies([
             {
                 "name": "sessionid",
@@ -74,20 +76,16 @@ def test_recorrido_1_detalle_y_alta_sin_respaldo(
         page.goto(f"{live_server.url}{reverse('gastos:detalle', kwargs={'pk': solicitud.pk})}")
         page.wait_for_load_state("domcontentloaded")
 
-        # Verificar aviso junto al acceso en tarjeta Pago externo
         pago_section = page.locator("#pago-externo")
         assert pago_section.locator("text=Sin respaldo comercial elegible").is_visible()
-        btn_pagar = pago_section.locator("a:has-text('Registrar pago externo')")
-        assert btn_pagar.is_visible()
-
-        # Verificar enlace unificado a documentos con estilo azul
-        link_doc = page.locator("a:has-text('Cargar o reemplazar respaldo comercial')")
+        assert not pago_section.locator("a:has-text('Registrar pago externo')").is_visible()
+        link_doc = pago_section.locator('a[href="#cargar-respaldo"]')
         assert link_doc.is_visible()
-        assert "btn" in (link_doc.get_attribute("class") or "")
+        link_doc.click()
+        assert page.locator("#cargar-respaldo").get_attribute("open") is not None
 
-        # 2. Navegar a alta de pago
-        btn_pagar.click()
-        page.wait_for_load_state("domcontentloaded")
+        # Comprobar también el acceso directo al formulario sin respaldo.
+        page.goto(f"{live_server.url}{reverse('gastos:pagar', kwargs={'pk': solicitud.pk})}")
 
         # Verificar resumen lateral con fila Respaldo comercial y chip ámbar Falta cargar
         sum_respaldo = page.locator("#rp-sum-respaldo")
@@ -119,8 +117,10 @@ def test_recorrido_1_detalle_y_alta_sin_respaldo(
 
 
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("ancho", [1280, 390])
 def test_recorrido_2_alta_interactiva_novalidate_y_correcciones(
     live_server: Any,
+    ancho: int,
     solicitud_factory: Any,
     actor_pago: Any,
     settings: Any,
@@ -146,7 +146,7 @@ def test_recorrido_2_alta_interactiva_novalidate_y_correcciones(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
-        context = browser.new_context()
+        context = browser.new_context(viewport={"width": ancho, "height": 900})
         context.add_cookies([
             {
                 "name": "sessionid",

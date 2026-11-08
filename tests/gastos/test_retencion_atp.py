@@ -439,9 +439,9 @@ def test_vista_pago_post_con_retencion_y_desglose_en_detalle(
     assert res_detalle.status_code == 200
     contenido_det = res_detalle.content.decode("utf-8")
     assert "Monto bruto" in contenido_det
-    assert ("150000,00 ARS" in contenido_det or "150000.00 ARS" in contenido_det)
+    assert "$ 150.000,00" in contenido_det
     assert "Retención ATP Chaco" in contenido_det
-    assert ("5250,00 ARS" in contenido_det or "5250.00 ARS" in contenido_det)
+    assert "$ 5.250,00" in contenido_det
     assert "Cert: CERT-ATP-2026-991" in contenido_det
     assert "Neto transferido" in contenido_det
-    assert ("144750,00 ARS" in contenido_det or "144750.00 ARS" in contenido_det)
+    assert "$ 144.750,00" in contenido_det

@@ -104,10 +104,9 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
         == 302
     )
     documentos_url = reverse("gastos:documentos", args=[e.gasto.pk])
-    assert (
-        f'href="{documentos_url}"'
-        in a.get(reverse("gastos:detalle", args=[e.gasto.pk])).content.decode()
-    )
+    detalle = a.get(reverse("gastos:detalle", args=[e.gasto.pk]))
+    assert 'id="cargar-respaldo"' in detalle.content.decode()
+    assert "/static/js/adjuntar_archivos.js" in detalle.content.decode()
     assert a.get(documentos_url).status_code == 200
     respuesta = a.post(
         documentos_url,
@@ -172,7 +171,7 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
         "revision_documental",
         "pago_externo_registrado",
     }
-    assert "PENDIENTE" in detalle_gasto.content.decode()
+    assert "Pendiente de revisión" in detalle_gasto.content.decode()
     assert all((e.raiz / d.archivo).is_file() for d in (documento_gasto, sucesor))
 
     # Facturación real: factura, cobro, verificación y aceptación no cierran solos.
@@ -219,6 +218,9 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
     s.refresh_from_db()
     assert s.estado == "PRESENTADA"
     detalle_url = reverse("facturacion:detalle", args=[s.pk])
+    detalle_facturacion = o.get(detalle_url).content.decode()
+    assert "/static/facturacion/css/facturacion.css" in detalle_facturacion
+    assert "/static/js/adjuntar_archivos.js" in detalle_facturacion
     detalle = o.get(detalle_url)
     revision = detalle.context["diagnostico"]["revision"]
     assert (

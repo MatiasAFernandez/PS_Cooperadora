@@ -744,7 +744,10 @@ def test_detalle_explica_permiso_faltante_sin_consultar_documentos(
     response = auth_client(user, actor).get(_url_detalle(solicitud))
 
     assert response.status_code == 200
-    assert mensaje in response.content.decode()
+    if "gastos.registrar_pago" in capacidades:
+        assert mensaje in response.content.decode()
+    else:
+        assert mensaje not in response.content.decode()
     assert provider_pago.llamadas_listado == []
 
 
@@ -813,7 +816,7 @@ def test_detalle_avisa_ausencia_confirmada_respaldo_junto_al_acceso(
     assert response.context["pago_sin_respaldo_confirmado"] is True
     contenido = response.content.decode()
     assert "Sin respaldo comercial elegible" in contenido
-    assert _url_pagar(solicitud).encode() in response.content
+    assert _url_pagar(solicitud).encode() not in response.content
     assert "Cargar o reemplazar respaldo comercial" in contenido
 
 

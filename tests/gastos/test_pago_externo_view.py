@@ -112,12 +112,7 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     assert b"Importe: 825,40 ARS" in content
     assert b"Fecha del hecho: 14/10/2026" in content
     assert f"Usuario #{user.pk}".encode() in content
-    assert b"no confirma que el importe estimado est\xc3\xa9 saldado" in content
-    assert b"No se puede inferir desde aqu\xc3\xad si hay archivos;" in content
-    assert (
-        b"el registro de pago tampoco equivale a aprobaci\xc3\xb3n o suficiencia documental"
-        in content
-    )
+    assert response.context["versiones_documentales"] is None
     assert referencia_documental.encode() not in content
     assert b"huella_idempotencia" not in content
 
