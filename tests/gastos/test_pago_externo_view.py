@@ -12,11 +12,13 @@ from comunes.contracts import EventoHistorialDTO
 from gastos.models import DecisionGasto, EstadoSolicitud
 from gastos.payments import registrar_pago_externo
 from identidad.services import Actor
+from tests.soporte_pagos import pdf_comprobante
 
 User = get_user_model()
 
+pytestmark = pytest.mark.django_db(transaction=True)
 
-@pytest.mark.django_db
+
 def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     create_actor: Any,
     solicitud_factory: Any,
@@ -31,7 +33,13 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     )
     payment_actor = Actor(
         subject_id=user.pk,
-        capabilities=read_actor.capabilities | {"gastos.registrar_pago"},
+        capabilities=read_actor.capabilities
+        | {
+            "gastos.registrar_pago",
+            "documentos.incorporar",
+            "documentos.ver_metadatos",
+            "gastos.consultar_todas",
+        },
     )
     solicitud = solicitud_factory(
         estado=EstadoSolicitud.ACEPTADA,
@@ -51,10 +59,12 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     registrar_pago_externo(
         actor=payment_actor,
         solicitud_id=solicitud.pk,
-        importe="825.40",
+        monto_bruto="825.40",
+        monto_retencion_atp="0.00",
         fecha_pago=date(2026, 10, 14),
         referencia_externa="ref-sintetica-001",
         referencia_documental=referencia_documental,
+        comprobante_bancario=pdf_comprobante(),
         document_provider=fake_document_provider(),
     )
 
@@ -102,17 +112,11 @@ def test_detalle_muestra_pago_y_cronologia_sin_referencia_documental(
     assert b"Importe: 825,40 ARS" in content
     assert b"Fecha del hecho: 14/10/2026" in content
     assert f"Usuario #{user.pk}".encode() in content
-    assert b"no confirma que el importe estimado est\xc3\xa9 saldado" in content
-    assert b"No se puede inferir desde aqu\xc3\xad si hay archivos;" in content
-    assert (
-        b"el registro de pago tampoco equivale a aprobaci\xc3\xb3n o suficiencia documental"
-        in content
-    )
+    assert response.context["versiones_documentales"] is None
     assert referencia_documental.encode() not in content
     assert b"huella_idempotencia" not in content
 
 
-@pytest.mark.django_db
 def test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle(
     create_actor: Any,
     solicitud_factory: Any,
@@ -127,7 +131,13 @@ def test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle(
     )
     payment_actor = Actor(
         subject_id=user.pk,
-        capabilities=decision_actor.capabilities | {"gastos.registrar_pago"},
+        capabilities=decision_actor.capabilities
+        | {
+            "gastos.registrar_pago",
+            "documentos.incorporar",
+            "documentos.ver_metadatos",
+            "gastos.consultar_todas",
+        },
     )
     solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, monto="900.00")
     decision_author = User.objects.create_user(username="autor_decision_error_ui")
@@ -142,10 +152,12 @@ def test_error_de_decision_conserva_pago_y_cronologia_en_el_detalle(
     registrar_pago_externo(
         actor=payment_actor,
         solicitud_id=solicitud.pk,
-        importe="825.40",
+        monto_bruto="825.40",
+        monto_retencion_atp="0.00",
         fecha_pago=date(2026, 10, 14),
         referencia_externa="ref-error-sintetica-001",
         referencia_documental=referencia_documental,
+        comprobante_bancario=pdf_comprobante(),
         document_provider=fake_document_provider(),
     )
 

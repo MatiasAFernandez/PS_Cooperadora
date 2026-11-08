@@ -945,10 +945,10 @@ def test_t04_26_consulta_historial_decisiones_y_aislamiento(
     client_a = auth_client(user_a)
     resp_a = client_a.get(url_detalle)
     assert resp_a.status_code == 200
-    assert "Historial de Decisiones" in resp_a.content.decode()
+    assert 'id="historial-heading"' in resp_a.content.decode()
     assert "Postergado preliminar" in resp_a.content.decode()
     assert "Aprobación definitiva" in resp_a.content.decode()
-    assert resp_a.context["decisiones"].count() == 2
+    assert len(resp_a.context["decisiones"]) == 2
     # El solicitante NO debe ver el formulario de decisión (H2 y estado terminal)
     assert resp_a.context["can_decide"] is False
     assert resp_a.context["decision_form"] is None
@@ -989,7 +989,7 @@ def test_formulario_decision_renderizado_segun_permisos(
     assert resp_o.status_code == 200
     assert resp_o.context["can_decide"] is True
     assert resp_o.context["decision_form"] is not None
-    assert "Registrar Decisión Humana" in resp_o.content.decode()
+    assert 'id="decision-heading"' in resp_o.content.decode()
     assert 'name="action" value="aceptar"' in resp_o.content.decode()
 
     # Cuenta de solo lectura L: no ve formulario
@@ -998,7 +998,7 @@ def test_formulario_decision_renderizado_segun_permisos(
     assert resp_l.status_code == 200
     assert resp_l.context["can_decide"] is False
     assert resp_l.context["decision_form"] is None
-    assert "Registrar Decisión Humana" not in resp_l.content.decode()
+    assert 'id="decision-heading"' not in resp_l.content.decode()
 
     # Solicitante A: no ve formulario sobre solicitud propia
     client_a = auth_client(accounts["demo_a"])
@@ -1006,4 +1006,4 @@ def test_formulario_decision_renderizado_segun_permisos(
     assert resp_a.status_code == 200
     assert resp_a.context["can_decide"] is False
     assert resp_a.context["decision_form"] is None
-    assert "Registrar Decisión Humana" not in resp_a.content.decode()
+    assert 'id="decision-heading"' not in resp_a.content.decode()

@@ -1,0 +1,48 @@
+<div class="form-group sd-form-group sd-form-group-full{% if field.errors %} has-error{% endif %}">
+    <label for="{{ field.id_for_label }}" class="sd-form-label">
+        {{ field.label }}
+        {% if field.field.required %}<span class="sd-required" aria-hidden="true">*</span>{% endif %}
+    </label>
+    <div class="sd-aporte-upload" data-aporte-upload>
+        <div class="sd-dropzone" data-aporte-drop>
+            {{ field }}
+            <p>Arrastrá el archivo acá o elegilo con el botón.</p>
+            <label for="{{ field.id_for_label }}" class="sd-btn sd-btn-secondary" data-aporte-label tabindex="0">Seleccionar archivo</label>
+            <span class="sd-small sd-muted">PDF, JPG o PNG · hasta {{ max_upload_mib|default:10 }} MiB</span>
+        </div>
+        <div class="sd-file-card" data-aporte-card hidden>
+            <div class="sd-file-card-content">
+                <div class="sd-file-icon-wrap" aria-hidden="true">
+                    <svg class="sd-file-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                </div>
+                <div class="sd-file-info">
+                    <p class="sd-file-name" data-aporte-nombre></p>
+                    <p class="sd-file-meta" data-aporte-tamano></p>
+                </div>
+                <span class="sd-pill sd-pill-success sd-ready-chip">Listo para guardar</span>
+            </div>
+            <div class="sd-actions sd-file-actions">
+                <a class="sd-btn sd-btn-secondary" data-aporte-abrir href="#" target="_blank" rel="noopener">Abrir</a>
+                <button type="button" class="sd-btn sd-btn-secondary" data-aporte-cambiar>Cambiar</button>
+                <button type="button" class="sd-btn sd-btn-secondary" data-aporte-quitar>Quitar</button>
+            </div>
+        </div>
+        <p class="sd-small" data-aporte-estado role="status" hidden></p>
+    </div>
+    {% if field.help_text %}
+        <p class="sd-field-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+        <div id="{{ field.id_for_label }}_error" class="sd-field-error" role="alert"{% if aporte_inline %} data-respaldo-error tabindex="-1"{% endif %}>
+            {% for error in field.errors %}
+                <p class="alert-error">{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

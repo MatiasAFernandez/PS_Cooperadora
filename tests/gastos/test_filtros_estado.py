@@ -54,7 +54,7 @@ def test_estado_intersecta_visibilidad_y_conserva_seleccion(
     for solicitud in gastos_por_estado.values():
         detail_url = reverse("gastos:detalle", kwargs={"pk": solicitud.pk})
         if solicitud.pk in expected:
-            assert f'href="{detail_url}"' in content
+            assert f'href="{detail_url}?bandeja=' in content
             assert client.get(detail_url).status_code == 200
         else:
             assert escape(solicitud.concepto) not in content
@@ -82,9 +82,9 @@ def test_sin_filtro_conserva_resultados_y_orden(
     )
     assert list(response.context["solicitudes"]) == expected
     content = response.content.decode()
-    assert '<form method="get" action="/gastos/">' in content
+    assert 'method="get" action="/gastos/">' in content
     assert '<label for="id_estado">Estado:</label>' in content
-    assert '<a href="/gastos/">Quitar filtro</a>' in content
+    assert 'href="/gastos/">Quitar filtros</a>' in content
 
 
 @pytest.mark.parametrize(
@@ -106,7 +106,7 @@ def test_parametros_invalidos_y_repetidos(
     if invalid:
         assert list(response.context["solicitudes"]) == []
         assert "Seleccione un estado válido." in response.content.decode()
-        assert "Corrija el filtro" in response.content.decode()
+        assert "Corregí los filtros" in response.content.decode()
     else:
         assert list(response.context["solicitudes"]) == [gastos_por_estado[("demo_a", "aceptada")]]
 

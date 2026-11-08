@@ -18,6 +18,8 @@ from tests.soporte_gastos import crear_gasto_sintetico
 
 from .helpers import archivo_pdf
 
+pytestmark = pytest.mark.django_db(transaction=True)
+
 
 def cargar_gasto(e, tipo=Documento.Tipo.FACTURA_PROVEEDOR, **extras):
     return incorporar(
@@ -34,15 +36,17 @@ def pagar(e, documento, proveedor=None):
     return registrar_pago_externo(
         actor=e.actor_staff,
         solicitud_id=e.gasto.pk,
-        importe="1.00",
+        monto_bruto="1.00",
+        monto_retencion_atp="0.00",
         fecha_pago=date(2026, 10, 16),
         referencia_externa="SINTETICA",
         referencia_documental=str(documento.referencia_version),
+        comprobante_bancario=archivo_pdf(),
         document_provider=proveedor or ProveedorDocumentalGastos(),
     )
 
 
-def test_c01_traduce_catalogo_y_excluye_ticket(escenario_comun):
+def test_c01_traduce_catalogo_y_excluye_ticket(escenario_comun, transactional_db):
     e = escenario_comun
     factura = cargar_gasto(e)
     presupuesto = cargar_gasto(e, Documento.Tipo.PRESUPUESTO_PROFORMA)
@@ -71,7 +75,9 @@ def test_c01_traduce_catalogo_y_excluye_ticket(escenario_comun):
     assert pagar(e, factura, proveedor=object()).pk == pago.pk  # Reintento sin proveedor.
 
 
-def test_reemplazo_conserva_archivos_y_rechaza_version_obsoleta(escenario_comun):
+def test_reemplazo_conserva_archivos_y_rechaza_version_obsoleta(
+    escenario_comun, transactional_db
+):
     e = escenario_comun
     anterior = cargar_gasto(e)
     nuevo = cargar_gasto(e, reemplaza_id=anterior.pk)
@@ -90,7 +96,9 @@ def test_reemplazo_conserva_archivos_y_rechaza_version_obsoleta(escenario_comun)
         cursor.execute("DELETE FROM documentos_documento WHERE id = %s", [anterior.pk])
 
 
-def test_descarga_directa_ajena_y_revocacion_facturacion(escenario_comun):
+def test_descarga_directa_ajena_y_revocacion_facturacion(
+    escenario_comun, transactional_db
+):
     e = escenario_comun
     documento = incorporar(
         actor=e.actor_staff,
@@ -118,7 +126,9 @@ def test_descarga_directa_ajena_y_revocacion_facturacion(escenario_comun):
     assert Documento.objects.count() == 1
 
 
-def test_c01_rechaza_documento_facturacion_y_referencia_inexistente(escenario_comun):
+def test_c01_rechaza_documento_facturacion_y_referencia_inexistente(
+    escenario_comun, transactional_db
+):
     e = escenario_comun
     documento = incorporar(
         actor=e.actor_staff,
@@ -138,7 +148,9 @@ def test_c01_rechaza_documento_facturacion_y_referencia_inexistente(escenario_co
     assert not PagoExterno.objects.exists()
 
 
-def test_c01_rechaza_una_factura_valida_de_otro_gasto(escenario_comun):
+def test_c01_rechaza_una_factura_valida_de_otro_gasto(
+    escenario_comun, transactional_db
+):
     e = escenario_comun
     otro_gasto = crear_gasto_sintetico(
         pk=e.gasto.pk + 100000,
@@ -173,7 +185,7 @@ def test_c01_sin_transaccion_exterior_se_deniega(escenario_comun, transactional_
 
 
 def test_capacidad_pago_independiente_y_revocacion_en_consumidor_existente(
-    escenario_comun, settings
+    escenario_comun, settings, transactional_db
 ):
     e = escenario_comun
     documento = cargar_gasto(e)

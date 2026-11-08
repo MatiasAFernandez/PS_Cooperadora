@@ -18,6 +18,7 @@ from django.urls import reverse
 
 from gastos import views as gastos_views
 from gastos.contracts import DocumentVerificationError, OpcionDocumental
+from gastos.forms import normalizar_importe_monetario
 from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
 from gastos.payments import (
     PaymentConflictError,
@@ -25,17 +26,22 @@ from gastos.payments import (
     registrar_pago_externo,
 )
 from identidad.services import Actor
+from tests.soporte_pagos import jpg_comprobante, pdf_comprobante, pdf_constancia
+
+pytestmark = pytest.mark.django_db(transaction=True)
 
 CAPS_PAGO_UI = (
     "gastos.consultar_todas",
     "gastos.registrar_pago",
     "documentos.ver_metadatos",
+    "documentos.consultar_metadatos",
+    "documentos.incorporar",
 )
 
 
 @pytest.fixture
 def actor_pago(actor_factory: Any, monkeypatch: Any) -> Any:
-    """Actor sintético con visibilidad total, registro de pago y metadatos."""
+    """Actor sintético con visibilidad total, registro de pago y documentos."""
     user, actor = actor_factory(CAPS_PAGO_UI)
     monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor)
     return user, actor
@@ -67,16 +73,22 @@ def _url_pagar(solicitud: Any) -> str:
     return reverse("gastos:pagar", kwargs={"pk": solicitud.pk})
 
 
+def _url_rectificar(solicitud: Any) -> str:
+    return reverse("gastos:pago_rectificar", kwargs={"pk": solicitud.pk})
+
+
 def _url_detalle(solicitud: Any) -> str:
     return reverse("gastos:detalle", kwargs={"pk": solicitud.pk})
 
 
-def _payload_pago(referencia_documental: str = "doc-opaco-1") -> dict[str, str]:
+def _payload_pago(referencia_documental: str = "doc-opaco-1") -> dict[str, Any]:
     return {
-        "importe": "825.40",
+        "monto_bruto": "825.40",
+        "monto_retencion_atp": "0.00",
         "fecha_pago": "2026-10-14",
         "referencia_externa": "ref-sintetica-001",
         "referencia_documental": referencia_documental,
+        "comprobante_bancario": pdf_comprobante(),
     }
 
 
@@ -85,7 +97,6 @@ def _payload_pago(referencia_documental: str = "doc-opaco-1") -> dict[str, str]:
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.django_db
 def test_get_formulario_muestra_selector_de_opciones(
     actor_pago: Any,
     auth_client: Any,
@@ -103,9 +114,9 @@ def test_get_formulario_muestra_selector_de_opciones(
         ("doc-opaco-1", "Factura sintética 1")
     ]
     contenido = response.content
-    assert b"Registrar Pago Externo" in contenido
+    assert b"Registrar pago externo" in contenido
     assert b'value="doc-opaco-1"' in contenido
-    assert b"AAAA-MM-DD" in contenido
+    assert b'type="date"' in contenido
     assert provider_pago.llamadas_listado[0]["gasto_id"] == solicitud.pk
     assert provider_pago.llamadas_listado[0]["tipos_admitidos"] == (
         "factura",
@@ -114,7 +125,6 @@ def test_get_formulario_muestra_selector_de_opciones(
     )
 
 
-@pytest.mark.django_db
 def test_get_sin_permiso_registrar_pago_retorna_403(
     actor_factory: Any,
     monkeypatch: Any,
@@ -133,7 +143,6 @@ def test_get_sin_permiso_registrar_pago_retorna_403(
     assert provider_pago.llamadas_listado == []
 
 
-@pytest.mark.django_db
 def test_get_sin_permiso_metadatos_retorna_403_antes_del_proveedor(
     actor_factory: Any,
     monkeypatch: Any,
@@ -153,7 +162,6 @@ def test_get_sin_permiso_metadatos_retorna_403_antes_del_proveedor(
     assert provider_pago.llamadas_listado == []
 
 
-@pytest.mark.django_db
 def test_get_ajena_o_inexistente_retorna_404(
     actor_factory: Any,
     monkeypatch: Any,
@@ -173,7 +181,6 @@ def test_get_ajena_o_inexistente_retorna_404(
     assert client.get(reverse("gastos:pagar", kwargs={"pk": 999999})).status_code == 404
 
 
-@pytest.mark.django_db
 def test_get_sin_proveedor_configurado_retorna_503(
     actor_pago: Any,
     auth_client: Any,
@@ -190,7 +197,6 @@ def test_get_sin_proveedor_configurado_retorna_503(
     assert response.status_code == 503
 
 
-@pytest.mark.django_db
 def test_get_con_listado_con_error_retorna_503_generico(
     actor_pago: Any,
     auth_client: Any,
@@ -211,7 +217,6 @@ def test_get_con_listado_con_error_retorna_503_generico(
     assert b"detalle interno del listado" not in response.content
 
 
-@pytest.mark.django_db
 def test_get_en_estado_no_aceptado_o_con_pago_redirige_al_detalle(
     actor_pago: Any,
     auth_client: Any,
@@ -235,7 +240,6 @@ def test_get_en_estado_no_aceptado_o_con_pago_redirige_al_detalle(
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.django_db
 def test_post_valido_registra_pago_y_redirige(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -265,7 +269,6 @@ def test_post_valido_registra_pago_y_redirige(
     assert provider_pago.llamado_en_atomic is True
 
 
-@pytest.mark.django_db
 def test_post_entrega_valores_originales_a_c03_sin_strip_previo(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -290,10 +293,12 @@ def test_post_entrega_valores_originales_a_c03_sin_strip_previo(
     response = client.post(
         _url_pagar(solicitud),
         {
-            "importe": " 825.40 ",
+            "monto_bruto": " 825.40 ",
+            "monto_retencion_atp": "0.00",
             "fecha_pago": " 2026-10-14 ",
             "referencia_externa": "  ref-sintetica-001  ",
             "referencia_documental": "  doc-opaco-con-espacios  ",
+            "comprobante_bancario": pdf_comprobante(),
             "csrfmiddlewaretoken": token,
         },
     )
@@ -307,7 +312,6 @@ def test_post_entrega_valores_originales_a_c03_sin_strip_previo(
     assert proveedor.llamadas[0]["referencia_documental"] == "  doc-opaco-con-espacios  "
 
 
-@pytest.mark.django_db
 def test_post_entrada_invalida_retorna_400_con_contexto(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -321,7 +325,11 @@ def test_post_entrada_invalida_retorna_400_con_contexto(
 
     response = client.post(
         _url_pagar(solicitud),
-        {**_payload_pago(), "importe": "no-es-un-importe", "csrfmiddlewaretoken": token},
+        {
+            **_payload_pago(),
+            "monto_bruto": "no-es-un-importe",
+            "csrfmiddlewaretoken": token,
+        },
     )
 
     assert response.status_code == 400
@@ -331,7 +339,6 @@ def test_post_entrada_invalida_retorna_400_con_contexto(
     assert provider_pago.llamadas == []
 
 
-@pytest.mark.django_db
 def test_post_opcion_fuera_del_listado_retorna_400(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -354,7 +361,6 @@ def test_post_opcion_fuera_del_listado_retorna_400(
     assert provider_pago.llamadas == []
 
 
-@pytest.mark.django_db
 def test_post_estado_no_aceptado_retorna_409(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -372,15 +378,14 @@ def test_post_estado_no_aceptado_retorna_409(
     )
 
     assert response.status_code == 409
-    assert response.context["form"]["importe"].value() == "825.40"
+    assert response.context["form"]["monto_bruto"].value() == "825.40"
     assert response.context["formulario_habilitado"] is False
-    assert 'type="submit" class="btn" disabled' in response.content.decode()
+    assert "disabled" in response.content.decode()
     assert provider_pago.llamadas_listado == []
     assert PagoExterno.objects.count() == 0
     assert provider_pago.llamadas == []
 
 
-@pytest.mark.django_db
 def test_post_cambio_de_estado_conserva_datos_y_deshabilita_reintento(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -403,12 +408,11 @@ def test_post_cambio_de_estado_conserva_datos_y_deshabilita_reintento(
     )
 
     assert response.status_code == 409
-    assert response.context["form"]["importe"].value() == "825.40"
+    assert response.context["form"]["monto_bruto"].value() == "825.40"
     assert response.context["formulario_habilitado"] is False
-    assert 'type="submit" class="btn" disabled' in response.content.decode()
+    assert "disabled" in response.content.decode()
 
 
-@pytest.mark.django_db
 def test_post_error_documental_retorna_409_generico_sin_detalle(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -433,13 +437,12 @@ def test_post_error_documental_retorna_409_generico_sin_detalle(
 
     assert response.status_code == 409
     assert b"detalle-interno-confidencial" not in response.content
-    assert response.context["form"]["importe"].value() == "825.40"
+    assert response.context["form"]["monto_bruto"].value() == "825.40"
     assert response.context["form"]["referencia_externa"].value() == "ref-sintetica-001"
     assert PagoExterno.objects.count() == 0
     assert EventoPagoExterno.objects.count() == 0
 
 
-@pytest.mark.django_db
 def test_post_documento_reemplazado_refresca_opciones_y_conserva_campos(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -471,7 +474,7 @@ def test_post_documento_reemplazado_refresca_opciones_y_conserva_campos(
     )
 
     assert response.status_code == 409
-    assert response.context["form"]["importe"].value() == "825.40"
+    assert response.context["form"]["monto_bruto"].value() == "825.40"
     assert response.context["form"]["referencia_externa"].value() == "ref-sintetica-001"
     assert response.context["form"].fields["referencia_documental"].choices == [
         ("doc-opaco-2", "Factura sintética vigente")
@@ -481,7 +484,6 @@ def test_post_documento_reemplazado_refresca_opciones_y_conserva_campos(
     assert PagoExterno.objects.count() == 0
 
 
-@pytest.mark.django_db
 def test_post_con_provider_en_el_payload_no_se_deriva_del_cliente(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -522,15 +524,16 @@ def _registrar_pago_previo(actor: Any, solicitud: Any, proveedor: Any) -> PagoEx
     return registrar_pago_externo(
         actor=actor,
         solicitud_id=solicitud.pk,
-        importe="825.40",
+        monto_bruto="825.40",
+        monto_retencion_atp="0.00",
         fecha_pago="2026-10-14",
         referencia_externa="ref-sintetica-001",
         referencia_documental="doc-opaco-1",
+        comprobante_bancario=pdf_comprobante(),
         document_provider=proveedor,
     )
 
 
-@pytest.mark.django_db
 def test_post_reenvio_identico_redirige_sin_listar_ni_usar_proveedor(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -566,7 +569,6 @@ def test_post_reenvio_identico_redirige_sin_listar_ni_usar_proveedor(
     assert espia.llamadas == []
 
 
-@pytest.mark.django_db
 def test_post_reenvio_identico_funciona_sin_proveedor_disponible(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -593,7 +595,6 @@ def test_post_reenvio_identico_funciona_sin_proveedor_disponible(
     assert EventoPagoExterno.objects.count() == 1
 
 
-@pytest.mark.django_db
 def test_post_reenvio_con_contenido_distinto_retorna_409(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -613,7 +614,7 @@ def test_post_reenvio_con_contenido_distinto_retorna_409(
         _url_pagar(solicitud),
         {
             **_payload_pago(),
-            "importe": "50.00",
+            "monto_bruto": "50.00",
             "csrfmiddlewaretoken": token,
         },
     )
@@ -625,7 +626,6 @@ def test_post_reenvio_con_contenido_distinto_retorna_409(
     assert pago.importe == Decimal("825.40")
 
 
-@pytest.mark.django_db
 def test_post_reenvio_entrada_invalida_retorna_400_con_detalle(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -643,7 +643,7 @@ def test_post_reenvio_entrada_invalida_retorna_400_con_detalle(
     client, token = csrf_auth_client(user, actor)
     response = client.post(
         _url_pagar(solicitud),
-        {**_payload_pago(), "importe": "", "csrfmiddlewaretoken": token},
+        {**_payload_pago(), "monto_bruto": "", "csrfmiddlewaretoken": token},
     )
 
     assert response.status_code == 400
@@ -657,7 +657,6 @@ def test_post_reenvio_entrada_invalida_retorna_400_con_detalle(
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.django_db
 def test_post_sin_csrf_es_rechazado_sin_escrituras(
     actor_pago: Any,
     solicitud_factory: Any,
@@ -675,7 +674,6 @@ def test_post_sin_csrf_es_rechazado_sin_escrituras(
     assert PagoExterno.objects.count() == 0
 
 
-@pytest.mark.django_db
 def test_detalle_ofrece_accion_solo_con_ambos_permisos_y_provider(
     actor_pago: Any,
     auth_client: Any,
@@ -696,7 +694,6 @@ def test_detalle_ofrece_accion_solo_con_ambos_permisos_y_provider(
     assert _url_pagar(solicitud).encode() in response.content
 
 
-@pytest.mark.django_db
 def test_detalle_deshabilita_accion_sin_provider_configurado(
     actor_pago: Any,
     auth_client: Any,
@@ -717,7 +714,6 @@ def test_detalle_deshabilita_accion_sin_provider_configurado(
     assert _url_pagar(solicitud).encode() not in response.content
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("capacidades", "mensaje"),
     [
@@ -748,11 +744,13 @@ def test_detalle_explica_permiso_faltante_sin_consultar_documentos(
     response = auth_client(user, actor).get(_url_detalle(solicitud))
 
     assert response.status_code == 200
-    assert mensaje in response.content.decode()
+    if "gastos.registrar_pago" in capacidades:
+        assert mensaje in response.content.decode()
+    else:
+        assert mensaje not in response.content.decode()
     assert provider_pago.llamadas_listado == []
 
 
-@pytest.mark.django_db
 def test_get_sin_opciones_documentales_deshabilita_envio(
     actor_pago: Any,
     auth_client: Any,
@@ -768,11 +766,60 @@ def test_get_sin_opciones_documentales_deshabilita_envio(
     response = auth_client(user, actor).get(_url_pagar(solicitud))
 
     assert response.status_code == 200
-    assert "No hay opciones documentales disponibles" in response.content.decode()
-    assert 'type="submit" class="btn" disabled' in response.content.decode()
+    contenido = response.content.decode()
+    assert "No hay opciones documentales disponibles" in contenido
+    assert "disabled" in contenido
+    assert "Falta cargar" in contenido
+    assert "Se necesita un respaldo comercial vigente" in contenido
+    assert 'name="referencia_documental"' not in contenido
+    assert "Cargar o reemplazar respaldo comercial" in contenido
 
 
-@pytest.mark.django_db
+def test_alta_con_opciones_refleja_respaldo_en_resumen(
+    actor_pago: Any,
+    auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    opcion_pago: OpcionDocumental,
+    capacidad_registrar_pago: Any,
+) -> None:
+    settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = fake_document_provider(opciones=[opcion_pago])
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+
+    response = auth_client(user, actor).get(_url_pagar(solicitud))
+
+    assert response.status_code == 200
+    contenido = response.content.decode()
+    assert "Falta cargar" not in contenido
+    assert 'name="referencia_documental"' in contenido
+    assert opcion_pago.etiqueta in contenido
+
+
+def test_detalle_avisa_ausencia_confirmada_respaldo_junto_al_acceso(
+    actor_pago: Any,
+    auth_client: Any,
+    solicitud_factory: Any,
+    settings: Any,
+    fake_document_provider: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = fake_document_provider(opciones=[])
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+
+    response = auth_client(user, actor).get(_url_detalle(solicitud))
+
+    assert response.status_code == 200
+    assert response.context["puede_registrar_pago"] is True
+    assert response.context["pago_sin_respaldo_confirmado"] is True
+    contenido = response.content.decode()
+    assert "Sin respaldo comercial elegible" in contenido
+    assert _url_pagar(solicitud).encode() not in response.content
+    assert "Cargar o reemplazar respaldo comercial" in contenido
+
+
 def test_detalle_no_ofrece_accion_si_ya_existe_pago(
     actor_pago: Any,
     auth_client: Any,
@@ -791,7 +838,10 @@ def test_detalle_no_ofrece_accion_si_ya_existe_pago(
 
     assert response.status_code == 200
     assert response.context["puede_registrar_pago"] is False
-    assert _url_pagar(solicitud).encode() not in response.content
+    # El enlace de rectificación contiene "/pagar/" como prefijo: comparar el
+    # href exacto del alta evita confundir ambas acciones.
+    assert f'href="{_url_pagar(solicitud)}"'.encode() not in response.content
+    assert f'href="{_url_rectificar(solicitud)}"'.encode() in response.content
 
 
 # --------------------------------------------------------------------------- #
@@ -799,7 +849,6 @@ def test_detalle_no_ofrece_accion_si_ya_existe_pago(
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.django_db
 def test_post_ajena_o_inexistente_retorna_404_sin_invocar_proveedor(
     actor_factory: Any,
     monkeypatch: Any,
@@ -826,7 +875,6 @@ def test_post_ajena_o_inexistente_retorna_404_sin_invocar_proveedor(
     assert PagoExterno.objects.count() == 0
 
 
-@pytest.mark.django_db
 def test_post_sin_permiso_registrar_pago_precede_al_pago_ya_existente(
     actor_factory: Any,
     monkeypatch: Any,
@@ -867,7 +915,6 @@ def test_post_sin_permiso_registrar_pago_precede_al_pago_ya_existente(
     assert espia.llamadas == []
 
 
-@pytest.mark.django_db
 def test_post_sin_permiso_metadatos_retorna_403_para_alta_nueva(
     actor_factory: Any,
     monkeypatch: Any,
@@ -891,7 +938,6 @@ def test_post_sin_permiso_metadatos_retorna_403_para_alta_nueva(
     assert PagoExterno.objects.count() == 0
 
 
-@pytest.mark.django_db
 def test_post_reenvio_de_pago_existente_no_exige_metadatos(
     actor_factory: Any,
     monkeypatch: Any,
@@ -925,7 +971,6 @@ def test_post_reenvio_de_pago_existente_no_exige_metadatos(
     assert EventoPagoExterno.objects.count() == 1
 
 
-@pytest.mark.django_db
 def test_post_sin_pago_previo_y_listado_con_error_conserva_503_sin_alta(
     actor_pago: Any,
     csrf_auth_client: Any,
@@ -1109,10 +1154,12 @@ def _ejecutar_ventana_reenvio(
             pago = registrar_pago_externo(
                 actor=actor,
                 solicitud_id=solicitud.pk,
-                importe="825.40",
+                monto_bruto="825.40",
+                monto_retencion_atp="0.00",
                 fecha_pago="2026-10-14",
                 referencia_externa="ref-sintetica-001",
                 referencia_documental="doc-opaco-1",
+                comprobante_bancario=pdf_comprobante(),
                 document_provider=proveedor_a,
             )
             registro["a_pago_pk"] = pago.pk
@@ -1212,7 +1259,7 @@ def test_ventana_listado_falla_distinto_retorna_409_sin_escrituras(
     solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
     response, registro, proveedor_b = _ejecutar_ventana_reenvio(
         modo="falla",
-        payload={**_payload_pago(), "importe": "826.40"},
+        payload={**_payload_pago(), "monto_bruto": "826.40"},
         solicitud=solicitud,
         actor=actor,
         user=user,
@@ -1289,7 +1336,7 @@ def test_ventana_version_ausente_distinto_retorna_409_sin_escrituras(
     solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
     response, registro, proveedor_b = _ejecutar_ventana_reenvio(
         modo="sin_version",
-        payload={**_payload_pago(), "importe": "826.40"},
+        payload={**_payload_pago(), "monto_bruto": "826.40"},
         solicitud=solicitud,
         actor=actor,
         user=user,
@@ -1328,7 +1375,7 @@ def test_ventana_payload_malformado_no_crea_ni_duplica_escrituras(
     solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
     response, registro, proveedor_b = _ejecutar_ventana_reenvio(
         modo="falla",
-        payload={**_payload_pago(), "importe": "no-es-un-importe"},
+        payload={**_payload_pago(), "monto_bruto": "no-es-un-importe"},
         solicitud=solicitud,
         actor=actor,
         user=user,
@@ -1353,3 +1400,208 @@ def test_ventana_payload_malformado_no_crea_ni_duplica_escrituras(
     assert response.context["respaldo_categoria"] is None
     assert PagoExterno.objects.count() == 1
     assert EventoPagoExterno.objects.count() == 1
+
+
+def test_post_alta_comprobante_imagen_jpg_y_png_exitoso(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "comprobante_bancario": jpg_comprobante("recibo.jpg"),
+    }
+    response = client.post(_url_pagar(solicitud), payload)
+    assert response.status_code == 302
+    assert response.url == _url_detalle(solicitud)
+
+    pago = PagoExterno.objects.get(solicitud=solicitud)
+    assert pago.comprobante_bancario.formato == "image/jpeg"
+    assert pago.comprobante_bancario.nombre_original == "recibo.jpg"
+
+
+def test_post_retencion_mayor_o_igual_a_bruto_muestra_error_inline(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "monto_bruto": "1000.00",
+        "monto_retencion_atp": "1000.00",
+    }
+    response = client.post(_url_pagar(solicitud), payload)
+    assert response.status_code == 400
+    form = response.context["form"]
+    assert "monto_retencion_atp" in form.errors
+    assert "La retención debe ser menor que el monto bruto" in form.errors["monto_retencion_atp"][0]
+
+
+def test_post_diferir_atp_con_archivo_adjunto_muestra_error_inline(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "monto_bruto": "150000.00",
+        "monto_retencion_atp": "5250.00",
+        "atp_decision": "despues",
+        "constancia_atp": pdf_constancia(),
+    }
+    response = client.post(_url_pagar(solicitud), payload)
+    assert response.status_code == 400
+    form = response.context["form"]
+    assert "constancia_atp" in form.errors
+    assert (
+        "Al diferir la constancia ATP no se debe adjuntar un archivo"
+        in form.errors["constancia_atp"][0]
+    )
+
+
+def test_post_importes_formato_es_ar_normaliza_exitosamente(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "monto_bruto": "150.000,00",
+        "monto_retencion_atp": "5.250,00",
+        "atp_decision": "ahora",
+        "constancia_atp": pdf_constancia(),
+    }
+    response = client.post(_url_pagar(solicitud), payload)
+    assert response.status_code == 302
+
+    pago = PagoExterno.objects.get(solicitud=solicitud)
+    assert pago.monto_bruto == Decimal("150000.00")
+    assert pago.monto_retencion_atp == Decimal("5250.00")
+    assert pago.importe == Decimal("144750.00")
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("150.000,00", "150000.00"),
+        ("5.250,00", "5250.00"),
+        ("1.234,56", "1234.56"),
+        ("1234,56", "1234.56"),
+        ("0,00", "0.00"),
+        ("10,5", "10.5"),
+        ("$ 1.234,56", "1234.56"),
+        ("$150.000,00", "150000.00"),
+        ("1,234.56", "1234.56"),
+        ("1,234,567.89", "1234567.89"),
+        ("1.234.567,89", "1234567.89"),
+        ("1234.56", "1234.56"),
+        ("825.40", "825.40"),
+        ("1000", "1000"),
+        ("+7.25", "+7.25"),
+        # Formatos malformados o ambiguos: se preservan sin alterar para que el servicio los rechace
+        ("1.2.3", "1.2.3"),
+        ("1.2.3,45", "1.2.3,45"),
+        ("1,2,3", "1,2,3"),
+        ("1,2,3.45", "1,2,3.45"),
+        ("1.234", "1.234"),
+        ("1,234", "1,234"),
+        ("12.34.56", "12.34.56"),
+        ("no-es-un-importe", "no-es-un-importe"),
+    ],
+)
+def test_normalizar_importe_monetario_reglas_coherentes(entrada: str, esperado: str) -> None:
+    """Verifica reglas coherentes de normalización: es-AR, ASCII y rechazo de grupos malformados."""
+    assert normalizar_importe_monetario(entrada) == esperado
+
+
+def test_post_importe_malformado_o_ambiguo_es_rechazado_por_servicio(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    """Importes malformados como '1.2.3' no se desformatean a '123' y son rechazados con 400."""
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "monto_bruto": "1.2.3",
+    }
+    response = client.post(_url_pagar(solicitud), payload)
+    assert response.status_code == 400
+    form = response.context["form"]
+    assert form.non_field_errors()
+    assert PagoExterno.objects.filter(solicitud=solicitud).count() == 0
+
+
+def test_cierre_ux_elementos_formulario_y_post_con_errores(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    """Verifica que el formulario de alta incluya los elementos del cierre UX (A y B)."""
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    # 1. GET normal: elementos presentes, sin data-has-server-errors
+    get_resp = client.get(_url_pagar(solicitud))
+    assert get_resp.status_code == 200
+    html_get = get_resp.content.decode("utf-8")
+
+    assert 'class="registro-pago rp-alta"' in html_get
+    assert 'id="btn-fecha-hoy"' in html_get
+    assert 'tabindex="-1"' in html_get
+    assert 'rp-submit-error-notice' in html_get
+    assert 'data-has-server-errors' not in html_get
+    assert 'id="rp-bruto-inline-error"' in html_get
+    assert 'id="rp-retencion-inline-error"' in html_get
+    assert 'class="rp-tooltip-trigger"' in html_get
+    assert "Se calcula automáticamente" not in html_get
+
+    # 2. POST con error: renderiza data-has-server-errors y aviso submit visible
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "monto_bruto": "1.2.3",
+    }
+    post_resp = client.post(_url_pagar(solicitud), payload)
+    assert post_resp.status_code == 400
+    html_post = post_resp.content.decode("utf-8")
+    assert 'data-has-server-errors="true"' in html_post
+    assert 'id="rp-submit-error-notice"' in html_post
+    assert "Hay datos que requieren revisión antes de registrar el pago" in html_post

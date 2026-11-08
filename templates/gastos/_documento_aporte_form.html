@@ -1,0 +1,67 @@
+{% load static %}
+
+<form method="post" action="{% url 'gastos:documentos' pk=solicitud.pk %}" enctype="multipart/form-data" class="sd-form-aporte">
+    {% csrf_token %}
+    {% if aporte_inline %}
+        <input type="hidden" name="origen_aporte" value="detalle">
+    {% endif %}
+
+    {% if form.errors or detalle_aporte_con_error %}
+        <div class="sd-alert sd-alert-error alert-error" role="alert"{% if aporte_inline %} data-respaldo-error tabindex="-1"{% endif %}>
+            <p><strong>Hubo un problema al procesar el respaldo:</strong></p>
+            {% if form.non_field_errors %}
+                <div class="alert-error">
+                    {{ form.non_field_errors }}
+                </div>
+            {% else %}
+                <p class="sd-reselect-note">Por favor revisá los campos indicados y volvé a seleccionar el archivo a cargar.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="sd-form-grid">
+        {% for field in form %}
+            {% if field.is_hidden %}
+                {{ field }}
+                {% if field.errors %}
+                    <div class="sd-field-error sd-form-group-full" role="alert"{% if aporte_inline %} data-respaldo-error tabindex="-1"{% endif %}>
+                        {% for error in field.errors %}
+                            <p class="alert-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% elif field.name == "archivo" %}
+                {% include "gastos/_documento_archivo.html" with field=field max_upload_mib=max_upload_mib aporte_inline=aporte_inline %}
+            {% else %}
+                <div class="form-group sd-form-group{% if field.errors %} has-error{% endif %}">
+                    <label for="{{ field.id_for_label }}" class="sd-form-label">
+                        {{ field.label }}
+                        {% if field.field.required %}<span class="sd-required" aria-hidden="true">*</span>{% endif %}
+                    </label>
+                    <div class="sd-input-wrapper">
+                        {{ field }}
+                    </div>
+                    {% if field.help_text %}
+                        <p class="sd-field-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div id="{{ field.id_for_label }}_error" class="sd-field-error" role="alert"{% if aporte_inline %} data-respaldo-error tabindex="-1"{% endif %}>
+                            {% for error in field.errors %}
+                                <p class="alert-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="sd-actions sd-form-actions">
+        <button class="sd-btn sd-btn-primary" type="submit">Guardar documento</button>
+        {% if aporte_inline %}
+            <button type="button" class="sd-btn sd-btn-secondary" data-aporte-cancelar>Cancelar</button>
+        {% else %}
+            <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:detalle' pk=solicitud.pk %}">Cancelar</a>
+        {% endif %}
+    </div>
+</form>

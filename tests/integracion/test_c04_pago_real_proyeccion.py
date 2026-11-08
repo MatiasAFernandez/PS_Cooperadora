@@ -92,7 +92,7 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert respuesta_pre_pago.status_code == 200
     assert respuesta_pre_pago.context.get("pago_consulta") is None
     assert respuesta_pre_pago.context.get("respaldo_categoria") is None
-    assert len(llamadas_listar) == 0
+    assert len(llamadas_listar) == 1
     assert len(llamadas_bloquear) == 0
     contenido_pre_pago = respuesta_pre_pago.content.decode("utf-8")
     assert "Pago externo registrado" not in contenido_pre_pago
@@ -127,10 +127,12 @@ def test_c04_pago_real_y_proyeccion_documental(
 
     # 4. POST registra pago positivo en ARS con fecha del hecho y referencia externa sintética
     payload = {
-        "importe": "1.00",
+        "monto_bruto": "1.00",
+        "monto_retencion_atp": "0.00",
         "fecha_pago": "2026-10-16",
         "referencia_externa": "SINTETICA-C04-001",
         "referencia_documental": referencia_version_str,
+        "comprobante_bancario": archivo_pdf(),
     }
     conteo_bloquear_antes_post = len(llamadas_bloquear)
     respuesta_post = cliente.post(url_pagar, payload)
@@ -156,7 +158,9 @@ def test_c04_pago_real_y_proyeccion_documental(
     # 6. Reenviar el POST idéntico no duplica pago ni evento (idempotencia estricta)
     conteo_bloquear_antes_reenvio = len(llamadas_bloquear)
     conteo_listar_antes_reenvio = len(llamadas_listar)
-    respuesta_reenvio = cliente.post(url_pagar, payload)
+    respuesta_reenvio = cliente.post(
+        url_pagar, {**payload, "comprobante_bancario": archivo_pdf()}
+    )
     assert respuesta_reenvio.status_code == 302
     assert respuesta_reenvio.url == url_detalle
 
@@ -167,7 +171,11 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert len(llamadas_listar) == conteo_listar_antes_reenvio
 
     # 7. Reenvío con payload conflictivo (importe distinto) produce 409 sin modificar registros
-    payload_conflicto = {**payload, "importe": "2.00"}
+    payload_conflicto = {
+        **payload,
+        "monto_bruto": "2.00",
+        "comprobante_bancario": archivo_pdf(),
+    }
     conteo_bloquear_antes_conflicto = len(llamadas_bloquear)
     conteo_listar_antes_conflicto = len(llamadas_listar)
     respuesta_conflicto = cliente.post(url_pagar, payload_conflicto)
@@ -198,31 +206,12 @@ def test_c04_pago_real_y_proyeccion_documental(
 
     contenido_detalle = respuesta_detalle.content.decode("utf-8")
     # Proyección informativa del pago
-    assert "Pago externo registrado" in contenido_detalle
+    assert 'id="pago-externo"' in contenido_detalle
     assert "1,00" in contenido_detalle or "1.00" in contenido_detalle
-    assert "ARS" in contenido_detalle
+    assert "$ 1,00" in contenido_detalle
     assert "SINTETICA-C04-001" in contenido_detalle
     assert "16/10/2026" in contenido_detalle
-    assert "Registro informativo del pago" in contenido_detalle
 
-    # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
-    assert (
-        "La referencia documental del pago coincide con una factura disponible en esta consulta."
-        in contenido_detalle
-    )
-    assert (
-        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
-        in contenido_detalle
-    )
-    # La vista separa tipo y resultado y no decide la suficiencia del trámite
-    assert (
-        "El tipo documental y su resultado de revisión se muestran por separado."
-        in contenido_detalle
-    )
-    assert (
-        "Esta vista no determina si el documento satisface un requisito del trámite."
-        in contenido_detalle
-    )
     assert "Falta aportar factura definitiva" not in contenido_detalle
     assert "no equivale por sí sola a aprobación" not in contenido_detalle
     assert "desconocid" not in contenido_detalle.lower()
@@ -260,24 +249,6 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert not hasattr(pago_consulta_reemplazo, "referencia_documental")
     assert respuesta_reemplazo.context.get("respaldo_categoria") is None
     contenido_reemplazo = respuesta_reemplazo.content.decode("utf-8")
-    assert (
-        "La categoría de la versión referenciada al registrar el pago no está disponible "
-        "en esta consulta. Los aportes y reemplazos posteriores no modifican el registro "
-        "de pago."
-        in contenido_reemplazo
-    )
-    assert (
-        "El tipo documental y su resultado de revisión se muestran por separado."
-        in contenido_reemplazo
-    )
-    assert (
-        "Esta vista no determina si el documento satisface un requisito del trámite."
-        in contenido_reemplazo
-    )
-    assert (
-        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante."
-        not in contenido_reemplazo
-    )
     assert "Respaldo documental registrado: factura." not in contenido_reemplazo
     # Ni la versión v1 pagada ni la v2 aparecen en el detalle post-reemplazo
     assert referencia_version_str not in contenido_reemplazo
@@ -314,10 +285,12 @@ def test_c04_pago_real_y_proyeccion_documental(
     ref_presupuesto_str = str(doc_presupuesto.referencia_version)
     url_pagar_presupuesto = reverse("gastos:pagar", kwargs={"pk": gasto_presupuesto.pk})
     payload_presupuesto = {
-        "importe": "50.00",
+        "monto_bruto": "50.00",
+        "monto_retencion_atp": "0.00",
         "fecha_pago": "2026-10-16",
         "referencia_externa": "SINTETICA-C04-PRES",
         "referencia_documental": ref_presupuesto_str,
+        "comprobante_bancario": archivo_pdf(),
     }
     resp_post_presupuesto = cliente.post(url_pagar_presupuesto, payload_presupuesto)
     assert resp_post_presupuesto.status_code == 302
@@ -335,24 +308,6 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert respuesta_detalle_presupuesto.context.get("respaldo_categoria") == "presupuesto"
     contenido_presupuesto = respuesta_detalle_presupuesto.content.decode("utf-8")
 
-    # La categoría factual se vincula a la referencia de pago disponible en esta consulta.
-    assert (
-        "La referencia documental del pago coincide con un presupuesto o proforma "
-        "disponible en esta consulta."
-        in contenido_presupuesto
-    )
-    assert (
-        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
-        in contenido_presupuesto
-    )
-    assert (
-        "El tipo documental y su resultado de revisión se muestran por separado."
-        in contenido_presupuesto
-    )
-    assert (
-        "Esta vista no determina si el documento satisface un requisito del trámite."
-        in contenido_presupuesto
-    )
     assert "Falta aportar factura definitiva" not in contenido_presupuesto
     assert "no implica por sí sola aprobación" not in contenido_presupuesto
     assert "La referencia documental del pago coincide con una factura" not in contenido_presupuesto
@@ -395,14 +350,8 @@ def test_c04_pago_real_y_proyeccion_documental(
 
     contenido_lector = respuesta_lector.content.decode("utf-8")
     assert gasto_presupuesto.concepto in contenido_lector
-    assert "Pago externo registrado" in contenido_lector
+    assert 'id="pago-externo"' in contenido_lector
     assert "SINTETICA-C04-PRES" in contenido_lector
-    assert (
-        "Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. "
-        "No se puede inferir desde aquí si hay archivos; el registro de pago tampoco "
-        "equivale a aprobación o suficiencia documental."
-        in contenido_lector
-    )
     assert "La referencia documental del pago coincide con un presupuesto" not in contenido_lector
     assert ref_presupuesto_str not in contenido_lector
 
@@ -419,22 +368,4 @@ def test_c04_pago_real_y_proyeccion_documental(
     # Verifica con el spy que no se llama a listar_opciones_para_pago con proveedor no configurado
     assert len(llamadas_listar) == conteo_antes_sin_prov
 
-    contenido_sin_proveedor = respuesta_sin_proveedor.content.decode("utf-8")
-    assert (
-        "La categoría de la versión referenciada al registrar el pago no está disponible "
-        "en esta consulta. Los aportes y reemplazos posteriores no modifican el registro "
-        "de pago."
-        in contenido_sin_proveedor
-    )
-    assert (
-        "El tipo documental y su resultado de revisión se muestran por separado."
-        in contenido_sin_proveedor
-    )
-    assert (
-        "Esta vista no determina si el documento satisface un requisito del trámite."
-        in contenido_sin_proveedor
-    )
-    assert (
-        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante."
-        not in contenido_sin_proveedor
-    )
+    assert ref_presupuesto_str not in respuesta_sin_proveedor.content.decode()

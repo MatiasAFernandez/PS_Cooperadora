@@ -14,15 +14,17 @@ from django.db import connections
 
 from gastos.models import EventoPagoExterno, PagoExterno
 from gastos.payments import PaymentConflictError, registrar_pago_externo
+from tests.soporte_pagos import pdf_comprobante
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-CAPS_PAGO = ("gastos.registrar_pago", "gastos.consultar_todas")
+CAPS_PAGO = ("gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar")
 
 
 def _payload(**overrides):
     base = {
-        "importe": Decimal("1234.56"),
+        "monto_bruto": Decimal("1234.56"),
+        "monto_retencion_atp": Decimal("0.00"),
         "fecha_pago": "2025-03-10",
         "referencia_externa": "TRF-0001",
         "referencia_documental": "doc-version-1",
@@ -69,6 +71,7 @@ def test_concurrencia_mismo_contenido_deja_una_fila_un_evento_y_mismo_pago(
             actor=actor,
             solicitud_id=solicitud.pk,
             document_provider=fake_document_provider(),
+            comprobante_bancario=pdf_comprobante(),
             **_payload(),
         )
         return pago.pk
@@ -92,7 +95,7 @@ def test_concurrencia_contenido_distinto_deja_una_fila_un_evento_y_conflicto(
     solicitud = solicitud_factory(solicitante=user)
     cargas = [
         _payload(),
-        _payload(importe=Decimal("999.99"), referencia_externa="TRF-0002"),
+        _payload(monto_bruto=Decimal("999.99"), referencia_externa="TRF-0002"),
     ]
 
     def worker(indice: int) -> int:
@@ -100,6 +103,7 @@ def test_concurrencia_contenido_distinto_deja_una_fila_un_evento_y_conflicto(
             actor=actor,
             solicitud_id=solicitud.pk,
             document_provider=fake_document_provider(),
+            comprobante_bancario=pdf_comprobante(),
             **cargas[indice],
         )
         return pago.pk

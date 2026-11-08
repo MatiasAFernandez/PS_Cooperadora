@@ -1,163 +1,286 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Registrar Pago Externo — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+{% block title %}Registrar pago externo — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/pago_externo.css' %}">
+{% endblock %}
 
 {% block content %}
-<p><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a></p>
+<div class="registro-pago rp-alta">
+    <p class="rp-breadcrumb">
+        <a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a>
+    </p>
 
-<h3>Registrar Pago Externo</h3>
-
-<p>
-    Solicitud <strong>#{{ solicitud.pk }}</strong> — {{ solicitud.concepto }}
-    ({{ solicitud.get_estado_display }}).
-</p>
-
-{% if form.non_field_errors %}
-<div class="alert-error" role="alert" id="pago-errores-generales">
-    <strong>No se pudo registrar el pago:</strong>
-    <ul>
-        {% for error in form.non_field_errors %}
-            <li>{{ error }}</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
-
-{% if aplica_atp %}
-<div class="message message-warning" role="alert" style="margin-bottom: 1.25rem;">
-    <div>
-        <strong>Aviso preventivo de Retención ATP Chaco:</strong>
-        El importe estimado de la solicitud (<span class="font-tabular">${{ solicitud.monto_estimado }}</span>) alcanza o supera la base imponible vigente (<span class="font-tabular">${{ base_imponible_atp }}</span>).
-        Alícuota provincial sugerida: <strong class="font-tabular">{{ alicuota_atp }}%</strong> (Retención sugerida: <strong class="font-tabular">${{ monto_retencion_sugerido }}</strong>).
-        Verifique los importes ingresados (Bruto - Retención = Neto efectivamente transferido).
+    <div class="rp-head">
+        <p class="rp-small">Gastos / Solicitud #{{ solicitud.pk }} · {{ solicitud.get_tipo_flujo_display }}</p>
+        <h1>Registrar pago externo</h1>
+        <p class="rp-concept">{{ solicitud.concepto }}</p>
     </div>
-</div>
-{% endif %}
 
-<form id="pago-externo-form" method="post" action="{% url 'gastos:pagar' pk=solicitud.pk %}">
-    {% csrf_token %}
-
-    <fieldset style="margin-bottom: 1.5rem; padding: 1.25rem; background: var(--ref-bg-muted, #f8fafc); border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px);">
-        <legend style="font-weight: 600; color: var(--ref-heading, #37423b); font-size: var(--text-sm, 0.875rem);">
-            Desglose Impositivo y Retención Provincial ATP (opcional)
-        </legend>
-        <p style="margin-top: 0; margin-bottom: 1rem; font-size: var(--text-sm, 0.875rem); color: var(--ref-text-muted, #64748b);">
-            Si la operación está alcanzada por retención de ATP Chaco, complete el monto bruto y el monto retenido. La identidad contable debe ser exacta: <code>Neto Transferido = Bruto - Retención ATP</code>.
-        </p>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label for="{{ form.monto_bruto.id_for_label }}">{{ form.monto_bruto.label }}:</label>
-                {{ form.monto_bruto }}
-                {% if form.monto_bruto.errors %}
-                    <div class="alert-error" role="alert">{{ form.monto_bruto.errors|join:", " }}</div>
+    <div class="rp-context" aria-label="Contexto del pago">
+        <span><strong>Solicitante:</strong> {{ solicitante_nombre }}{% if solicitante_email %} <span class="rp-email">({{ solicitante_email }})</span>{% endif %}</span>
+        <span><strong>Titular de la cuenta:</strong>
+            {% if datos_transferencia_actual %}{{ datos_transferencia_actual.titular_nombre }}{% else %}Sin datos informados{% endif %}
+        </span>
+        <span><strong>Respaldo comercial:</strong>
+            {% if opciones_documentales %}{% if opciones_documentales|length == 1 %}1 opción vigente{% else %}{{ opciones_documentales|length }} opciones vigentes{% endif %}{% else %}Sin respaldo habilitado{% endif %}
+        </span>
+        <details class="rp-details-destino">
+            <summary>Consultar destino y respaldo</summary>
+            <div class="rp-details-content">
+                {% if datos_transferencia_actual %}
+                    <dl class="detail-grid" style="margin: 0.75rem 0 0;">
+                        <dt>Titular o beneficiario</dt>
+                        <dd>{{ datos_transferencia_actual.titular_nombre }}</dd>
+                        <dt>CUIT / CUIL</dt>
+                        <dd>{{ datos_transferencia_actual.identificacion }}</dd>
+                        <dt>CBU o alias</dt>
+                        <dd class="font-mono rp-cbu-row">
+                            <span id="rp-cbu-val">{{ datos_transferencia_actual.cbu_alias }}</span>
+                            <button type="button" class="btn-copy" id="btn-copy-cbu" data-copy="{{ datos_transferencia_actual.cbu_alias }}" aria-label="Copiar CBU o alias">
+                                <svg class="rp-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                <span class="btn-copy-text">Copiar</span>
+                            </button>
+                        </dd>
+                        <dt>Correo para el comprobante</dt>
+                        <dd>{{ datos_transferencia_actual.correo_comprobante }}</dd>
+                        <dt>Centro de costo informado</dt>
+                        <dd>{{ datos_transferencia_actual.centro_costo }}</dd>
+                    </dl>
+                {% else %}
+                    <p class="rp-small">La solicitud no tiene datos de transferencia informados.</p>
                 {% endif %}
-                <small style="color: var(--ref-text-muted, #64748b); font-size: 0.8rem;">{{ form.monto_bruto.help_text }}</small>
+                <p class="rp-small">Importe estimado de la solicitud: <span class="font-tabular">${{ monto_estimado_formateado }}</span>. El bruto del pago se precarga desde ese estimado y podés editarlo.</p>
+            </div>
+        </details>
+    </div>
+
+    <div id="rp-errores" class="rp-error" role="alert" {% if not form.non_field_errors %}hidden{% endif %}>
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+
+    <form id="pago-externo-form" data-pago-form data-mode="alta"
+          data-max-bytes="{{ max_upload_bytes|default:10485760 }}"
+          data-base-imponible="{{ base_imponible_atp }}"
+          {% if form.is_bound and form.errors %}data-has-server-errors="true"{% endif %}
+          method="post" enctype="multipart/form-data"
+          action="{% url 'gastos:pagar' pk=solicitud.pk %}" novalidate>
+        {% csrf_token %}
+
+        <div class="rp-layout">
+            <div class="rp-main">
+                <section class="rp-section" aria-labelledby="rp-datos-title">
+                    <h2 id="rp-datos-title">Datos del pago</h2>
+                    <div class="rp-fields">
+                        <div>
+                            <div class="rp-label-row">
+                                <label for="{{ form.fecha_pago.id_for_label }}">{{ form.fecha_pago.label }}</label>
+                                <button type="button" class="btn-hoy" id="btn-fecha-hoy" aria-label="Completar con la fecha de hoy">Hoy</button>
+                            </div>
+                            {{ form.fecha_pago }}
+                            {% if form.fecha_pago.errors %}<div class="rp-error" role="alert">{{ form.fecha_pago.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.monto_bruto.id_for_label }}">{{ form.monto_bruto.label }}</label>
+                            {{ form.monto_bruto }}
+                            <div id="rp-bruto-inline-error" class="rp-error" role="alert" hidden></div>
+                            {% if form.monto_bruto.errors %}<div class="rp-error" role="alert">{{ form.monto_bruto.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <div class="rp-label-row">
+                                <label for="{{ form.monto_retencion_atp.id_for_label }}">
+                                    {{ form.monto_retencion_atp.label }}
+                                    <span class="rp-tooltip-wrap">
+                                        <button type="button" class="rp-tooltip-trigger" aria-label="Ayuda sobre retención registrada" aria-describedby="tt-retencion">?</button>
+                                        <span class="rp-tooltip-bubble" id="tt-retencion" role="tooltip">Monto de la constancia emitida por ATP. No aplica una alícuota automáticamente.</span>
+                                    </span>
+                                </label>
+                            </div>
+                            {{ form.monto_retencion_atp }}
+                            <div id="rp-retencion-inline-error" class="rp-error" role="alert" hidden></div>
+                            {% if form.monto_retencion_atp.errors %}<div class="rp-error" role="alert">{{ form.monto_retencion_atp.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label for="rp-neto">Neto transferido · ARS <span class="rp-readonly-label">Calculado</span></label>
+                            <input id="rp-neto" type="text" readonly tabindex="-1"
+                                   value="{% if neto_inicial and neto_inicial != '—' %}$ {{ neto_inicial }}{% else %}—{% endif %}">
+                        </div>
+                        <div class="rp-full">
+                            <label for="{{ form.referencia_externa.id_for_label }}">{{ form.referencia_externa.label }} <span class="rp-readonly-label">Opcional</span></label>
+                            {{ form.referencia_externa }}
+                            {% if form.referencia_externa.errors %}<div class="rp-error" role="alert">{{ form.referencia_externa.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <details id="rp-porcentaje" class="rp-details-calc" style="margin-top: 1rem;">
+                        <summary>Calcular un importe a partir de un porcentaje</summary>
+                        <div class="rp-details-content">
+                            <div class="rp-fields" style="margin-top: 0.75rem;">
+                                <div>
+                                    <label for="rp-base">Base del cálculo · ARS</label>
+                                    <input id="rp-base" type="text" inputmode="decimal" value="{{ monto_estimado_formateado }}">
+                                </div>
+                                <div>
+                                    <label for="rp-rate">Porcentaje informado · %</label>
+                                    <input id="rp-rate" type="text" inputmode="decimal" placeholder="Ej.: 3,5" autocomplete="off">
+                                </div>
+                            </div>
+                            <p class="rp-small">Usá la base y el porcentaje que informa ATP. Es una ayuda aritmética: no determina el impuesto ni reemplaza la constancia.</p>
+                            <div class="rp-actions">
+                                <button type="button" class="rp-button" id="rp-calc">Calcular sugerencia</button>
+                                <button type="button" class="rp-button" id="rp-use" hidden>Usar este importe</button>
+                            </div>
+                            <p id="rp-rate-result" role="status" class="rp-calc-feedback" hidden></p>
+                        </div>
+                    </details>
+                </section>
+
+                <section class="rp-section" aria-labelledby="rp-banco-title">
+                    <h2 id="rp-banco-title">Comprobante bancario <span class="rp-chip rp-chip-warning">Obligatorio</span></h2>
+                    <p class="rp-small">PDF o imagen (JPG, PNG) de la transferencia ya realizada. No es el respaldo comercial.</p>
+                    <div class="rp-dropzone" id="rp-banco-drop">
+                        {{ form.comprobante_bancario }}
+                        <p>Arrastrá el comprobante acá o elegilo con el botón.</p>
+                        <label for="{{ form.comprobante_bancario.id_for_label }}" class="rp-button" id="rp-banco-label" tabindex="0">Seleccionar archivo</label>
+                        <span class="rp-small">PDF, JPG o PNG · hasta {{ max_upload_mib|default:10 }} MiB</span>
+                    </div>
+                    <div class="rp-file-card" id="rp-banco-file" hidden>
+                        <div class="rp-file-card-content">
+                            <div class="rp-file-icon-wrap" aria-hidden="true">
+                                <svg class="rp-file-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            </div>
+                            <div class="rp-file-info">
+                                <p class="rp-file-name" id="rp-banco-nombre"></p>
+                                <p class="rp-file-meta" id="rp-banco-meta"></p>
+                            </div>
+                            <span class="rp-chip rp-chip-success rp-ready-chip">Listo para guardar</span>
+                        </div>
+                        <div class="rp-actions" id="rp-banco-actions">
+                            <a class="rp-button" id="rp-banco-abrir" href="#" target="_blank" rel="noopener" data-open-doc="">Abrir</a>
+                            <a class="rp-button" id="rp-banco-descargar" href="#" download>Descargar</a>
+                            <button type="button" class="rp-button" id="rp-banco-cambiar">Cambiar</button>
+                            <button type="button" class="rp-button" id="rp-banco-quitar">Quitar</button>
+                        </div>
+                    </div>
+                    <p class="rp-small" id="rp-banco-status" role="status" hidden></p>
+                    {% if form.comprobante_bancario.errors %}<div class="rp-error" role="alert">{{ form.comprobante_bancario.errors|join:", " }}</div>{% endif %}
+                </section>
+
+                <section class="rp-section" id="rp-atp-card" aria-labelledby="rp-atp-title" {% if not mostrar_atp_inicial %}hidden{% endif %}>
+                    <h2 id="rp-atp-title">Constancia de retención ATP</h2>
+                    <p class="rp-small">Documento en formato PDF. Si la retención es positiva, podés adjuntarla ahora o dejar el pendiente visible.</p>
+                    <div role="radiogroup" aria-label="Momento de la constancia ATP">
+                        {% for radio in form.atp_decision %}
+                            <label class="rp-radio" for="{{ radio.id_for_label }}">{{ radio.tag }} {{ radio.choice_label }}</label>
+                        {% endfor %}
+                    </div>
+                    {% if form.atp_decision.errors %}<div class="rp-error" role="alert">{{ form.atp_decision.errors|join:", " }}</div>{% endif %}
+                    <div id="rp-atp-ref-group" style="margin-bottom: 0.75rem;" {% if form.atp_decision.value == "despues" %}hidden{% endif %}>
+                        <label for="{{ form.referencia_atp.id_for_label }}">{{ form.referencia_atp.label }} <span class="rp-readonly-label">Opcional</span></label>
+                        {{ form.referencia_atp }}
+                        {% if form.referencia_atp.errors %}<div class="rp-error" role="alert">{{ form.referencia_atp.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div id="rp-atp-upload" {% if form.atp_decision.value == "despues" %}hidden{% endif %}>
+                        <div class="rp-dropzone" id="rp-atp-drop">
+                            {{ form.constancia_atp }}
+                            <p>Arrastrá la constancia PDF acá o elegila con el botón.</p>
+                            <label for="{{ form.constancia_atp.id_for_label }}" class="rp-button" id="rp-atp-label" tabindex="0">Seleccionar PDF</label>
+                            <span class="rp-small">PDF · hasta {{ max_upload_mib|default:10 }} MiB</span>
+                        </div>
+                        <div class="rp-file-card" id="rp-atp-file" hidden>
+                            <div class="rp-file-card-content">
+                                <div class="rp-file-icon-wrap" aria-hidden="true">
+                                    <svg class="rp-file-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </div>
+                                <div class="rp-file-info">
+                                    <p class="rp-file-name" id="rp-atp-nombre"></p>
+                                    <p class="rp-file-meta" id="rp-atp-meta"></p>
+                                </div>
+                                <span class="rp-chip rp-chip-success rp-ready-chip">Listo para guardar</span>
+                            </div>
+                            <div class="rp-actions" id="rp-atp-actions">
+                                <a class="rp-button" id="rp-atp-abrir" href="#" target="_blank" rel="noopener" data-open-doc="">Abrir</a>
+                                <a class="rp-button" id="rp-atp-descargar" href="#" download>Descargar</a>
+                                <button type="button" class="rp-button" id="rp-atp-cambiar">Cambiar</button>
+                                <button type="button" class="rp-button" id="rp-atp-quitar">Quitar</button>
+                            </div>
+                        </div>
+                        <p class="rp-small" id="rp-atp-status" role="status" hidden></p>
+                    </div>
+                    <p class="rp-note" id="rp-atp-pending" {% if form.atp_decision.value != "despues" %}hidden{% endif %}>El pago se registrará con la constancia ATP pendiente. Podrás incorporarla posteriormente desde el detalle de la solicitud.</p>
+                    {% if form.constancia_atp.errors %}<div class="rp-error" role="alert">{{ form.constancia_atp.errors|join:", " }}</div>{% endif %}
+                </section>
+
+                <section class="rp-section" aria-labelledby="rp-respaldo-title">
+                    <h2 id="rp-respaldo-title">
+                        Respaldo comercial
+                        <span class="rp-tooltip-wrap">
+                            <button type="button" class="rp-tooltip-trigger" aria-label="Ayuda sobre respaldo comercial" aria-describedby="tt-respaldo">?</button>
+                            <span class="rp-tooltip-bubble" id="tt-respaldo" role="tooltip">Factura, presupuesto o proforma vigente del gasto. Es independiente del comprobante bancario.</span>
+                        </span>
+                    </h2>
+                    {% if opciones_documentales %}
+                        <label for="{{ form.referencia_documental.id_for_label }}">
+                            {{ form.referencia_documental.label }}
+                        </label>
+                        {{ form.referencia_documental }}
+                        {% if form.referencia_documental.errors %}<div class="rp-error" role="alert">{{ form.referencia_documental.errors|join:", " }}</div>{% endif %}
+                    {% else %}
+                        <p class="rp-note" role="note" style="margin-top: 0.75rem;">
+                            No hay opciones documentales disponibles para este gasto. El registro de pago requiere una factura, presupuesto o proforma vigente.
+                        </p>
+                        {% if puede_incorporar_documentos %}
+                            <p><a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}">Cargar o reemplazar respaldo comercial</a></p>
+                        {% else %}
+                            <p class="rp-small">Solicitá a un perfil con permiso de incorporación documental que aporte el respaldo comercial.</p>
+                        {% endif %}
+                    {% endif %}
+                </section>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
-                <label for="{{ form.monto_retencion_atp.id_for_label }}">{{ form.monto_retencion_atp.label }}:</label>
-                {{ form.monto_retencion_atp }}
-                {% if form.monto_retencion_atp.errors %}
-                    <div class="alert-error" role="alert">{{ form.monto_retencion_atp.errors|join:", " }}</div>
-                {% endif %}
-                <small style="color: var(--ref-text-muted, #64748b); font-size: 0.8rem;">{{ form.monto_retencion_atp.help_text }}</small>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-                <label for="{{ form.referencia_atp.id_for_label }}">{{ form.referencia_atp.label }}:</label>
-                {{ form.referencia_atp }}
-                {% if form.referencia_atp.errors %}
-                    <div class="alert-error" role="alert">{{ form.referencia_atp.errors|join:", " }}</div>
-                {% endif %}
-                <small style="color: var(--ref-text-muted, #64748b); font-size: 0.8rem;">{{ form.referencia_atp.help_text }}</small>
-            </div>
+            <aside class="rp-aside" aria-labelledby="rp-summary-title">
+                <div class="rp-summary">
+                    <h2 id="rp-summary-title">Revisá antes de registrar</h2>
+                    <dl>
+                        <div class="rp-pair"><dt>Fecha</dt><dd id="rp-sum-fecha">—</dd></div>
+                        <div class="rp-pair"><dt>Bruto</dt><dd class="font-tabular" id="rp-sum-bruto">$ {{ bruto_inicial }}</dd></div>
+                        <div class="rp-pair"><dt>Retención</dt><dd class="font-tabular" id="rp-sum-retencion">$ {{ retencion_inicial|default_if_none:"—" }}</dd></div>
+                        <div class="rp-pair rp-total"><dt>Neto</dt><dd class="font-tabular" id="rp-sum-neto">$ {{ neto_inicial|default_if_none:"—" }}</dd></div>
+                        <div class="rp-pair"><dt>Comprobante</dt><dd id="rp-sum-banco"><span class="rp-chip rp-chip-warning">Falta adjuntar</span></dd></div>
+                        <div class="rp-pair"><dt>Constancia ATP</dt><dd id="rp-sum-atp">{{ resumen_atp_inicial }}</dd></div>
+                        <div class="rp-pair"><dt>Respaldo comercial</dt><dd id="rp-sum-respaldo">{% if not opciones_documentales %}<span class="rp-chip rp-chip-warning">Falta cargar</span>{% else %}{{ respaldo_seleccionado_etiqueta }}{% endif %}</dd></div>
+                    </dl>
+                    <div class="rp-chips">
+                        <span class="rp-chip">Pago externo documentado</span>
+                        <span class="rp-chip rp-chip-neutral">No ejecuta transferencias</span>
+                    </div>
+                    <p class="rp-note rp-note-info" id="rp-aviso-atp" {% if not aplica_atp %}hidden{% endif %} role="status">
+                        El bruto alcanza la base configurada. Revisá si corresponde retención ATP; no se aplica una alícuota automáticamente.
+                    </p>
+                    <div class="rp-form-actions">
+                        <div id="rp-submit-error-notice" class="rp-error rp-submit-notice" role="alert" {% if not form.errors and not form.non_field_errors %}hidden{% endif %}>
+                            {% if form.errors or form.non_field_errors %}
+                                Hay datos que requieren revisión antes de registrar el pago.
+                            {% endif %}
+                        </div>
+                        {% if not opciones_documentales %}
+                            <div class="rp-error rp-submit-notice" id="rp-aviso-respaldo-faltante" role="status">
+                                Se necesita un respaldo comercial vigente para registrar el pago.
+                            </div>
+                        {% endif %}
+                        <button type="submit" class="rp-button rp-button-primary"
+                                {% if not opciones_documentales or not formulario_habilitado %}disabled aria-disabled="true"{% endif %}>
+                            Registrar pago externo
+                        </button>
+                        <a class="rp-button rp-button-secondary" href="{% url 'gastos:detalle' pk=solicitud.pk %}">Cancelar</a>
+                    </div>
+                    <p class="rp-small" style="margin-top: 0.75rem;">Compará el neto con el importe del comprobante bancario. Esta acción no ejecuta una transferencia ni cierra el trámite.</p>
+                </div>
+            </aside>
         </div>
-    </fieldset>
-
-    <div class="form-group">
-        <label for="{{ form.importe.id_for_label }}">{{ form.importe.label }}:</label>
-        {{ form.importe }}
-        {% if form.importe.errors %}
-            <div class="alert-error" role="alert" id="error-importe">
-                {{ form.importe.errors|join:", " }}
-            </div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.fecha_pago.id_for_label }}">{{ form.fecha_pago.label }}:</label>
-        {{ form.fecha_pago }}
-        <p id="ayuda-fecha-pago" style="margin: 0.25rem 0 0; font-size: 0.9em;">
-            Use el formato ISO <code>AAAA-MM-DD</code> (por ejemplo, <code>2026-10-14</code>).
-        </p>
-        {% if form.fecha_pago.errors %}
-            <div class="alert-error" role="alert" id="error-fecha-pago">
-                {{ form.fecha_pago.errors|join:", " }}
-            </div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.referencia_externa.id_for_label }}">{{ form.referencia_externa.label }}:</label>
-        {{ form.referencia_externa }}
-        <p id="ayuda-referencia-externa" style="margin: 0.25rem 0 0; font-size: 0.9em;">
-            Comprobante o transacción bancaria/comercial informada a Cooperadora.
-        </p>
-        {% if form.referencia_externa.errors %}
-            <div class="alert-error" role="alert" id="error-referencia-externa">
-                {{ form.referencia_externa.errors|join:", " }}
-            </div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.referencia_documental.id_for_label }}">{{ form.referencia_documental.label }}:</label>
-        {{ form.referencia_documental }}
-        {% if not opciones_documentales and formulario_habilitado %}
-            <p role="note" style="margin: 0.25rem 0 0; font-size: 0.9em;">
-                No hay opciones documentales disponibles para este gasto. El registro
-                de pago requiere una factura, presupuesto o proforma vigente.
-            </p>
-            {% if puede_incorporar_documentos %}
-                <p style="margin: 0.5rem 0 0;">
-                    <a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}">
-                        Aportar factura, presupuesto o proforma
-                    </a>
-                </p>
-            {% else %}
-                <p role="note" style="margin: 0.5rem 0 0; font-size: 0.9em;">
-                    Solicitá a un perfil con permiso de incorporación documental que
-                    aporte la factura, presupuesto o proforma.
-                </p>
-            {% endif %}
-        {% elif not formulario_habilitado %}
-            <p role="note" style="margin: 0.25rem 0 0; font-size: 0.9em;">
-                La solicitud ya no admite el registro de un pago. Consulte su estado en el detalle.
-            </p>
-        {% endif %}
-        {% if form.referencia_documental.errors %}
-            <div class="alert-error" role="alert" id="error-referencia-documental">
-                {{ form.referencia_documental.errors|join:", " }}
-            </div>
-        {% endif %}
-    </div>
-
-    <button type="submit" class="btn" {% if not opciones_documentales or not formulario_habilitado %}disabled aria-disabled="true"{% endif %}>Registrar Pago</button>
-</form>
-
-<script>
-    document.getElementById("pago-externo-form").addEventListener("submit", function () {
-        const boton = this.querySelector('button[type="submit"]');
-        if (boton) {
-            boton.disabled = true;
-            boton.textContent = "Registrando pago…";
-        }
-    });
-</script>
-
-<p role="note" style="margin-top: 1.5rem;">
-    El servidor normaliza y valida el importe, la fecha y las referencias al registrar el pago.
-    Este formulario no confirma el cierre del gasto ni la aprobación documental.
-</p>
+    </form>
+</div>
+<script src="{% static 'gastos/js/pago_externo.js' %}"></script>
 {% endblock %}

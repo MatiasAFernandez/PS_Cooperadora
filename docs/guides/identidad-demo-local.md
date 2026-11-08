@@ -61,3 +61,33 @@ presentación, visibilidad por objeto y decisiones siguen siendo reglas del
 módulo de gastos. Verificar con sesiones reales: A ve sus gastos, B no ve los
 de A, O y L consultan todos; L no puede decidir. El cierre de T03 requiere
 estas comprobaciones sin dobles de identidad.
+## Demo visual de Gastos
+
+Con PostgreSQL local disponible, ejecutá desde la raíz:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/demo_visual_gastos.py reiniciar
+.\.venv\Scripts\python.exe scripts/demo_visual_gastos.py servir
+```
+
+Abrí [Acceso a la demo visual](http://127.0.0.1:8017/demo/acceso/). Las cuentas
+sintéticas son `demo_o` (Cooperadora), `demo_a` (solicitante), `demo_b`
+(solicitante con facturas vencidas) y `demo_l` (consulta). La clave local
+de estas cuatro cuentas es `demo1234`.
+
+- Con Cooperadora, buscá **Sensores y baterías**, **Reparación del proyector** e
+  **Impresión de cartelería** para ver una solicitud presentada, una postergada
+  y una rechazada. Las dos últimas incluyen motivo.
+- Compará **Adquisición Insumos GPU NVIDIA** e **Insumos de limpieza** para ver
+  una solicitud aceptada con respaldo y otra que todavía lo necesita.
+- **Reactivos de Laboratorio** muestra un pago con constancia ATP y **Reintegro
+  por instrumental** muestra un pago con constancia pendiente. Con `demo_a`,
+  **Cables de Red** muestra una factura pendiente dentro del plazo. Con
+  `demo_b`, los tres lotes de material bibliográfico muestran el bloqueo por mora.
+
+Antes de cada ronda de revisión, detené el servidor de esta demo, ejecutá
+`reiniciar` y volvé a ejecutar `servir`. El reinicio recrea únicamente
+`ps_cooperadora_demo_visual_gastos` y `.local/demo-visual-gastos`, y exige
+marcas de propiedad para reemplazarlos. Requiere un rol local con permiso de
+crear bases. Las fechas de pago que prueban rendición y mora se calculan
+respecto del día en que se prepara la demo.

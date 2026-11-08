@@ -37,6 +37,7 @@ from gastos.services import (
 )
 from tests.gastos.conftest import FakeDocumentVerificationPort, issue_csrf_credentials
 from tests.soporte_gastos import crear_gasto_sintetico
+from tests.soporte_pagos import pdf_comprobante, pdf_constancia
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -158,17 +159,21 @@ def test_pago_sin_retencion_retrocompatible(
     capacidad_registrar_pago: Any,
 ) -> None:
     """Llamadas preexistentes sin monto_bruto ni retención asumen monto_bruto = importe."""
-    user, pagador = actor_factory(["gastos.registrar_pago", "gastos.consultar_todas"])
+    user, pagador = actor_factory(
+        ["gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar"]
+    )
     solicitud = solicitud_factory(solicitante=user, estado=EstadoSolicitud.ACEPTADA)
 
     provider = fake_document_provider()
     pago = registrar_pago_externo(
         actor=pagador,
         solicitud_id=solicitud.pk,
-        importe=Decimal("50000.00"),
+        monto_bruto=Decimal("50000.00"),
+        monto_retencion_atp=Decimal("0.00"),
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-SIN-ATP",
         referencia_documental="doc-version-1",
+        comprobante_bancario=pdf_comprobante(),
         document_provider=provider,
     )
 
@@ -181,10 +186,12 @@ def test_pago_sin_retencion_retrocompatible(
     reenvio = registrar_pago_externo(
         actor=pagador,
         solicitud_id=solicitud.pk,
-        importe=Decimal("50000.00"),
+        monto_bruto=Decimal("50000.00"),
+        monto_retencion_atp=Decimal("0.00"),
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-SIN-ATP",
         referencia_documental="doc-version-1",
+        comprobante_bancario=pdf_comprobante(),
         document_provider=provider,
     )
     assert reenvio.pk == pago.pk
@@ -197,7 +204,9 @@ def test_pago_con_retencion_valida_y_consulta(
     capacidad_registrar_pago: Any,
 ) -> None:
     """Pago con retención de ATP Chaco se persiste y consulta con su desglose contable."""
-    user, pagador = actor_factory(["gastos.registrar_pago", "gastos.consultar_todas"])
+    user, pagador = actor_factory(
+        ["gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar"]
+    )
     solicitud = solicitud_factory(
         solicitante=user,
         estado=EstadoSolicitud.ACEPTADA,
@@ -208,13 +217,14 @@ def test_pago_con_retencion_valida_y_consulta(
     pago = registrar_pago_externo(
         actor=pagador,
         solicitud_id=solicitud.pk,
-        importe=Decimal("96500.00"),
         monto_bruto=Decimal("100000.00"),
         monto_retencion_atp=Decimal("3500.00"),
         referencia_atp="CERT-ATP-2026-0089",
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-CON-ATP",
         referencia_documental="doc-version-1",
+        comprobante_bancario=pdf_comprobante(),
+        constancia_atp=pdf_constancia(),
         document_provider=provider,
     )
 
@@ -239,20 +249,23 @@ def test_conflicto_idempotencia_si_cambian_datos_retencion(
     capacidad_registrar_pago: Any,
 ) -> None:
     """Reenviar sobre un pago existente con datos impositivos distintos dispara 409 Conflict."""
-    user, pagador = actor_factory(["gastos.registrar_pago", "gastos.consultar_todas"])
+    user, pagador = actor_factory(
+        ["gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar"]
+    )
     solicitud = solicitud_factory(solicitante=user, estado=EstadoSolicitud.ACEPTADA)
 
     provider = fake_document_provider()
     registrar_pago_externo(
         actor=pagador,
         solicitud_id=solicitud.pk,
-        importe=Decimal("96500.00"),
         monto_bruto=Decimal("100000.00"),
         monto_retencion_atp=Decimal("3500.00"),
         referencia_atp="CERT-ORIGINAL",
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-IDEMP",
         referencia_documental="doc-version-1",
+        comprobante_bancario=pdf_comprobante(),
+        constancia_atp=pdf_constancia(),
         document_provider=provider,
     )
 
@@ -260,13 +273,14 @@ def test_conflicto_idempotencia_si_cambian_datos_retencion(
         registrar_pago_externo(
             actor=pagador,
             solicitud_id=solicitud.pk,
-            importe=Decimal("96500.00"),
             monto_bruto=Decimal("100000.00"),
             monto_retencion_atp=Decimal("3500.00"),
             referencia_atp="CERT-CAMBIADO",
             fecha_pago=date(2026, 11, 3),
             referencia_externa="TRF-IDEMP",
             referencia_documental="doc-version-1",
+            comprobante_bancario=pdf_comprobante(),
+            constancia_atp=pdf_constancia(),
             document_provider=provider,
         )
 
@@ -312,7 +326,12 @@ def test_vista_pago_muestra_aviso_y_calculo_sugerido_atp(
 ) -> None:
     """GET /gastos/<pk>/pagar/ calcula y muestra aviso preventivo ATP cuando monto >= 90.000."""
     user, actor = actor_factory(
-        ("gastos.consultar_todas", "gastos.registrar_pago", "documentos.ver_metadatos")
+        (
+            "gastos.consultar_todas",
+            "gastos.registrar_pago",
+            "documentos.ver_metadatos",
+            "documentos.incorporar",
+        )
     )
     monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor)
     client = auth_client(user, actor)
@@ -338,14 +357,13 @@ def test_vista_pago_muestra_aviso_y_calculo_sugerido_atp(
     assert response.status_code == 200
     assert response.context["aplica_atp"] is True
     assert response.context["base_imponible_atp"] == Decimal("90000.00")
-    assert response.context["alicuota_atp"] == Decimal("3.50")
-    assert response.context["monto_retencion_sugerido"] == Decimal("3500.00")
+    assert "alicuota_atp" not in response.context
+    assert "monto_retencion_sugerido" not in response.context
 
     contenido = response.content.decode("utf-8")
-    assert "Aviso preventivo de Retención ATP Chaco" in contenido
-    assert ("3,50%" in contenido or "3.50%" in contenido)
-    assert ("3500,00" in contenido or "3500.00" in contenido)
-    assert "Desglose Impositivo y Retención Provincial ATP" in contenido
+    assert "El bruto alcanza la base configurada" in contenido
+    assert "no se aplica una alícuota automáticamente" in contenido
+    assert "Datos del pago" in contenido
 
 
 def test_vista_pago_post_con_retencion_y_desglose_en_detalle(
@@ -357,7 +375,12 @@ def test_vista_pago_post_con_retencion_y_desglose_en_detalle(
 ) -> None:
     """POST /gastos/<pk>/pagar/ con retención registra el pago y detalle muestra el desglose."""
     user, actor = actor_factory(
-        ("gastos.consultar_todas", "gastos.registrar_pago", "documentos.ver_metadatos")
+        (
+            "gastos.consultar_todas",
+            "gastos.registrar_pago",
+            "documentos.ver_metadatos",
+            "documentos.incorporar",
+        )
     )
     monkeypatch.setattr("gastos.views.resolve_actor", lambda request: actor)
     client = auth_client(user, actor)
@@ -390,13 +413,15 @@ def test_vista_pago_post_con_retencion_y_desglose_en_detalle(
         url_pagar,
         data={
             "csrfmiddlewaretoken": csrf,
-            "importe": "144750.00",
             "monto_bruto": "150000.00",
             "monto_retencion_atp": "5250.00",
             "referencia_atp": "CERT-ATP-2026-991",
             "fecha_pago": "2026-11-03",
             "referencia_externa": "TRF-ATP-SUCCESS",
             "referencia_documental": "ref-doc-atp",
+            "comprobante_bancario": pdf_comprobante(),
+            "constancia_atp": pdf_constancia(),
+            "atp_decision": "ahora",
         },
     )
 
@@ -413,10 +438,10 @@ def test_vista_pago_post_con_retencion_y_desglose_en_detalle(
     res_detalle = client.get(response.url)
     assert res_detalle.status_code == 200
     contenido_det = res_detalle.content.decode("utf-8")
-    assert "Monto Bruto" in contenido_det
-    assert ("150000,00 ARS" in contenido_det or "150000.00 ARS" in contenido_det)
+    assert "Monto bruto" in contenido_det
+    assert "$ 150.000,00" in contenido_det
     assert "Retención ATP Chaco" in contenido_det
-    assert ("5250,00 ARS" in contenido_det or "5250.00 ARS" in contenido_det)
+    assert "$ 5.250,00" in contenido_det
     assert "Cert: CERT-ATP-2026-991" in contenido_det
-    assert "Neto Transferido" in contenido_det
-    assert ("144750,00 ARS" in contenido_det or "144750.00 ARS" in contenido_det)
+    assert "Neto transferido" in contenido_det
+    assert "$ 144.750,00" in contenido_det

@@ -37,6 +37,7 @@ from gastos.payments import registrar_pago_externo
 from gastos.services import crear_solicitud_gasto
 from identidad.services import Actor
 from tests.soporte_gastos import crear_gasto_sintetico
+from tests.soporte_pagos import pdf_comprobante
 
 User = get_user_model()
 
@@ -79,13 +80,20 @@ def _registrar_datos(actor: Actor, gasto: Any, datos: dict[str, str]):
 
 
 def _registrar_pago(actor: Actor, gasto: Any, fake_document_provider: Any) -> PagoExterno:
+    actor_documentado = Actor(
+        subject_id=actor.subject_id,
+        capabilities=actor.capabilities
+        | {"documentos.incorporar", "gastos.consultar_todas"},
+    )
     return registrar_pago_externo(
-        actor=actor,
+        actor=actor_documentado,
         solicitud_id=gasto.pk,
-        importe="1234.56",
+        monto_bruto="1234.56",
+        monto_retencion_atp="0.00",
         fecha_pago="2026-10-27",
         referencia_externa="TRF-74-SINTETICA",
         referencia_documental="doc-sintetico-74",
+        comprobante_bancario=pdf_comprobante(),
         document_provider=fake_document_provider(),
     )
 
@@ -509,7 +517,7 @@ def test_correccion_bloqueada_por_solicitud_rechazada(actor_factory: Any) -> Non
     assert RevisionDatosTransferencia.objects.count() == 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_correccion_bloqueada_si_el_pago_ya_fue_registrado(
     actor_factory: Any, fake_document_provider: Any
 ) -> None:
@@ -818,7 +826,7 @@ def test_get_correccion_de_gasto_ajeno_retorna_403(
     assert response.status_code == 403
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_get_correccion_despues_de_pago_redirige_con_explicacion(
     create_actor: Any,
     actor_factory: Any,
@@ -843,7 +851,7 @@ def test_get_correccion_despues_de_pago_redirige_con_explicacion(
     assert RevisionDatosTransferencia.objects.count() == 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_correccion_despues_de_pago_retorna_409_sin_escribir(
     create_actor: Any,
     actor_factory: Any,

@@ -1,0 +1,37 @@
+<tr>
+    <td class="bandeja-solicitud">
+        <a class="bandeja-concepto" href="{{ detalle_href }}"{% if vista_rapida %} data-vista-rapida="resumen-{{ s.pk }}"{% endif %}>
+            <span class="bandeja-concepto-texto">{{ s.concepto }}</span>
+            <span class="bandeja-meta"><strong>#{{ s.pk }}</strong> · {{ s.fecha_creacion|date:"d/m/Y" }}{% if vista_rapida %} · {{ s.solicitante.get_full_name|default:s.solicitante.get_username }}{% endif %}</span>
+        </a>
+    </td>
+    <td class="bandeja-importe"><span class="bandeja-importe-etiqueta">Importe estimado</span> $ {{ s.monto_estimado|floatformat:"2g" }}</td>
+    <td class="bandeja-estado">
+        <div class="bandeja-chips">
+            <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
+            {% if s.pendiente_bandeja %}<span class="bandeja-chip bandeja-chip-pend{% if s.pendiente_bandeja == 'Falta factura definitiva' %} bandeja-chip-pend-err{% endif %}">{{ s.pendiente_bandeja }}</span>{% endif %}
+        </div>
+    </td>
+    <td class="bandeja-fila-accion">
+        <a class="btn {% if s.accion_bandeja == 'Ver detalle' %}btn-secondary{% else %}btn-primary{% endif %}" href="{{ detalle_href }}{{ s.ancla_bandeja }}" aria-label="{{ s.accion_bandeja }} de la solicitud {{ s.pk }}">{{ s.accion_bandeja }}</a>
+        {% if vista_rapida %}
+            <dialog class="bandeja-panel" id="resumen-{{ s.pk }}" aria-labelledby="resumen-titulo-{{ s.pk }}">
+                <form method="dialog" class="bandeja-panel-cierre"><button class="btn btn-secondary" autofocus>Cerrar</button></form>
+                <p class="bandeja-meta">Solicitud #{{ s.pk }}</p>
+                <h2 id="resumen-titulo-{{ s.pk }}">{{ s.concepto }}</h2>
+                <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
+                {% if s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
+                    <p><strong>Motivo</strong> {{ s.motivo_bandeja }}</p>
+                {% endif %}
+                <dl>
+                    <dt>Importe estimado</dt><dd>$ {{ s.monto_estimado|floatformat:"2g" }}</dd>
+                    <dt>Solicitante</dt><dd>{{ s.solicitante.get_full_name|default:s.solicitante.get_username }}</dd>
+                    <dt>Centro de costo</dt><dd>{{ s.centro_costo.nombre|default:"Sin asignar" }}</dd>
+                    <dt>Modalidad</dt><dd>{{ s.get_tipo_flujo_display }}</dd>
+                </dl>
+                {% if s.pendiente_bandeja %}<p class="bandeja-pendiente">{{ s.pendiente_bandeja }}</p>{% endif %}
+                <a class="btn btn-primary" href="{{ detalle_href }}{{ s.ancla_bandeja }}">{{ s.accion_bandeja }}</a>
+            </dialog>
+        {% endif %}
+    </td>
+</tr>

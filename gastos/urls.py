@@ -12,6 +12,8 @@ from gastos.views import (
     SolicitudGastoDetailView,
     SolicitudGastoDocumentosView,
     SolicitudGastoListView,
+    SolicitudGastoPagoATPView,
+    SolicitudGastoPagoRectificarView,
     SolicitudGastoPagoView,
 )
 
@@ -52,4 +54,14 @@ urlpatterns = [
     ),
     path("<int:pk>/decidir/", SolicitudGastoDecidirView.as_view(), name="decidir"),
     path("<int:pk>/pagar/", SolicitudGastoPagoView.as_view(), name="pagar"),
+    path(
+        "<int:pk>/pagar/rectificar/",
+        SolicitudGastoPagoRectificarView.as_view(),
+        name="pago_rectificar",
+    ),
+    path(
+        "<int:pk>/pagar/atp/",
+        SolicitudGastoPagoATPView.as_view(),
+        name="pago_atp",
+    ),
 ]

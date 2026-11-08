@@ -32,6 +32,7 @@ from gastos.payments import registrar_pago_externo
 from gastos.services import crear_solicitud_gasto
 from tests.gastos.conftest import FakeDocumentVerificationPort, issue_csrf_credentials
 from tests.soporte_gastos import crear_gasto_sintetico
+from tests.soporte_pagos import pdf_comprobante
 
 User = get_user_model()
 
@@ -296,7 +297,9 @@ def test_reintegro_exige_factura_proveedor_y_rechaza_presupuesto_gast_r03(
     DocumentVerificationError.
     """
     _, solicitante = create_actor("solic_reintegro", ["gastos.presentar"])
-    _, pagador = actor_factory(["gastos.registrar_pago", "gastos.consultar_todas"])
+    _, pagador = actor_factory(
+        ("gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar")
+    )
 
     solicitud = crear_solicitud_gasto(
         actor=solicitante,
@@ -322,10 +325,12 @@ def test_reintegro_exige_factura_proveedor_y_rechaza_presupuesto_gast_r03(
             actor=pagador,
             solicitud_id=solicitud.pk,
             document_provider=provider,
-            importe=Decimal("5000.00"),
+            monto_bruto=Decimal("5000.00"),
+            monto_retencion_atp=Decimal("0.00"),
             fecha_pago=date(2026, 11, 3),
             referencia_externa="TRF-REINT-001",
             referencia_documental="uuid-presupuesto-1",
+            comprobante_bancario=pdf_comprobante(),
         )
 
     # Verificar que al proveedor se le exigió exclusivamente ('factura',)
@@ -340,7 +345,9 @@ def test_reintegro_admite_pago_con_factura_proveedor_gast_r03(
 ) -> None:
     """GAST-R03: En REINTEGRO, el pago con factura fiscal de proveedor se registra con éxito."""
     _, solicitante = create_actor("solic_reintegro_ok", ["gastos.presentar"])
-    _, pagador = actor_factory(["gastos.registrar_pago", "gastos.consultar_todas"])
+    _, pagador = actor_factory(
+        ("gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar")
+    )
 
     solicitud = crear_solicitud_gasto(
         actor=solicitante,
@@ -364,10 +371,12 @@ def test_reintegro_admite_pago_con_factura_proveedor_gast_r03(
         actor=pagador,
         solicitud_id=solicitud.pk,
         document_provider=provider,
-        importe=Decimal("18000.00"),
+        monto_bruto=Decimal("18000.00"),
+        monto_retencion_atp=Decimal("0.00"),
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-REINT-002",
         referencia_documental="uuid-factura-1",
+        comprobante_bancario=pdf_comprobante(),
     )
 
     assert pago.pk is not None
@@ -383,7 +392,9 @@ def test_compra_directa_admite_presupuesto_y_factura(
 ) -> None:
     """En COMPRA_DIRECTA se admite tanto presupuesto como factura para pagar."""
     _, solicitante = create_actor("solic_directa", ["gastos.presentar"])
-    _, pagador = actor_factory(["gastos.registrar_pago", "gastos.consultar_todas"])
+    _, pagador = actor_factory(
+        ("gastos.registrar_pago", "gastos.consultar_todas", "documentos.incorporar")
+    )
 
     # 1. Pago con presupuesto
     solicitud_pres = crear_solicitud_gasto(
@@ -408,10 +419,12 @@ def test_compra_directa_admite_presupuesto_y_factura(
         actor=pagador,
         solicitud_id=solicitud_pres.pk,
         document_provider=provider_pres,
-        importe=Decimal("80000.00"),
+        monto_bruto=Decimal("80000.00"),
+        monto_retencion_atp=Decimal("0.00"),
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-DIR-001",
         referencia_documental="uuid-presupuesto-dir",
+        comprobante_bancario=pdf_comprobante(),
     )
     assert pago_pres.pk is not None
     assert "presupuesto" in provider_pres.llamadas[0]["tipos_admitidos"]
@@ -440,10 +453,12 @@ def test_compra_directa_admite_presupuesto_y_factura(
         actor=pagador,
         solicitud_id=solicitud_fac.pk,
         document_provider=provider_fac,
-        importe=Decimal("60000.00"),
+        monto_bruto=Decimal("60000.00"),
+        monto_retencion_atp=Decimal("0.00"),
         fecha_pago=date(2026, 11, 3),
         referencia_externa="TRF-DIR-002",
         referencia_documental="uuid-factura-dir",
+        comprobante_bancario=pdf_comprobante(),
     )
     assert pago_fac.pk is not None
 
@@ -524,7 +539,7 @@ def test_view_detalle_muestra_tipo_flujo_y_centro_costo(
 
     assert response.status_code == 200
     contenido = response.content.decode("utf-8")
-    assert "Modalidad de Gasto" in contenido
+    assert "Centro de costo" in contenido
     assert "Reintegro a solicitante" in contenido
     assert "Secretaría de Posgrado" in contenido
     assert "(secretaria-posgrado)" in contenido

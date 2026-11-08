@@ -103,10 +103,12 @@ def crear():
     registrar_pago_externo(
         actor=o,
         solicitud_id=gasto.pk,
-        importe="100.25",
+        monto_bruto="100.25",
+        monto_retencion_atp="0.00",
         fecha_pago=date(2026, 10, 24),
         referencia_externa="MUESTRA-I2-PAGO",
         referencia_documental=str(documento.referencia_version),
+        comprobante_bancario=pdf(),
         document_provider=ProveedorDocumentalGastos(),
     )
     incorporar(

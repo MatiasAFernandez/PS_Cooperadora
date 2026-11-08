@@ -54,7 +54,7 @@ def _subir(cliente, gasto_id: int, *, nombre: str = "respaldo.pdf", **campos):
         EstadoSolicitud.ACEPTADA,
     ],
 )
-def test_aporte_depende_de_acceso_y_capacidad_no_del_estado(
+def test_aporte_respeta_el_cierre_de_solicitudes_rechazadas(
     escenario_comun, estado
 ):
     e = escenario_comun
@@ -69,7 +69,12 @@ def test_aporte_depende_de_acceso_y_capacidad_no_del_estado(
     respuesta = _subir(_cliente(e.a), gasto.pk, nombre=f"respaldo-{estado}.pdf")
 
     assert respuesta.status_code == 302
-    assert Documento.objects.filter(solicitud_gasto=gasto).count() == 1
+    documentos = Documento.objects.filter(solicitud_gasto=gasto)
+    if estado == EstadoSolicitud.RECHAZADA:
+        assert respuesta.url == reverse("gastos:detalle", args=[gasto.pk]) + "#respaldo-documental"
+        assert not documentos.exists()
+    else:
+        assert documentos.count() == 1
 
 
 @pytest.mark.django_db(transaction=True)
@@ -108,10 +113,12 @@ def test_carga_revision_pago_y_reemplazo_preservan_hechos(
     respuesta_pago = cliente_staff.post(
         reverse("gastos:pagar", kwargs={"pk": gasto_id}),
         {
-            "importe": "1200.00",
+            "monto_bruto": "1200.00",
+            "monto_retencion_atp": "0.00",
             "fecha_pago": "2026-10-21",
             "referencia_externa": "SINTETICA-ISSUE50-001",
             "referencia_documental": referencia_pago,
+            "comprobante_bancario": _pdf("comprobante-pago.pdf"),
         },
     )
     assert respuesta_pago.status_code == 302
@@ -148,13 +155,9 @@ def test_carga_revision_pago_y_reemplazo_preservan_hechos(
     ]
     contenido = detalle.content.decode()
     assert "respaldo-v1.pdf" in contenido and "Reemplazada" in contenido
-    assert "respaldo-v2.pdf" in contenido and "Vigente" in contenido
-    assert "PENDIENTE" in contenido and "ACEPTADO" in contenido
-    assert (
-        "La categoría de la versión referenciada al registrar el pago no está disponible"
-        in contenido
-    )
-    assert "Los aportes y reemplazos posteriores no modifican el registro de pago" in contenido
+    assert "respaldo-v2.pdf" in contenido and detalle.context["versiones_documentales"][-1].vigente
+    assert "Pendiente de revisión" in contenido
+    assert detalle.context["versiones_documentales"][0].revision_actual.resultado == "ACEPTADO"
     assert referencia_pago not in contenido
     assert str(nueva.referencia_version) not in contenido
     assert nueva.sha256 not in contenido and nueva.archivo not in contenido
@@ -171,7 +174,8 @@ def test_sin_metadatos_puede_aportar_pero_no_reemplazar_por_id(
 
     formulario = cliente.get(url)
     assert formulario.status_code == 200
-    assert "Puede aportar un documento nuevo" in formulario.content.decode()
+    assert 'type="file"' in formulario.content.decode()
+    assert not formulario.context["versiones_reemplazables"]
     assert "respaldo-viejo.pdf" not in formulario.content.decode()
 
     incorporado = _subir(cliente, e.gasto.pk, nombre="respaldo-viejo.pdf")

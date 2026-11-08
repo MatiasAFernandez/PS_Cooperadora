@@ -12,7 +12,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from django.db import transaction
+from django.utils.formats import date_format
 
 from gastos.auth import has_capability
 from gastos.contracts import (
@@ -20,7 +20,14 @@ from gastos.contracts import (
     DocumentVerificationPort,
     tipos_documento_admitidos_para_flujo,
 )
-from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
+from gastos.models import (
+    EstadoSolicitud,
+    EventoPagoExterno,
+    PagoExterno,
+    PagoExternoCambio,
+    PagoExternoOriginal,
+    formatear_importe_es_ar,
+)
 from gastos.queries import visible_expenses
 
 # Formato decimal ASCII estricto admitido para importes: sin exponente, sin
@@ -54,6 +61,14 @@ class PaymentConflictError(PaymentError):
     """Conflicto con un pago existente que posee datos distintos (HTTP 409)."""
 
 
+class PaymentVersionConflictError(PaymentConflictError):
+    """La versión esperada del pago ya no es la vigente (HTTP 409)."""
+
+
+class PaymentDocumentRequiredError(PaymentInvalidInputError):
+    """Falta el comprobante bancario PDF o la decisión ATP exigida."""
+
+
 @dataclass(frozen=True, slots=True)
 class PagoExternoConsulta:
     """Información de presentación de un pago externo para un gasto visible.
@@ -61,6 +76,8 @@ class PagoExternoConsulta:
     Garantía de privacidad y separación documental:
     NO incluye la referencia documental opaca ni metadatos del documento.
     Toma actor y fecha_hora del evento autoritativo asociado.
+    Los identificadores/nombres documentales sólo se completan cuando el actor
+    puede consultar metadatos; la presencia documental se informa como hecho.
     """
 
     id: int
@@ -74,6 +91,335 @@ class PagoExternoConsulta:
     monto_bruto: Decimal = Decimal("0.00")
     monto_retencion_atp: Decimal = Decimal("0.00")
     referencia_atp: str = ""
+    version: int = 1
+    tiene_comprobante_bancario: bool = False
+    comprobante_bancario_id: int | None = None
+    comprobante_bancario_nombre: str = ""
+    comprobante_bancario_tamano: int | None = None
+    tiene_constancia_atp: bool = False
+    constancia_atp_id: int | None = None
+    constancia_atp_nombre: str = ""
+    constancia_atp_tamano: int | None = None
+    constancia_atp_pendiente: bool = False
+    es_registro_legado: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CambioPagoExternoConsulta:
+    """Cambio legible del pago, con snapshots antes/después."""
+
+    numero_version: int
+    tipo: str
+    tipo_mostrado: str
+    motivo: str
+    actor_id: int
+    fecha_hora: datetime
+    antes: str
+    despues: str
+
+
+def _validar_pdf(archivo: Any, *, etiqueta: str) -> Any:
+    """Valida un archivo y exige específicamente PDF; no restringe otros circuitos."""
+    from documentos.policy import ArchivoInvalido, validar_archivo
+
+    try:
+        validado = (
+            archivo
+            if hasattr(archivo, "sha256") and hasattr(archivo, "contenido")
+            else validar_archivo(archivo)
+        )
+    except ArchivoInvalido as exc:
+        raise PaymentInvalidInputError(f"{etiqueta}: {exc}") from exc
+    if getattr(validado, "formato", None) != "application/pdf":
+        raise PaymentInvalidInputError(f"{etiqueta} debe ser un archivo PDF.")
+    return validado
+
+
+def _validar_comprobante_bancario(
+    archivo: Any, *, etiqueta: str = "El comprobante bancario"
+) -> Any:
+    """Valida comprobante bancario exigiendo PDF, JPG, JPEG o PNG con validación de contenido."""
+    from documentos.policy import ArchivoInvalido, validar_archivo
+
+    try:
+        validado = (
+            archivo
+            if hasattr(archivo, "sha256") and hasattr(archivo, "contenido")
+            else validar_archivo(archivo)
+        )
+    except ArchivoInvalido as exc:
+        raise PaymentInvalidInputError(f"{etiqueta}: {exc}") from exc
+    formatos_permitidos = {"application/pdf", "image/jpeg", "image/png"}
+    if getattr(validado, "formato", None) not in formatos_permitidos:
+        raise PaymentInvalidInputError(
+            f"{etiqueta} debe ser un archivo PDF, JPG, JPEG o PNG."
+        )
+    return validado
+
+
+def _normalizar_importes(
+    *,
+    monto_bruto: Any,
+    monto_retencion_atp: Any = Decimal("0.00"),
+    importe: Any = None,
+) -> tuple[Decimal, Decimal, Decimal]:
+    """Deriva el neto en servidor: bruto - retención, sin confiar en el cliente."""
+    from gastos.forms import normalizar_importe_monetario
+
+    if monto_bruto is None and importe is not None:
+        monto_bruto = importe
+    if monto_bruto is None:
+        raise PaymentInvalidInputError("El monto bruto es obligatorio.")
+    if isinstance(monto_bruto, str):
+        monto_bruto = normalizar_importe_monetario(monto_bruto, "monto_bruto")
+    bruto = _validar_decimal_estricto(monto_bruto, "monto_bruto", permitir_cero=False)
+    retencion_raw = (
+        Decimal("0.00") if monto_retencion_atp in (None, "") else monto_retencion_atp
+    )
+    if isinstance(retencion_raw, str):
+        retencion_raw = normalizar_importe_monetario(retencion_raw, "monto_retencion_atp")
+    retencion = _validar_decimal_estricto(
+        retencion_raw, "monto_retencion_atp", permitir_cero=True
+    )
+    if retencion >= bruto:
+        raise PaymentInvalidInputError("La retención debe ser menor que el monto bruto.")
+    neto = (bruto - retencion).quantize(Decimal("0.01"))
+    if neto <= Decimal("0.00"):
+        raise PaymentInvalidInputError("El neto transferido debe ser estrictamente positivo.")
+    if importe is not None:
+        if isinstance(importe, str):
+            importe = normalizar_importe_monetario(importe, "importe")
+        neto_informado = _validar_decimal_estricto(importe, "importe", permitir_cero=False)
+        if neto_informado != neto:
+            raise PaymentInvalidInputError(
+                "El importe neto no coincide con monto bruto menos retención."
+            )
+    return bruto, retencion, neto
+
+
+def _snapshot_pago(pago: PagoExterno) -> dict[str, Any]:
+    """Snapshot JSON cerrado del estado efectivo para el historial."""
+    comprobante = pago.comprobante_bancario if pago.comprobante_bancario_id else None
+    constancia = pago.constancia_atp if pago.constancia_atp_id else None
+
+    def _doc(doc: Any) -> dict[str, Any] | None:
+        if doc is None:
+            return None
+        return {
+            "documento_id": doc.pk,
+            "sha256": doc.sha256,
+            "nombre": doc.nombre_original,
+            "tamano": doc.tamano,
+            "tipo": doc.tipo,
+            "version": doc.version,
+        }
+
+    return {
+        "version": pago.version,
+        "fecha_pago": pago.fecha_pago.isoformat(),
+        "monto_bruto": f"{Decimal(str(pago.monto_bruto)):.2f}",
+        "monto_retencion_atp": f"{Decimal(str(pago.monto_retencion_atp)):.2f}",
+        "importe": f"{Decimal(str(pago.importe)):.2f}",
+        "moneda": pago.moneda,
+        "referencia_externa": pago.referencia_externa,
+        "referencia_documental": pago.referencia_documental,
+        "referencia_atp": pago.referencia_atp,
+        "comprobante": _doc(comprobante),
+        "constancia": _doc(constancia),
+        "comprobante_sha256": comprobante.sha256 if comprobante else "",
+        "constancia_sha256": constancia.sha256 if constancia else "",
+        "es_legado": pago.comprobante_bancario_id is None,
+    }
+
+
+def _snapshot_original(pago: PagoExterno) -> dict[str, Any]:
+    """Representación original del alta; si falta, se usa el estado legado actual."""
+    original = PagoExternoOriginal.objects.filter(pago_id=pago.pk).first()
+    if original is None:
+        return _snapshot_pago(pago)
+    return {
+        "version": 1,
+        "fecha_pago": original.fecha_pago.isoformat(),
+        "monto_bruto": f"{original.monto_bruto:.2f}",
+        "monto_retencion_atp": f"{original.monto_retencion_atp:.2f}",
+        "importe": f"{original.importe:.2f}",
+        "moneda": original.moneda,
+        "referencia_externa": original.referencia_externa,
+        "referencia_documental": original.referencia_documental,
+        "referencia_atp": original.referencia_atp,
+        "comprobante_sha256": original.comprobante_sha256,
+        "constancia_sha256": original.constancia_sha256,
+        "comprobante_documento_id": original.comprobante_bancario_id,
+        "constancia_documento_id": original.constancia_atp_id,
+        "es_legado": original.es_legado,
+    }
+
+
+def _coincide_alta_original(
+    pago: PagoExterno,
+    *,
+    fecha_pago: date,
+    monto_bruto: Decimal,
+    monto_retencion_atp: Decimal,
+    importe: Decimal,
+    referencia_externa: str,
+    referencia_documental: str,
+    referencia_atp: str,
+    comprobante_sha256: str | None,
+    constancia_sha256: str | None,
+) -> bool:
+    """Compara el reenvío con el alta original, nunca con una rectificación."""
+    original = _snapshot_original(pago)
+    if original.get("fecha_pago") != fecha_pago.isoformat():
+        return False
+    if original.get("monto_bruto") != f"{monto_bruto:.2f}":
+        return False
+    if original.get("monto_retencion_atp") != f"{monto_retencion_atp:.2f}":
+        return False
+    if original.get("importe") != f"{importe:.2f}":
+        return False
+    if original.get("referencia_externa") != referencia_externa:
+        return False
+    if original.get("referencia_documental") != referencia_documental:
+        return False
+    if original.get("referencia_atp") != referencia_atp:
+        return False
+    if comprobante_sha256:
+        if original.get("comprobante_sha256") and (
+            original["comprobante_sha256"] != comprobante_sha256
+        ):
+            return False
+    if constancia_sha256:
+        if original.get("constancia_sha256") and (
+            original["constancia_sha256"] != constancia_sha256
+        ):
+            return False
+    return True
+
+
+def _exigir_capacidades_documentales(actor: Any) -> None:
+    """Reutiliza las capacidades vigentes del servicio documental, sin ampliarlas."""
+    if not has_capability(actor, "documentos.incorporar"):
+        raise PaymentPermissionDeniedError(
+            "El actor no posee la capacidad 'documentos.incorporar'."
+        )
+    # La clasificación EXTERNO_BANCO/EXTERNO_ATP del servicio documental exige
+    # consulta global del circuito de gasto. No se modifica ese contrato.
+    if not has_capability(actor, "gastos.consultar_todas"):
+        raise PaymentPermissionDeniedError(
+            "La incorporación documental del pago exige visibilidad global de gastos."
+        )
+
+
+def _exigir_proveedor(proveedor: Any) -> None:
+    if proveedor is None or not hasattr(proveedor, "verificar_y_bloquear_documento"):
+        raise PaymentInvalidInputError("Se requiere un puerto proveedor documental obligatorio.")
+
+
+def _crear_original_si_falta(pago: PagoExterno) -> None:
+    """Conserva el estado legado antes de la primera rectificación, sin fabricar PDFs."""
+    if PagoExternoOriginal.objects.filter(pago_id=pago.pk).exists():
+        return
+    PagoExternoOriginal.objects.create(
+        pago=pago,
+        importe=pago.importe,
+        monto_bruto=pago.monto_bruto,
+        monto_retencion_atp=pago.monto_retencion_atp,
+        moneda=pago.moneda,
+        fecha_pago=pago.fecha_pago,
+        referencia_externa=pago.referencia_externa,
+        referencia_documental=pago.referencia_documental,
+        referencia_atp=pago.referencia_atp,
+        comprobante_bancario_id=pago.comprobante_bancario_id,
+        constancia_atp_id=pago.constancia_atp_id,
+        comprobante_sha256=(
+            pago.comprobante_bancario.sha256 if pago.comprobante_bancario_id else ""
+        ),
+        constancia_sha256=(pago.constancia_atp.sha256 if pago.constancia_atp_id else ""),
+        es_legado=True,
+    )
+
+
+def _cambio_repetido(
+    pago: PagoExterno,
+    *,
+    version_esperada: int,
+    actor: Any,
+    motivo: str,
+    datos_despues: dict[str, Any],
+    tipo: str,
+) -> bool:
+    """Reconoce la misma operación ya aplicada tras una respuesta perdida."""
+    if version_esperada != pago.version - 1:
+        return False
+    ultimo = pago.cambios.order_by("-numero_version").first()
+    if ultimo is None or ultimo.numero_version != pago.version:
+        return False
+    if ultimo.actor_id != actor.subject_id or ultimo.motivo != motivo:
+        return False
+    tipos_validos = {tipo}
+    if tipo in {"comprobante_reemplazado", "comprobante_incorporado"}:
+        tipos_validos = {"comprobante_reemplazado", "comprobante_incorporado"}
+    if tipo in {"rectificacion", "atp_retirada"}:
+        tipos_validos = {"rectificacion", "atp_retirada"}
+    if ultimo.tipo not in tipos_validos:
+        return False
+    comparables = {
+        clave: ultimo.datos_despues.get(clave)
+        for clave in datos_despues
+        if clave not in ("version", "comprobante", "constancia")
+    }
+    esperados = {
+        clave: valor
+        for clave, valor in datos_despues.items()
+        if clave not in ("version", "comprobante", "constancia")
+    }
+    if comparables != esperados:
+        return False
+    for clave in ("comprobante", "constancia"):
+        anterior = ultimo.datos_despues.get(clave) or {}
+        nuevo = datos_despues.get(clave) or {}
+        if (anterior.get("sha256"), anterior.get("nombre")) != (
+            nuevo.get("sha256"),
+            nuevo.get("nombre"),
+        ):
+            return False
+    return True
+
+
+def _resolver_version(
+    pago: PagoExterno,
+    *,
+    version_esperada: int,
+    actor: Any,
+    motivo: str,
+    datos_despues: dict[str, Any],
+    tipo: str,
+) -> bool:
+    """Devuelve True si la operación ya estaba aplicada; False si debe aplicarse."""
+    if version_esperada == pago.version:
+        return False
+    if _cambio_repetido(
+        pago,
+        version_esperada=version_esperada,
+        actor=actor,
+        motivo=motivo,
+        datos_despues=datos_despues,
+        tipo=tipo,
+    ):
+        return True
+    raise PaymentVersionConflictError(
+        "La versión esperada del pago no coincide con la versión efectiva."
+    )
+
+
+def _validar_motivo(motivo: Any) -> str:
+    if not isinstance(motivo, str) or not motivo.strip():
+        raise PaymentInvalidInputError("El motivo de la rectificación es obligatorio.")
+    norm = motivo.strip()
+    if len(norm) > 500:
+        raise PaymentInvalidInputError("El motivo no puede superar los 500 caracteres.")
+    return norm
 
 
 def validate_payment_input(
@@ -91,8 +437,9 @@ def validate_payment_input(
       silencioso. Máximo 12 dígitos en total (Decimal(12, 2)).
     - Fecha: sólo date o ISO YYYY-MM-DD (rechaza datetime). No inventa regla de fecha futura.
     - Referencias: estrictamente de tipo str (sin coerción con str()). La referencia externa
-      recorta espacios exteriores; la referencia documental opaca se preserva exactamente.
-      Ambas rechazan caracteres NUL, valores vacíos y longitudes mayores a 128 o 255 caracteres.
+      recorta espacios exteriores y puede quedar vacía; la referencia documental opaca se
+      preserva exactamente y no puede quedar vacía. Ambas rechazan caracteres NUL y
+      longitudes mayores a 128 o 255 caracteres.
     """
     # 1. Validación estricta de Importe
     if (
@@ -181,11 +528,6 @@ def validate_payment_input(
         raise PaymentInvalidInputError("La referencia externa no puede contener caracteres nulos.")
 
     norm_ref = referencia_externa.strip()
-    if not norm_ref:
-        raise PaymentInvalidInputError(
-            "La referencia externa no puede ser vacía ni contener sólo espacios."
-        )
-
     if len(norm_ref) > 128:
         raise PaymentInvalidInputError(
             f"La referencia externa excede el límite de 128 caracteres (longitud: {len(norm_ref)})."
@@ -374,184 +716,601 @@ def calcular_huella_pago(
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-@transaction.atomic
 def registrar_pago_externo(
     *,
     actor: Any,
     solicitud_id: int,
-    importe: Any,
     fecha_pago: Any,
-    referencia_externa: Any,
     referencia_documental: Any,
     monto_bruto: Any = None,
     monto_retencion_atp: Any = Decimal("0.00"),
+    referencia_externa: Any = "",
     referencia_atp: Any = "",
+    comprobante_bancario: Any = None,
+    constancia_atp: Any = None,
+    incorporar_atp_despues: bool = False,
+    importe: Any = None,
     document_provider: DocumentVerificationPort | None = None,
 ) -> PagoExterno:
-    """Registra de forma atómica un pago externo sobre una solicitud de gasto visible y aceptada.
+    """Registra un pago externo documentado y compensa archivos si algo falla.
 
-    Secuencia de ejecución y garantías:
-    1. Bloqueo pesimista sobre la fila visible del gasto con select_for_update.
-       Precedencia: si la solicitud es ajena o inexistente, lanza 404 antes de comprobar permisos.
-    2. Comprobación de capacidad 'gastos.registrar_pago' (403). gastos.decidir NO concede pago.
-    3. Exigencia de estado ACEPTADA (409).
-    4. Validación y normalización estricta de importes, fecha y referencias (400).
-    5. Comprobación de idempotencia sobre la fila de pago asociada:
-       - Si ya existe un pago idéntico (compara huella Y todos los campos normalizados), retorna el
-         pago previo sin invocar ni requerir document_provider y sin duplicar eventos.
-       - Si existe un pago previo pero con datos distintos, emite PaymentConflictError (409).
-    6. Sólo al crear un nuevo registro se valida la dependencia de document_provider y se invoca
-       dentro de esta transacción. Orden de lock: gasto primero, versión documental después.
-       Valida que la evidencia (proof) devuelta coincida exactamente en solicitud_id,
-       referencia documental y tipo admitido.
-    7. Escritura conjunta atómica de PagoExterno y EventoPagoExterno (con actor y timestamp
-       autoritativos). Rollback total ante cualquier falla en el guardado del pago o del evento.
+    Reglas del corte:
+    - El neto se deriva en servidor de ``monto_bruto - monto_retencion_atp``.
+    - El comprobante bancario PDF es obligatorio para un alta nueva. Un reenvío
+      idéntico al alta original se resuelve sin PDF, sin C01 y sin proveedor.
+    - La constancia ATP es un documento distinto: con retención positiva se
+      adjunta ahora o se elige explícitamente incorporarla después.
+    - ``operacion_documental`` es dueño de la transacción exterior; la carga de
+      archivos se compensa si falla el segundo documento o la escritura SQL.
+    - El reenvío se compara con ``PagoExternoOriginal``, nunca con importes
+      corregidos ni con huellas históricas recalculadas.
     """
     if actor is None:
         raise PaymentPermissionDeniedError("Se requiere un actor autenticado.")
 
-    # 1. Obtener y bloquear exclusivamente sobre visible_expenses(actor)
-    # Precedencia estricta: objeto ajeno o inexistente genera 404 antes de comprobar permisos (403)
-    solicitud = (
-        visible_expenses(actor)
-        .select_for_update()
-        .filter(pk=solicitud_id)
-        .first()
-    )
-    if solicitud is None:
+    solicitud_inicial = visible_expenses(actor).filter(pk=solicitud_id).first()
+    if solicitud_inicial is None:
         raise PaymentExpenseNotFoundError(f"Solicitud #{solicitud_id} no visible o inexistente.")
 
-    # 2. Comprobar capacidad específica de registro de pago
     if not has_capability(actor, "gastos.registrar_pago"):
         raise PaymentPermissionDeniedError(
             "El actor no posee la capacidad 'gastos.registrar_pago'."
         )
 
-    # 3. Exigir estado ACEPTADA
-    if solicitud.estado != EstadoSolicitud.ACEPTADA:
+    if solicitud_inicial.estado != EstadoSolicitud.ACEPTADA:
         raise PaymentInvalidExpenseStateError(
-            f"La solicitud #{solicitud_id} se encuentra en estado '{solicitud.estado}'; "
-            "sólo se pueden registrar pagos sobre solicitudes aceptadas."
+            f"La solicitud #{solicitud_id} se encuentra en estado "
+            f"'{solicitud_inicial.estado}'; sólo se pueden registrar pagos sobre "
+            "solicitudes aceptadas."
         )
 
-    # 4. Validar y normalizar parámetros
-    valid_importe, valid_fecha, valid_ref_ext, valid_doc_ref = validate_payment_input(
+    bruto, retencion, neto = _normalizar_importes(
+        monto_bruto=monto_bruto,
+        monto_retencion_atp=monto_retencion_atp,
         importe=importe,
+    )
+    _, valid_fecha, valid_ref_ext, valid_doc_ref = validate_payment_input(
+        importe=neto,
         fecha_pago=fecha_pago,
         referencia_externa=referencia_externa,
         referencia_documental=referencia_documental,
     )
-    valid_monto_bruto, valid_retencion_atp, valid_ref_atp = validate_retencion_atp_input(
-        importe=valid_importe,
-        monto_bruto=monto_bruto,
-        monto_retencion_atp=monto_retencion_atp,
+    valid_bruto, valid_retencion, valid_ref_atp = validate_retencion_atp_input(
+        importe=neto,
+        monto_bruto=bruto,
+        monto_retencion_atp=retencion,
         referencia_atp=referencia_atp,
     )
-    huella = calcular_huella_pago(
-        solicitud_id=solicitud.pk,
-        importe=valid_importe,
-        moneda="ARS",
-        fecha_pago=valid_fecha,
-        referencia_externa=valid_ref_ext,
-        referencia_documental=valid_doc_ref,
-        monto_bruto=valid_monto_bruto,
-        monto_retencion_atp=valid_retencion_atp,
-        referencia_atp=valid_ref_atp,
+
+    validado_banco = (
+        _validar_comprobante_bancario(comprobante_bancario, etiqueta="El comprobante bancario")
+        if comprobante_bancario is not None
+        else None
+    )
+    validado_atp = (
+        _validar_pdf(constancia_atp, etiqueta="La constancia ATP")
+        if constancia_atp is not None
+        else None
     )
 
-    # 5. Comprobar reenvíos previos sobre la fila bloqueada
-    pago_existente = PagoExterno.objects.filter(solicitud=solicitud).first()
-    if pago_existente is not None:
-        es_identico = (
-            pago_existente.huella_idempotencia == huella
-            and pago_existente.importe == valid_importe
-            and pago_existente.moneda == "ARS"
-            and pago_existente.fecha_pago == valid_fecha
-            and pago_existente.referencia_externa == valid_ref_ext
-            and pago_existente.referencia_documental == valid_doc_ref
-            and pago_existente.monto_bruto == valid_monto_bruto
-            and pago_existente.monto_retencion_atp == valid_retencion_atp
-            and pago_existente.referencia_atp == valid_ref_atp
+    from documentos.models import Documento
+    from documentos.operaciones import operacion_documental
+    from documentos.services import incorporar
+
+    with operacion_documental() as escrituras:
+        solicitud = (
+            visible_expenses(actor).select_for_update().filter(pk=solicitud_id).first()
         )
-        if es_identico:
-            # Reenvío idéntico: reautorizado con éxito, retorna sin requerir provider
-            return pago_existente
-        # Conflicto con datos distintos
-        raise PaymentConflictError(
-            f"Ya existe un pago registrado para la solicitud #{solicitud_id} con datos diferentes."
+        if solicitud is None:
+            raise PaymentExpenseNotFoundError(
+                f"Solicitud #{solicitud_id} no visible o inexistente."
+            )
+        if not has_capability(actor, "gastos.registrar_pago"):
+            raise PaymentPermissionDeniedError(
+                "El actor no posee la capacidad 'gastos.registrar_pago'."
+            )
+        if solicitud.estado != EstadoSolicitud.ACEPTADA:
+            raise PaymentInvalidExpenseStateError(
+                f"La solicitud #{solicitud_id} se encuentra en estado "
+                f"'{solicitud.estado}'; sólo se pueden registrar pagos sobre "
+                "solicitudes aceptadas."
+            )
+
+        pago_existente = (
+            PagoExterno.objects.select_for_update().filter(solicitud=solicitud).first()
         )
+        if pago_existente is not None:
+            if _coincide_alta_original(
+                pago_existente,
+                fecha_pago=valid_fecha,
+                monto_bruto=valid_bruto,
+                monto_retencion_atp=valid_retencion,
+                importe=neto,
+                referencia_externa=valid_ref_ext,
+                referencia_documental=valid_doc_ref,
+                referencia_atp=valid_ref_atp,
+                comprobante_sha256=validado_banco.sha256 if validado_banco else None,
+                constancia_sha256=validado_atp.sha256 if validado_atp else None,
+            ):
+                return pago_existente
+            raise PaymentConflictError(
+                f"Ya existe un pago registrado para la solicitud #{solicitud_id} "
+                "con datos diferentes."
+            )
 
-    # 6. Sólo para nuevo registro: validar proveedor documental y verificar evidencia exacta
-    if document_provider is None or not hasattr(
-        document_provider, "verificar_y_bloquear_documento"
-    ):
-        raise PaymentInvalidInputError("Se requiere un puerto proveedor documental obligatorio.")
+        if validado_banco is None:
+            raise PaymentDocumentRequiredError(
+                "El comprobante bancario es obligatorio para registrar el pago."
+            )
+        if valid_retencion > Decimal("0.00"):
+            if incorporar_atp_despues:
+                if validado_atp is not None:
+                    raise PaymentInvalidInputError(
+                        "Al diferir la constancia ATP no se debe adjuntar un archivo."
+                    )
+                if valid_ref_atp:
+                    raise PaymentInvalidInputError(
+                        "Al diferir la constancia ATP no se debe informar una referencia."
+                    )
+            elif validado_atp is None:
+                raise PaymentDocumentRequiredError(
+                    "Elegí adjuntar la constancia ATP ahora o indicá explícitamente que "
+                    "la incorporarás después."
+                )
+        else:
+            if validado_atp is not None:
+                raise PaymentInvalidInputError(
+                    "Con retención cero no corresponde incorporar una constancia ATP."
+                )
+            if incorporar_atp_despues:
+                raise PaymentInvalidInputError(
+                    "Con retención cero no existe una constancia ATP pendiente."
+                )
+        _exigir_capacidades_documentales(actor)
+        _exigir_proveedor(document_provider)
 
-    tipos_admitidos = tipos_documento_admitidos_para_flujo(
-        getattr(solicitud, "tipo_flujo", None)
-    )
-    doc_verificado = document_provider.verificar_y_bloquear_documento(
-        actor=actor,
-        gasto=solicitud,
-        referencia_documental=valid_doc_ref,
-        tipos_admitidos=tipos_admitidos,
-    )
-    if doc_verificado is None:
-        raise DocumentVerificationError(
-            "El proveedor no devolvió evidencia documental verificada."
+        tipos_admitidos = tipos_documento_admitidos_para_flujo(
+            getattr(solicitud, "tipo_flujo", None)
         )
-
-    evidencia_solicitud_id = getattr(doc_verificado, "solicitud_id", None)
-    if evidencia_solicitud_id is None:
-        evidencia_solicitud_id = getattr(doc_verificado, "gasto_id", None)
-
-    if (
-        evidencia_solicitud_id != solicitud.pk
-        or getattr(doc_verificado, "referencia_documental", None) != valid_doc_ref
-        or getattr(doc_verificado, "tipo_documento", None) not in tipos_admitidos
-    ):
-        raise DocumentVerificationError(
-            "La evidencia documental no corresponde al gasto bloqueado, a la referencia "
-            "solicitada o posee un tipo no admitido para la modalidad de gasto."
+        doc_verificado = document_provider.verificar_y_bloquear_documento(
+            actor=actor,
+            gasto=solicitud,
+            referencia_documental=valid_doc_ref,
+            tipos_admitidos=tipos_admitidos,
         )
+        if doc_verificado is None:
+            raise DocumentVerificationError(
+                "El proveedor no devolvió evidencia documental verificada."
+            )
+        evidencia_solicitud_id = getattr(doc_verificado, "solicitud_id", None)
+        if evidencia_solicitud_id is None:
+            evidencia_solicitud_id = getattr(doc_verificado, "gasto_id", None)
+        if (
+            evidencia_solicitud_id != solicitud.pk
+            or getattr(doc_verificado, "referencia_documental", None) != valid_doc_ref
+            or getattr(doc_verificado, "tipo_documento", None) not in tipos_admitidos
+        ):
+            raise DocumentVerificationError(
+                "La evidencia documental no corresponde al gasto bloqueado, a la "
+                "referencia solicitada o posee un tipo no admitido para la modalidad."
+            )
 
-    # 7. Escritura conjunta atómica de pago y evento autoritativo
-    pago = PagoExterno.objects.create(
-        solicitud=solicitud,
-        importe=valid_importe,
-        monto_bruto=valid_monto_bruto,
-        monto_retencion_atp=valid_retencion_atp,
-        referencia_atp=valid_ref_atp,
-        moneda="ARS",
-        fecha_pago=valid_fecha,
-        referencia_externa=valid_ref_ext,
-        referencia_documental=doc_verificado.referencia_documental,
-        huella_idempotencia=huella,
+        doc_banco = incorporar(
+            actor=actor,
+            referencia=f"gastos:{solicitud.pk}",
+            archivo=validado_banco,
+            tipo=Documento.Tipo.COMPROBANTE_PAGO,
+            procedencia=Documento.Procedencia.EXTERNO_BANCO,
+            _escrituras=escrituras,
+        )
+        doc_atp = None
+        if validado_atp is not None:
+            doc_atp = incorporar(
+                actor=actor,
+                referencia=f"gastos:{solicitud.pk}",
+                archivo=validado_atp,
+                tipo=Documento.Tipo.CONSTANCIA_RETENCION_ATP,
+                procedencia=Documento.Procedencia.EXTERNO_ATP,
+                _escrituras=escrituras,
+            )
+
+        pago = PagoExterno.objects.create(
+            solicitud=solicitud,
+            importe=neto,
+            monto_bruto=valid_bruto,
+            monto_retencion_atp=valid_retencion,
+            referencia_atp=valid_ref_atp,
+            moneda="ARS",
+            fecha_pago=valid_fecha,
+            referencia_externa=valid_ref_ext,
+            referencia_documental=doc_verificado.referencia_documental,
+            comprobante_bancario=doc_banco,
+            constancia_atp=doc_atp,
+            version=1,
+            huella_idempotencia=calcular_huella_pago(
+                solicitud_id=solicitud.pk,
+                importe=neto,
+                moneda="ARS",
+                fecha_pago=valid_fecha,
+                referencia_externa=valid_ref_ext,
+                referencia_documental=valid_doc_ref,
+                monto_bruto=valid_bruto,
+                monto_retencion_atp=valid_retencion,
+                referencia_atp=valid_ref_atp,
+            ),
+        )
+        EventoPagoExterno.objects.create(
+            pago=pago,
+            tipo_evento="pago_externo_registrado",
+            actor_id=actor.subject_id,
+        )
+        PagoExternoOriginal.objects.create(
+            pago=pago,
+            importe=neto,
+            monto_bruto=valid_bruto,
+            monto_retencion_atp=valid_retencion,
+            moneda="ARS",
+            fecha_pago=valid_fecha,
+            referencia_externa=valid_ref_ext,
+            referencia_documental=valid_doc_ref,
+            referencia_atp=valid_ref_atp,
+            comprobante_bancario=doc_banco,
+            constancia_atp=doc_atp,
+            comprobante_sha256=doc_banco.sha256,
+            constancia_sha256=doc_atp.sha256 if doc_atp else "",
+            es_legado=False,
+        )
+        return pago
+
+
+def rectificar_pago_externo(
+    *,
+    actor: Any,
+    solicitud_id: int,
+    version_esperada: Any,
+    motivo: Any,
+    fecha_pago: Any,
+    referencia_documental: Any = None,
+    monto_bruto: Any = None,
+    monto_retencion_atp: Any = Decimal("0.00"),
+    referencia_externa: Any = "",
+    referencia_atp: Any = "",
+    comprobante_bancario: Any = None,
+) -> PagoExterno:
+    """Rectifica datos efectivos y/o el comprobante bancario con historial append-only.
+
+    No anula transferencias reales, no cambia beneficiario/cuenta y no reasigna
+    el respaldo comercial C01. La versión esperada serializa la concurrencia y
+    reconoce un reenvío exacto ya aplicado sin duplicar documentos ni eventos.
+    """
+    if actor is None:
+        raise PaymentPermissionDeniedError("Se requiere un actor autenticado.")
+    solicitud_inicial = visible_expenses(actor).filter(pk=solicitud_id).first()
+    if solicitud_inicial is None:
+        raise PaymentExpenseNotFoundError(f"Solicitud #{solicitud_id} no visible o inexistente.")
+    if not has_capability(actor, "gastos.registrar_pago"):
+        raise PaymentPermissionDeniedError(
+            "El actor no posee la capacidad 'gastos.registrar_pago'."
+        )
+    pago_inicial = PagoExterno.objects.filter(solicitud_id=solicitud_id).first()
+    if pago_inicial is None:
+        raise PaymentInvalidExpenseStateError(
+            "La solicitud no tiene un pago registrado para rectificar."
+        )
+    try:
+        version = int(version_esperada)
+    except (TypeError, ValueError):
+        raise PaymentInvalidInputError("La versión esperada del pago es obligatoria.") from None
+    if version <= 0:
+        raise PaymentInvalidInputError("La versión esperada del pago debe ser positiva.")
+    motivo_norm = _validar_motivo(motivo)
+    bruto, retencion, neto = _normalizar_importes(
+        monto_bruto=monto_bruto,
+        monto_retencion_atp=monto_retencion_atp,
     )
-
-    EventoPagoExterno.objects.create(
-        pago=pago,
-        tipo_evento="pago_externo_registrado",
-        actor_id=actor.subject_id,
+    if referencia_documental is None:
+        referencia_documental = pago_inicial.referencia_documental
+    _, valid_fecha, valid_ref_ext, valid_doc_ref = validate_payment_input(
+        importe=neto,
+        fecha_pago=fecha_pago,
+        referencia_externa=referencia_externa,
+        referencia_documental=referencia_documental,
     )
+    _, _, valid_ref_atp = validate_retencion_atp_input(
+        importe=neto,
+        monto_bruto=bruto,
+        monto_retencion_atp=retencion,
+        referencia_atp=referencia_atp,
+    )
+    validado_banco = (
+        _validar_comprobante_bancario(comprobante_bancario, etiqueta="El comprobante bancario")
+        if comprobante_bancario is not None
+        else None
+    )
+    if validado_banco is not None:
+        _exigir_capacidades_documentales(actor)
 
-    return pago
+    from documentos.models import Documento
+    from documentos.operaciones import operacion_documental
+    from documentos.services import incorporar
+
+    with operacion_documental() as escrituras:
+        solicitud = (
+            visible_expenses(actor).select_for_update().filter(pk=solicitud_id).first()
+        )
+        if solicitud is None:
+            raise PaymentExpenseNotFoundError(
+                f"Solicitud #{solicitud_id} no visible o inexistente."
+            )
+        if not has_capability(actor, "gastos.registrar_pago"):
+            raise PaymentPermissionDeniedError(
+                "El actor no posee la capacidad 'gastos.registrar_pago'."
+            )
+        # PostgreSQL rechaza FOR UPDATE sobre el lado anulable del join con
+        # documentos: el lock cubre sólo la fila del pago. Las raíces
+        # documentales se bloquean después, dentro de `incorporar`.
+        pago = (
+            PagoExterno.objects.select_for_update(of=("self",))
+            .select_related("comprobante_bancario", "constancia_atp")
+            .filter(solicitud_id=solicitud.pk)
+            .first()
+        )
+        if pago is None:
+            raise PaymentInvalidExpenseStateError(
+                "La solicitud no tiene un pago registrado para rectificar."
+            )
+        if pago.referencia_documental != valid_doc_ref:
+            raise PaymentConflictError(
+                "La referencia documental del pago no coincide con la versión esperada."
+            )
+
+        retencion_cero = retencion == Decimal("0.00")
+        constancia_retirada = retencion_cero and pago.constancia_atp_id is not None
+        nuevo_documento = validado_banco is not None
+
+        datos_antes = _snapshot_pago(pago)
+        tipo = "rectificacion"
+        if constancia_retirada:
+            tipo = "atp_retirada"
+        elif nuevo_documento:
+            tipo = (
+                "comprobante_reemplazado"
+                if pago.comprobante_bancario_id
+                else "comprobante_incorporado"
+            )
+        datos_despues_previstos = dict(datos_antes)
+        datos_despues_previstos.update(
+            {
+                "fecha_pago": valid_fecha.isoformat(),
+                "monto_bruto": f"{bruto:.2f}",
+                "monto_retencion_atp": f"{retencion:.2f}",
+                "importe": f"{neto:.2f}",
+                "referencia_externa": valid_ref_ext,
+                "referencia_atp": valid_ref_atp,
+            }
+        )
+        if constancia_retirada:
+            datos_despues_previstos["constancia"] = None
+        if validado_banco is not None:
+            datos_despues_previstos["comprobante"] = {
+                "documento_id": 0,
+                "sha256": validado_banco.sha256,
+                "nombre": validado_banco.nombre,
+                "tamano": len(validado_banco.contenido),
+                "tipo": "COMPROBANTE_PAGO",
+                "version": 0,
+            }
+            datos_despues_previstos["es_legado"] = False
+        if _resolver_version(
+            pago,
+            version_esperada=version,
+            actor=actor,
+            motivo=motivo_norm,
+            datos_despues=datos_despues_previstos,
+            tipo=tipo,
+        ):
+            return pago
+
+        if (
+            not nuevo_documento
+            and not constancia_retirada
+            and pago.fecha_pago == valid_fecha
+            and pago.monto_bruto == bruto
+            and pago.monto_retencion_atp == retencion
+            and pago.importe == neto
+            and pago.referencia_externa == valid_ref_ext
+            and pago.referencia_atp == valid_ref_atp
+        ):
+            raise PaymentInvalidInputError("No hay cambios para rectificar en el pago.")
+
+        _crear_original_si_falta(pago)
+        documento_anterior = None
+        documento_nuevo = None
+        if constancia_retirada:
+            documento_anterior = pago.constancia_atp
+            pago.constancia_atp = None
+        if validado_banco is not None:
+            documento_anterior = pago.comprobante_bancario
+            documento_nuevo = incorporar(
+                actor=actor,
+                referencia=f"gastos:{solicitud.pk}",
+                archivo=validado_banco,
+                tipo=Documento.Tipo.COMPROBANTE_PAGO,
+                procedencia=Documento.Procedencia.EXTERNO_BANCO,
+                reemplaza_id=pago.comprobante_bancario_id,
+                _escrituras=escrituras,
+            )
+            pago.comprobante_bancario = documento_nuevo
+
+        pago.fecha_pago = valid_fecha
+        pago.monto_bruto = bruto
+        pago.monto_retencion_atp = retencion
+        pago.importe = neto
+        pago.referencia_externa = valid_ref_ext
+        pago.referencia_atp = valid_ref_atp
+        pago.version = pago.version + 1
+        pago.save(
+            update_fields=[
+                "fecha_pago",
+                "monto_bruto",
+                "monto_retencion_atp",
+                "importe",
+                "referencia_externa",
+                "referencia_atp",
+                "comprobante_bancario",
+                "constancia_atp",
+                "version",
+            ]
+        )
+        datos_despues = _snapshot_pago(pago)
+        PagoExternoCambio.objects.create(
+            pago=pago,
+            numero_version=pago.version,
+            tipo=tipo,
+            motivo=motivo_norm,
+            actor_id=actor.subject_id,
+            datos_antes=datos_antes,
+            datos_despues=datos_despues,
+            documento_anterior=documento_anterior,
+            documento_nuevo=documento_nuevo,
+        )
+        return pago
+
+
+def incorporar_constancia_atp_posterior(
+    *,
+    actor: Any,
+    solicitud_id: int,
+    version_esperada: Any,
+    motivo: Any,
+    constancia_atp: Any,
+) -> PagoExterno:
+    """Incorpora la constancia ATP después del pago, con motivo y versión esperada."""
+    if actor is None:
+        raise PaymentPermissionDeniedError("Se requiere un actor autenticado.")
+    solicitud_inicial = visible_expenses(actor).filter(pk=solicitud_id).first()
+    if solicitud_inicial is None:
+        raise PaymentExpenseNotFoundError(f"Solicitud #{solicitud_id} no visible o inexistente.")
+    if not has_capability(actor, "gastos.registrar_pago"):
+        raise PaymentPermissionDeniedError(
+            "El actor no posee la capacidad 'gastos.registrar_pago'."
+        )
+    try:
+        version = int(version_esperada)
+    except (TypeError, ValueError):
+        raise PaymentInvalidInputError("La versión esperada del pago es obligatoria.") from None
+    if version <= 0:
+        raise PaymentInvalidInputError("La versión esperada del pago debe ser positiva.")
+    motivo_norm = _validar_motivo(motivo)
+    if constancia_atp is None:
+        raise PaymentDocumentRequiredError("Seleccioná el PDF de la constancia ATP.")
+    validado_atp = _validar_pdf(constancia_atp, etiqueta="La constancia ATP")
+    _exigir_capacidades_documentales(actor)
+
+    from documentos.models import Documento
+    from documentos.operaciones import operacion_documental
+    from documentos.services import incorporar
+
+    with operacion_documental() as escrituras:
+        solicitud = (
+            visible_expenses(actor).select_for_update().filter(pk=solicitud_id).first()
+        )
+        if solicitud is None:
+            raise PaymentExpenseNotFoundError(
+                f"Solicitud #{solicitud_id} no visible o inexistente."
+            )
+        if not has_capability(actor, "gastos.registrar_pago"):
+            raise PaymentPermissionDeniedError(
+                "El actor no posee la capacidad 'gastos.registrar_pago'."
+            )
+        # Mismo criterio que en rectificar: el join anulable no se bloquea.
+        pago = (
+            PagoExterno.objects.select_for_update(of=("self",))
+            .select_related("constancia_atp")
+            .filter(solicitud_id=solicitud.pk)
+            .first()
+        )
+        if pago is None:
+            raise PaymentInvalidExpenseStateError(
+                "La solicitud no tiene un pago registrado."
+            )
+        if pago.monto_retencion_atp <= Decimal("0.00"):
+            raise PaymentInvalidInputError(
+                "Con retención cero no corresponde una constancia ATP."
+            )
+        if pago.version == version and pago.constancia_atp_id is not None:
+            raise PaymentConflictError("El pago ya tiene una constancia ATP vinculada.")
+        if pago.constancia_atp_id is not None:
+            datos_antes = _snapshot_pago(pago)
+            datos_despues = dict(datos_antes)
+            if _resolver_version(
+                pago,
+                version_esperada=version,
+                actor=actor,
+                motivo=motivo_norm,
+                datos_despues=datos_despues,
+                tipo="atp_incorporada",
+            ):
+                return pago
+            raise PaymentConflictError("El pago ya tiene una constancia ATP vinculada.")
+
+        datos_antes = _snapshot_pago(pago)
+        datos_despues_previstos = dict(datos_antes)
+        datos_despues_previstos["constancia"] = {
+            "documento_id": 0,
+            "sha256": validado_atp.sha256,
+            "nombre": validado_atp.nombre,
+            "tamano": len(validado_atp.contenido),
+            "tipo": "CONSTANCIA_RETENCION_ATP",
+            "version": 1,
+        }
+        if _resolver_version(
+            pago,
+            version_esperada=version,
+            actor=actor,
+            motivo=motivo_norm,
+            datos_despues=datos_despues_previstos,
+            tipo="atp_incorporada",
+        ):
+            return pago
+
+        _crear_original_si_falta(pago)
+        documento = incorporar(
+            actor=actor,
+            referencia=f"gastos:{solicitud.pk}",
+            archivo=validado_atp,
+            tipo=Documento.Tipo.CONSTANCIA_RETENCION_ATP,
+            procedencia=Documento.Procedencia.EXTERNO_ATP,
+            _escrituras=escrituras,
+        )
+        pago.constancia_atp = documento
+        pago.version = pago.version + 1
+        pago.save(update_fields=["constancia_atp", "version"])
+        PagoExternoCambio.objects.create(
+            pago=pago,
+            numero_version=pago.version,
+            tipo="atp_incorporada",
+            motivo=motivo_norm,
+            actor_id=actor.subject_id,
+            datos_antes=datos_antes,
+            datos_despues=_snapshot_pago(pago),
+            documento_anterior=None,
+            documento_nuevo=documento,
+        )
+        return pago
 
 
 def consultar_pago_externo(
     actor: Any,
     solicitud_id: int,
 ) -> PagoExternoConsulta | None:
-    """Consulta pura para leer el pago externo asociado a una solicitud visible.
+    """Consulta pura del pago visible, con presencia documental y metadatos autorizados.
 
     Garantías:
-    - Consulta pura sin efectos secundarios ni escrituras en base de datos.
-    - Exige que la solicitud sea visible para el actor según visible_expenses(actor).
-    - Si la solicitud no es visible o no existe para el actor: retorna None sin filtrar
-      existencia a terceros.
-    - Si la solicitud no tiene pago registrado: retorna None.
-    - Si la solicitud tiene pago registrado: retorna PagoExternoConsulta, OMITIENDO
-      la referencia documental para evitar su exposición genérica.
+    - No escribe ni filtra la referencia documental opaca.
+    - La presencia del comprobante/constancia se informa como hecho.
+    - El nombre, tamaño e identificador de cada documento sólo se completa con
+      ``documentos.consultar_metadatos``; la descarga real se autoriza aparte.
     """
     if actor is None:
         return None
@@ -562,7 +1321,11 @@ def consultar_pago_externo(
 
     pago = (
         PagoExterno.objects.filter(solicitud=solicitud)
-        .select_related("evento")
+        .select_related(
+            "evento",
+            "comprobante_bancario",
+            "constancia_atp",
+        )
         .first()
     )
     if pago is None:
@@ -571,6 +1334,10 @@ def consultar_pago_externo(
     evento = getattr(pago, "evento", None)
     fecha_reg = evento.fecha_hora if evento else None
     actor_id = evento.actor_id if evento else None
+    puede_metadatos = has_capability(actor, "documentos.consultar_metadatos")
+
+    banco = pago.comprobante_bancario if pago.comprobante_bancario_id else None
+    atp = pago.constancia_atp if pago.constancia_atp_id else None
 
     return PagoExternoConsulta(
         id=pago.pk,
@@ -584,6 +1351,77 @@ def consultar_pago_externo(
         monto_bruto=pago.monto_bruto,
         monto_retencion_atp=pago.monto_retencion_atp,
         referencia_atp=pago.referencia_atp,
+        version=pago.version,
+        tiene_comprobante_bancario=banco is not None,
+        comprobante_bancario_id=banco.pk if banco and puede_metadatos else None,
+        comprobante_bancario_nombre=(
+            banco.nombre_original if banco and puede_metadatos else ""
+        ),
+        comprobante_bancario_tamano=(banco.tamano if banco and puede_metadatos else None),
+        tiene_constancia_atp=atp is not None,
+        constancia_atp_id=atp.pk if atp and puede_metadatos else None,
+        constancia_atp_nombre=(atp.nombre_original if atp and puede_metadatos else ""),
+        constancia_atp_tamano=(atp.tamano if atp and puede_metadatos else None),
+        constancia_atp_pendiente=pago.constancia_atp_pendiente,
+        es_registro_legado=pago.comprobante_bancario_id is None,
+    )
+
+
+def _formatear_snapshot(snapshot: dict[str, Any], *, puede_metadatos: bool) -> str:
+    """Texto legible de un snapshot para el historial de rectificaciones."""
+
+    def _importe(valor: Any) -> str:
+        try:
+            return f"$ {formatear_importe_es_ar(valor)}"
+        except (InvalidOperation, TypeError, ValueError):
+            return "sin dato"
+
+    def _doc(valor: Any) -> str:
+        if not valor:
+            return "sin documento"
+        if puede_metadatos and valor.get("nombre"):
+            return f"{valor['nombre']} (v{valor.get('version', '?')})"
+        return "documento incorporado"
+
+    partes = [
+        f"Fecha {date_format(date.fromisoformat(snapshot['fecha_pago']), 'd/m/Y')}",
+        f"Bruto {_importe(snapshot.get('monto_bruto'))}",
+        f"Retención {_importe(snapshot.get('monto_retencion_atp'))}",
+        f"Neto {_importe(snapshot.get('importe'))}",
+        f"Comprobante {_doc(snapshot.get('comprobante'))}",
+        f"Constancia ATP {_doc(snapshot.get('constancia'))}",
+    ]
+    referencia = snapshot.get("referencia_externa") or "sin referencia informada"
+    partes.append(f"Referencia {referencia}")
+    return " · ".join(partes)
+
+
+def consultar_cambios_pago(
+    actor: Any, solicitud_id: int
+) -> tuple[CambioPagoExternoConsulta, ...]:
+    """Historial legible de rectificaciones y aportes posteriores del pago visible."""
+    if actor is None:
+        return ()
+    solicitud = visible_expenses(actor).filter(pk=solicitud_id).first()
+    if solicitud is None:
+        return ()
+    pago = PagoExterno.objects.filter(solicitud=solicitud).first()
+    if pago is None:
+        return ()
+    puede_metadatos = has_capability(actor, "documentos.consultar_metadatos")
+    cambios = pago.cambios.select_related("actor").order_by("numero_version")
+    return tuple(
+        CambioPagoExternoConsulta(
+            numero_version=cambio.numero_version,
+            tipo=cambio.tipo,
+            tipo_mostrado=cambio.get_tipo_display(),
+            motivo=cambio.motivo,
+            actor_id=cambio.actor_id,
+            fecha_hora=cambio.fecha_hora,
+            antes=_formatear_snapshot(cambio.datos_antes, puede_metadatos=puede_metadatos),
+            despues=_formatear_snapshot(cambio.datos_despues, puede_metadatos=puede_metadatos),
+        )
+        for cambio in cambios
     )
 
 

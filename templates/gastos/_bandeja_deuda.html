@@ -1,0 +1,7 @@
+<ul>
+    {% for item in items %}
+        <li><strong>Solicitud #{{ item.solicitud_id }}</strong> · {{ item.concepto }}
+            <a class="bandeja-enlace" href="{% url 'gastos:detalle' pk=item.solicitud_id %}#seguimiento-factura">Ver trámite</a>
+        </li>
+    {% endfor %}
+</ul>

@@ -25,6 +25,12 @@ def enable_demo_identity(settings: Any) -> None:
     settings.DEMO_IDENTITY_ENABLED = True
 
 
+@pytest.fixture(autouse=True)
+def almacenamiento_temporal(settings: Any, tmp_path: Any) -> None:
+    """Aísla los PDFs sintéticos de las pruebas y evita escribir en el checkout."""
+    settings.DOCUMENT_STORAGE_ROOT = tmp_path / "documentos_privados"
+
+
 @pytest.fixture
 def demo_groups(db: Any) -> dict[str, Group]:
     """Crea los grupos de identidad de demo."""

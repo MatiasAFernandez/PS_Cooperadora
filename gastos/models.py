@@ -1,6 +1,6 @@
 """Modelos para el circuito de gastos."""
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from django.conf import settings
@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models
 from django.db.models import Q
-from django.utils.formats import date_format, localize
+from django.utils.formats import date_format
 
 from comunes.contracts import EventoHistorialDTO
 from comunes.models import Circuito, TramiteBase
@@ -380,20 +380,36 @@ class PagoExternoQuerySet(models.QuerySet):
     """QuerySet para PagoExterno que impide la reasignación de vínculos por update()."""
 
     def update(self, **kwargs: Any) -> int:
-        restringidos = {"solicitud", "solicitud_id", "referencia_documental"}
+        restringidos = {
+            "solicitud",
+            "solicitud_id",
+            "referencia_documental",
+            "comprobante_bancario",
+            "comprobante_bancario_id",
+            "constancia_atp",
+            "constancia_atp_id",
+        }
         if restringidos.intersection(kwargs):
             raise IntegrityError(
-                "No se permite reasignar solicitud ni referencia_documental "
-                "en PagoExterno existente."
+                "No se permite reasignar solicitud, referencia_documental ni vínculos "
+                "documentales del pago mediante update()."
             )
         return super().update(**kwargs)
 
     def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
-        restringidos = {"solicitud", "solicitud_id", "referencia_documental"}
+        restringidos = {
+            "solicitud",
+            "solicitud_id",
+            "referencia_documental",
+            "comprobante_bancario",
+            "comprobante_bancario_id",
+            "constancia_atp",
+            "constancia_atp_id",
+        }
         if restringidos.intersection(fields):
             raise IntegrityError(
-                "No se permite reasignar solicitud ni referencia_documental "
-                "en PagoExterno existente."
+                "No se permite reasignar solicitud, referencia_documental ni vínculos "
+                "documentales del pago mediante bulk_update()."
             )
         return super().bulk_update(objs, fields, **kwargs)
 
@@ -491,13 +507,44 @@ class PagoExterno(models.Model):
     )
     referencia_externa = models.CharField(
         max_length=128,
-        help_text="Referencia externa del comprobante o transacción bancaria/comercial.",
+        blank=True,
+        default="",
+        help_text=(
+            "Número de operación o referencia bancaria informada. Puede quedar vacío: "
+            "no se inventa un número."
+        ),
     )
     referencia_documental = models.CharField(
         max_length=255,
         help_text=(
             "Referencia opaca e inmutable a la versión documental bloqueada por el proveedor."
         ),
+    )
+    comprobante_bancario = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="pagos_como_comprobante_bancario",
+        help_text=(
+            "Documento PDF del comprobante bancario. Nulo sólo en registros históricos "
+            "anteriores a la regla de PDF obligatorio."
+        ),
+    )
+    constancia_atp = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="pagos_como_constancia_atp",
+        help_text=(
+            "Constancia ATP vigente del pago. Puede incorporarse después del registro; "
+            "nunca se fabrica ni se infiere."
+        ),
+    )
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text="Versión efectiva del pago. Cada rectificación o aporte posterior la incrementa.",
     )
     huella_idempotencia = models.CharField(
         max_length=64,
@@ -528,6 +575,10 @@ class PagoExterno(models.Model):
                 & Q(monto_bruto__gt=Decimal("0.00")),
                 name="pago_externo_identidad_neto_atp",
             ),
+            models.CheckConstraint(
+                condition=Q(version__gt=0),
+                name="pago_externo_version_positiva",
+            ),
         ]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -554,6 +605,22 @@ class PagoExterno(models.Model):
                         )
                     }
                 )
+        if (
+            self.comprobante_bancario_id is not None
+            and getattr(self.comprobante_bancario, "tipo", None)
+            != "COMPROBANTE_PAGO"
+        ):
+            raise ValidationError(
+                {"comprobante_bancario": "El comprobante bancario debe ser un PDF de pago."}
+            )
+        if (
+            self.constancia_atp_id is not None
+            and getattr(self.constancia_atp, "tipo", None)
+            != "CONSTANCIA_RETENCION_ATP"
+        ):
+            raise ValidationError(
+                {"constancia_atp": "La constancia ATP debe ser del tipo documental ATP."}
+            )
         if self.pk is not None and not self._state.adding:
             original = (
                 PagoExterno.objects.filter(pk=self.pk)
@@ -605,8 +672,25 @@ class PagoExterno(models.Model):
                     )
         super().save(*args, **kwargs)
 
+    @property
+    def constancia_atp_pendiente(self) -> bool:
+        """Pendiente derivado: retención positiva sin constancia vigente."""
+        return self.monto_retencion_atp > Decimal("0.00") and self.constancia_atp_id is None
+
+    @property
+    def es_registro_legado(self) -> bool:
+        """Un pago histórico sin comprobante no se presenta como documentado."""
+        return self.comprobante_bancario_id is None
+
     def __str__(self) -> str:
         return f"Pago #{self.pk} de Solicitud #{self.solicitud_id} (${self.importe} {self.moneda})"
+
+
+def formatear_importe_es_ar(valor) -> str:
+    """Formato visible es-AR: miles con punto y dos decimales con coma."""
+    cuantizado = Decimal(str(valor)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    texto = f"{abs(cuantizado):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"-{texto}" if cuantizado < 0 else texto
 
 
 class EventoPagoExterno(models.Model):
@@ -690,13 +774,38 @@ class EventoPagoExterno(models.Model):
         return f"Evento #{self.pk} - {self.tipo_evento} sobre Pago #{self.pago_id}"
 
     def como_historial(self) -> EventoHistorialDTO:
-        """Adapta el hecho del pago sin exponer referencias o metadatos documentales."""
+        """Adapta el hecho del pago sin exponer referencias o metadatos documentales.
+
+        Si existe la representación original, el evento muestra los valores del
+        alta y no los importes corregidos después. La fila efectiva se consulta
+        por separado en la tarjeta del pago.
+        """
         pago = self.pago
-        detalle = (
-            f"Importe: {localize(Decimal(pago.importe))} {pago.moneda}. "
-            f"Fecha del hecho: {date_format(pago.fecha_pago, 'd/m/Y')}. "
-            f"Referencia externa: {pago.referencia_externa}."
+        original = PagoExternoOriginal.objects.filter(pago_id=pago.pk).first()
+        importe = original.importe if original is not None else pago.importe
+        fecha_pago = original.fecha_pago if original is not None else pago.fecha_pago
+        referencia_externa = (
+            original.referencia_externa if original is not None else pago.referencia_externa
         )
+        monto_bruto = original.monto_bruto if original is not None else pago.monto_bruto
+        monto_retencion_atp = (
+            original.monto_retencion_atp
+            if original is not None
+            else pago.monto_retencion_atp
+        )
+        monto_bruto = Decimal(str(monto_bruto))
+        monto_retencion_atp = Decimal(str(monto_retencion_atp))
+        detalle = (
+            f"Importe: {formatear_importe_es_ar(importe)} {pago.moneda}. "
+            f"Fecha del hecho: {date_format(fecha_pago, 'd/m/Y')}."
+        )
+        if referencia_externa:
+            detalle += f" Referencia externa: {referencia_externa}."
+        if monto_retencion_atp > Decimal("0.00"):
+            detalle += (
+                f" Bruto: {formatear_importe_es_ar(monto_bruto)} {pago.moneda}. "
+                f"Retención ATP: {formatear_importe_es_ar(monto_retencion_atp)} {pago.moneda}."
+            )
         return EventoHistorialDTO(
             evento_id=self.pk,
             tramite_ref=f"gastos:{pago.solicitud_id}",
@@ -706,6 +815,191 @@ class EventoPagoExterno(models.Model):
             estado_resultante=pago.solicitud.estado,
             motivo_o_detalle=detalle,
         )
+
+
+class PagoExternoOriginalQuerySet(models.QuerySet):
+    """La representación original del alta es inmutable."""
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar la representación original del pago.")
+
+    def update(self, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar la representación original del pago.")
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar la representación original del pago.")
+
+
+class PagoExternoOriginal(models.Model):
+    """Valores normalizados y documentos del alta original, separados del estado efectivo.
+
+    Se crea una sola vez al registrar el pago. Las rectificaciones posteriores
+    modifican ``PagoExterno`` y agregan filas a ``PagoExternoCambio``, pero esta
+    representación conserva la identidad de los reenvíos de alta. Los registros
+    históricos migrados se marcan con ``es_legado=True`` y no reciben un PDF
+    inventado.
+    """
+
+    pago = models.OneToOneField(
+        PagoExterno,
+        on_delete=models.PROTECT,
+        primary_key=True,
+        related_name="original",
+        help_text="Pago cuyo alta original se conserva.",
+    )
+    importe = models.DecimalField(max_digits=12, decimal_places=2)
+    monto_bruto = models.DecimalField(max_digits=12, decimal_places=2)
+    monto_retencion_atp = models.DecimalField(max_digits=12, decimal_places=2)
+    moneda = models.CharField(max_length=3, default="ARS")
+    fecha_pago = models.DateField()
+    referencia_externa = models.CharField(max_length=128, blank=True, default="")
+    referencia_documental = models.CharField(max_length=255)
+    referencia_atp = models.CharField(max_length=128, blank=True, default="")
+    comprobante_bancario = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="pagos_originales_como_comprobante",
+    )
+    constancia_atp = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="pagos_originales_como_constancia",
+    )
+    comprobante_sha256 = models.CharField(max_length=64, blank=True, default="")
+    constancia_sha256 = models.CharField(max_length=64, blank=True, default="")
+    es_legado = models.BooleanField(
+        default=False,
+        help_text="Alta anterior a la regla de comprobante PDF obligatorio.",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    objects = PagoExternoOriginalQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Representación original del pago"
+        verbose_name_plural = "Representaciones originales de pagos"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(importe=models.F("monto_bruto") - models.F("monto_retencion_atp")),
+                name="pago_original_identidad_neto_atp",
+            ),
+            models.CheckConstraint(
+                condition=Q(moneda="ARS"),
+                name="pago_original_moneda_ars",
+            ),
+        ]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise IntegrityError(
+                "La representación original del pago es inmutable; use PagoExternoCambio."
+            )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar la representación original del pago.")
+
+    def __str__(self) -> str:
+        return f"Alta original del Pago #{self.pago_id}"
+
+
+class PagoExternoCambioQuerySet(models.QuerySet):
+    """El historial de rectificaciones y aportes posteriores es append-only."""
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar un cambio de pago externo.")
+
+    def update(self, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar un cambio de pago externo.")
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar un cambio de pago externo.")
+
+
+class PagoExternoCambio(models.Model):
+    """Hecho append-only de una rectificación o incorporación documental posterior.
+
+    Guarda la versión resultante, el motivo obligatorio, el actor y la fecha del
+    servidor, además de snapshots cerrados antes/después. No reemplaza al evento
+    original del alta ni se usa como si fuera un pago adicional.
+    """
+
+    class Tipo(models.TextChoices):
+        RECTIFICACION = "rectificacion", "Rectificación de datos"
+        COMPROBANTE_REEMPLAZADO = "comprobante_reemplazado", "Comprobante bancario reemplazado"
+        COMPROBANTE_INCORPORADO = "comprobante_incorporado", "Comprobante bancario incorporado"
+        ATP_INCORPORADA = "atp_incorporada", "Constancia ATP incorporada"
+        ATP_RETIRADA = "atp_retirada", "Constancia ATP desvinculada"
+
+    pago = models.ForeignKey(
+        PagoExterno,
+        on_delete=models.PROTECT,
+        related_name="cambios",
+        help_text="Pago efectivo al que se aplicó el cambio.",
+    )
+    numero_version = models.PositiveIntegerField(
+        help_text="Versión efectiva resultante después del cambio."
+    )
+    tipo = models.CharField(max_length=40, choices=Tipo.choices)
+    motivo = models.TextField(max_length=500)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="cambios_pago_externo",
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    datos_antes = models.JSONField()
+    datos_despues = models.JSONField()
+    documento_anterior = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cambios_pago_documento_anterior",
+    )
+    documento_nuevo = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cambios_pago_documento_nuevo",
+    )
+
+    objects = PagoExternoCambioQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Cambio de pago externo"
+        verbose_name_plural = "Cambios de pagos externos"
+        ordering = ["pago_id", "numero_version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pago", "numero_version"],
+                name="uq_pago_externo_cambio_version",
+            ),
+            models.CheckConstraint(
+                condition=Q(numero_version__gt=0),
+                name="pago_externo_cambio_version_positiva",
+            ),
+            models.CheckConstraint(
+                condition=~Q(motivo=""),
+                name="pago_externo_cambio_motivo_obligatorio",
+            ),
+        ]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise IntegrityError("El historial de cambios del pago es append-only.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("El historial de cambios del pago es append-only.")
+
+    def __str__(self) -> str:
+        return f"Cambio v{self.numero_version} del Pago #{self.pago_id}: {self.get_tipo_display()}"
 
 
 class CentroCosto(models.Model):

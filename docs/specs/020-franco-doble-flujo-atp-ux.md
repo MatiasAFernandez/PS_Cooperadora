@@ -8,6 +8,10 @@
 - **Fuentes canónicas:** [Informe Consolidado Reunión 29/10/2026](/home/fran/repos/facultad/Práctica%20Profesional%20Supervisada/informes/INFORME_REUNION_COOPERADORA_2026-10-29.md), [Transcripción Unificada](/home/fran/repos/facultad/Práctica%20Profesional%20Supervisada/temp/TRANSCRIPCION_CONSOLIDADA_REUNION_2026-10-29.md) y [Dictamen de Auditoría Gemini Argon].
 - **Seguimiento operativo:** GitHub Issues #89 a #95 (Incremento I3).
 
+## Rediseño de la bandeja (06/11/2026)
+
+La bandeja de la Issue #92 pasa a cuatro columnas y se apila en móvil. Conserva filtros y paginación. Los perfiles con capacidad de decidir o registrar pagos pueden abrir una vista rápida de solo lectura en escritorio desde el concepto. La acción lleva al detalle, donde se verifican los requisitos del próximo paso. Este diseño reemplaza los criterios iniciales de ocho columnas y copiado bancario en el panel. Los datos bancarios se consultan en las superficies autorizadas de SPEC-013.
+
 ---
 
 ## 1. Problema y valor
@@ -47,6 +51,8 @@ La demostración operativa del 29/10/2026 con la Asociación Cooperadora evidenc
 
 ## 3. Requisitos verificables
 
+Al presentar la solicitud, quien cuenta con permiso de aporte documental y visibilidad sobre el gasto puede adjuntar un respaldo inicial opcional acorde al flujo seleccionado: presupuesto o proforma en compra directa, y factura o ticket-factura en reintegro. Si no se elige archivo, la solicitud se presenta igualmente; si se seleccionó un archivo y su validación o carga falla, el error impide completar la presentación y permite corregir y reintentar en el mismo paso, manteniendo intactos los requisitos documentales del registro de pago y la autorización por documento.
+
 - `GAST-R01 (Doble Flujo):` `SolicitudGasto` registra obligatoriamente su `tipo_flujo` (`COMPRA_DIRECTA` o `REINTEGRO`).
 - `GAST-R02 (Sincronización de Centro de Costo):` Si el solicitante elige un `CentroCosto` en el alta, el campo textual `RevisionDatosTransferencia.centro_costo` se puebla automáticamente con `centro_costo.nombre` en el servidor, evitando duplicación en pantalla.
 - `GAST-R03 (Contrato C01 en Reintegros):` En el flujo `REINTEGRO`, el registro de pago exige un documento verificado elegible de tipo `FACTURA_PROVEEDOR` (rotulado en UI como *"Factura o Ticket-Factura"*). No se admite pagar reintegros contra presupuestos ni proformas. En `COMPRA_DIRECTA` se admite pago contra `PRESUPUESTO_PROFORMA` o `FACTURA_PROVEEDOR`.
@@ -70,6 +76,20 @@ La demostración operativa del 29/10/2026 con la Asociación Cooperadora evidenc
 | **Estado post-pago** | *Pendiente de Factura Definitiva* (deuda documental). | *Saldado / Finalizado* (sin deuda documental). |
 | **Acción posterior requerida** | Solicitante rinde factura fiscal oficial definitiva; Cooperadora revisa y cierra. | Ninguna; el gasto queda completamente rendido. |
 
+### Factura definitiva y restricción por mora (GAST-R07)
+
+Para calcular la restricción de nuevas solicitudes, una compra directa pagada deja de contar como adeudada en cuanto se guarda una factura definitiva vigente asociada al gasto. Así el solicitante puede regularizar el trámite sin depender del tiempo de revisión de Cooperadora.
+
+| Última revisión de la versión vigente | Efecto sobre la restricción |
+|---|---|
+| Pendiente de revisión | La compra queda fuera del cómputo de mora mientras Cooperadora revisa la factura. |
+| Aceptada | La compra sigue fuera del cómputo. |
+| Observada o rechazada | La compra vuelve a contar como adeudada. La antigüedad se calcula desde la fecha del pago original. |
+
+Al guardar una nueva versión de la factura, se evalúa esa versión desde su estado pendiente de revisión. El dictamen anterior queda en el historial de su versión. Si hay otras compras vencidas, la restricción se levanta sólo cuando el total queda dentro del límite. Este cálculo afecta la presentación de nuevas solicitudes y es independiente de la revisión documental y del estado de la cuenta.
+
+Los 15 días y el máximo de dos compras vencidas son parámetros de demo pendientes de validación institucional.
+
 ### Regla Impositiva de Retención ATP
 
 ```
@@ -84,6 +104,11 @@ Sino:
    Monto Retención ATP = 0.00
    Importe Neto = Monto Bruto
 ```
+
+> **Ajuste UX/UI (05/11/2026):**
+> - El aviso preventivo lee el umbral desde el dataset utilizando un parser monetario insensible a la localización (`parseMoney`), evitando errores de cálculo `NaN` cuando el valor se renderiza con formato `es-AR` (ej. `90.000,00`).
+> - Al diferir la constancia ATP (`incorporar_atp_despues`), los campos de constancia y referencia se ocultan y se excluyen del payload saliente, con validación de servidor que previene combinaciones incoherentes por POST directo.
+> - Cuando la retención informada iguala o supera al monto bruto, se presenta un mensaje de error inline accesible (`#rp-retencion-inline-error`) y el importe neto muestra un guion (`—`), complementando la validación del servidor.
 
 ---
 
@@ -152,3 +177,24 @@ Sino:
 - **Resultado de la Suite:** **784 pruebas en verde (0 regresiones)** en 132.77s.
 - **Informe de evidencia:** [`docs/evidence/i3-95-verificacion-entrega-consolidada.md`](../evidence/i3-95-verificacion-entrega-consolidada.md).
 - **Muestra sintética:** `test_muestra_entrega.py` aprobada con hashes SHA-256 inalterados.
+
+## 10. Actualización local 04/11/2026 — registro de pago documentado
+
+La pantalla de registro de pago se ajusta al feedback de Franco sin cambiar los
+parámetros ATP configurados ni la catalogación general:
+
+- Se retira del formulario la sugerencia automática de alícuota. La retención se
+  informa en pesos; un desplegable opcional permite calcular una sugerencia
+  aritmética con base y porcentaje explícitos, sin alícuota predeterminada ni
+  persistencia. El importe efectivo sigue siendo el que se registra.
+- El aviso de umbral se calcula sobre el bruto real, no sobre el estimado, y no
+  determina por sí solo una obligación fiscal. La frontera exacta `>`/`>=` y su
+  validación institucional no se modifican en este corte.
+- La retención cero oculta la tarjeta ATP y muestra «No aplica» según el dato
+  registrado; un valor inválido muestra «Por definir»; un valor positivo permite
+  adjuntar ahora (por defecto) o incorporar después con pendiente visible.
+- El comprobante bancario PDF es obligatorio en el alta. La constancia ATP es un
+  documento distinto y su incorporación posterior tiene ruta y permiso propios.
+
+Este ajuste es local y no acredita por sí solo el cierre de la Issue ni una nueva
+validación con la operadora.
