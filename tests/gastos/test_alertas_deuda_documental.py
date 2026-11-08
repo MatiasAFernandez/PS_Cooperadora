@@ -443,8 +443,14 @@ def test_factura_rechazada_no_cancela_deuda_y_mantiene_bloqueo(create_actor: Any
         )
 
 
-def test_reemplazo_de_factura_rechazada_desbloquea(create_actor: Any) -> None:
-    """Aportar un reemplazo válido de la factura rechazada satisface la deuda y desbloquea."""
+@pytest.mark.parametrize(
+    "dictamen",
+    [RevisionDocumento.Resultado.OBSERVADO, RevisionDocumento.Resultado.RECHAZADO],
+)
+def test_reemplazo_de_factura_con_dictamen_desbloquea(
+    create_actor: Any, dictamen: str
+) -> None:
+    """Una observación o rechazo reactiva la mora hasta que se aporta un reemplazo."""
     user, actor = create_actor("solic_reemplaza", ["gastos.presentar", "documentos.incorporar"])
     operadora, _ = create_actor("oper_auditora2", ["documentos.revisar"])
 
@@ -460,24 +466,36 @@ def test_reemplazo_de_factura_rechazada_desbloquea(create_actor: Any) -> None:
 
     fecha_eval = date(2026, 10, 31)
     factura_v1 = _adjuntar_factura(s1, user)
+    assert verificar_deuda_documental_solicitante(
+        actor, fecha_referencia=fecha_eval
+    ).tiene_bloqueo is False
+
     RevisionDocumento.objects.create(
         documento=factura_v1,
-        resultado=RevisionDocumento.Resultado.RECHAZADO,
-        motivo="Rechazo preliminar",
+        resultado=dictamen,
+        motivo="Corregir los datos de la factura",
         actor=operadora,
     )
     assert verificar_deuda_documental_solicitante(
         actor, fecha_referencia=fecha_eval
     ).tiene_bloqueo is True
 
-    # Solicitante reemplaza la factura por una corregida
     factura_v2 = _adjuntar_factura(s1, user, reemplaza=factura_v1)
     assert factura_v2.version == 2
 
-    # La versión vigente (v2) no está rechazada: mora baja a 2 y se desbloquea
     resumen = verificar_deuda_documental_solicitante(actor, fecha_referencia=fecha_eval)
     assert resumen.total_en_mora == 2
     assert resumen.tiene_bloqueo is False
+
+    RevisionDocumento.objects.create(
+        documento=factura_v2,
+        resultado=RevisionDocumento.Resultado.ACEPTADO,
+        motivo="Datos corregidos",
+        actor=operadora,
+    )
+    assert verificar_deuda_documental_solicitante(
+        actor, fecha_referencia=fecha_eval
+    ).tiene_bloqueo is False
 
 
 # ---------------------------------------------------------------------------
