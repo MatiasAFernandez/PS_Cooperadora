@@ -333,8 +333,7 @@ def verificar_deuda_documental_solicitante(
       quedan rendidos al pagar y no generan deuda documental posterior.
     - Requiere pago efectivo registrado (pago_externo existente).
     - Un trámite adeuda factura definitiva si carece de un Documento de tipo
-      FACTURA_PROVEEDOR vigente (no reemplazado) cuyo último dictamen no sea
-      RECHAZADO.
+      FACTURA_PROVEEDOR vigente (no reemplazado) pendiente de revisión o aceptado.
     - Se computa la antigüedad en días respecto a fecha_referencia (o fecha local).
     - Mora: días_transcurridos > DIAS_GRACIA_RENDICION_FACTURA (15 días).
     - Bloqueo: total_en_mora > MAX_TRAMITES_MORA_PERMITIDOS (2 trámites).
@@ -389,7 +388,7 @@ def verificar_deuda_documental_solicitante(
             if getattr(doc, "revisiones_ordenadas", None)
             else None
         )
-        if ultima_rev is None or ultima_rev.resultado != RevisionDocumento.Resultado.RECHAZADO:
+        if ultima_rev is None or ultima_rev.resultado == RevisionDocumento.Resultado.ACEPTADO:
             if doc.solicitud_gasto_id:
                 solicitudes_con_factura_valida.add(doc.solicitud_gasto_id)
             elif doc.tramite_base_id and doc.tramite_base_id in tramite_a_solicitud:

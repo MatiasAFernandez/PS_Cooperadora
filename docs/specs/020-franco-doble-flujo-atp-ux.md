@@ -70,6 +70,20 @@ La demostración operativa del 29/10/2026 con la Asociación Cooperadora evidenc
 | **Estado post-pago** | *Pendiente de Factura Definitiva* (deuda documental). | *Saldado / Finalizado* (sin deuda documental). |
 | **Acción posterior requerida** | Solicitante rinde factura fiscal oficial definitiva; Cooperadora revisa y cierra. | Ninguna; el gasto queda completamente rendido. |
 
+### Factura definitiva y restricción por mora (GAST-R07)
+
+Para calcular la restricción de nuevas solicitudes, una compra directa pagada deja de contar como adeudada en cuanto se guarda una factura definitiva vigente asociada al gasto. Así el solicitante puede regularizar el trámite sin depender del tiempo de revisión de Cooperadora.
+
+| Última revisión de la versión vigente | Efecto sobre la restricción |
+|---|---|
+| Pendiente de revisión | La compra queda fuera del cómputo de mora mientras Cooperadora revisa la factura. |
+| Aceptada | La compra sigue fuera del cómputo. |
+| Observada o rechazada | La compra vuelve a contar como adeudada. La antigüedad se calcula desde la fecha del pago original. |
+
+Al guardar una nueva versión de la factura, se evalúa esa versión desde su estado pendiente de revisión. El dictamen anterior queda en el historial de su versión. Si hay otras compras vencidas, la restricción se levanta sólo cuando el total queda dentro del límite. Este cálculo afecta la presentación de nuevas solicitudes y es independiente de la revisión documental y del estado de la cuenta.
+
+Los 15 días y el máximo de dos compras vencidas son parámetros de demo pendientes de validación institucional.
+
 ### Regla Impositiva de Retención ATP
 
 ```
