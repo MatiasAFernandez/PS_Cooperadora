@@ -125,7 +125,7 @@ def test_usuario_con_consultar_todas_accede_con_200(
     url = reverse("gastos:reporte_cuatrimestral")
     response = client.get(url)
     assert response.status_code == 200
-    assert "Reporte Directivo Cuatrimestral" in response.content.decode()
+    assert "Reporte Directivo de Gastos" in response.content.decode()
 
 
 def test_visibilidad_boton_reporte_en_panel_segun_permisos(
@@ -138,12 +138,13 @@ def test_visibilidad_boton_reporte_en_panel_segun_permisos(
     client_solic = auth_client(solicitante)
     res_solic = client_solic.get(reverse("gastos:lista"))
     assert res_solic.status_code == 200
-    assert "Reporte Cuatrimestral" not in res_solic.content.decode()
+    enlace_reporte = f'href="{reverse("gastos:reporte_cuatrimestral")}"'
+    assert enlace_reporte not in res_solic.content.decode()
 
     client_dir = auth_client(directivo)
     res_dir = client_dir.get(reverse("gastos:lista"))
     assert res_dir.status_code == 200
-    assert "Reporte Cuatrimestral" in res_dir.content.decode()
+    assert enlace_reporte in res_dir.content.decode()
     assert reverse("gastos:reporte_cuatrimestral") in res_dir.content.decode()
 
 
@@ -373,18 +374,13 @@ def test_vista_reporte_renderiza_kpis_y_tablas(create_actor: Any, auth_client: A
     html = response.content.decode()
 
     # Verificación de elementos del template Calidad 2026
-    assert "Reporte Directivo Cuatrimestral" in html
-    assert "Total Facturado Bruto" in html
-    assert "Retención ATP Chaco (IIBB)" in html
-    assert "Neto Bancario Transferido" in html
-    assert "C1 (Enero – Abril)" in html
-    assert "C2 (Mayo – Agosto)" in html
-    assert "C3 (Septiembre – Diciembre)" in html
+    assert "Reporte Directivo de Gastos" in html
+    assert 'id="kpiBruto">$ 95.000,00' in html
+    assert 'id="kpiAtp">$ 3.325,00' in html
+    assert 'id="kpiNeto">$ 91.675,00' in html
+    assert 'id="ch1SrTable"' in html
     assert "Sin centro de costo asignado" in html
     assert "font-tabular" in html
-    assert "95000" in html
-    assert "3325" in html
-    assert "91675" in html
 
 
 def test_vista_reporte_fallback_anio_invalido(create_actor: Any, auth_client: Any) -> None:
@@ -399,3 +395,42 @@ def test_vista_reporte_fallback_anio_invalido(create_actor: Any, auth_client: An
     # Año absurdo
     res_absurdo = client.get(reverse("gastos:reporte_cuatrimestral"), {"anio": "1800"})
     assert res_absurdo.status_code == 200
+
+
+def test_ranking_y_filtros_por_centro(create_actor: Any, auth_client: Any) -> None:
+    user, _ = create_actor("directivo_ranking", ["gastos.consultar_todas"])
+    client = auth_client(user)
+    url = reverse("gastos:reporte_cuatrimestral")
+    centros = [
+        CentroCosto.objects.create(codigo=f"AREA-{i:02}", nombre=f"Área {i}")
+        for i in range(35)
+    ]
+    fecha = date(2026, 2, 1)
+    for i, centro in enumerate(centros[27:], start=1):
+        monto = Decimal(i * 1000)
+        solicitud = _crear_solicitud_con_fecha(user, centro.nombre, monto, fecha, centro)
+        _crear_pago_con_fecha(solicitud, fecha, monto)
+    _crear_solicitud_con_fecha(user, "Compra sin pagar", Decimal("500"), fecha, centros[26])
+
+    general = client.get(url, {"anio": 2026, "corte": "C1"})
+    assert general.status_code == 200
+    assert [row.codigo for row in general.context["centros_costo_top"]] == [
+        centro.codigo for centro in reversed(centros[-6:])
+    ]
+    assert len(general.context["centros_costo_tabla"]) == 9
+    todos = client.get(url, {"anio": 2026, "corte": "C1", "sin_actividad": "1"})
+    assert {row.codigo for row in todos.context["centros_costo_tabla"]} >= {
+        centro.codigo for centro in centros
+    }
+
+    filtrado = client.get(url, {"anio": 2026, "corte": "C1", "centro_costo": centros[-1].pk})
+    assert filtrado.status_code == 200
+    reporte = filtrado.context["reporte"]
+    assert reporte.totales.cantidad_solicitudes == 1
+    assert reporte.totales.monto_erogado_bruto == Decimal("8000")
+    assert reporte.cuatrimestres[0].monto_erogado_bruto == Decimal("8000")
+    assert filtrado.context["pendientes_actuales"] == general.context["pendientes_actuales"]
+
+    invalido = client.get(url, {"anio": 2026, "corte": "C1", "centro_costo": "9" * 25})
+    assert invalido.status_code == 200
+    assert invalido.context["reporte"].totales == general.context["reporte"].totales

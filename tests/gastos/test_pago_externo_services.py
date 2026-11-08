@@ -17,7 +17,12 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from gastos.contracts import DocumentoVerificado, DocumentVerificationError
-from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
+from gastos.models import (
+    EstadoSolicitud,
+    EventoPagoExterno,
+    PagoExterno,
+    PagoExternoOriginal,
+)
 from gastos.payments import (
     PaymentConflictError,
     PaymentExpenseNotFoundError,
@@ -29,18 +34,25 @@ from gastos.payments import (
     registrar_pago_externo,
     validate_payment_input,
 )
+from tests.soporte_pagos import pdf_comprobante
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-CAPS_PAGO = ("gastos.registrar_pago", "gastos.consultar_todas")
+CAPS_PAGO = (
+    "gastos.registrar_pago",
+    "gastos.consultar_todas",
+    "documentos.incorporar",
+)
 
 
 def _payload(**overrides):
     base = {
         "importe": Decimal("1234.56"),
+        "monto_bruto": Decimal("1234.56"),
         "fecha_pago": date(2025, 3, 10),
         "referencia_externa": "TRF-0001",
         "referencia_documental": "doc-version-1",
+        "comprobante_bancario": pdf_comprobante(),
     }
     base.update(overrides)
     return base
@@ -253,18 +265,38 @@ def test_registro_preserva_referencia_documental_opaca_exacta(
     )
 
 
-@pytest.mark.parametrize("campo", ["referencia_externa", "referencia_documental"])
-@pytest.mark.parametrize("valor", ["", "   ", "a\x00b", 123, None, True, object()])
-def test_referencias_rechazan_tipos_y_contenidos_invalidos(campo, valor) -> None:
-    kwargs = {
-        "importe": "1.00",
-        "fecha_pago": date(2025, 1, 1),
-        "referencia_externa": "EXT",
-        "referencia_documental": "DOC",
-    }
-    kwargs[campo] = valor
+@pytest.mark.parametrize("valor", ["a\x00b", 123, None, True, object()])
+def test_referencia_externa_rechaza_tipos_y_contenidos_invalidos(valor) -> None:
     with pytest.raises(PaymentInvalidInputError):
-        validate_payment_input(**kwargs)
+        validate_payment_input(
+            importe="1.00",
+            fecha_pago=date(2025, 1, 1),
+            referencia_externa=valor,
+            referencia_documental="DOC",
+        )
+
+
+def test_referencia_externa_vacia_es_opcional() -> None:
+    importe, _, referencia, documental = validate_payment_input(
+        importe="1.00",
+        fecha_pago=date(2025, 1, 1),
+        referencia_externa="   ",
+        referencia_documental="DOC",
+    )
+    assert importe == Decimal("1.00")
+    assert referencia == ""
+    assert documental == "DOC"
+
+
+@pytest.mark.parametrize("valor", ["", "   ", "a\x00b", 123, None, True, object()])
+def test_referencia_documental_rechaza_tipos_y_contenidos_invalidos(valor) -> None:
+    with pytest.raises(PaymentInvalidInputError):
+        validate_payment_input(
+            importe="1.00",
+            fecha_pago=date(2025, 1, 1),
+            referencia_externa="EXT",
+            referencia_documental=valor,
+        )
 
 
 def test_referencias_respetan_limites_de_longitud() -> None:
@@ -371,6 +403,7 @@ def test_pago_exitoso_llama_al_proveedor_dentro_de_atomic(
     assert evento.actor_id == actor.subject_id
     assert evento.tipo_evento == "pago_externo_registrado"
     assert evento.fecha_hora is not None
+    assert PagoExternoOriginal.objects.count() == 1
 
 
 def test_gasto_no_visible_da_404_antes_que_403(
@@ -411,7 +444,14 @@ def test_gasto_propio_visible_con_capacidad_propia(
     fake_document_provider,
     capacidad_registrar_pago,
 ) -> None:
-    user, actor = actor_factory(("gastos.registrar_pago", "gastos.consultar_propias"))
+    user, actor = actor_factory(
+        (
+            "gastos.registrar_pago",
+            "gastos.consultar_propias",
+            "gastos.consultar_todas",
+            "documentos.incorporar",
+        )
+    )
     solicitud = solicitud_factory(solicitante=user)
 
     pago = _registrar(actor, solicitud, fake_document_provider())
@@ -694,7 +734,13 @@ def test_contenido_distinto_genera_conflicto(
 
     pago = _registrar(actor, solicitud, provider)
     with pytest.raises(PaymentConflictError):
-        _registrar(actor, solicitud, provider, importe=Decimal("50.00"))
+        _registrar(
+            actor,
+            solicitud,
+            provider,
+            importe=Decimal("50.00"),
+            monto_bruto=Decimal("50.00"),
+        )
 
     assert len(provider.llamadas) == 1
     assert PagoExterno.objects.count() == 1

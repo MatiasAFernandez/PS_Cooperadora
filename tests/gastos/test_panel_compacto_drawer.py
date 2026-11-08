@@ -1,15 +1,4 @@
-"""Pruebas del panel compacto Master-Detail y Drawer lateral (Issue #92).
-
-Cubre:
-- GAST-R06 / SPEC-013: Privacidad estricta en SSR de datos bancarios en el Drawer.
-  Los perfiles sin permiso de registrar pago (ej. demo_lectura) no reciben CBU, alias,
-  ni titular en el DOM ni en atributos data-*.
-- Visualización de las 8 columnas compactas y badges de modalidad y estado.
-- Inclusión del botón de copiado rápido con feedback y fallback para entornos LAN.
-- Optimización de queryset (select_related y prefetch_related) para evitar N+1.
-- Paginación a 25 registros conservando filtros de búsqueda.
-- Desglose contable en Drawer para pagos con retención provincial ATP Chaco.
-"""
+"""Pruebas de la bandeja de gastos y su vista rápida (Issue #92)."""
 
 from datetime import date
 from decimal import Decimal
@@ -76,12 +65,12 @@ def _crear_solicitud_con_transferencia(
 
 
 # ---------------------------------------------------------------------------
-# 1. Verificación de 8 Columnas y Badges de Modalidad
+# 1. Tabla compacta
 # ---------------------------------------------------------------------------
 
 
-def test_solicitud_list_renderiza_8_columnas_y_badges(create_actor: Any) -> None:
-    """Verifica que el panel Master-Detail expone las 8 columnas institucionales."""
+def test_solicitud_list_renderiza_cuatro_columnas(create_actor: Any) -> None:
+    """El lector ve una tabla compacta y accesos directos al detalle."""
     user, _ = create_actor("usuario_consulta", ["gastos.consultar_todas"])
     client = Client()
     client.force_login(user)
@@ -106,31 +95,14 @@ def test_solicitud_list_renderiza_8_columnas_y_badges(create_actor: Any) -> None
 
     content = response.content.decode()
 
-    # 1. Cabeceras de las 8 columnas
-    assert '<th scope="col"' in content
-    assert "ID" in content
-    assert "Modalidad" in content
-    assert "Centro de Costo" in content
-    assert "Concepto" in content
-    assert "Monto Estimado" in content
-    assert "Estado" in content
-    assert "Fecha" in content
-    assert "Acciones" in content
-
-    # 2. Badges de modalidad y nombres de centro
-    assert "Compra Directa" in content
-    assert "Reintegro" in content
-    assert "Química" in content
-
-    # 3. Micro-interacción: Botón inspeccionar drawer y enlace al script
-    assert "Inspeccionar" in content
-    assert "drawer.js" in content
-    assert "drawer-backdrop" in content
-
-
-# ---------------------------------------------------------------------------
-# 2. Privacidad Estricta en SSR (GAST-R06 / SPEC-013)
-# ---------------------------------------------------------------------------
+    assert content.count('<th scope="col">') == 4
+    for label in ("Solicitud", "Importe estimado", "Estado", "Acción"):
+        assert f'<th scope="col">{label}</th>' in content
+    assert "$ 150.000,00" in content
+    assert "Microscopio electrónico" in content
+    assert "Ver detalle" in content
+    assert "data-vista-rapida" not in content
+    assert "Química" not in content
 
 
 def test_solicitud_list_drawer_privacidad_ssr_sin_datos_bancarios(create_actor: Any) -> None:
@@ -161,13 +133,11 @@ def test_solicitud_list_drawer_privacidad_ssr_sin_datos_bancarios(create_actor: 
     assert "Copiar CBU" not in html
     assert "btn-copy" not in html
 
-    # Debe informar la política de confidencialidad en el cuerpo del drawer
-    assert "Privacidad Institucional" in html
-    assert "restringidos exclusivamente al titular del gasto y al personal autorizado" in html
+    assert "data-vista-rapida" not in html
 
 
-def test_solicitud_list_drawer_con_datos_bancarios_para_tesoreria(create_actor: Any) -> None:
-    """Personal con capacidad gastos.registrar_pago SÍ recibe CBU y botón de copiado."""
+def test_solicitud_list_vista_rapida_sin_datos_bancarios_para_tesoreria(create_actor: Any) -> None:
+    """El perfil de pago recibe el resumen operativo sin datos bancarios."""
     user_titular, _ = create_actor("titular_real2", ["gastos.presentar"])
     user_pagador, _ = create_actor("operador_tesoreria", ["gastos.consultar_todas"])
     user_pagador.groups.add(Group.objects.get_or_create(name="demo_gastos_pago")[0])
@@ -189,16 +159,14 @@ def test_solicitud_list_drawer_con_datos_bancarios_para_tesoreria(create_actor: 
 
     html = response.content.decode()
 
-    # Personal autorizado sí accede a los datos bancarios
-    assert cbu_publico in html
-    assert titular_publico in html
-    assert "Copiar CBU" in html
-    assert "btn-copy" in html
-    assert f"drawer-solicitud-{solicitud.pk}" in html
+    assert cbu_publico not in html
+    assert titular_publico not in html
+    assert "Copiar CBU" not in html
+    assert f'data-vista-rapida="resumen-{solicitud.pk}"' in html
 
 
-def test_solicitud_list_drawer_con_datos_bancarios_para_titular(create_actor: Any) -> None:
-    """El titular del trámite accede a sus propios datos bancarios en el Drawer."""
+def test_solicitud_list_sin_datos_bancarios_para_titular(create_actor: Any) -> None:
+    """El titular tiene un enlace al detalle y no recibe datos bancarios en la lista."""
     user_titular, _ = create_actor(
         "titular_propio", ["gastos.presentar", "gastos.consultar_propias"]
     )
@@ -218,18 +186,191 @@ def test_solicitud_list_drawer_con_datos_bancarios_para_titular(create_actor: An
     assert response.status_code == 200
 
     html = response.content.decode()
-    assert cbu_propio in html
-    assert "Copiar CBU" in html
-    assert f"drawer-solicitud-{solicitud.pk}" in html
+    assert cbu_propio not in html
+    assert "Copiar CBU" not in html
+    assert "data-vista-rapida" not in html
+    assert reverse("gastos:detalle", kwargs={"pk": solicitud.pk}) in html
 
 
 # ---------------------------------------------------------------------------
-# 3. Desglose Contable y Retención ATP en Drawer
+# 2. Atención operativa y filtros de pendientes
 # ---------------------------------------------------------------------------
 
 
-def test_solicitud_list_drawer_muestra_desglose_atp(create_actor: Any) -> None:
-    """Verifica que el Drawer expone el desglose de bruto, retención ATP y neto."""
+def test_total_atencion_cuenta_antes_de_filtros(create_actor: Any) -> None:
+    """El contador refleja la atención visible y no la página ni los filtros GET."""
+    operador, _ = create_actor("operador_total_atencion", ["gastos.decidir"])
+    solicitante, _ = create_actor("solicitante_total_atencion", ["gastos.presentar"])
+    ajena = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Presentada ajena",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    crear_gasto_sintetico(
+        solicitante=operador,
+        concepto="Presentada propia",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    aceptada = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada sin decisión",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+
+    client = Client()
+    client.force_login(operador)
+
+    response = client.get(reverse("gastos:lista"))
+    assert response.context["total_atencion"] == 1
+    assert ajena in list(response.context["solicitudes"])
+
+    filtrada = client.get(reverse("gastos:lista"), {"estado": "aceptada"})
+    assert filtrada.context["total_atencion"] == 1
+    assert list(filtrada.context["solicitudes"]) == [aceptada]
+
+
+def test_total_atencion_no_agrega_consultas_por_fila(
+    create_actor: Any, django_assert_num_queries: Any
+) -> None:
+    """El conteo de atención es una consulta fija, independiente de las filas."""
+    operador, _ = create_actor("operador_atencion_queries", ["gastos.decidir"])
+    solicitante, _ = create_actor("solicitante_atencion_queries", ["gastos.presentar"])
+    for indice in range(12):
+        crear_gasto_sintetico(
+            solicitante=solicitante,
+            concepto=f"Pendiente de decisión {indice}",
+            estado=EstadoSolicitud.PRESENTADA,
+        )
+
+    client = Client()
+    client.force_login(operador)
+
+    with django_assert_num_queries(6):
+        response = client.get(reverse("gastos:lista"))
+    assert response.context["total_atencion"] == 12
+    assert len(response.context["solicitudes"]) == 12
+
+
+def test_filtro_pendiente_decision_y_opciones_ocultas(create_actor: Any) -> None:
+    """Sólo se ofrecen los pendientes que el actor puede atender."""
+    operador, _ = create_actor("operador_pendiente", ["gastos.decidir"])
+    solicitante, _ = create_actor("solicitante_pendiente", ["gastos.presentar"])
+    ajena = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Pendiente de decisión",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    crear_gasto_sintetico(
+        solicitante=operador,
+        concepto="Propia presentada",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+
+    client = Client()
+    client.force_login(operador)
+
+    response = client.get(reverse("gastos:lista"))
+    html = response.content.decode()
+    assert '<option value="decision">Pendiente de decisión</option>' in html
+    assert '<option value="pago">' not in html
+    assert '<option value="atp">' not in html
+    assert '<option value="deuda">' not in html
+
+    filtrada = client.get(reverse("gastos:lista"), {"pendiente": "decision"})
+    assert list(filtrada.context["solicitudes"]) == [ajena]
+
+    rechazada = client.get(reverse("gastos:lista"), {"pendiente": "pago"})
+    assert list(rechazada.context["solicitudes"]) == []
+    assert "pendiente" in rechazada.context["filtro_form"].errors
+
+
+def test_filtro_pendiente_pago_y_atp_segun_capacidades(create_actor: Any) -> None:
+    """Tesorería ve y usa los pendientes de pago y constancia ATP."""
+    pagador, _ = create_actor("operador_pago_pendiente", ["gastos.consultar_todas"])
+    for grupo in ("demo_gastos_pago", "demo_documentos_aporte", "demo_documentos_metadatos"):
+        pagador.groups.add(Group.objects.get_or_create(name=grupo)[0])
+    solicitante, _ = create_actor("solicitante_pago_pendiente", ["gastos.presentar"])
+
+    sin_pago = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada sin pago",
+        estado=EstadoSolicitud.ACEPTADA,
+        monto_estimado=Decimal("100.00"),
+    )
+    con_atp = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada con ATP pendiente",
+        estado=EstadoSolicitud.ACEPTADA,
+        monto_estimado=Decimal("100.00"),
+    )
+    PagoExterno.objects.create(
+        solicitud=con_atp,
+        monto_bruto=Decimal("100.00"),
+        monto_retencion_atp=Decimal("3.50"),
+        importe=Decimal("96.50"),
+        referencia_documental="FAC-PENDIENTE-ATP",
+        fecha_pago=date(2026, 11, 3),
+        huella_idempotencia="huella-pendiente-atp-filtro",
+    )
+
+    client = Client()
+    client.force_login(pagador)
+
+    response = client.get(reverse("gastos:lista"))
+    html = response.content.decode()
+    assert '<option value="pago">Sin pago registrado</option>' in html
+    assert '<option value="atp">Constancia ATP pendiente</option>' in html
+    assert '<option value="decision">' not in html
+    assert '<option value="deuda">' not in html
+    assert response.context["total_atencion"] == 2
+
+    assert list(
+        client.get(reverse("gastos:lista"), {"pendiente": "pago"}).context["solicitudes"]
+    ) == [sin_pago]
+    assert list(
+        client.get(reverse("gastos:lista"), {"pendiente": "atp"}).context["solicitudes"]
+    ) == [con_atp]
+
+
+def test_filtro_deuda_propia_visible_para_quien_presenta(create_actor: Any) -> None:
+    """El solicitante puede filtrar su propia deuda sin ver deuda ajena."""
+    solicitante, _ = create_actor("solicitante_deuda", ["gastos.presentar"])
+    solicitud = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Compra directa propia",
+        estado=EstadoSolicitud.ACEPTADA,
+        monto_estimado=Decimal("100.00"),
+    )
+    PagoExterno.objects.create(
+        solicitud=solicitud,
+        monto_bruto=Decimal("100.00"),
+        importe=Decimal("100.00"),
+        referencia_documental="FAC-DEUDA-PROPIA",
+        fecha_pago=date(2020, 1, 1),
+        huella_idempotencia="huella-deuda-propia-filtro",
+    )
+
+    client = Client()
+    client.force_login(solicitante)
+
+    response = client.get(reverse("gastos:lista"))
+    assert '<option value="deuda">Falta factura definitiva</option>' in response.content.decode()
+    filtrada = client.get(reverse("gastos:lista"), {"pendiente": "deuda"})
+    assert list(filtrada.context["solicitudes"]) == [solicitud]
+
+
+# ---------------------------------------------------------------------------
+# 3. Privacidad de referencias del pago
+# ---------------------------------------------------------------------------
+
+
+def test_solicitud_list_no_expone_desglose_atp(create_actor: Any) -> None:
+    """El desglose y las referencias quedan en el detalle."""
     user, _ = create_actor("operador_pagos_atp", ["gastos.consultar_todas"])
     user.groups.add(Group.objects.get_or_create(name="demo_gastos_pago")[0])
     solicitud = _crear_solicitud_con_transferencia(
@@ -258,11 +399,10 @@ def test_solicitud_list_drawer_muestra_desglose_atp(create_actor: Any) -> None:
     assert response.status_code == 200
 
     html = response.content.decode()
-    assert "Pago Confirmado" in html
-    assert "CONST-ATP-7788" in html
-    assert "TRF-BANCO-9911" in html
-    assert "Retención ATP Chaco" in html
-    assert "96500" in html
+    assert "CONST-ATP-7788" not in html
+    assert "TRF-BANCO-9911" not in html
+    assert "Retención ATP Chaco" not in html
+    assert "96500" not in html
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +413,7 @@ def test_solicitud_list_drawer_muestra_desglose_atp(create_actor: Any) -> None:
 def test_solicitud_list_queries_optimizadas_sin_n_mas_1(
     create_actor: Any, django_assert_num_queries: Any
 ) -> None:
-    """Verifica que select_related y prefetch_related acotan las consultas de BD."""
+    """La consulta del listado evita N+1."""
     user, _ = create_actor("consultor_n1", ["gastos.consultar_todas"])
     user.groups.add(Group.objects.get_or_create(name="demo_gastos_pago")[0])
     centro = CentroCosto.objects.create(codigo="cc-opt", nombre="Centro Optimizado")
@@ -290,13 +430,7 @@ def test_solicitud_list_queries_optimizadas_sin_n_mas_1(
     client = Client()
     client.force_login(user)
 
-    # El listado de 10 solicitudes con centro_costo, pago_externo y revisiones de transferencia
-    # no debe superar una cantidad acotada y fija de consultas (sin N+1):
-    # 1. Sesión y actor
-    # 2. Solicitudes con JOIN a centro_costo y pago_externo
-    # 3. Prefetch de revisiones de transferencia
-    # 4. Paginador (COUNT)
-    with django_assert_num_queries(6):
+    with django_assert_num_queries(5):
         response = client.get(reverse("gastos:lista"))
         assert response.status_code == 200
         assert len(response.context["solicitudes"]) == 10
@@ -336,3 +470,125 @@ def test_solicitud_list_paginacion_a_25_registros(create_actor: Any) -> None:
     assert len(resp2.context["solicitudes"]) == 5
     assert resp2.context["page_obj"].has_previous() is True
     assert "Anterior" in resp2.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# 6. Etiqueta derivada Pagada y filtro de cualquier pendiente
+# ---------------------------------------------------------------------------
+
+
+def test_bandeja_distingue_aceptada_de_pagada_y_filtra_estado_pagada(
+    create_actor: Any,
+) -> None:
+    """Pagada deriva del pago registrado y estado=pagada no cambia el estado guardado."""
+    lector, _ = create_actor("lector_pagada", ["gastos.consultar_todas"])
+    solicitante, _ = create_actor("solicitante_pagada", ["gastos.presentar"])
+    sin_pago = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada sin pago",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    pagada = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada pagada",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    PagoExterno.objects.create(
+        solicitud=pagada,
+        monto_bruto=Decimal("100.00"),
+        importe=Decimal("100.00"),
+        referencia_documental="FAC-PAGADA-ETIQUETA",
+        fecha_pago=date(2026, 11, 3),
+        huella_idempotencia="huella-pagada-etiqueta",
+    )
+
+    client = Client()
+    client.force_login(lector)
+
+    response = client.get(reverse("gastos:lista"))
+    html = response.content.decode()
+    assert '<option value="pagada">Pagada</option>' in html
+    assert '<select name="pendiente"' not in html
+    assert '<input type="hidden" name="pendiente"' in html
+    assert '<span class="bandeja-chip bandeja-chip-pagada">Pagada</span>' in html
+    assert '<span class="bandeja-chip bandeja-chip-aceptada">Aceptada</span>' in html
+
+    todas_aceptadas = client.get(reverse("gastos:lista"), {"estado": "aceptada"})
+    assert {s.pk for s in todas_aceptadas.context["solicitudes"]} == {
+        sin_pago.pk,
+        pagada.pk,
+    }
+
+    solo_pagadas = client.get(reverse("gastos:lista"), {"estado": "pagada"})
+    assert [s.pk for s in solo_pagadas.context["solicitudes"]] == [pagada.pk]
+
+    detalle = client.get(reverse("gastos:detalle", kwargs={"pk": pagada.pk}))
+    assert '<span class="sd-pill sd-pill-success">Pagada</span>' in detalle.content.decode()
+
+
+def test_cualquier_pendiente_reune_condiciones_del_actor(create_actor: Any) -> None:
+    """Cualquier pendiente aplica OR sobre decisión, pago y ATP disponibles."""
+    operador, _ = create_actor("operador_mixto_pendiente", ["gastos.decidir"])
+    for grupo in ("demo_gastos_pago", "demo_documentos_aporte", "demo_documentos_metadatos"):
+        operador.groups.add(Group.objects.get_or_create(name=grupo)[0])
+    solicitante, _ = create_actor("solicitante_mixto_pendiente", ["gastos.presentar"])
+
+    por_decidir = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Presentada ajena",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    crear_gasto_sintetico(
+        solicitante=operador,
+        concepto="Presentada propia",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    sin_pago = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada sin pago",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    con_atp = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada con ATP pendiente",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    PagoExterno.objects.create(
+        solicitud=con_atp,
+        monto_bruto=Decimal("100.00"),
+        monto_retencion_atp=Decimal("3.50"),
+        importe=Decimal("96.50"),
+        referencia_documental="FAC-ATP-MIXTA",
+        fecha_pago=date(2026, 11, 3),
+        huella_idempotencia="huella-atp-mixta",
+    )
+    pagada_sin_pendientes = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Aceptada pagada sin pendientes",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    PagoExterno.objects.create(
+        solicitud=pagada_sin_pendientes,
+        monto_bruto=Decimal("50.00"),
+        importe=Decimal("50.00"),
+        referencia_documental="FAC-PAGADA-MIXTA",
+        fecha_pago=date(2026, 11, 4),
+        huella_idempotencia="huella-pagada-mixta",
+    )
+
+    client = Client()
+    client.force_login(operador)
+
+    response = client.get(reverse("gastos:lista"))
+    html = response.content.decode()
+    assert '<option value="cualquiera">Cualquier pendiente</option>' in html
+    assert '<option value="decision">Pendiente de decisión</option>' in html
+    assert '<option value="pago">Sin pago registrado</option>' in html
+    assert '<option value="atp">Constancia ATP pendiente</option>' in html
+
+    filtrada = client.get(reverse("gastos:lista"), {"pendiente": "cualquiera"})
+    assert {s.pk for s in filtrada.context["solicitudes"]} == {
+        por_decidir.pk,
+        sin_pago.pk,
+        con_atp.pk,
+    }

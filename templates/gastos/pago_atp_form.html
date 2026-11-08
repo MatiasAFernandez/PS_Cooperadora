@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Constancia ATP — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/pago_externo.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="registro-pago">
+    <p class="rp-breadcrumb"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a></p>
+    <div class="rp-head">
+        <p class="rp-small">Solicitud #{{ solicitud.pk }} · {{ solicitud.concepto }}</p>
+        <h1>Incorporar constancia ATP</h1>
+        <p>El pago quedó registrado con la constancia pendiente. Este aporte resuelve el pendiente documental; no cierra el trámite ni modifica el hecho bancario.</p>
+    </div>
+
+    <div class="rp-context">
+        <span><strong>Versión efectiva:</strong> {{ pago.version }}</span>
+        <span><strong>Bruto:</strong> <span class="font-tabular">${{ pago.monto_bruto }}</span></span>
+        <span><strong>Retención:</strong> <span class="font-tabular">${{ pago.monto_retencion_atp }}</span></span>
+        <span><strong>Neto:</strong> <span class="font-tabular">${{ pago.importe }}</span></span>
+    </div>
+
+    <div id="rp-errores" class="rp-error" role="alert" {% if not form.non_field_errors %}hidden{% endif %}>
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+
+    <form data-pago-form data-mode="atp" data-max-bytes="{{ max_upload_bytes }}"
+          method="post" enctype="multipart/form-data"
+          action="{% url 'gastos:pago_atp' pk=solicitud.pk %}" novalidate>
+        {% csrf_token %}
+        {{ form.version_esperada }}
+        <div class="rp-layout">
+            <div class="rp-main">
+                <section class="rp-section" aria-labelledby="rp-atp-form-title">
+                    <h2 id="rp-atp-form-title">Constancia de retención</h2>
+                    <div class="rp-dropzone" id="rp-atp-drop">
+                        {{ form.constancia_atp }}
+                        <p>Arrastrá la constancia PDF acá o elegila con el botón.</p>
+                        <label for="{{ form.constancia_atp.id_for_label }}" class="rp-button">Seleccionar PDF</label>
+                        <span class="rp-small">PDF · hasta {{ max_upload_mib }} MiB</span>
+                    </div>
+                    <div class="rp-file-card" id="rp-atp-file" hidden>
+                        <p class="rp-file-name" id="rp-atp-nombre"></p>
+                        <p class="rp-file-meta" id="rp-atp-meta"></p>
+                        <div class="rp-actions" id="rp-atp-actions">
+                            <a class="rp-button" id="rp-atp-abrir" href="#" target="_blank" rel="noopener" data-open-doc="">Abrir PDF</a>
+                            <a class="rp-button" id="rp-atp-descargar" href="#" download>Descargar</a>
+                            <button type="button" class="rp-button" id="rp-atp-cambiar">Cambiar</button>
+                            <button type="button" class="rp-button" id="rp-atp-quitar">Quitar</button>
+                        </div>
+                    </div>
+                    <p class="rp-small" id="rp-atp-status" role="status" hidden></p>
+                    {% if form.constancia_atp.errors %}<div class="rp-error" role="alert">{{ form.constancia_atp.errors|join:", " }}</div>{% endif %}
+
+                    <div style="margin-top: 1rem;">
+                        <label for="{{ form.motivo.id_for_label }}">{{ form.motivo.label }} <span class="rp-readonly-label">Obligatorio</span></label>
+                        {{ form.motivo }}
+                        <span class="rp-help">Explicá por qué incorporás la constancia ahora.</span>
+                        {% if form.motivo.errors %}<div class="rp-error" role="alert">{{ form.motivo.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </section>
+
+                <div class="rp-actions">
+                    <button type="submit" class="rp-button rp-button-primary" style="width: auto;">Incorporar constancia</button>
+                    <a class="rp-button" href="{% url 'gastos:detalle' pk=solicitud.pk %}">Cancelar</a>
+                </div>
+            </div>
+
+            <aside class="rp-aside">
+                <div class="rp-summary">
+                    <h2>Pendiente documental</h2>
+                    <div class="rp-pair"><dt>Comprobante bancario</dt><dd>Incorporado</dd></div>
+                    <div class="rp-pair"><dt>Constancia ATP</dt><dd><span class="rp-chip rp-chip-warning">Pendiente</span></dd></div>
+                    <div class="rp-pair rp-total"><dt>Versión</dt><dd>{{ pago.version }}</dd></div>
+                    <p class="rp-note rp-note-info" role="note">La versión esperada evita duplicar el aporte si la respuesta se pierde. Un reenvío idéntico no crea otro documento.</p>
+                </div>
+            </aside>
+        </div>
+    </form>
+</div>
+<script src="{% static 'gastos/js/pago_externo.js' %}"></script>
+{% endblock %}

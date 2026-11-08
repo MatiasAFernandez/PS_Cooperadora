@@ -69,7 +69,7 @@ def test_contenido_sin_distinguir_mayusculas_intersecta_estado_y_visibilidad(
     assert 'value="sUmOs"' in content
     if estado:
         assert '<option value="aceptada" selected>Aceptada</option>' in content
-    assert '<a href="/gastos/">Quitar filtro</a>' in content
+    assert 'href="/gastos/">Quitar filtros</a>' in content
 
 
 @pytest.mark.parametrize("q", ["", "   ", "  InSuMoS  "])
@@ -130,7 +130,7 @@ def test_limite_coincide_con_longitud_del_concepto(
         assert list(response.context["solicitudes"]) == []
         assert "q" in response.context["filtro_form"].errors
         content = response.content.decode()
-        assert "Corrija el filtro" in content
+        assert "Corregí los filtros" in content
         assert 'id="id_q_error"' in content
         assert "255" in content
 
@@ -157,6 +157,50 @@ def test_parametro_repetido_usa_ultimo_valor_validado(
     invalid = client.get(url, {"q": ["mobiliario", "x" * 256]})
     assert "q" in invalid.context["filtro_form"].errors
     assert list(invalid.context["solicitudes"]) == []
+
+
+def test_busqueda_por_numero_exacto_y_prefijo_hash(
+    demo_accounts: Any, gastos_busqueda: dict[str, SolicitudGasto]
+) -> None:
+    accounts, _ = demo_accounts
+    client = _client(accounts)
+    solicitud = gastos_busqueda["a_presentada"]
+    for consulta in (str(solicitud.pk), f"#{solicitud.pk}"):
+        response = client.get(reverse("gastos:lista"), {"q": consulta})
+        assert response.status_code == 200
+        assert list(response.context["solicitudes"]) == [solicitud]
+
+    ajena = gastos_busqueda["b_presentada"]
+    response = client.get(reverse("gastos:lista"), {"q": str(ajena.pk)})
+    assert list(response.context["solicitudes"]) == []
+
+
+def test_numero_exacto_se_suma_a_la_coincidencia_de_concepto(
+    demo_accounts: Any, gastos_busqueda: dict[str, SolicitudGasto]
+) -> None:
+    accounts, _ = demo_accounts
+    numero = gastos_busqueda["a_presentada"].pk
+    literal = crear_gasto_sintetico(
+        solicitante=accounts["demo_a"],
+        concepto=f"Referencia {numero}",
+        monto_estimado="10.00",
+        unidad_requirente="Unidad sintética",
+    )
+    response = _client(accounts).get(reverse("gastos:lista"), {"q": str(numero)})
+    assert {s.pk for s in response.context["solicitudes"]} == {numero, literal.pk}
+
+
+@pytest.mark.parametrize(
+    "consulta",
+    ["9" * 19, "9" * 100, "#" + "9" * 19, "#" + "9" * 100],
+)
+def test_numero_fuera_de_rango_no_desborda(
+    demo_accounts: Any, gastos_busqueda: dict[str, SolicitudGasto], consulta: str
+) -> None:
+    accounts, _ = demo_accounts
+    response = _client(accounts).get(reverse("gastos:lista"), {"q": consulta})
+    assert response.status_code == 200
+    assert list(response.context["solicitudes"]) == []
 
 
 def test_sin_capacidades_no_obtiene_coincidencias(
@@ -194,7 +238,7 @@ def test_consulta_combinada_y_recarga_no_escriben_solicitudes_o_decisiones(
     assert list(response.context["solicitudes"]) == list(reload.context["solicitudes"])
     assert list(response.context["solicitudes"]) == [gastos_busqueda["a_presentada"]]
     content = response.content.decode()
-    assert '<label for="id_q">Buscar en concepto:</label>' in content
+    assert '<label for="id_q">Buscar por concepto o número:</label>' in content
     assert 'value="  insumos  "' in content
     assert '<option value="postergada" selected>Postergada</option>' in content
     assert list(SolicitudGasto.objects.order_by("pk").values()) == before_solicitudes

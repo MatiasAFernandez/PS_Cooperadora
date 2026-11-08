@@ -33,7 +33,7 @@ CAMPOS_DATOS_TRANSFERENCIA: tuple[str, ...] = (
 
 ETIQUETAS_DATOS_TRANSFERENCIA: dict[str, str] = {
     "titular_nombre": "Titular o beneficiario",
-    "identificacion": "Identificación informada",
+    "identificacion": "CUIT / CUIL",
     "cbu_alias": "CBU o alias",
     "correo_comprobante": "Correo para el comprobante",
     "centro_costo": "Centro de costo informado",
@@ -214,6 +214,13 @@ def puede_editar_datos_transferencia(
     return visible_expenses(actor).filter(pk=gasto.pk).exists()
 
 
+def centro_costo_transferencia_por_defecto(solicitud: SolicitudGasto) -> str:
+    if solicitud.centro_costo_id:
+        return solicitud.centro_costo.nombre
+    anterior = solicitud.revisiones_datos_transferencia.order_by("-numero_revision").first()
+    return (anterior.centro_costo if anterior else "") or solicitud.unidad_requirente
+
+
 @transaction.atomic
 def registrar_revision_datos_transferencia(
     *,
@@ -263,14 +270,10 @@ def registrar_revision_datos_transferencia(
             "posteriores en esta demo."
         )
 
-    if (
-        datos
-        and isinstance(datos, Mapping)
-        and not (datos.get("centro_costo") or "").strip()
-        and getattr(solicitud, "centro_costo", None) is not None
-    ):
-        datos = dict(datos)
-        datos["centro_costo"] = solicitud.centro_costo.nombre
+    if datos and isinstance(datos, Mapping):
+        centro_costo = datos.get("centro_costo")
+        if centro_costo is None or (isinstance(centro_costo, str) and not centro_costo.strip()):
+            datos = {**datos, "centro_costo": centro_costo_transferencia_por_defecto(solicitud)}
 
     valores = validar_datos_transferencia(datos)
     if valores is None:

@@ -19,7 +19,7 @@ def test_muestra_verifica_hechos_y_detecta_bytes_alterados(settings, tmp_path):
     manifiesto = tmp_path / "manifiesto.json"
     call_command("muestra_entrega", "crear", manifiesto=manifiesto)
     assert TramiteBase.objects.count() == 2
-    assert Documento.objects.count() == 4
+    assert Documento.objects.count() == 5
     assert SolicitudFacturacion.objects.get().estado == "CERRADA"
     assert PagoExterno.objects.count() == 1
     call_command("muestra_entrega", "verificar", manifiesto=manifiesto)
@@ -29,7 +29,7 @@ def test_muestra_verifica_hechos_y_detecta_bytes_alterados(settings, tmp_path):
         call_command("muestra_entrega", "verificar", manifiesto=manifiesto)
     with pytest.raises(CommandError, match="vacía"):
         call_command("muestra_entrega", "crear", manifiesto=manifiesto)
-    assert TramiteBase.objects.count() == 2 and Documento.objects.count() == 4
+    assert TramiteBase.objects.count() == 2 and Documento.objects.count() == 5
 
 
 def test_muestra_no_crea_en_demo_deshabilitada(settings, tmp_path):

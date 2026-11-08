@@ -9,6 +9,44 @@
 - Validadores: Franco/Matías para diseño e integración; operadora/Marcos para reglas; coordinación para revisión del próximo tramo. El estado operativo se sigue en [Issue #15](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/15) y los cambios integrados, en sus PR.
 - Plan: RF-003/004/005/006, RNF-001/002/003/004; F-E02, F-E07, parte de F-E08, F-E10/11/12, C01/C02 e I01/I02/I03/I05/I06. SPEC-010 apoya RF-007/F-E09.
 
+## Actualización local 04/11/2026 — registro documentado
+
+Este corte local (`feat/15-registro-pago-documentado`) implementa la pantalla de
+registro de pago definida para revisión con Franco, sin publicar Issue, PR ni
+cambiar C01:
+
+- El alta exige comprobante bancario (PDF, JPG, JPEG o PNG) validado en
+  servidor por magic bytes, extensión y tipo MIME; no se registra un pago «a
+  medias» si falla el archivo ni se admite WebP. La constancia ATP es un documento
+  separado estrictamente en formato PDF y puede incorporarse después con una
+  ruta real y pendiente visible.
+- Bruto y retención se informan; el neto se deriva en servidor. La pantalla
+  precarga el bruto desde `monto_estimado` y muestra el neto readonly accesible;
+  los importes se formatean y normalizan en estándar es-AR sin depender exclusivamente de JS.
+- La cabecera compacta identifica claramente al solicitante (nombre y correo
+  asociado disponible) distinguiéndolo del titular de cuenta bancaria rotulado como
+  «CUIT / CUIL» con acción accesible para copiar CBU.
+- La referencia bancaria es opcional y no se fabrica. El respaldo comercial C01
+  sigue siendo inmutable y distinto del comprobante bancario.
+- Cualquier operador con `gastos.registrar_pago` y visibilidad puede rectificar
+  fecha, referencias, bruto, retención, neto derivado o comprobante equivocado,
+  con motivo y versión esperada. La incorporación o reemplazo documental exige
+  además las capacidades documentales vigentes. No se anula una transferencia
+  real ni se cambia beneficiario o cuenta.
+- El historial `PagoExternoCambio` es append-only y conserva antes/después,
+  actor y fecha. La representación original del alta se mantiene separada para
+  que los reenvíos no reviertan rectificaciones ni recalculen huellas históricas.
+- El detalle y los reportes existentes leen la fila efectiva; una rectificación
+  no se suma como otro pago. Los pagos legados sin PDF se conservan como tales.
+- No se agregan estados a `SolicitudGasto`, revisión documental independiente,
+  cierre automático, notificaciones ni ejecución bancaria. La frontera exacta del
+  aviso ATP y su valor institucional siguen pendientes.
+
+La aceptación de este corte requiere ejecutar migraciones en una base de prueba,
+las pruebas focalizadas de pago/documentos y el recorrido visual con datos
+sintéticos. Esta actualización no acredita validación institucional ni cierra
+GP-01–06 por sí sola.
+
 ## Problema y valor
 
 Después de aceptar una necesidad, solicitante y Cooperadora necesitan saber qué respaldo se aportó, qué pago externo se registró y qué documentación sigue pendiente. Una aceptación no acredita pago; un archivo aportado tampoco acredita revisión. I2 debe demostrar esa continuidad con un caso completo de gastos, manteniendo las responsabilidades de cada módulo.

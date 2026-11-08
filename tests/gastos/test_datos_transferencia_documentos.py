@@ -21,6 +21,9 @@ from gastos.models import EstadoSolicitud, PagoExterno
 from gastos.payments import registrar_pago_externo
 from identidad.services import Actor
 from tests.soporte_gastos import crear_gasto_sintetico
+from tests.soporte_pagos import pdf_comprobante
+
+pytestmark = pytest.mark.django_db(transaction=True)
 
 
 def _pdf(nombre: str) -> SimpleUploadedFile:
@@ -91,10 +94,12 @@ def _pago_con_proforma(e: SimpleNamespace, proveedor: object) -> PagoExterno:
     return registrar_pago_externo(
         actor=e.actor_pago,
         solicitud_id=e.gasto.pk,
-        importe="1234.56",
+        monto_bruto="1234.56",
+        monto_retencion_atp="0.00",
         fecha_pago=date(2026, 10, 27),
         referencia_externa="TRF-DOC-74",
         referencia_documental="doc-proforma-74",
+        comprobante_bancario=pdf_comprobante(),
         document_provider=proveedor,
     )
 
@@ -220,4 +225,4 @@ def test_pagina_de_pago_sin_opciones_muestra_camino(
     assert "No hay opciones documentales disponibles" in contenido
     assert "Aportar factura, presupuesto o proforma" in contenido
     assert reverse("gastos:documentos", kwargs={"pk": e.gasto.pk}) in contenido
-    assert 'type="submit" class="btn" disabled' in contenido
+    assert "disabled" in contenido

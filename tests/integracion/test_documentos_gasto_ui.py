@@ -108,10 +108,12 @@ def test_carga_revision_pago_y_reemplazo_preservan_hechos(
     respuesta_pago = cliente_staff.post(
         reverse("gastos:pagar", kwargs={"pk": gasto_id}),
         {
-            "importe": "1200.00",
+            "monto_bruto": "1200.00",
+            "monto_retencion_atp": "0.00",
             "fecha_pago": "2026-10-21",
             "referencia_externa": "SINTETICA-ISSUE50-001",
             "referencia_documental": referencia_pago,
+            "comprobante_bancario": _pdf("comprobante-pago.pdf"),
         },
     )
     assert respuesta_pago.status_code == 302

@@ -8,6 +8,7 @@ from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -22,6 +23,7 @@ from documentos.models import Documento
 from documentos.revision import revisar
 from documentos.services import incorporar
 from gastos.models import EstadoSolicitud, EventoPagoExterno, PagoExterno
+from tests.integracion.helpers import archivo_pdf
 from tests.soporte_gastos import crear_gasto_sintetico
 
 
@@ -242,8 +244,9 @@ def test_pendiente_negativo_accesos_y_privacidad_de_otros_tramites(escenario_com
     )
 
 
+@pytest.mark.django_db(transaction=True)
 def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
-    escenario_comun, settings
+    escenario_comun, settings, transactional_db
 ):
     e = escenario_comun
     settings.GASTOS_PAYMENT_DOCUMENT_PROVIDER = (
@@ -274,10 +277,12 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     respuesta_pago = cliente.post(
         url_pagar,
         {
-            "importe": "1.00",
+            "monto_bruto": "1.00",
+            "monto_retencion_atp": "0.00",
             "fecha_pago": date(2026, 10, 19).isoformat(),
             "referencia_externa": "SINTETICA-49",
             "referencia_documental": str(pagada.referencia_version),
+            "comprobante_bancario": archivo_pdf(),
         },
     )
     assert respuesta_pago.status_code == 302

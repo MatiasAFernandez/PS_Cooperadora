@@ -18,6 +18,7 @@ from gastos.datos_transferencia import (
 from gastos.models import PagoExterno, RevisionDatosTransferencia
 from gastos.payments import registrar_pago_externo
 from tests.soporte_gastos import crear_gasto_sintetico
+from tests.soporte_pagos import pdf_comprobante
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -37,7 +38,11 @@ def test_concurrencia_correccion_y_pago_serializa_sobre_el_gasto(
         ("gastos.presentar", "gastos.consultar_propias")
     )
     _, pago_actor = actor_factory(
-        ("gastos.registrar_pago", "gastos.consultar_todas")
+        (
+            "gastos.registrar_pago",
+            "gastos.consultar_todas",
+            "documentos.incorporar",
+        )
     )
     gasto = crear_gasto_sintetico(
         concepto="Gasto concurrente de transferencia",
@@ -71,10 +76,12 @@ def test_concurrencia_correccion_y_pago_serializa_sobre_el_gasto(
             resultados["pago"] = registrar_pago_externo(
                 actor=pago_actor,
                 solicitud_id=gasto.pk,
-                importe="1234.56",
+                monto_bruto="1234.56",
+                monto_retencion_atp="0.00",
                 fecha_pago="2026-10-27",
                 referencia_externa="TRF-CONC-74",
                 referencia_documental="doc-conc-74",
+                comprobante_bancario=pdf_comprobante(),
                 document_provider=fake_document_provider(),
             )
         except Exception as exc:  # noqa: BLE001 - se evalúa como resultado del hilo

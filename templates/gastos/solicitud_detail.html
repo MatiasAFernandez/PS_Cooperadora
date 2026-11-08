@@ -4,531 +4,568 @@
 
 {% block title %}Detalle de Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
 
+{% block extra_css %}<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">{% endblock %}
+
 {% block content %}
-<div style="margin-bottom: 1rem;">
-    <a href="{% url 'gastos:lista' %}" style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--ref-blue, #084298); font-weight: 500; font-size: var(--text-sm, 0.875rem); text-decoration: none;">&larr; Volver al listado</a>
-</div>
+<div class="solicitud-detalle">
+    <p class="sd-back"><a href="{% url 'gastos:lista' %}{% if request.GET.bandeja %}?{{ request.GET.bandeja }}{% endif %}">&larr; Volver al listado</a></p>
 
-{% if messages %}
-    {% for message in messages %}
-        <div role="status" style="margin: 0 0 1.25rem 0; padding: 0.85rem 1.15rem; border: 1px solid #bbf7d0; background: #effaf2; color: #166534; border-radius: var(--radius-md, 6px); font-size: var(--text-sm, 0.875rem);">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="sd-message" role="status">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 
-<!-- Tarjeta de Encabezado Principal y Resumen Rápido -->
-<div class="card" style="margin-bottom: 1.5rem; padding: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-    <div>
-        <h3 style="margin: 0; color: var(--ref-deep-blue, #090979); font-size: var(--text-2xl, 1.5rem); font-weight: 700;">
-            Detalle de la Solicitud #{{ solicitud.pk }}
-        </h3>
-        <p style="margin: 0.35rem 0 0; color: #64748b; font-size: var(--text-sm, 0.875rem);">
-            {{ solicitud.concepto }}
-        </p>
-        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            {% if solicitud.tipo_flujo == "REINTEGRO" %}
-                <span class="badge" style="background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe;">Reintegro</span>
-            {% else %}
-                <span class="badge" style="background: var(--color-info-bg, #eff8ff); color: var(--color-info, #075985); border: 1px solid var(--color-info-border, #bae6fd);">Compra Directa</span>
-            {% endif %}
-
-            {% if solicitud.estado == "aceptada" or solicitud.estado == "ACEPTADA" %}
-                <span class="badge" style="background: var(--color-success-bg, #effaf2); color: var(--color-success, #166534); border: 1px solid var(--color-success-border, #bbf7d0);">{{ solicitud.get_estado_display }}</span>
-            {% elif solicitud.estado == "rechazada" or solicitud.estado == "RECHAZADA" %}
-                <span class="badge" style="background: var(--color-error-bg, #fff1f2); color: var(--color-error, #9f1239); border: 1px solid var(--color-error-border, #fecdd3);">{{ solicitud.get_estado_display }}</span>
-            {% elif solicitud.estado == "cancelada" or solicitud.estado == "CANCELADA" %}
-                <span class="badge" style="background: var(--color-neutral-bg, #f1f5f9); color: var(--color-neutral, #475569); border: 1px solid var(--color-neutral-border, #cbd5e1);">{{ solicitud.get_estado_display }}</span>
-            {% else %}
-                <span class="badge" style="background: var(--color-info-bg, #eff8ff); color: var(--color-info, #075985); border: 1px solid var(--color-info-border, #bae6fd);">{{ solicitud.get_estado_display }}</span>
-            {% endif %}
-
-            {% if solicitud.centro_costo %}
-                <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">{{ solicitud.centro_costo.nombre }}</span>
-            {% endif %}
-        </div>
-    </div>
-    <div style="text-align: right;">
-        <span style="display: block; font-size: var(--text-xs, 0.75rem); color: #64748b; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Monto Estimado</span>
-        <span class="font-tabular" style="font-size: 1.75rem; font-weight: 700; color: var(--ref-deep-blue, #090979);">
-            ${{ solicitud.monto_estimado }} <small style="font-size: 0.85rem; font-weight: 500; color: #64748b;">ARS</small>
-        </span>
-    </div>
-</div>
-
-<!-- Tablero en 2 Columnas: Izquierda (Workflow, Documentos, Historial) y Derecha (Finanzas y Transferencia) -->
-<div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem; align-items: start;">
-
-    <!-- COLUMNA IZQUIERDA -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-        
-        <!-- Estado de la Solicitud y Metadatos -->
-        <section id="estado-solicitud" class="panel" aria-labelledby="estado-solicitud-heading" style="margin: 0;">
-            <h4 id="estado-solicitud-heading" style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Estado de la solicitud
-            </h4>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
-                <tr>
-                    <th style="width: 35%; padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Identificador</th>
-                    <td style="padding: 0.55rem 0.75rem; font-weight: 700; color: var(--ref-blue, #084298);">{{ tramite_id }}</td>
-                </tr>
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Concepto</th>
-                    <td style="padding: 0.55rem 0.75rem; font-weight: 500;">{{ solicitud.concepto }}</td>
-                </tr>
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Monto Estimado</th>
-                    <td class="font-tabular" style="padding: 0.55rem 0.75rem; font-weight: 600;">${{ solicitud.monto_estimado }} ARS</td>
-                </tr>
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Unidad Requirente</th>
-                    <td style="padding: 0.55rem 0.75rem;">{{ solicitud.unidad_requirente }}</td>
-                </tr>
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Estado</th>
-                    <td style="padding: 0.55rem 0.75rem;"><span class="badge">{{ solicitud.get_estado_display }}</span></td>
-                </tr>
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Modalidad de Gasto</th>
-                    <td style="padding: 0.55rem 0.75rem;"><span class="badge">{{ solicitud.get_tipo_flujo_display }}</span></td>
-                </tr>
-                {% if solicitud.centro_costo %}
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Centro de Costo</th>
-                    <td style="padding: 0.55rem 0.75rem;">{{ solicitud.centro_costo.nombre }} ({{ solicitud.centro_costo.codigo }})</td>
-                </tr>
+    <!-- Cabecera única -->
+    <header class="sd-card sd-header" data-tramite-id="{{ tramite_id }}">
+        <div class="sd-header-main">
+            <p class="sd-eyebrow">Solicitud #{{ solicitud.pk }}</p>
+            <h1 class="sd-title">{{ solicitud.concepto }}</h1>
+            <div class="sd-chips">
+                <span class="sd-pill {% if solicitud.tipo_flujo == 'REINTEGRO' %}sd-pill-purple{% else %}sd-pill-info{% endif %}">{{ solicitud.get_tipo_flujo_display }}</span>
+                {% if solicitud.estado == "aceptada" or solicitud.estado == "ACEPTADA" %}
+                    <span class="sd-pill sd-pill-success">{% if pago_consulta %}Pagada{% else %}{{ solicitud.get_estado_display }}{% endif %}</span>
+                {% elif solicitud.estado == "rechazada" or solicitud.estado == "RECHAZADA" %}
+                    <span class="sd-pill sd-pill-error">{{ solicitud.get_estado_display }}</span>
+                {% elif solicitud.estado == "cancelada" or solicitud.estado == "CANCELADA" %}
+                    <span class="sd-pill sd-pill-neutral">{{ solicitud.get_estado_display }}</span>
+                {% else %}
+                    <span class="sd-pill sd-pill-info">{{ solicitud.get_estado_display }}</span>
                 {% endif %}
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Fecha de Presentación</th>
-                    <td style="padding: 0.55rem 0.75rem; color: #64748b; font-size: var(--text-xs, 0.75rem);">{{ solicitud.fecha_creacion|date:"d/m/Y H:i:s" }}</td>
-                </tr>
-                <tr>
-                    <th style="padding: 0.55rem 0.75rem; color: #64748b; font-weight: 600;">Versión</th>
-                    <td style="padding: 0.55rem 0.75rem;">{{ solicitud.version }}</td>
-                </tr>
-            </table>
-            <p role="note" style="margin-top: 1rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                Aceptar una solicitud no equivale a pagarla ni a cerrar el trámite. El estado
-                de la solicitud se conserva separado del pago y de la documentación.
+            </div>
+            <p class="sd-requester">
+                <span class="sd-label">Solicitante</span>
+                {{ detalle_solicitante.nombre }}
+                {% if detalle_solicitante.correo %}<span class="sd-muted">· {{ detalle_solicitante.correo }}</span>{% endif %}
             </p>
-        </section>
-
-        <!-- Documentación de Respaldo -->
-        <section id="respaldo-documental" class="panel" aria-labelledby="respaldo-documental-heading" style="margin: 0;">
-            <h4 id="respaldo-documental-heading" style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Documentación de respaldo
-            </h4>
-            {% if puede_ver_documentos %}
-                {% if versiones_documentales %}
-                    <p style="margin: 0.5rem 0 0; font-size: var(--text-sm, 0.875rem);">Versiones documentales visibles para este gasto: <strong>{{ versiones_documentales|length }}</strong>. El tipo, la vigencia y la revisión de cada versión figuran por separado.</p>
-                {% else %}
-                    <p style="margin: 0.5rem 0 0; font-size: var(--text-sm, 0.875rem); color: #64748b;">No hay documentos de respaldo visibles para este gasto.</p>
-                {% endif %}
-                {% if pago_consulta %}
-                    {% if respaldo_categoria == "factura" %}
-                        <p style="margin: 8px 0 0; font-size: var(--text-sm, 0.875rem);">La referencia documental del pago coincide con una factura disponible en esta consulta.</p>
-                    {% elif respaldo_categoria == "presupuesto" %}
-                        <p style="margin: 8px 0 0; font-size: var(--text-sm, 0.875rem);">La referencia documental del pago coincide con un presupuesto o proforma disponible en esta consulta.</p>
-                    {% else %}
-                        <p style="margin: 8px 0 0; font-size: var(--text-sm, 0.875rem);">La categoría de la versión referenciada al registrar el pago no está disponible en esta consulta. Los aportes y reemplazos posteriores no modifican el registro de pago.</p>
-                    {% endif %}
-                {% else %}
-                    <p style="margin: 8px 0 0; font-size: var(--text-sm, 0.875rem); color: #64748b;">La presencia de un archivo o su revisión no determina la suficiencia documental del trámite.</p>
-                {% endif %}
-                <p role="note" style="margin: 0.75rem 0 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                    La factura, el presupuesto o la proforma del proveedor son el respaldo comercial.
-                    El comprobante bancario y la constancia ATP son respaldos de la operación y
-                    conservan sus propios permisos de carga, consulta y descarga. Una proforma no
-                    reemplaza la factura definitiva: la factura posterior se incorpora como
-                    documento nuevo, con su propia revisión, sin modificar el pago.
-                </p>
-            {% else %}
-                <p style="margin: 0.5rem 0 0; font-size: var(--text-sm, 0.875rem); color: #64748b;">Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. No se puede inferir desde aquí si hay archivos; el registro de pago tampoco equivale a aprobación o suficiencia documental.</p>
-            {% endif %}
-            {% if puede_incorporar_documentos %}
-                <div style="margin-top: 1rem;">
-                    <a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}" style="padding: 0.45rem 0.95rem; font-size: var(--text-sm, 0.875rem);">
-                        Cargar o reemplazar un respaldo
-                    </a>
-                </div>
-            {% endif %}
-        </section>
-
-        <!-- Versiones y Revisión Documental -->
-        {% if puede_ver_documentos %}
-        <section id="documentos-gasto" class="panel" aria-labelledby="documentos-gasto-heading" style="margin: 0;">
-            <h4 id="documentos-gasto-heading" style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Versiones y revisión documental
-            </h4>
-            {% if versiones_documentales %}
-                <ul style="list-style: none; padding-left: 0; margin: 0.75rem 0 0;">
-                    {% for version in versiones_documentales %}
-                        <li style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--ref-border, #e2e8f0);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                                <div>
-                                    <strong>{{ version.tipo_mostrado }}</strong> — {{ version.nombre }} — versión {{ version.version }}
-                                    <span class="badge" style="margin-left: 0.35rem;">{% if version.vigente %}Vigente{% else %}Reemplazada{% endif %}</span>
-                                </div>
-                                <a href="{% url 'documentos:revision' version.documento_id %}" style="font-size: var(--text-xs, 0.75rem); text-decoration: underline;">Ver revisión</a>
-                            </div>
-                            <p style="margin: 0.35rem 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                                Aportado por Usuario #{{ version.actor_id }} el {{ version.fecha_incorporacion|date:"d/m/Y H:i:s" }}.
-                            </p>
-                            {% if version.revision_actual %}
-                                <p style="margin: 0.25rem 0; font-size: var(--text-xs, 0.75rem);">
-                                    Último resultado: <strong>{{ version.revision_actual.resultado_mostrado }}</strong>.
-                                </p>
-                            {% else %}
-                                <p style="margin: 0.25rem 0; font-size: var(--text-xs, 0.75rem); color: var(--color-warning, #854d0e);">
-                                    <strong>PENDIENTE</strong> — sin acto de revisión registrado.
-                                </p>
-                            {% endif %}
-                            {% if version.revisiones %}
-                                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                                    {% for revision in version.revisiones %}
-                                        <li>
-                                            <strong>{{ revision.resultado_mostrado }}</strong> — Usuario #{{ revision.actor_id }} — {{ revision.fecha|date:"d/m/Y H:i:s" }}
-                                            {% if revision.motivo %}<p style="margin: 2px 0;">{{ revision.motivo }}</p>{% endif %}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p style="margin: 0.5rem 0 0; font-size: var(--text-sm, 0.875rem); color: #64748b;">No hay versiones documentales visibles para este gasto.</p>
-            {% endif %}
-            <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                Las versiones cuyo último resultado de revisión sea observado o rechazado no se ofrecen para nuevos pagos; siguen existiendo y conservan su historial. El tipo documental y su resultado de revisión se muestran por separado. El registro de pago conserva su referencia aunque se incorpore o reemplace otra versión. Esta vista no determina si el documento satisface un requisito del trámite.
+            <p class="sd-meta">
+                <span><span class="sd-label">Presentada</span> el {{ solicitud.fecha_creacion|date:"d/m/Y H:i" }}</span>
+                {% if solicitud.centro_costo %}<span><span class="sd-label">Centro de costo</span> {{ solicitud.centro_costo.nombre }} ({{ solicitud.centro_costo.codigo }})</span>{% endif %}
             </p>
-        </section>
-        {% endif %}
-
-        <!-- Seguimiento Factura Definitiva -->
-        {% if mostrar_seguimiento_factura %}
-        <section id="seguimiento-factura-definitiva" class="panel" aria-labelledby="seguimiento-factura-heading" style="margin: 0;">
-            <h4 id="seguimiento-factura-heading" style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Seguimiento de factura definitiva
-            </h4>
-            {% if respaldo_categoria == "presupuesto" %}
-                <p style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem);">El pago quedó asociado a un presupuesto o proforma. Una proforma no es una factura definitiva.</p>
-                {% if factura_vigente %}
-                    <p style="font-size: var(--text-sm, 0.875rem);">Hay una factura vigente incorporada: <strong>{{ factura_vigente.nombre }}</strong> — versión {{ factura_vigente.version }}.
-                        <a href="{% url 'documentos:revision' factura_vigente.documento_id %}" style="text-decoration: underline;">Ver su revisión</a>.
-                    </p>
-                    {% if factura_vigente.revision_actual %}
-                        <p style="font-size: var(--text-xs, 0.75rem); color: #64748b;">Último resultado propio de la factura: <strong>{{ factura_vigente.revision_actual.resultado_mostrado }}</strong>
-                            — Usuario #{{ factura_vigente.revision_actual.actor_id }}
-                            — {{ factura_vigente.revision_actual.fecha|date:"d/m/Y H:i:s" }}.</p>
-                    {% else %}
-                        <p style="font-size: var(--text-xs, 0.75rem); color: var(--color-warning, #854d0e);"><strong>PENDIENTE</strong> — la factura todavía no tiene un acto de revisión registrado.</p>
-                    {% endif %}
-                {% else %}
-                    <p style="font-size: var(--text-sm, 0.875rem); color: #64748b;">No hay una factura definitiva vigente incorporada.</p>
-                    {% if puede_incorporar_documentos %}
-                        <p><a class="btn" href="{% url 'gastos:documentos' pk=solicitud.pk %}" style="padding: 0.45rem 0.95rem; font-size: var(--text-sm, 0.875rem);">Aportar factura definitiva</a></p>
-                    {% else %}
-                        <p role="note" style="font-size: var(--text-xs, 0.75rem); color: #64748b;">Solicitá a un perfil con permiso de incorporación documental que aporte la factura definitiva si corresponde.</p>
-                    {% endif %}
-                {% endif %}
-            {% elif respaldo_categoria == "factura" %}
-                <p style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem);">El respaldo referenciado por el pago es una factura. No hay una proforma pendiente de factura definitiva.</p>
-            {% else %}
-                <p style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem); color: #64748b;">No se pudo confirmar la categoría del respaldo referenciado en esta consulta. Si era una proforma, la factura definitiva se incorpora como documento nuevo.</p>
-            {% endif %}
-            <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                Incorporar o revisar la factura no modifica el pago, no reemplaza el respaldo referenciado por el pago y no cierra el trámite. Una revisión pendiente tampoco se presenta como aprobación.</p>
-        </section>
-        {% endif %}
-
-        {% if error_pago %}
-        <div role="alert" style="color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; padding: 0.75rem 1rem; border-radius: var(--radius-md, 6px); font-size: var(--text-sm, 0.875rem);">
-            <strong>Error:</strong> {{ error_pago }}
         </div>
-        {% endif %}
-
-        {% if error_decision %}
-        <div role="alert" style="color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; padding: 0.75rem 1rem; border-radius: var(--radius-md, 6px); font-size: var(--text-sm, 0.875rem);">
-            <strong>Error:</strong> {{ error_decision }}
+        <div class="sd-amount">
+            <span class="sd-label">Monto estimado</span>
+            <strong class="sd-amount-value font-tabular">{{ detalle_importes.estimado }}</strong>
         </div>
-        {% endif %}
-
-        {% if can_decide %}
-        <div class="card" style="margin: 0; padding: 1.5rem;">
-            <h4 style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Registrar Decisión Humana
-            </h4>
-            <form method="post" action="{% url 'gastos:decidir' pk=solicitud.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="version" value="{{ solicitud.version }}">
-                <div style="margin-bottom: 1rem;">
-                    <label for="id_motivo" style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: var(--text-sm, 0.875rem);">
-                        <strong>Motivo / Justificación:</strong>
-                    </label>
-                    <textarea name="motivo" id="id_motivo" rows="3" style="width: 100%; box-sizing: border-box;" placeholder="Obligatorio para postergar o rechazar; opcional para aceptar.">{{ decision_form.motivo.value|default:'' }}</textarea>
-                    {% if decision_form.motivo.errors %}
-                        <div style="color: #9f1239; font-size: var(--text-xs, 0.75rem); margin-top: 0.25rem;">
-                            {{ decision_form.motivo.errors.0 }}
-                        </div>
-                    {% endif %}
-                </div>
-                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                    <button type="submit" name="action" value="aceptar" style="background-color: #166534; color: white; padding: 0.55rem 1.15rem; border: none; border-radius: var(--radius-md, 6px); cursor: pointer; font-weight: 600;">Aceptar</button>
-                    <button type="submit" name="action" value="postergar" style="background-color: #854d0e; color: white; padding: 0.55rem 1.15rem; border: none; border-radius: var(--radius-md, 6px); cursor: pointer; font-weight: 600;">Postergar</button>
-                    <button type="submit" name="action" value="rechazar" style="background-color: #9f1239; color: white; padding: 0.55rem 1.15rem; border: none; border-radius: var(--radius-md, 6px); cursor: pointer; font-weight: 600;">Rechazar</button>
-                </div>
-            </form>
-        </div>
-        {% endif %}
-
-        <!-- Historial Cronológico de Eventos -->
-        <div class="card" style="margin: 0; padding: 1.5rem;">
-            <h4 style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Historial de Decisiones, Pagos y Documentos
-            </h4>
-            {% include "comunes/historial_eventos.html" with historial=cronologia %}
-        </div>
-
-    </div>
-
-    <!-- COLUMNA DERECHA -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-
-        <!-- Tarjeta de Pago Externo -->
-        <section id="pago-externo" class="panel" aria-labelledby="pago-externo-heading" style="margin: 0;">
-            <h4 id="pago-externo-heading" style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Pago externo
-            </h4>
-
-            {% if pago_consulta %}
-                <h5 style="margin: 0.5rem 0 0.75rem; color: #475569; font-size: var(--text-sm, 0.875rem);">Pago externo registrado</h5>
-                <table style="width: 100%; border-collapse: collapse; font-size: var(--text-sm, 0.875rem);">
-                    <caption class="visually-hidden-module-title">Datos informativos del pago</caption>
-                    <tbody>
-                        {% if pago_consulta.monto_retencion_atp and pago_consulta.monto_retencion_atp > 0 %}
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: #64748b; font-weight: 500;">Monto Bruto</th>
-                            <td class="font-tabular" style="padding: 0.45rem 0; text-align: right;">{{ pago_consulta.monto_bruto }} {{ pago_consulta.moneda }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: var(--color-warning, #854d0e); font-weight: 500;">Retención ATP Chaco</th>
-                            <td style="padding: 0.45rem 0; text-align: right;">
-                                <span class="font-tabular" style="color: var(--color-warning, #854d0e); font-weight: 600;">{{ pago_consulta.monto_retencion_atp }} {{ pago_consulta.moneda }}</span>
-                                {% if pago_consulta.referencia_atp %}
-                                    <span class="badge badge-warning font-mono" style="margin-left: 0.5rem;">Cert: {{ pago_consulta.referencia_atp }}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr style="border-top: 1px solid var(--ref-border, #e2e8f0);">
-                            <th scope="row" style="padding: 0.55rem 0; font-weight: 700; color: var(--ref-deep-blue, #090979);">Neto Transferido</th>
-                            <td style="padding: 0.55rem 0; text-align: right;"><strong class="font-tabular" style="font-size: 1.1rem; color: var(--ref-deep-blue, #090979);">{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</strong></td>
-                        </tr>
+        {% if detalle_pendientes %}
+        <nav class="sd-pending" aria-label="Pendientes del trámite">
+            <span class="sd-label">Pendientes</span>
+            <ul class="sd-chips sd-reset">
+                {% for pendiente in detalle_pendientes %}
+                    <li>
+                        {% if pendiente.ancla %}
+                            <a class="sd-pill sd-pill-warning sd-chip-link" href="{{ pendiente.ancla }}">{{ pendiente.texto }}</a>
                         {% else %}
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: #64748b; font-weight: 500;">Importe</th>
-                            <td class="font-tabular" style="padding: 0.45rem 0; text-align: right; font-weight: 700;">{{ pago_consulta.importe }} {{ pago_consulta.moneda }}</td>
-                        </tr>
+                            <span class="sd-pill sd-pill-warning">{{ pendiente.texto }}</span>
                         {% endif %}
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: #64748b; font-weight: 500;">Fecha del hecho</th>
-                            <td style="padding: 0.45rem 0; text-align: right;">{{ pago_consulta.fecha_pago|date:"d/m/Y" }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: #64748b; font-weight: 500;">Referencia externa</th>
-                            <td style="padding: 0.45rem 0; text-align: right; font-family: var(--font-mono); font-size: var(--text-xs, 0.75rem);">{{ pago_consulta.referencia_externa }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: #64748b; font-weight: 500;">Registrado el</th>
-                            <td style="padding: 0.45rem 0; text-align: right; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                                {% if pago_consulta.fecha_registro %}
-                                    {{ pago_consulta.fecha_registro|date:"d/m/Y H:i:s" }}
-                                {% else %}
-                                    No disponible
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row" style="padding: 0.45rem 0; color: #64748b; font-weight: 500;">Actor</th>
-                            <td style="padding: 0.45rem 0; text-align: right; font-size: var(--text-xs, 0.75rem);">
-                                {% if pago_consulta.actor_id != None %}
-                                    Usuario #{{ pago_consulta.actor_id }}
-                                {% else %}
-                                    No disponible
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                    Registro informativo de la demo. No cambia el estado ni el importe estimado, y no confirma que el importe estimado esté saldado.
-                </p>
-            {% else %}
-                <p style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem); color: #64748b;">No hay un pago externo registrado.</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+        {% elif detalle_al_dia %}
+        <p class="sd-pending"><span class="sd-pill sd-pill-success">✓ Trámite al día</span></p>
+        {% endif %}
+    </header>
+    {% if ultima_decision and solicitud.estado == "postergada" or ultima_decision and solicitud.estado == "rechazada" %}
+    <section class="sd-alert {% if solicitud.estado == 'postergada' %}sd-alert-warning{% else %}sd-alert-error{% endif %}" aria-labelledby="ultima-decision-heading">
+        <h2 id="ultima-decision-heading" class="sd-h2">
+            {% if solicitud.estado == "postergada" %}Solicitud postergada{% else %}Solicitud rechazada{% endif %}
+        </h2>
+        <p class="sd-small">{{ ultima_decision.fecha|date:"d/m/Y H:i" }}</p>
+        <p><strong>Motivo:</strong> {{ ultima_decision.motivo }}</p>
+    </section>
+    {% endif %}
 
-                {% if solicitud.estado != "aceptada" %}
-                    <p role="note" style="margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                        El registro de pago se habilita cuando la solicitud está aceptada.
-                        Estado actual: <strong>{{ solicitud.get_estado_display }}</strong>.
-                    </p>
-                {% elif not pago_permiso_registrar %}
-                    <p role="note" style="font-size: var(--text-xs, 0.75rem); color: #64748b;">Acción no disponible: falta el permiso para registrar pagos.
-                        Solicitá a un perfil autorizado que registre el pago si corresponde.</p>
-                    <button type="button" class="btn" disabled aria-disabled="true" style="opacity: 0.6; cursor: not-allowed;">Registrar pago externo (no disponible)</button>
-                {% elif not pago_permiso_metadatos %}
-                    <p role="note" style="font-size: var(--text-xs, 0.75rem); color: #64748b;">Acción no disponible: falta el permiso para consultar metadatos documentales.
-                        Solicitá a un perfil con permiso documental que verifique y aporte el respaldo.</p>
-                    <button type="button" class="btn" disabled aria-disabled="true" style="opacity: 0.6; cursor: not-allowed;">Registrar pago externo (no disponible)</button>
-                {% elif not pago_provider_configurado %}
-                    <p role="note" style="margin: 0 0 10px; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                        Registro de pago no disponible: no hay un proveedor documental configurado en el servidor.
-                    </p>
-                    <button type="button" class="btn" disabled aria-disabled="true" style="opacity: 0.6; cursor: not-allowed;">Registrar pago externo (no disponible)</button>
-                {% else %}
-                    <p style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem);">La solicitud está aceptada y todavía no registra un pago.</p>
-                    <div style="margin-top: 0.75rem;">
-                        <a class="btn" href="{% url 'gastos:pagar' pk=solicitud.pk %}" style="padding: 0.5rem 1rem;">Registrar pago externo</a>
-                    </div>
-                    <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                        El formulario comprueba que exista una factura, presupuesto o proforma
-                        vigente. Si falta, explica el bloqueo y el camino para aportarla según
-                        tus permisos. C03 conserva sus verificaciones documentales.
-                    </p>
-                {% endif %}
+    <div class="sd-layout">
+        <div class="sd-main">
+
+            {% if error_pago %}
+            <div class="sd-alert" role="alert"><strong>Error:</strong> {{ error_pago }}</div>
             {% endif %}
-        </section>
 
-        <!-- Tarjeta de Datos de Transferencia -->
-        <section id="datos-transferencia" class="panel" aria-labelledby="datos-transferencia-heading" style="margin: 0;">
-            <h4 id="datos-transferencia-heading" style="margin-top: 0; color: var(--ref-heading, #37423b); font-size: var(--text-lg, 1.125rem); font-weight: 700; border-bottom: 1px solid var(--ref-border, #e2e8f0); padding-bottom: 0.75rem;">
-                Datos de transferencia
-            </h4>
+            <!-- Decisión autorizada -->
+            {% if can_decide %}
+            <section id="decision-solicitud" class="sd-card" aria-labelledby="decision-heading">
+                <h2 id="decision-heading" class="sd-h2">Registrar decisión</h2>
+                {% with field_error=decision_form.motivo.errors.0 %}
+                {% if error_decision and error_decision != field_error %}
+                <div class="sd-alert" role="alert" data-detail-decision-error tabindex="-1"><strong>Error:</strong> {{ error_decision }}</div>
+                {% endif %}
+                <form method="post" action="{% url 'gastos:decidir' pk=solicitud.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="version" value="{{ solicitud.version }}">
+                    <div class="sd-field">
+                        <label for="id_motivo">Motivo / justificación</label>
+                        <textarea name="motivo" id="id_motivo" rows="3" placeholder="{% if 'postergar' in acciones_decision %}Obligatorio para postergar o rechazar.{% else %}Obligatorio para rechazar.{% endif %} Opcional para aceptar."{% if field_error %} aria-invalid="true" aria-describedby="id_motivo_error"{% endif %}>{{ decision_form.motivo.value|default:'' }}</textarea>
+                        {% if field_error %}
+                            <div id="id_motivo_error" class="sd-field-error"{% if not error_decision or error_decision == field_error %} data-detail-decision-error tabindex="-1"{% endif %}>{{ field_error }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="sd-actions">
+                        <button type="submit" name="action" value="aceptar" class="sd-btn sd-btn-accept">Aceptar</button>
+                        {% if 'postergar' in acciones_decision %}
+                        <button type="submit" name="action" value="postergar" class="sd-btn sd-btn-hold">Postergar</button>
+                        {% endif %}
+                        <button type="submit" name="action" value="rechazar" class="sd-btn sd-btn-reject">Rechazar</button>
+                    </div>
+                </form>
+                {% endwith %}
+            </section>
+            {% elif error_decision %}
+            <div class="sd-alert" role="alert" data-detail-decision-error tabindex="-1"><strong>Error:</strong> {{ error_decision }}</div>
+            {% endif %}
 
-            {% if not datos_transferencia_autorizado %}
-                <p role="note" style="margin: 0.5rem 0 0; font-size: var(--text-sm, 0.875rem); color: #64748b;">
-                    No disponibles para esta cuenta. Sólo el titular del gasto y los perfiles
-                    con permiso para registrar pagos que ya pueden ver este gasto acceden a
-                    estos datos. La consulta global por sí sola no los expone.
-                </p>
-            {% else %}
-                {% if datos_transferencia_actual %}
-                    <p style="margin: 0.5rem 0 0.75rem; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                        Revisión actual <strong>{{ datos_transferencia_actual.numero_revision }}</strong>
-                        de {{ datos_transferencia|length }}. Las revisiones anteriores se conservan
-                        por separado.
-                    </p>
-                    <dl class="detail-grid" style="margin: 0; font-size: var(--text-sm, 0.875rem);">
-                        <dt>Titular o beneficiario</dt>
-                        <dd>{{ datos_transferencia_actual.titular_nombre }}</dd>
-                        <dt>Identificación informada</dt>
-                        <dd>{{ datos_transferencia_actual.identificacion }}</dd>
-                        <dt>CBU o alias</dt>
-                        <dd class="font-mono">
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                                <span>{{ datos_transferencia_actual.cbu_alias }}</span>
-                                <button type="button" class="btn-copy" onclick="copiarAlPortapapeles('{{ datos_transferencia_actual.cbu_alias|escapejs }}', this)" title="Copiar CBU al portapapeles">
-                                    Copiar CBU
-                                </button>
-                            </div>
-                        </dd>
-                        <dt>Correo para el comprobante</dt>
-                        <dd style="word-break: break-all;">{{ datos_transferencia_actual.correo_comprobante }}</dd>
-                        <dt>Centro de costo informado</dt>
-                        <dd>{{ datos_transferencia_actual.centro_costo }}</dd>
-                        <dt>Registrada por</dt>
-                        <dd style="font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            Usuario #{{ datos_transferencia_actual.actor_id }}
-                            el {{ datos_transferencia_actual.fecha_hora|date:"d/m/Y H:i:s" }}
-                        </dd>
-                    </dl>
+            <!-- Documentos: respaldo, versiones y seguimiento -->
+            <section id="respaldo-documental" class="sd-card" aria-labelledby="respaldo-documental-heading">
+                <h2 id="respaldo-documental-heading" class="sd-h2">Documentos</h2>
 
-                    {% if puede_editar_datos_transferencia %}
-                        <div style="margin-top: 1rem;">
-                            <a class="btn" href="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}" style="padding: 0.45rem 0.95rem; font-size: var(--text-sm, 0.875rem);">
-                                Corregir datos de transferencia
-                            </a>
-                        </div>
-                    {% elif pago_consulta %}
-                        <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            El pago ya fue registrado. Por el alcance de esta demo, los datos de
-                            transferencia no se corrigen después del pago para no cambiar
-                            retrospectivamente el caso.
-                        </p>
-                    {% elif solicitud.estado == "rechazada" %}
-                        <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            La solicitud fue rechazada; no admite nuevos datos de transferencia.
+                {% if puede_ver_documentos %}
+                <div id="documentos-gasto">
+                    {% if detalle_versiones_actuales or versiones_documentales %}
+                        <h3 class="sd-h3">Versiones actuales</h3>
+                        <ul class="sd-list">
+                            {% for version in detalle_versiones_actuales|default:versiones_documentales %}
+                            {% if detalle_versiones_actuales or version.vigente %}
+                            {% with res=version.revision_actual.resultado_mostrado|lower %}
+                            <li class="sd-row">
+                                <div class="sd-row-main">
+                                    <strong>{{ version.tipo_mostrado }}</strong> — {{ version.nombre }}
+                                    {% if not version.revision_actual %}
+                                        <span class="sd-pill sd-pill-warning">Pendiente de revisión</span>
+                                    {% elif 'rechaz' in res %}
+                                        <span class="sd-pill sd-pill-error">Rechazado</span>
+                                    {% elif 'observ' in res %}
+                                        <span class="sd-pill sd-pill-warning">Observado</span>
+                                    {% elif 'acept' in res %}
+                                        <span class="sd-pill sd-pill-success">Aceptado</span>
+                                    {% else %}
+                                        <span class="sd-pill sd-pill-neutral">{{ version.revision_actual.resultado_mostrado }}</span>
+                                    {% endif %}
+                                    {% if version.revision_actual %}
+                                        {% if 'rechaz' in res or 'observ' in res %}
+                                            <p class="sd-small {% if 'rechaz' in res %}sd-error-text{% else %}sd-warn{% endif %}">
+                                                {% if version.revision_actual.motivo %}Motivo: {{ version.revision_actual.motivo }}{% else %}Motivo: no registrado.{% endif %}
+                                            </p>
+                                        {% elif version.revision_actual.motivo %}
+                                            <p class="sd-muted sd-small">Motivo: {{ version.revision_actual.motivo }}</p>
+                                        {% endif %}
+                                    {% endif %}
+                                    <p class="sd-muted sd-small">Versión {{ version.version }} · Usuario #{{ version.actor_id }} · {{ version.fecha_incorporacion|date:"d/m/Y H:i" }}</p>
+                                </div>
+                                <div class="sd-row-actions">
+                                    {% if puede_descargar_documentos %}
+                                        <a class="sd-btn sd-btn-secondary sd-btn-icon" href="{% url 'documentos:archivo' version.documento_id %}" download aria-label="Descargar {{ version.nombre }}">
+                                            <svg class="sd-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                <polyline points="7 10 12 15 17 10"/>
+                                                <line x1="12" y1="15" x2="12" y2="3"/>
+                                            </svg>
+                                        </a>
+                                    {% endif %}
+                                    <a class="sd-btn sd-btn-secondary" href="{% url 'documentos:revision' version.documento_id %}">{% if not version.revision_actual and detalle_puede_revisar %}Revisar{% else %}Ver detalle{% endif %}</a>
+                                </div>
+                            </li>
+                            {% endwith %}
+                            {% endif %}
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="sd-muted">No hay documentos de respaldo visibles para este gasto.</p>
+                    {% endif %}
+                </div>
+                {% elif detalle_respaldos_titular != None %}
+                <div id="documentos-gasto" class="sd-respaldos-titular">
+                    {% if detalle_respaldos_titular %}
+                        <h3 class="sd-h3">Respaldos comerciales vigentes</h3>
+                        <ul class="sd-list">
+                            {% for respaldo in detalle_respaldos_titular %}
+                            {% with res=respaldo.resultado|default:""|lower %}
+                            <li class="sd-row">
+                                <div class="sd-row-main">
+                                    <strong>{{ respaldo.tipo_mostrado }}</strong> — {{ respaldo.nombre }}
+                                    {% if not respaldo.resultado %}
+                                        <span class="sd-pill sd-pill-warning">Pendiente de revisión</span>
+                                    {% elif 'rechaz' in res %}
+                                        <span class="sd-pill sd-pill-error">Rechazado</span>
+                                    {% elif 'observ' in res %}
+                                        <span class="sd-pill sd-pill-warning">Observado</span>
+                                    {% elif 'acept' in res %}
+                                        <span class="sd-pill sd-pill-success">Aceptado</span>
+                                    {% else %}
+                                        <span class="sd-pill sd-pill-neutral">{{ respaldo.estado_revision }}</span>
+                                    {% endif %}
+                                    {% if respaldo.motivo %}
+                                        <p class="sd-small {% if 'rechaz' in res %}sd-error-text{% elif 'observ' in res %}sd-warn{% else %}sd-muted{% endif %}">Motivo: {{ respaldo.motivo }}</p>
+                                    {% elif 'rechaz' in res or 'observ' in res %}
+                                        <p class="sd-small {% if 'rechaz' in res %}sd-error-text{% else %}sd-warn{% endif %}">Motivo: no registrado.</p>
+                                    {% endif %}
+                                    <p class="sd-muted sd-small">Fecha de incorporación: {{ respaldo.fecha|date:"d/m/Y H:i" }}</p>
+                                </div>
+                                {% if respaldo.puede_reemplazar %}
+                                    <div class="sd-row-actions">
+                                        {% if detalle_aporte_form %}
+                                            <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:detalle' pk=solicitud.pk %}?reemplaza={{ respaldo.documento_id }}#cargar-respaldo" aria-label="Reemplazar {{ respaldo.nombre }}">Reemplazar</a>
+                                        {% elif puede_incorporar_documentos %}
+                                            <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:documentos' pk=solicitud.pk %}?reemplaza={{ respaldo.documento_id }}" aria-label="Reemplazar {{ respaldo.nombre }}">Reemplazar</a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </li>
+                            {% endwith %}
+                            {% endfor %}
+                        </ul>
+                        {% if detalle_aporte_form and detalle_aporte_versiones %}
+                            <p class="sd-muted sd-small">Para reemplazar una versión observada o rechazada, usá el botón «Reemplazar» o elegila en el selector «Reemplazar documento» del panel inferior.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="sd-muted">No hay documentos de respaldo registrados para esta solicitud.</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                    <p class="sd-muted">Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta.</p>
+                {% endif %}
+
+                {% if mostrar_seguimiento_factura and respaldo_categoria == "presupuesto" %}
+                <div id="seguimiento-factura-definitiva" class="sd-subsection">
+                    <h3 id="seguimiento-factura" class="sd-h3">Seguimiento de factura definitiva</h3>
+                    {% if factura_vigente %}
+                        <p class="sd-small">
+                            Factura vigente: <strong>{{ factura_vigente.nombre }}</strong> — versión {{ factura_vigente.version }}.
+                            {% if factura_vigente.revision_actual %}
+                                Estado: <strong>{{ factura_vigente.revision_actual.resultado_mostrado }}</strong>
+                            {% else %}
+                                Estado: <strong>Pendiente de revisión</strong>
+                            {% endif %}
+                            · <a href="{% url 'documentos:revision' factura_vigente.documento_id %}">Ver revisión</a>
                         </p>
                     {% else %}
-                        <p role="note" style="margin-top: 0.75rem; margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            Sólo el titular con capacidad para presentar gastos puede corregir
-                            estos datos antes del pago.
-                        </p>
+                        <p class="sd-small">Estado: <strong>Factura definitiva no incorporada.</strong></p>
+                        {% if puede_incorporar_documentos and detalle_aporte_form %}
+                            <a class="sd-link-compact" href="#cargar-respaldo" data-abrir-respaldo>Ir a cargar respaldo</a>
+                        {% elif puede_incorporar_documentos %}
+                            <a class="btn sd-btn sd-btn-secondary" href="{% url 'gastos:documentos' pk=solicitud.pk %}">Cargar o reemplazar respaldo comercial</a>
+                        {% else %}
+                            <p class="sd-muted sd-small">Acción no disponible: falta permiso de incorporación documental.</p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if respaldo_cerrado %}
+                <p class="sd-note">La solicitud fue rechazada y ya no admite nuevos respaldos.</p>
+                {% elif detalle_aporte_form %}
+                <div class="sd-subsection sd-aporte-section{% if not detalle_versiones_actuales and not detalle_respaldos_titular %} sd-aporte-section-flush{% endif %}">
+                    <details id="cargar-respaldo" class="sd-details sd-details-aporte"{% if detalle_aporte_con_error or preseleccionar_reemplaza_id %} open{% endif %}>
+                        <summary class="sd-summary-compact" data-respaldo-focus>+ Cargar respaldo</summary>
+                        <div class="sd-details-content sd-aporte-panel">
+                            <h3 class="sd-h3" style="margin-top: 0;">Cargar o reemplazar respaldo comercial</h3>
+                            {% include "gastos/_documento_aporte_form.html" with form=detalle_aporte_form versiones_reemplazables=detalle_aporte_versiones aporte_inline=True %}
+                        </div>
+                    </details>
+                </div>
+                {% endif %}
+            </section>
+
+            <!-- Historial completo plegado -->
+            <section class="sd-card" aria-labelledby="historial-heading">
+                <details class="sd-details sd-details-flush">
+                    <summary id="historial-heading">Historial de decisiones, pagos y documentos</summary>
+                    {% include "comunes/historial_eventos.html" with historial=cronologia %}
+                </details>
+            </section>
+        </div>
+
+        <aside class="sd-side">
+
+            <!-- Pago externo -->
+            <section id="pago-externo" class="sd-card" aria-labelledby="pago-externo-heading">
+                <h2 id="pago-externo-heading" class="sd-h2">Pago externo</h2>
+
+                {% if pago_consulta %}
+                    <p class="sd-small"><span class="sd-pill sd-pill-neutral">Versión {{ pago_consulta.version }}</span></p>
+                    <table class="sd-table">
+                        <caption class="visually-hidden-module-title">Datos informativos del pago</caption>
+                        <tbody>
+                            <tr><th scope="row">Monto bruto</th><td class="font-tabular">{{ detalle_importes.bruto }}</td></tr>
+                            <tr>
+                                <th scope="row">
+                                    Retención ATP Chaco
+                                    <span class="sd-tip" tabindex="0" role="button" aria-label="Qué es la retención ATP" aria-describedby="tip-retencion">?<span id="tip-retencion" role="tooltip" class="sd-tip-text">Importe retenido a favor de ATP Chaco; se descuenta del bruto.</span></span>
+                                </th>
+                                <td class="font-tabular">{{ detalle_importes.retencion }}{% if pago_consulta.referencia_atp %} <span class="sd-pill sd-pill-warning font-mono">Cert: {{ pago_consulta.referencia_atp }}</span>{% endif %}</td>
+                            </tr>
+                            <tr class="sd-total"><th scope="row">Neto transferido</th><td class="font-tabular"><strong>{{ detalle_importes.neto }}</strong></td></tr>
+                            <tr><th scope="row">Fecha del hecho</th><td>{{ pago_consulta.fecha_pago|date:"d/m/Y" }}</td></tr>
+                            <tr><th scope="row">Referencia bancaria</th><td class="font-mono">{% if pago_consulta.referencia_externa %}{{ pago_consulta.referencia_externa }}{% else %}<span class="sd-muted">Sin referencia informada</span>{% endif %}</td></tr>
+                            <tr><th scope="row">Registrado el</th><td class="sd-small">{% if pago_consulta.fecha_registro %}{{ pago_consulta.fecha_registro|date:"d/m/Y H:i:s" }}{% else %}No disponible{% endif %}</td></tr>
+                            <tr><th scope="row">Actor</th><td class="sd-small">{% if pago_consulta.actor_id != None %}Usuario #{{ pago_consulta.actor_id }}{% else %}No disponible{% endif %}</td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="sd-docs-pago">
+                        <div class="sd-doc-pago-row">
+                            <div>
+                                <strong>Comprobante bancario</strong>
+                                {% if pago_consulta.tiene_comprobante_bancario %}
+                                    <p class="sd-muted sd-small">{% if pago_consulta.comprobante_bancario_nombre %}{{ pago_consulta.comprobante_bancario_nombre }}{% else %}Incorporado{% endif %}</p>
+                                    {% if not pago_consulta.comprobante_bancario_id or not puede_descargar_documentos %}
+                                        {% if pago_consulta.comprobante_bancario_id %}
+                                            <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
+                                        {% endif %}
+                                    {% endif %}
+                                {% else %}
+                                    <p class="sd-small sd-warn">Registro histórico sin comprobante bancario.</p>
+                                {% endif %}
+                            </div>
+                            {% if pago_consulta.tiene_comprobante_bancario and pago_consulta.comprobante_bancario_id and puede_descargar_documentos %}
+                                <a class="sd-btn sd-btn-secondary sd-btn-icon" href="{% url 'documentos:archivo' pago_consulta.comprobante_bancario_id %}" download aria-label="Descargar comprobante bancario">
+                                    <svg class="sd-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                </a>
+                            {% endif %}
+                        </div>
+                        <div class="sd-doc-pago-row">
+                            <div>
+                                <strong>Constancia ATP</strong>
+                                {% if pago_consulta.tiene_constancia_atp %}
+                                    <p class="sd-muted sd-small">{% if pago_consulta.constancia_atp_nombre %}{{ pago_consulta.constancia_atp_nombre }}{% else %}Incorporada{% endif %}</p>
+                                    {% if not pago_consulta.constancia_atp_id or not puede_descargar_documentos %}
+                                        {% if pago_consulta.constancia_atp_id %}
+                                            <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
+                                        {% endif %}
+                                    {% endif %}
+                                {% elif pago_consulta.constancia_atp_pendiente %}
+                                    <p><span class="sd-pill sd-pill-warning">Pendiente de aporte</span></p>
+                                {% else %}
+                                    <p class="sd-muted sd-small">No aplica según la retención registrada.</p>
+                                {% endif %}
+                            </div>
+                            {% if pago_consulta.tiene_constancia_atp and pago_consulta.constancia_atp_id and puede_descargar_documentos %}
+                                <a class="sd-btn sd-btn-secondary sd-btn-icon" href="{% url 'documentos:archivo' pago_consulta.constancia_atp_id %}" download aria-label="Descargar constancia ATP">
+                                    <svg class="sd-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if puede_rectificar_pago %}
+                        <div class="sd-actions">
+                            <a class="btn btn-secondary sd-btn sd-btn-secondary" href="{% url 'gastos:pago_rectificar' pk=solicitud.pk %}">Rectificar pago</a>
+                            {% if puede_incorporar_atp %}
+                                <a class="btn sd-btn sd-btn-secondary" href="{% url 'gastos:pago_atp' pk=solicitud.pk %}">Incorporar constancia ATP</a>
+                            {% endif %}
+                        </div>
                     {% endif %}
 
-                    {% if datos_transferencia_historial %}
-                        <details style="margin-top: 1rem;">
-                            <summary style="cursor: pointer; color: var(--ref-blue, #084298); font-size: var(--text-sm, 0.875rem); font-weight: 500;">
-                                Ver revisiones anteriores ({{ datos_transferencia_historial|length }})
-                            </summary>
-                            {% for revision in datos_transferencia_historial %}
-                                <div class="record-card" style="margin-top: 0.75rem; font-size: var(--text-xs, 0.75rem);">
-                                    <p style="margin: 0 0 0.5rem; font-weight: 600; color: #475569;">
-                                        Revisión {{ revision.numero_revision }}
-                                        — Usuario #{{ revision.actor_id }}
-                                        — {{ revision.fecha_hora|date:"d/m/Y H:i:s" }}
-                                    </p>
-                                    <dl class="detail-grid" style="margin: 0;">
-                                        <dt>Titular o beneficiario</dt>
-                                        <dd>{{ revision.titular_nombre }}</dd>
-                                        <dt>Identificación informada</dt>
-                                        <dd>{{ revision.identificacion }}</dd>
-                                        <dt>CBU o alias</dt>
-                                        <dd>{{ revision.cbu_alias }}</dd>
-                                        <dt>Correo para el comprobante</dt>
-                                        <dd>{{ revision.correo_comprobante }}</dd>
-                                        <dt>Centro de costo informado</dt>
-                                        <dd>{{ revision.centro_costo }}</dd>
-                                    </dl>
+                    {% if cambios_pago %}
+                        <details class="sd-details">
+                            <summary>Historial de rectificaciones ({{ cambios_pago|length }})</summary>
+                            {% for cambio in cambios_pago %}
+                                <div class="record-card sd-record sd-small">
+                                    <p><strong>{{ cambio.tipo_mostrado }} · versión {{ cambio.numero_version }}</strong> — Usuario #{{ cambio.actor_id }} — {{ cambio.fecha_hora|date:"d/m/Y H:i:s" }}</p>
+                                    <p><strong>Motivo:</strong> {{ cambio.motivo }}</p>
+                                    <p><strong>Antes:</strong> {{ cambio.antes }}</p>
+                                    <p><strong>Después:</strong> {{ cambio.despues }}</p>
                                 </div>
                             {% endfor %}
                         </details>
                     {% endif %}
                 {% else %}
-                    <p style="margin-top: 0.5rem; font-size: var(--text-sm, 0.875rem); color: #64748b;">No hay datos de transferencia informados.</p>
-                    <p role="note" style="font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                        La presentación pudo completarse sin este bloque. La falta de datos de
-                        destino no bloquea por sí sola el pago ni modifica el respaldo documental
-                        exigido por C03. El centro de costo informado es independiente de la
-                        unidad requirente.
-                    </p>
-                    {% if puede_editar_datos_transferencia %}
-                        <div style="margin-top: 0.75rem;">
-                            <a class="btn" href="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}" style="padding: 0.45rem 0.95rem; font-size: var(--text-sm, 0.875rem);">
-                                Agregar datos de transferencia
-                            </a>
+                    <p class="sd-muted">No hay un pago externo registrado.</p>
+                    {% if not detalle_actor_registra_pago %}
+                        {# Sin avisos de requisitos de pago para quien no opera pagos. #}
+                    {% elif solicitud.estado != "aceptada" %}
+                        <p class="sd-note">El registro de pago estará disponible una vez que la solicitud sea aceptada. Estado actual: <strong>{{ solicitud.get_estado_display }}</strong>.</p>
+                    {% elif not pago_permiso_registrar %}
+                        <p class="sd-note">Acción bloqueada: falta el permiso para registrar pagos.</p>
+                        <button type="button" class="btn sd-btn sd-btn-secondary" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+                    {% elif not pago_permiso_metadatos %}
+                        <p class="sd-note">Acción bloqueada: falta el permiso para consultar metadatos documentales.</p>
+                        <button type="button" class="btn sd-btn sd-btn-secondary" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+                    {% elif not pago_permiso_incorporar %}
+                        <p class="sd-note">Acción bloqueada: falta el permiso para incorporar el comprobante bancario.</p>
+                        <button type="button" class="btn sd-btn sd-btn-secondary" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+                    {% elif not pago_permiso_consulta_global %}
+                        <p class="sd-note">Acción bloqueada: la incorporación del comprobante exige consulta global de gastos.</p>
+                        <button type="button" class="btn sd-btn sd-btn-secondary" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+                    {% elif not pago_provider_configurado %}
+                        <p class="sd-note">Acción bloqueada: no hay un proveedor documental configurado en el servidor.</p>
+                        <button type="button" class="btn sd-btn sd-btn-secondary" disabled aria-disabled="true">Registrar pago externo (no disponible)</button>
+                    {% elif pago_sin_respaldo_confirmado %}
+                        <div class="sd-actions">
+                            <span class="sd-pill sd-pill-warning">Sin respaldo comercial elegible</span>
                         </div>
-                    {% elif pago_consulta %}
-                        <p role="note" style="margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            El pago ya fue registrado; en esta demo no se agregan datos de
-                            transferencia después del pago.
-                        </p>
-                    {% elif solicitud.estado == "rechazada" %}
-                        <p role="note" style="margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            La solicitud fue rechazada; no admite datos de transferencia.
-                        </p>
+                        <p class="sd-note sd-note-warning">No hay respaldo comercial elegible (factura, presupuesto o proforma vigente). Cargá o reemplazá un respaldo antes de registrar el pago.</p>
+                        {% if puede_incorporar_documentos and detalle_aporte_form %}
+                            <a class="sd-link-compact" href="#cargar-respaldo" data-abrir-respaldo>Ir a cargar respaldo</a>
+                        {% elif puede_incorporar_documentos %}
+                            <a class="btn sd-btn sd-btn-primary" href="{% url 'gastos:documentos' pk=solicitud.pk %}">Cargar o reemplazar respaldo comercial</a>
+                        {% else %}
+                            <p class="sd-muted sd-small">Acción no disponible: falta permiso de incorporación documental.</p>
+                        {% endif %}
                     {% else %}
-                        <p role="note" style="margin-bottom: 0; font-size: var(--text-xs, 0.75rem); color: #64748b;">
-                            Sólo el titular con capacidad para presentar gastos puede agregar
-                            estos datos antes del pago.
-                        </p>
+                        <div class="sd-actions">
+                            <a class="btn sd-btn sd-btn-primary" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago externo</a>
+                        </div>
                     {% endif %}
                 {% endif %}
-            {% endif %}
-        </section>
+            </section>
 
+            <!-- Datos de transferencia -->
+            <section id="datos-transferencia" class="sd-card" aria-labelledby="datos-transferencia-heading">
+                <h2 id="datos-transferencia-heading" class="sd-h2">Datos de transferencia</h2>
+
+                {% if not datos_transferencia_autorizado %}
+                    <p class="sd-note">No disponibles para esta cuenta: sólo el titular del gasto y los perfiles con permiso para registrar pagos acceden a estos datos.</p>
+                {% else %}
+                    {% if datos_transferencia_actual %}
+                        <p class="sd-muted sd-small">Revisión actual <strong>{{ datos_transferencia_actual.numero_revision }}</strong> de {{ datos_transferencia|length }}.</p>
+                        <dl class="sd-dl sd-dl-flat">
+                            <dt>Titular o beneficiario</dt>
+                            <dd>{{ datos_transferencia_actual.titular_nombre }}</dd>
+                            <dt>CUIT / CUIL</dt>
+                            <dd class="sd-copy-row">
+                                <span class="font-mono">{{ datos_transferencia_actual.identificacion }}</span>
+                                <button type="button" class="sd-copy" data-detail-copy="{{ datos_transferencia_actual.identificacion }}" aria-label="Copiar CUIT / CUIL">
+                                    <svg class="sd-copy-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="sd-copy-check" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                    <span class="sd-copy-feedback" data-copy-feedback role="status" aria-live="polite">Copiado</span>
+                                </button>
+                            </dd>
+                            <dt>CBU o alias</dt>
+                            <dd class="sd-copy-row">
+                                <span class="font-mono">{{ datos_transferencia_actual.cbu_alias }}</span>
+                                <button type="button" class="sd-copy" data-detail-copy="{{ datos_transferencia_actual.cbu_alias }}" aria-label="Copiar CBU o alias">
+                                    <svg class="sd-copy-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="sd-copy-check" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                    <span class="sd-copy-feedback" data-copy-feedback role="status" aria-live="polite">Copiado</span>
+                                </button>
+                            </dd>
+                            <dt>Correo para el comprobante</dt>
+                            <dd class="sd-copy-row">
+                                <span class="sd-break">{{ datos_transferencia_actual.correo_comprobante }}</span>
+                                <button type="button" class="sd-copy" data-detail-copy="{{ datos_transferencia_actual.correo_comprobante }}" aria-label="Copiar correo para el comprobante">
+                                    <svg class="sd-copy-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="sd-copy-check" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                    <span class="sd-copy-feedback" data-copy-feedback role="status" aria-live="polite">Copiado</span>
+                                </button>
+                            </dd>
+                            {% if not solicitud.centro_costo %}
+                                <dt>Centro de costo informado</dt>
+                                <dd>{{ datos_transferencia_actual.centro_costo }}</dd>
+                            {% endif %}
+                            <dt>Registrada por</dt>
+                            <dd class="sd-muted sd-small">Usuario #{{ datos_transferencia_actual.actor_id }} el {{ datos_transferencia_actual.fecha_hora|date:"d/m/Y H:i:s" }}</dd>
+                        </dl>
+
+                        {% if detalle_datos_transferencia_con_error and not puede_editar_datos_transferencia %}
+                            <div class="sd-alert" role="alert">
+                                <strong>No se pudieron guardar los datos:</strong>
+                                {{ detalle_datos_transferencia_form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        {% if puede_editar_datos_transferencia %}
+                            <details id="editar-datos-transferencia" class="sd-details sd-details-transferencia"{% if detalle_datos_transferencia_con_error %} open{% endif %}>
+                                <summary>Corregir datos de transferencia</summary>
+                                <div class="sd-transfer-panel">
+                                    {% include "gastos/_datos_transferencia_inline_form.html" %}
+                                </div>
+                            </details>
+                        {% elif detalle_es_solicitante %}
+                            {% if pago_consulta %}
+                                <p class="sd-note">No se puede editar: el pago ya fue registrado.</p>
+                            {% elif solicitud.estado == "rechazada" %}
+                                <p class="sd-note">No se puede editar: la solicitud fue rechazada.</p>
+                            {% else %}
+                                <p class="sd-note">No se puede editar: sólo el titular con capacidad para presentar gastos puede corregir estos datos antes del pago.</p>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if datos_transferencia_historial %}
+                            <details class="sd-details">
+                                <summary>Ver revisiones anteriores ({{ datos_transferencia_historial|length }})</summary>
+                                {% for revision in datos_transferencia_historial %}
+                                    <div class="record-card sd-record sd-small">
+                                        <p><strong>Revisión {{ revision.numero_revision }}</strong> — Usuario #{{ revision.actor_id }} — {{ revision.fecha_hora|date:"d/m/Y H:i:s" }}</p>
+                                        <dl class="sd-dl sd-dl-flat">
+                                            <dt>Titular o beneficiario</dt>
+                                            <dd>{{ revision.titular_nombre }}</dd>
+                                            <dt>CUIT / CUIL</dt>
+                                            <dd class="sd-copy-row">
+                                                <span class="font-mono">{{ revision.identificacion }}</span>
+                                                <button type="button" class="sd-copy" data-detail-copy="{{ revision.identificacion }}" aria-label="Copiar CUIT / CUIL de la revisión {{ revision.numero_revision }}">
+                                                    <svg class="sd-copy-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                                    <svg class="sd-copy-check" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                                    <span class="sd-copy-feedback" data-copy-feedback role="status" aria-live="polite">Copiado</span>
+                                                </button>
+                                            </dd>
+                                            <dt>CBU o alias</dt>
+                                            <dd class="sd-copy-row">
+                                                <span class="font-mono sd-break">{{ revision.cbu_alias }}</span>
+                                                <button type="button" class="sd-copy" data-detail-copy="{{ revision.cbu_alias }}" aria-label="Copiar CBU o alias de la revisión {{ revision.numero_revision }}">
+                                                    <svg class="sd-copy-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                                    <svg class="sd-copy-check" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                                    <span class="sd-copy-feedback" data-copy-feedback role="status" aria-live="polite">Copiado</span>
+                                                </button>
+                                            </dd>
+                                            <dt>Correo para el comprobante</dt>
+                                            <dd class="sd-copy-row">
+                                                <span class="sd-break">{{ revision.correo_comprobante }}</span>
+                                                <button type="button" class="sd-copy" data-detail-copy="{{ revision.correo_comprobante }}" aria-label="Copiar correo para el comprobante de la revisión {{ revision.numero_revision }}">
+                                                    <svg class="sd-copy-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                                    <svg class="sd-copy-check" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                                    <span class="sd-copy-feedback" data-copy-feedback role="status" aria-live="polite">Copiado</span>
+                                                </button>
+                                            </dd>
+                                            <dt>Centro de costo informado</dt>
+                                            <dd>{{ revision.centro_costo }}</dd>
+                                        </dl>
+                                    </div>
+                                {% endfor %}
+                            </details>
+                        {% endif %}
+                    {% else %}
+                        <p class="sd-muted">No hay datos de transferencia informados.</p>
+                        {% if detalle_datos_transferencia_con_error and not puede_editar_datos_transferencia %}
+                            <div class="sd-alert" role="alert">
+                                <strong>No se pudieron guardar los datos:</strong>
+                                {{ detalle_datos_transferencia_form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        {% if puede_editar_datos_transferencia %}
+                            <details id="editar-datos-transferencia" class="sd-details sd-details-transferencia"{% if detalle_datos_transferencia_con_error %} open{% endif %}>
+                                <summary>Agregar datos de transferencia</summary>
+                                <div class="sd-transfer-panel">
+                                    {% include "gastos/_datos_transferencia_inline_form.html" %}
+                                </div>
+                            </details>
+                        {% elif detalle_es_solicitante %}
+                            {% if pago_consulta %}
+                                <p class="sd-note">No se puede editar: el pago ya fue registrado.</p>
+                            {% elif solicitud.estado == "rechazada" %}
+                                <p class="sd-note">No se puede editar: la solicitud fue rechazada.</p>
+                            {% else %}
+                                <p class="sd-note">No se puede editar: sólo el titular con capacidad para presentar gastos puede agregar estos datos antes del pago.</p>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </section>
+        </aside>
     </div>
 
+    <p class="sd-back sd-back-bottom"><a href="{% url 'gastos:lista' %}{% if request.GET.bandeja %}?{{ request.GET.bandeja }}{% endif %}">&larr; Volver al listado</a></p>
 </div>
 
 <script src="{% static 'gastos/js/drawer.js' %}"></script>
+<script src="{% static 'gastos/js/solicitud_detail.js' %}"></script>
+<script src="{% static 'gastos/js/documento_aporte.js' %}"></script>
 {% endblock %}

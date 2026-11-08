@@ -1,29 +1,48 @@
-<nav aria-label="Navegación de trámites">
-    <ul class="nav-pills">
-        {% if actor and "gastos.presentar" in actor.capabilities and "gastos.consultar_propias" not in actor.capabilities and "gastos.consultar_todas" not in actor.capabilities %}
-            <li><a href="{% url 'gastos:presentar' %}" class="nav-link">Solicitud de Gasto</a></li>
-        {% endif %}
-        {% if actor and "facturacion.presentar" in actor.capabilities and "facturacion.consultar_propias" not in actor.capabilities and "facturacion.consultar_todas" not in actor.capabilities %}
-            <li><a href="{% url 'facturacion:presentar' %}" class="nav-link">Solicitud de Facturación</a></li>
-        {% endif %}
-        {% if actor %}
-            {% if "gastos.consultar_propias" in actor.capabilities or "gastos.consultar_todas" in actor.capabilities %}
-                <li><a href="{% url 'gastos:lista' %}" class="nav-link">{% if "gastos.presentar" in actor.capabilities %}Solicitud de Gasto{% else %}Consultar gastos{% endif %}</a></li>
+{% if actor %}
+{% with ns=request.resolver_match.namespace name=request.resolver_match.url_name route=request.resolver_match.route caps=actor.capabilities %}
+<div class="app-nav-scrim" id="app-nav-scrim" hidden></div>
+<aside class="app-nav" id="app-nav" aria-label="Navegación principal">
+    <div class="app-nav-head">
+        <span class="app-nav-title">Navegación</span>
+        <button type="button" class="app-nav-toggle" id="app-nav-toggle" aria-controls="app-nav" aria-label="Plegar menú" title="Plegar menú">
+            <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path id="app-nav-toggle-icon" d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+            <span class="app-nav-toggle-text">Cerrar</span>
+        </button>
+    </div>
+    <nav aria-label="Navegación de trámites">
+        {% if "gastos.presentar" in caps or "facturacion.presentar" in caps or "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps or "facturacion.consultar_propias" in caps or "facturacion.consultar_todas" in caps %}
+        <h3 class="app-nav-section">Trámites</h3>
+        <ul>
+            {% if "gastos.presentar" in caps and "gastos.consultar_propias" not in caps and "gastos.consultar_todas" not in caps %}
+                <li><a href="{% url 'gastos:presentar' %}"{% if ns == "gastos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span class="app-nl">Solicitud de Gasto</span></a></li>
             {% endif %}
-        {% endif %}
-        {% if actor %}
-            {% if "facturacion.consultar_propias" in actor.capabilities or "facturacion.consultar_todas" in actor.capabilities %}
-                <li><a href="{% url 'facturacion:lista' %}" class="nav-link">{% if "facturacion.presentar" in actor.capabilities %}Solicitud de Facturación{% else %}Consultar facturación{% endif %}</a></li>
+            {% if "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps %}
+                <li><a href="{% url 'gastos:lista' %}"{% if ns == "gastos" and name != "reporte_cuatrimestral" and name != "gestion_catalogos" and name != "centro_costo_toggle" and "catalogos" not in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span class="app-nl">{% if "gastos.presentar" in caps %}Solicitud de Gasto{% else %}Consultar gastos{% endif %}</span></a></li>
             {% endif %}
+            {% if "facturacion.presentar" in caps and "facturacion.consultar_propias" not in caps and "facturacion.consultar_todas" not in caps %}
+                <li><a href="{% url 'facturacion:presentar' %}"{% if ns == "facturacion" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></svg><span class="app-nl">Solicitud de Facturación</span></a></li>
+            {% endif %}
+            {% if "facturacion.consultar_propias" in caps or "facturacion.consultar_todas" in caps %}
+                <li><a href="{% url 'facturacion:lista' %}"{% if ns == "facturacion" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></svg><span class="app-nl">{% if "facturacion.presentar" in caps %}Solicitud de Facturación{% else %}Consultar facturación{% endif %}</span></a></li>
+            {% endif %}
+        </ul>
         {% endif %}
-        {% if actor %}
-        <li><a href="{% url 'identidad:inicio' %}" class="nav-link">Inicio de demo</a></li>
-        <li>
-            <form method="post" action="{% url 'identidad:logout' %}" style="margin: 0; display: inline;">
-                {% csrf_token %}
-                <button class="nav-logout" type="submit">Salir</button>
-            </form>
-        </li>
+        {% if "gastos.consultar_todas" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
+        <h3 class="app-nav-section">Gestión</h3>
+        <ul>
+            {% if "gastos.consultar_todas" in caps %}
+                <li><a href="{% url 'gastos:reporte_cuatrimestral' %}"{% if ns == "gastos" and name == "reporte_cuatrimestral" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 20h18M6 20v-7M12 20V5M18 20v-10"/></svg><span class="app-nl">Reporte cuatrimestral</span></a></li>
+            {% endif %}
+            {% if "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
+                <li><a href="{% url 'gastos:gestion_catalogos' %}"{% if ns == "gastos" and name == "gestion_catalogos" or ns == "gastos" and name == "centro_costo_toggle" or ns == "gastos" and "catalogos" in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg><span class="app-nl">Catálogos y parámetros</span></a></li>
+            {% endif %}
+        </ul>
         {% endif %}
-    </ul>
-</nav>
+        <h3 class="app-nav-section">General</h3>
+        <ul>
+            <li><a href="{% url 'identidad:inicio' %}"{% if ns == "identidad" and name == "inicio" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/></svg><span class="app-nl">Inicio de demo</span></a></li>
+        </ul>
+    </nav>
+</aside>
+{% endwith %}
+{% endif %}

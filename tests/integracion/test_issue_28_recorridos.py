@@ -119,13 +119,20 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
     pago_url = reverse("gastos:pagar", args=[e.gasto.pk])
     assert o.get(pago_url).status_code == 200
     datos_pago = {
-        "importe": "100.25",
+        "monto_bruto": "100.25",
+        "monto_retencion_atp": "0.00",
         "fecha_pago": "2026-10-23",
         "referencia_externa": "PAGO-SINTETICO-28",
         "referencia_documental": str(documento_gasto.referencia_version),
     }
-    assert o.post(pago_url, datos_pago).status_code == 302
-    assert o.post(pago_url, datos_pago).status_code == 302
+    assert (
+        o.post(pago_url, {**datos_pago, "comprobante_bancario": archivo_pdf()}).status_code
+        == 302
+    )
+    assert (
+        o.post(pago_url, {**datos_pago, "comprobante_bancario": archivo_pdf()}).status_code
+        == 302
+    )
     assert PagoExterno.objects.count() == EventoPagoExterno.objects.count() == 1
 
     # Reemplazar no reescribe el pago ni hereda la revisión de la versión pagada.
@@ -147,7 +154,10 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
     assert documento_gasto.revisiones.get().resultado == "ACEPTADO"
     pago = PagoExterno.objects.get(solicitud=e.gasto)
     assert pago.referencia_documental == str(documento_gasto.referencia_version)
-    assert o.post(pago_url, datos_pago).status_code == 302
+    assert (
+        o.post(pago_url, {**datos_pago, "comprobante_bancario": archivo_pdf()}).status_code
+        == 302
+    )
     assert EventoPagoExterno.objects.filter(pago=pago).count() == 1
     detalle_gasto = a.get(reverse("gastos:detalle", args=[e.gasto.pk]))
     versiones = detalle_gasto.context["versiones_documentales"]

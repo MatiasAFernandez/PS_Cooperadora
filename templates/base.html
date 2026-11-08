@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/navegacion.css' %}">
+    <script>document.documentElement.classList.add('js');try{if(localStorage.getItem('navRail')==='1'){document.documentElement.setAttribute('data-nav-rail','true');}}catch(e){}</script>
+    {% block extra_css %}{% endblock %}
     <style>
         /* Base Shell & Topbar */
         body {
@@ -145,21 +148,49 @@
 </head>
 <body>
     <header class="app-topbar">
-        <div class="app-topbar-inner">
+        <div class="app-topbar-inner{% if actor %} app-topbar-inner--menu{% endif %}">
+            {% if actor %}
+            <button type="button" class="app-menu-btn" id="app-menu-btn" aria-controls="app-nav" aria-expanded="false">
+                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <span>Menú</span>
+            </button>
+            <span class="app-brand">
+                <span class="brand-badge">UTN</span>
+                <span class="brand-title">FRRe</span>
+                <span class="brand-divider">|</span>
+                <span class="brand-sub">Cooperadora</span>
+            </span>
+            {% else %}
             <a href="{% url 'identidad:inicio' %}" class="app-brand" title="Inicio de Cooperadora">
                 <span class="brand-badge">UTN</span>
                 <span class="brand-title">FRRe</span>
                 <span class="brand-divider">|</span>
                 <span class="brand-sub">Cooperadora</span>
             </a>
+            {% endif %}
             <h2 class="visually-hidden-module-title">{% block titulo_modulo %}PS Cooperadora — Circuito de Gastos{% endblock %}</h2>
-            {% include "comunes/navegacion_tramites.html" %}
+            {% if actor %}
+            <span class="app-spacer"></span>
+            <span class="app-session">Sesión demo</span>
+            <form method="post" action="{% url 'identidad:logout' %}" class="app-logout-form">
+                {% csrf_token %}
+                <button class="app-logout" type="submit">
+                    <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                    <span>Salir</span>
+                </button>
+            </form>
+            {% endif %}
         </div>
     </header>
 
-    <main class="app-main">
-        {% block content %}{% endblock %}
-    </main>
+    <div class="app-shell">
+        {% include "comunes/navegacion_tramites.html" %}
+        <div class="app-content">
+            <main class="app-main">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
     <script>
     document.querySelectorAll('.filter-fields').forEach(function(group) {
         const period = group.querySelector('[name="periodo"]');
@@ -177,5 +208,6 @@
         updatePeriod();
     });
     </script>
+    {% if actor %}<script src="{% static 'js/navegacion.js' %}" defer></script>{% endif %}
 </body>
 </html>

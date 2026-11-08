@@ -5,6 +5,20 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
 (Issue #15, cortes C03 y S3 parcial).
 
 > [!IMPORTANT]
+> **Actualización local 04/11/2026 (v2, con ajuste UX 05/11/2026).** El pago
+> registrado exige un **comprobante bancario obligatorio** (PDF, JPG, JPEG o PNG
+> con validación estricta de magic bytes, extensión y MIME) en toda alta nueva. La
+> constancia ATP es un documento distinto, estrictamente en formato PDF,
+> obligatorio en el acto sólo si la retención es positiva y se elige adjuntarla
+> ahora; puede incorporarse después mediante una acción real con pendiente visible.
+> Se agregan vínculos documentales, versión efectiva e historial append-only de
+> rectificaciones. Los pagos históricos sin comprobante se conservan como legado
+> explícito y no se les fabrica un documento. Esta actualización pertenece a la
+> rama local `feat/15-registro-pago-documentado`; no modifica C01, identidad ni
+> contratos del módulo documental. La regla de banco obligatorio sustituye la firma
+> histórica que permitía altas sin archivo.
+
+> [!IMPORTANT]
 > **Estado del acuerdo**: Reglas técnicas para esta demostración definidas sobre la base de
 > SPEC-011 y las decisiones A–D. Este corte no constituye una regla
 > institucional definitiva: las preguntas Q1–Q5 permanecen pendientes de validación
@@ -21,10 +35,17 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
   - Transaccionalidad atómica y bloqueo pesimista de la fila de gasto.
   - Normalización estricta de importes, cálculo determinista de huella SHA-256 canónica e idempotencia.
   - No altera el estado del gasto (no cierra la solicitud) ni modifica `monto_estimado`.
-  - No implementa pagos parciales, transferencias bancarias, retenciones ni imputaciones contables.
-  - Incluye una interfaz web parcial para registrar el pago de un gasto aceptado: consulta de
-    opciones documentales seguras y envío al servicio transaccional C03. La ruta vuelve a validar
-    visibilidad, permisos, estado, idempotencia y documento vigente en servidor.
+  - No implementa pagos parciales, transferencias bancarias ni imputaciones
+    contables. Registra la retención informada y su constancia, sin calcular el
+    impuesto ni determinar una alícuota.
+  - Incluye una interfaz web de registro documentado: comprobante bancario PDF
+    obligatorio, constancia ATP separada, bruto editable precargado desde el
+    estimado, retención inicial cero y neto calculado en servidor. La ruta vuelve
+    a validar visibilidad, permisos, estado, idempotencia y documento vigente.
+  - Incluye rectificación autorizada de fecha, referencias, bruto, retención,
+    neto derivado y comprobante equivocado, con motivo, versión esperada e
+    historial append-only. No anula transferencias reales ni cambia beneficiario
+    o cuenta.
   - Esta interfaz no reemplaza las integraciones documental ni de identidad: sin proveedor o
     permisos, la acción queda deshabilitada o devuelve un error explícito.
 
@@ -43,8 +64,11 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
     selección desde el formulario. Si no está configurado o falla, el circuito falla cerrado.
   - No se configura un proveedor por defecto ni se admiten stubs en producción. C04 consume
     el proveedor real disponible en la base; los dobles se reservan a las suites unitarias.
-  - El registro del pago no devuelve ni descarga archivos. Gastos conserva únicamente la referencia
-    documental opaca y no almacena binarios ni metadatos descriptivos del documento.
+  - El registro del pago vincula comprobante bancario y constancia ATP como documentos
+    del trámite. La pantalla y el detalle muestran nombre/tamaño y enlaces de descarga
+    sólo bajo las capacidades documentales correspondientes; el endpoint real
+    reautoriza `documentos.recuperar_contenido`. Gastos no almacena binarios en el
+    pago: conserva las FKs y la representación original de sus hashes.
 
 - **Identidad y Permisos ([Issue #21](../planning/i2-issues/02-identidad-facturacion.md) / [#28](../planning/i2-issues/09-integracion-circuitos.md) - adaptador de demo disponible; integración productiva y conjunta pendiente)**:
   - El adaptador de demo existente en `identidad.services.GROUP_CAPABILITIES` define
@@ -57,13 +81,15 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
   - La visibilidad de gastos se sigue resolviendo con las capacidades existentes
     `gastos.consultar_propias`/`gastos.consultar_todas` según SPEC-002, siempre sobre
     la solicitud concreta.
-  - Para iniciar un registro nuevo, la vista exige por separado `gastos.registrar_pago` y
-    `documentos.ver_metadatos` sobre el gasto visible. La resolución del reenvío en el servicio
-    C03 en sí no recibe proveedor y no lista ni verifica documentos, necesitando únicamente
-    reautorizar `gastos.registrar_pago`. Si una respuesta por entrada malformada renderiza el
-    detalle del gasto ya pagado, C04 puede realizar un listado separado para la proyección
-    factual de categoría bajo la capacidad `documentos.ver_metadatos`, manteniendo privada la
-    referencia almacenada e inalterada la autorización del registro.
+  - Para confirmar un alta nueva, la vista exige por separado
+    `gastos.registrar_pago`, `documentos.ver_metadatos` (listado C01),
+    `documentos.incorporar` y `gastos.consultar_todas` (clasificación documental
+    vigente). La pantalla puede abrirse en modo deshabilitado para explicar el
+    camino si faltan las capacidades de incorporación. La resolución del reenvío
+    en el servicio C03 en sí no recibe proveedor y no lista ni verifica documentos,
+    necesitando únicamente reautorizar `gastos.registrar_pago`. La rectificación de
+    datos sólo exige `gastos.registrar_pago` y visibilidad; reemplazar o incorporar
+    un PDF agrega las capacidades documentales.
   - `gastos.decidir` **no concede** `gastos.registrar_pago`. Registrar un pago tampoco
     concede `documentos.ver_metadatos` ni `documentos.descargar`; cada operación requiere
     su capacidad y autorización propia sobre el gasto/documento correspondiente.
@@ -85,10 +111,31 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
 - **Moneda**: Fija en `ARS`. Restricción CheckConstraint en base de datos: `pago_externo_moneda_ars`.
 - **Fecha del hecho**: `DateField` que captura la fecha real del hecho económico. Rechaza `datetime`.
   No se impone ninguna política artificial de fecha futura.
-- **Referencia externa**: `CharField(max_length=128)` con limpieza de espacios (trim), obligatoria,
-  estrictamente de tipo `str`.
+- **Referencia externa**: `CharField(max_length=128)` con limpieza de espacios (trim),
+  opcional desde v2. Puede quedar vacía; no se inventa un número bancario ni se usa
+  el hash del PDF o el identificador interno como referencia.
 - **Referencia documental**: `CharField(max_length=255)` que almacena un identificador opaco e
   inmutable entregado por el proveedor de documentos, estrictamente de tipo `str`.
+  Sigue siendo el respaldo comercial C01 y no se reasigna al rectificar el pago.
+- **Comprobante bancario**: FK protegida a `documentos.Documento` (tipo
+  `COMPROBANTE_PAGO`, procedencia `EXTERNO_BANCO`). Es obligatoria en toda alta
+  nueva; queda nula únicamente en registros históricos migrados. El archivo admite
+  PDF o imagen (JPG, JPEG, PNG) con validación real de servidor (magic bytes,
+  extensión y MIME: `application/pdf`, `image/jpeg`, `image/png`), conservando
+  los límites de archivo de 10 MiB; no admite WebP ni formatos no autorizados.
+- **Constancia ATP**: FK protegida separada a `documentos.Documento` (tipo
+  `CONSTANCIA_RETENCION_ATP`, procedencia `EXTERNO_ATP`). Conserva su regla
+  estricta de PDF (firma `%PDF-`). No se infiere ni se fabrica. Con retención
+  positiva puede adjuntarse ahora o incorporarse después; con retención cero no
+  corresponde.
+- **Versión efectiva**: entero positivo en `PagoExterno.version`. Cada
+  rectificación o aporte posterior crea una fila `PagoExternoCambio` y
+  incrementa la versión. La fila efectiva es la que leen el detalle y los
+  reportes existentes.
+- **Representación original**: `PagoExternoOriginal` conserva una sola vez los
+  valores normalizados y los SHA-256/identificadores de los documentos del alta.
+  Los reenvíos se comparan contra esa representación, nunca contra importes
+  corregidos ni contra una huella histórica recalculada.
 - **Huella de idempotencia**: `CharField(max_length=64)` que almacena el hash SHA-256 canónico
   de los valores normalizados del pago. No requiere índice UNIQUE redundante porque `solicitud`
   ya es única en esta demo.
@@ -107,6 +154,21 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
 
 Las garantías por trigger son de fila; mantenimiento privilegiado de tabla, como `TRUNCATE`, queda
 fuera del contrato de la aplicación.
+
+### 2.3. `PagoExternoOriginal` y `PagoExternoCambio`
+
+- `PagoExternoOriginal` es OneToOne con el pago y append-only. Guarda fecha,
+  bruto, retención, neto, referencias, IDs y SHA-256 de los documentos del alta,
+  más `es_legado`. La migración crea una fila para cada pago previo sin inventar
+  archivos ni hashes.
+- `PagoExternoCambio` guarda `numero_version` resultante, tipo, motivo
+  obligatorio, actor, fecha/hora del servidor, snapshots JSON cerrados
+  antes/después y vínculos documentales anterior/nuevo. Es append-only por ORM y
+  triggers PostgreSQL; la unicidad `(pago, numero_version)` evita duplicados.
+- Los tipos son `rectificacion`, `comprobante_reemplazado`,
+  `comprobante_incorporado`, `atp_incorporada` y `atp_retirada`.
+- No se crea un segundo pago, no se modifica el evento original y no se recalcula
+  la huella de idempotencia del alta.
 
 ---
 
@@ -138,6 +200,26 @@ fuera del contrato de la aplicación.
 4. **Atomicidad de Escritura**:
    `PagoExterno` y `EventoPagoExterno` se persisten conjuntamente. Cualquier fallo en la creación
    del evento produce el rollback completo de la transacción.
+
+5. **Registro documentado y compensación (v2)**:
+   El alta nueva exige un PDF bancario y usa `documentos.operaciones.operacion_documental`
+   como transacción exterior, con `documentos.services.incorporar(..., _escrituras=...)`
+   para banco y ATP. Si falla la validación del segundo archivo, la escritura SQL o la
+   creación del evento, se revierte la transacción y se compensan los archivos del
+   manifiesto. No se anida una transacción exterior adicional. Las pruebas HTTP que
+   recorren el alta usan `transaction=True`.
+   Un reenvío idéntico al alta original se resuelve bajo el bloqueo de la solicitud,
+   sin volver a exigir C01, proveedor ni PDF. Un reenvío con datos distintos produce
+   conflicto. La representación original no se modifica al rectificar.
+
+6. **Rectificación y ATP posterior (v2)**:
+   Cualquier operador con `gastos.registrar_pago` y visibilidad puede rectificar
+   datos. Reemplazar o incorporar un PDF exige además `documentos.incorporar` y
+   `gastos.consultar_todas` por la clasificación documental vigente; no se amplía
+   el contrato de documentos. La descarga sigue exigiendo
+   `documentos.recuperar_contenido` en el endpoint real. La versión esperada
+   serializa la concurrencia; un reenvío exacto de la misma rectificación o aporte
+   se reconoce sin duplicar documentos, cambios ni eventos.
 
 ---
 
@@ -201,14 +283,42 @@ def registrar_pago_externo(
     *,
     actor: Any,
     solicitud_id: int,
-    importe: Any,
+    monto_bruto: Any,
     fecha_pago: Any,
-    referencia_externa: Any,
     referencia_documental: Any,
+    monto_retencion_atp: Any = Decimal("0.00"),
+    referencia_externa: Any = "",
+    referencia_atp: Any = "",
+    comprobante_bancario: Any = None,
+    constancia_atp: Any = None,
+    incorporar_atp_despues: bool = False,
     document_provider: DocumentVerificationPort | None = None,
 ) -> PagoExterno:
     ...
 ```
+
+`importe` se deriva como `monto_bruto - monto_retencion_atp`; el parámetro
+histórico `importe` sólo se conserva como comprobación opcional de consistencia.
+El comprobante bancario es obligatorio para un alta nueva. `document_provider`
+no se exige en un reenvío idéntico.
+
+### 5.1.1. Rectificación y ATP posterior
+```python
+def rectificar_pago_externo(
+    *, actor, solicitud_id, version_esperada, motivo, fecha_pago,
+    referencia_documental=None, monto_bruto=None,
+    monto_retencion_atp=Decimal("0.00"), referencia_externa="",
+    referencia_atp="", comprobante_bancario=None,
+) -> PagoExterno: ...
+
+def incorporar_constancia_atp_posterior(
+    *, actor, solicitud_id, version_esperada, motivo, constancia_atp,
+) -> PagoExterno: ...
+```
+
+Ambas operaciones son idempotentes ante una respuesta perdida si coinciden
+versión de partida, actor, motivo y contenido normalizado; de lo contrario
+producen conflicto. No crean un pago nuevo ni modifican el respaldo C01.
 
 ### 5.2. Consulta Pura de Pago Visible
 ```python
@@ -220,15 +330,22 @@ def consultar_pago_externo(
 ```
 
 - **DTO de Consulta**: [`PagoExternoConsulta`](../../gastos/payments.py) contiene los datos del
-  pago y del evento (`id`, `solicitud_id`, `importe`, `moneda`, `fecha_pago`, `referencia_externa`,
-  `fecha_registro`, `actor_id`).
-- **Garantía de privacidad**: Omite deliberadamente la referencia documental para evitar
-  filtrarla en respuestas genéricas de consulta.
+  pago y del evento (`id`, `solicitud_id`, `importe`, `moneda`, `fecha_pago`,
+  `referencia_externa`, `fecha_registro`, `actor_id`, `version`, presencia de
+  comprobante/constancia y pendiente ATP).
+- **Garantía de privacidad**: Omite deliberadamente la referencia documental. Los
+  identificadores, nombres y tamaños de los documentos sólo se completan con
+  `documentos.consultar_metadatos`; la descarga se autoriza por separado en
+  `documentos.recuperar_contenido`.
 - **Comportamiento ante solicitudes ajenas o sin pago**: Retorna `None` de forma segura sin
   revelar existencia a terceros.
 
 ### 5.3. Interfaz web parcial de registro
 
+- Rutas del corte: `GET/POST /gastos/<id>/pagar/` (alta),
+  `GET/POST /gastos/<id>/pagar/rectificar/` y `GET/POST /gastos/<id>/pagar/atp/`.
+  Las tres resuelven visibilidad y permisos en servidor; las dos últimas exigen
+  versión esperada y motivo.
 - `GET /gastos/<id>/pagar/` lista las opciones sólo después de resolver la visibilidad del gasto
   y exigir `gastos.registrar_pago` y `documentos.ver_metadatos`.
 - `POST` conserva los valores ingresados ante errores de validación o de verificación documental.
@@ -241,7 +358,20 @@ def consultar_pago_externo(
   referencia documental guardada y sin alterar la autorización del registro.
 - El detalle comunica si la acción está disponible por permisos y configuración. El formulario
   desactiva el botón mientras envía; la idempotencia de C03 cubre reintentos del servidor.
-- El formulario no descarga ni muestra archivos. El proveedor C01 real y los grupos de
+- El detalle muestra comprobante bancario y constancia ATP por separado, con
+  descarga sujeta al endpoint real. Un pago histórico sin PDF se rotula como
+  legado y no se completa con un archivo inventado.
+- Los reportes existentes leen la fila efectiva (`fecha_pago`, `monto_bruto`,
+  `monto_retencion_atp`, `importe`). Una rectificación se refleja en el período
+  corregido y no suma el historial como un pago adicional.
+- El formulario muestra el comprobante local seleccionado con tarjeta visual y
+  metadatos (admitiendo PDF, JPG, JPEG o PNG para el comprobante bancario y PDF
+  para constancia ATP) y, tras el registro, enlaces autorizados a los documentos.
+  La cabecera compacta identifica solicitante y CUIT/CUIL del titular de cuenta;
+  el copiado de CBU ofrece confirmación accesible; los importes se formatean y
+  normalizan en formato `es-AR` en cliente y servidor; y el aviso ATP y cálculo
+  de neto manejan umbrales localizados y guardas contra incoherencias o
+  retenciones mayores o iguales al bruto. El proveedor C01 real y los grupos de
   capacidades del adaptador de demo están disponibles en la base integrada; C04 los consume
   con configuración de servidor y no cambia identidad. No se incluye autenticación productiva,
   SSO ni validación institucional.
@@ -267,6 +397,14 @@ resolverse antes del paso a producción:
   no resuelve esta cuestión institucional.
 - **Q5 (Regularización / Cierre)**: Procedimiento de regularización de pagos provisionales pendientes de
   factura y criterios formales de cierre administrativo y contable de los trámites de gasto.
+
+> [!NOTE]
+> **Límites de la v2 local.** No se anulan transferencias reales, no se cambia
+> beneficiario o cuenta y no se reasigna el respaldo comercial C01. No se
+> implementa motor fiscal, OCR, antivirus, revisión documental independiente
+> obligatoria, cierre automático ni ejecución bancaria. Los umbrales
+> configurados no se modifican y la frontera `>`/`>=` sigue siendo una decisión
+> pendiente. Los pagos históricos sin comprobante no se corrigen por backfill.
 
 > [!NOTE]
 > Los límites técnicos de la demostración **no validan** Q1–Q5. Este corte

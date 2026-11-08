@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Rectificar pago — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/pago_externo.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="registro-pago">
+    <p class="rp-breadcrumb"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a></p>
+    <div class="rp-head">
+        <p class="rp-small">Solicitud #{{ solicitud.pk }} · {{ solicitud.concepto }}</p>
+        <h1>Rectificar pago externo</h1>
+        <p>Corregí fecha, referencias o importes mal cargados, o reemplazá el comprobante bancario. Cada cambio conserva la versión anterior y queda en el historial.</p>
+    </div>
+
+    <div class="rp-context">
+        <span><strong>Versión efectiva:</strong> {{ pago.version }}</span>
+        <span><strong>Beneficiario:</strong> {% if datos_transferencia_actual %}{{ datos_transferencia_actual.titular_nombre }}{% else %}Sin datos informados{% endif %}</span>
+        <span><strong>Comprobante:</strong>
+            {% if pago_consulta.tiene_comprobante_bancario %}
+                {% if pago_consulta.comprobante_bancario_nombre %}{{ pago_consulta.comprobante_bancario_nombre }}{% else %}incorporado{% endif %}
+            {% else %}registro histórico sin comprobante{% endif %}
+        </span>
+    </div>
+
+    <div id="rp-errores" class="rp-error" role="alert" {% if not form.non_field_errors %}hidden{% endif %}>
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+
+    <form data-pago-form data-mode="rectificacion" data-max-bytes="{{ max_upload_bytes }}"
+          method="post" enctype="multipart/form-data"
+          action="{% url 'gastos:pago_rectificar' pk=solicitud.pk %}" novalidate>
+        {% csrf_token %}
+        {{ form.version_esperada }}
+
+        <div class="rp-layout">
+            <div class="rp-main">
+                <section class="rp-section" aria-labelledby="rp-rectifica-datos">
+                    <h2 id="rp-rectifica-datos">Datos efectivos del pago</h2>
+                    <div class="rp-fields">
+                        <div>
+                            <label for="{{ form.fecha_pago.id_for_label }}">{{ form.fecha_pago.label }}</label>
+                            {{ form.fecha_pago }}
+                            {% if form.fecha_pago.errors %}<div class="rp-error" role="alert">{{ form.fecha_pago.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.monto_bruto.id_for_label }}">{{ form.monto_bruto.label }}</label>
+                            {{ form.monto_bruto }}
+                            {% if form.monto_bruto.errors %}<div class="rp-error" role="alert">{{ form.monto_bruto.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.monto_retencion_atp.id_for_label }}">{{ form.monto_retencion_atp.label }}</label>
+                            {{ form.monto_retencion_atp }}
+                            {% if form.monto_retencion_atp.errors %}<div class="rp-error" role="alert">{{ form.monto_retencion_atp.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label for="rp-neto">Neto transferido · ARS <span class="rp-readonly-label">Calculado</span></label>
+                            <input id="rp-neto" type="text" readonly tabindex="0" value="$ {{ pago.importe }}">
+                            <span class="rp-help">El servidor lo deriva de bruto menos retención.</span>
+                        </div>
+                        <div>
+                            <label for="{{ form.referencia_externa.id_for_label }}">{{ form.referencia_externa.label }}</label>
+                            {{ form.referencia_externa }}
+                            {% if form.referencia_externa.errors %}<div class="rp-error" role="alert">{{ form.referencia_externa.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.referencia_atp.id_for_label }}">{{ form.referencia_atp.label }}</label>
+                            {{ form.referencia_atp }}
+                            {% if form.referencia_atp.errors %}<div class="rp-error" role="alert">{{ form.referencia_atp.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="rp-full">
+                            <label for="{{ form.motivo.id_for_label }}">{{ form.motivo.label }} <span class="rp-readonly-label">Obligatorio</span></label>
+                            {{ form.motivo }}
+                            <span class="rp-help">Explicá qué corregís. No se permite anular una transferencia real ni cambiar beneficiario o cuenta.</span>
+                            {% if form.motivo.errors %}<div class="rp-error" role="alert">{{ form.motivo.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rp-section" aria-labelledby="rp-comprobante-title">
+                    <h2 id="rp-comprobante-title">Comprobante bancario vigente</h2>
+                    {% if pago_consulta.tiene_comprobante_bancario %}
+                        <div class="rp-file-card">
+                            <p class="rp-file-name">
+                                {% if pago_consulta.comprobante_bancario_nombre %}
+                                    {{ pago_consulta.comprobante_bancario_nombre }}
+                                {% else %}
+                                    Documento incorporado (sin acceso a metadatos)
+                                {% endif %}
+                            </p>
+                            {% if pago_consulta.comprobante_bancario_tamano %}
+                                <p class="rp-file-meta">{{ pago_consulta.comprobante_bancario_tamano }} bytes</p>
+                            {% endif %}
+                            <div class="rp-actions">
+                                {% if pago_consulta.comprobante_bancario_id and puede_descargar_documentos %}
+                                    <a class="rp-button" href="{% url 'documentos:archivo' pago_consulta.comprobante_bancario_id %}" target="_blank" rel="noopener" data-open-doc="{% url 'documentos:archivo' pago_consulta.comprobante_bancario_id %}">Abrir</a>
+                                    <a class="rp-button" href="{% url 'documentos:archivo' pago_consulta.comprobante_bancario_id %}" download>Descargar</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="rp-note" role="note">Registro histórico sin comprobante bancario. No se fabrica un PDF ni se completa el faltante con el respaldo comercial.</p>
+                    {% endif %}
+
+                    <div style="margin-top: 1rem;">
+                        <label for="{{ form.comprobante_bancario.id_for_label }}">{{ form.comprobante_bancario.label }}</label>
+                        <div class="rp-dropzone" id="rp-banco-drop">
+                            {{ form.comprobante_bancario }}
+                            <p>Arrastrá el nuevo comprobante acá o elegilo con el botón.</p>
+                            <label for="{{ form.comprobante_bancario.id_for_label }}" class="rp-button">Seleccionar archivo</label>
+                            <span class="rp-small">PDF, JPG o PNG · hasta {{ max_upload_mib }} MiB. Si no elegís uno, se conserva el vigente.</span>
+                        </div>
+                        <div class="rp-file-card" id="rp-banco-file" hidden>
+                            <p class="rp-file-name" id="rp-banco-nombre"></p>
+                            <p class="rp-file-meta" id="rp-banco-meta"></p>
+                            <div class="rp-actions" id="rp-banco-actions">
+                                <a class="rp-button" id="rp-banco-abrir" href="#" target="_blank" rel="noopener" data-open-doc="">Abrir</a>
+                                <a class="rp-button" id="rp-banco-descargar" href="#" download>Descargar</a>
+                                <button type="button" class="rp-button" id="rp-banco-cambiar">Cambiar</button>
+                                <button type="button" class="rp-button" id="rp-banco-quitar">Quitar</button>
+                            </div>
+                        </div>
+                        <p class="rp-small" id="rp-banco-status" role="status" hidden></p>
+                        {% if form.comprobante_bancario.errors %}<div class="rp-error" role="alert">{{ form.comprobante_bancario.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </section>
+
+                <div class="rp-actions">
+                    <button type="submit" class="rp-button rp-button-primary" style="width: auto;">Guardar rectificación</button>
+                    <a class="rp-button" href="{% url 'gastos:detalle' pk=solicitud.pk %}">Cancelar</a>
+                </div>
+            </div>
+
+            <aside class="rp-aside" aria-labelledby="rp-historial-title">
+                <div class="rp-summary">
+                    <h2 id="rp-historial-title">Historial de cambios</h2>
+                    {% if cambios_pago %}
+                        {% for cambio in cambios_pago %}
+                            <div class="rp-history-item">
+                                <p><strong>{{ cambio.tipo_mostrado }}</strong> · versión {{ cambio.numero_version }}</p>
+                                <p class="rp-small">Usuario #{{ cambio.actor_id }} · {{ cambio.fecha_hora|date:"d/m/Y H:i:s" }}</p>
+                                <p><strong>Motivo:</strong> {{ cambio.motivo }}</p>
+                                <p><strong>Antes:</strong> {{ cambio.antes }}</p>
+                                <p><strong>Después:</strong> {{ cambio.despues }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="rp-small">Sin rectificaciones registradas. La versión efectiva es la del alta original.</p>
+                    {% endif %}
+                    <p class="rp-note rp-note-info" role="note">La versión esperada evita pisar un cambio concurrente. Si otra persona ya rectificó, vas a ver un conflicto y deberás revisar la versión vigente.</p>
+                </div>
+            </aside>
+        </div>
+    </form>
+</div>
+<script src="{% static 'gastos/js/pago_externo.js' %}"></script>
+{% endblock %}

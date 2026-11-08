@@ -1,228 +1,425 @@
 {% extends "base.html" %}
 {% load static %}
+{% load l10n %}
 
-{% block title %}Reporte Directivo Cuatrimestral — PS Cooperadora{% endblock %}
+{% block title %}Reporte Directivo de Gastos — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">
+{% endblock %}
 
 {% block content %}
-<div style="max-width: 1140px; margin: 0 auto;">
-    <!-- Encabezado de la Pantalla y Selector de Año -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+<div class="rep-wrap">
+  <!-- Cabecera de Página y Accesos Rápidos -->
+  <div class="top">
+    <div>
+      <h1 class="rep-title" id="repTitle" tabindex="-1">Reporte Directivo de Gastos</h1>
+      <p class="lead">Ejecución financiera (Bruto = Neto transferido + Retención ATP), compromisos y distribución por Centro de Costo · ARS</p>
+    </div>
+    <div class="top-acts">
+      <button type="button" class="btn sec" onclick="window.print()">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Imprimir A4
+      </button>
+      <a href="{% url 'gastos:lista' %}" class="btn ghost" id="topBandejaLink">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+        Ir al listado de gastos
+      </a>
+    </div>
+  </div>
+
+  <!-- 1. BARRA DE CONTROL SUPERIOR: Ejercicio + Período + Modalidad -->
+  <form class="card control-bar" id="repForm" method="get" action="{% url 'gastos:reporte_cuatrimestral' %}" aria-label="Filtros del reporte">
+    <input type="hidden" name="corte" id="id_corte" value="{{ corte|default:'ANIO' }}">
+    {% if mostrar_sin_actividad %}<input type="hidden" name="sin_actividad" value="1">{% endif %}
+    <div class="control-main">
+      <div class="control-group">
+        <div class="fld">
+          <label for="fAnio">Ejercicio</label>
+          <select id="fAnio" name="anio">
+            {% for a in reporte.anios_disponibles %}
+              <option value="{{ a }}" {% if a == reporte.anio %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="fld" style="flex:1 1 auto">
+          <span class="fld-lbl" id="lblPeriodo">Período</span>
+          <div class="period-pills" role="group" aria-labelledby="lblPeriodo">
+            <a href="?anio={{ reporte.anio }}&amp;corte=ANIO{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if not corte or corte == 'ANIO' %}aria-current="page"{% endif %}>Año completo</a>
+            <a href="?anio={{ reporte.anio }}&amp;corte=C1{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if corte == 'C1' %}aria-current="page"{% endif %}>1° Cuatr.</a>
+            <a href="?anio={{ reporte.anio }}&amp;corte=C2{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if corte == 'C2' %}aria-current="page"{% endif %}>2° Cuatr.</a>
+            <a href="?anio={{ reporte.anio }}&amp;corte=C3{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if corte == 'C3' %}aria-current="page"{% endif %}>3° Cuatr.</a>
+            <a href="?anio={{ reporte.anio }}&amp;corte=MES_ANT{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if corte == 'MES_ANT' %}aria-current="page"{% endif %}>Mes anterior</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <details class="rep-filters"{% if modalidad or centro_costo_seleccionado %} open{% endif %}>
+      <summary>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></svg>
+        Más filtros
+        <svg class="ic rep-filters-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div class="rep-filter-fields">
+        <div class="fld">
+          <label for="fModalidad">Modalidad</label>
+          <select id="fModalidad" name="modalidad">
+            <option value="">Todas las modalidades</option>
+            <option value="COMPRA_DIRECTA" {% if modalidad == 'COMPRA_DIRECTA' %}selected{% endif %}>Compra directa</option>
+            <option value="REINTEGRO" {% if modalidad == 'REINTEGRO' %}selected{% endif %}>Reintegro</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="fCentroCosto">Centro de costo</label>
+          <select id="fCentroCosto" name="centro_costo">
+            <option value="">Todos los centros de costo</option>
+            {% for centro in centros_costo_opciones %}
+              {% with id=centro.id|stringformat:"s" %}
+                <option value="{{ id }}" {% if id == centro_costo_seleccionado %}selected{% endif %}>{{ centro.codigo }} · {{ centro.nombre }}</option>
+              {% endwith %}
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </details>
+    <div class="rep-filter-actions">
+      <button type="submit" class="btn" id="btnAplicarFiltros">Aplicar filtros</button>
+      {% if corte and corte != 'ANIO' or modalidad or centro_costo_seleccionado %}
+        <a href="?anio={{ reporte.anio }}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn ghost" id="btnResetFiltros">Restablecer filtros</a>
+      {% endif %}
+    </div>
+
+    <div class="control-meta">
+      <span id="periodSummaryTxt">
+        Período consultado: <b>{{ periodo_label|default:"Año completo" }}</b> · {% if modalidad == 'COMPRA_DIRECTA' %}Modalidad: Compra directa{% elif modalidad == 'REINTEGRO' %}Modalidad: Reintegro{% else %}Todas las modalidades{% endif %}
+      </span>
+      <span>Los montos pagados corresponden a erogaciones registradas en el período seleccionado.</span>
+    </div>
+  </form>
+
+  <!-- 2. FILA ÚNICA DE 4 KPIs -->
+  <div class="kpi-grid" role="region" aria-label="Indicadores clave del reporte">
+    <!-- KPI 1: Gasto Bruto Ejecutado -->
+    <div class="card kpi primary">
+      <div class="kpi-lbl">
+        <span>Gasto Bruto Ejecutado</span>
+        <span class="chip ok" id="kpiPagosCnt">{{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }}</span>
+      </div>
+      <div class="kpi-num font-tabular" id="kpiBruto">$ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }}</div>
+      <div class="kpi-eq font-tabular" aria-label="Desglose en Neto transferido y Retención ATP">
+        <span>Neto: <b class="neto" id="kpiNeto">$ {{ reporte.totales.monto_neto_transferido|floatformat:"2g" }}</b></span>
+        <span aria-hidden="true">·</span>
+        <span>Retención ATP: <b class="atp" id="kpiAtp">$ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}</b></span>
+      </div>
+      <div class="kpi-sub">
+        <span>Erogado en el período seleccionado</span>
+      </div>
+    </div>
+
+    <!-- KPI 2: Comprometido por Pagar -->
+    <div class="card kpi">
+      <div class="kpi-lbl">
+        <span>Comprometido por Pagar</span>
+        <span class="chip info" id="kpiCompCnt">{{ reporte.totales.cantidad_comprometida }} aceptada{{ reporte.totales.cantidad_comprometida|pluralize }}</span>
+      </div>
+      <div class="kpi-num font-tabular" id="kpiCompMonto" style="color:var(--blue)">$ {{ reporte.totales.monto_comprometido|floatformat:"2g" }}</div>
+      <div class="kpi-sub font-tabular">
+        <span>Solicitado del período ({{ reporte.totales.cantidad_solicitudes }}): <b>$ {{ reporte.totales.monto_solicitado|floatformat:"2g" }}</b></span>
+      </div>
+      <div class="kpi-sub">
+        <span>Autorizado pendiente de transferencia</span>
+      </div>
+    </div>
+
+    <!-- KPI 3: Retenciones ATP del Período -->
+    <div class="card kpi">
+      <div class="kpi-lbl">
+        <span>Retenciones ATP del Período</span>
+        <span class="chip warn" id="kpiAtpCnt">{{ reporte.totales.cantidad_pagos_atp }} con retención</span>
+      </div>
+      <div class="kpi-num font-tabular" id="kpiAtpCard" style="color:var(--warn)">$ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}</div>
+      <div class="kpi-sub" id="kpiAtpModSub">
+        <span>Retención provincial sobre erogaciones</span>
+      </div>
+      <div class="kpi-sub">
+        <span>Agente de retención provincial ATP Chaco</span>
+      </div>
+    </div>
+
+    <!-- KPI 4: Pendientes Actuales al día de hoy (Stock abierto no condicionado al período) -->
+    <div class="card kpi alert-card is-err" id="kpiPendCard">
+      <div class="kpi-lbl">
+        <span>Pendientes hoy</span>
+        <span class="chip err">Alcance global</span>
+      </div>
+      <div class="kpi-pend-count" id="kpiPendMain">
+        {% with cantidad=pendientes_actuales.sin_factura.cantidad %}
+          <strong class="font-tabular">{{ cantidad }}</strong> compra{{ cantidad|pluralize }} pagada{{ cantidad|pluralize }} con factura definitiva pendiente
+        {% endwith %}
+      </div>
+      <div class="kpi-sub font-tabular" id="kpiPendAtpSub">
+        <span>Constancias ATP pendientes: <b>{{ pendientes_actuales.sin_atp.cantidad }} pago{{ pendientes_actuales.sin_atp.cantidad|pluralize }}</b></span>
+      </div>
+      <div class="kpi-sub">Incluye todos los centros y modalidades, en cualquier período.</div>
+    </div>
+  </div>
+
+  <!-- ESTADO VACÍO CUANDO NO HAY MOVIMIENTOS -->
+  {% if reporte.totales.cantidad_solicitudes == 0 and reporte.totales.cantidad_pagos == 0 %}
+  <div class="card empty-state" role="status" aria-live="polite">
+    <span class="chip warn">Sin movimientos registrados</span>
+    <h2>No se registraron movimientos con los criterios elegidos</h2>
+    <p>No existen solicitudes ni pagos para el ejercicio y filtros seleccionados. Los pendientes actuales al día de hoy se mantienen visibles por separado.</p>
+    <div class="empty-acts">
+      {% if modalidad %}
+        <a href="?anio={{ reporte.anio }}&amp;corte={{ corte }}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn ghost">Mostrar todas las modalidades</a>
+      {% endif %}
+      <a href="?anio={{ reporte.anio }}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn ghost">Restablecer filtros</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 3. GRÁFICOS COMPLEMENTARIOS (Columnas verticales apiladas + Barras horizontales) -->
+  <div class="charts-grid">
+    <!-- Gráfico 1: Evolución por Cuatrimestre (Neto transferido + Retención ATP apilados) -->
+    <div class="card chart-card" aria-labelledby="ch1Title" aria-describedby="ch1Desc ch1SrTable">
+      <div class="chart-head">
         <div>
-            <h2 style="margin: 0; color: var(--ref-deep-blue, #090979); font-weight: 700; font-size: var(--text-2xl, 1.5rem);">
-                Reporte Directivo Cuatrimestral
-            </h2>
-            <p style="margin: 0.25rem 0 0; color: #64748b; font-size: var(--text-sm, 0.875rem);">
-                Consolidado oficial de solicitudes y erogaciones por cuatrimestre y centro de costo para el ejercicio {{ anio_seleccionado }}.
-            </p>
+          <h2 id="ch1Title">Evolución por Cuatrimestre ({{ reporte.anio }})</h2>
+          <p class="chart-q" id="ch1Desc">Gasto ejecutado apilado (Neto transferido + Retención ATP). Seleccioná una columna para filtrar el cuatrimestre.</p>
         </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-            <form method="get" action="{% url 'gastos:reporte_cuatrimestral' %}" style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
-                <label for="id_anio" style="font-weight: 600; font-size: var(--text-sm, 0.875rem); color: #334155; margin: 0;">Ejercicio:</label>
-                <select name="anio" id="id_anio" onchange="this.form.submit()" style="padding: 0.45rem 0.85rem; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); font-size: var(--text-sm, 0.875rem); background: #ffffff; color: var(--ref-deep-blue, #090979); font-weight: 600;">
-                    {% for a in reporte.anios_disponibles %}
-                        <option value="{{ a }}" {% if a == anio_seleccionado %}selected{% endif %}>{{ a }}</option>
-                    {% endfor %}
-                </select>
-                <noscript><button type="submit" class="btn" style="padding: 0.45rem 0.75rem;">Ver</button></noscript>
-            </form>
-            <a href="{% url 'gastos:lista' %}" class="btn" style="background: #6c757d;">Volver al Panel</a>
+        <div class="legend" aria-hidden="true">
+          <span class="leg-item"><span class="swatch sw-neto"></span>Neto transferido</span>
+          <span class="leg-item"><span class="swatch sw-atp"></span>Retención ATP</span>
         </div>
+      </div>
+
+      <div class="vchart-wrap">
+        <div class="vchart-yaxis font-tabular" aria-hidden="true"></div>
+        <div class="vchart-stage">
+          <div class="vchart-plot" role="group" aria-label="Columnas de gasto ejecutado por cuatrimestre">
+            {% for c in reporte.cuatrimestres %}
+              {% if c.cuatrimestre == 1 %}{% with c_code="C1" c_short="1° Cuatr." %}
+                <a href="?anio={{ reporte.anio }}&amp;corte={% if corte == c_code %}ANIO{% else %}{{ c_code }}{% endif %}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}"
+                   class="vcol-btn"
+                   {% if corte == c_code %}aria-current="page"{% endif %}
+                   aria-label="{{ c.etiqueta }}: Gasto Bruto $ {{ c.monto_erogado_bruto|floatformat:'2g' }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Clic para filtrar este cuatrimestre.">
+                  <span class="vcol-val font-tabular">
+                    {% if c.monto_erogado_bruto > 0 %}$ {{ c.monto_erogado_bruto|floatformat:"2g" }}{% else %}$ 0{% endif %}
+                  </span>
+                  <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
+                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: $ {{ c.monto_retencion_atp|floatformat:'2g' }}"></span>
+                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: $ {{ c.monto_neto_transferido|floatformat:'2g' }}"></span>
+                  </span>
+                </a>
+              {% endwith %}{% elif c.cuatrimestre == 2 %}{% with c_code="C2" c_short="2° Cuatr." %}
+                <a href="?anio={{ reporte.anio }}&amp;corte={% if corte == c_code %}ANIO{% else %}{{ c_code }}{% endif %}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}"
+                   class="vcol-btn"
+                   {% if corte == c_code %}aria-current="page"{% endif %}
+                   aria-label="{{ c.etiqueta }}: Gasto Bruto $ {{ c.monto_erogado_bruto|floatformat:'2g' }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Clic para filtrar este cuatrimestre.">
+                  <span class="vcol-val font-tabular">
+                    {% if c.monto_erogado_bruto > 0 %}$ {{ c.monto_erogado_bruto|floatformat:"2g" }}{% else %}$ 0{% endif %}
+                  </span>
+                  <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
+                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: $ {{ c.monto_retencion_atp|floatformat:'2g' }}"></span>
+                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: $ {{ c.monto_neto_transferido|floatformat:'2g' }}"></span>
+                  </span>
+                </a>
+              {% endwith %}{% else %}{% with c_code="C3" c_short="3° Cuatr." %}
+                <a href="?anio={{ reporte.anio }}&amp;corte={% if corte == c_code %}ANIO{% else %}{{ c_code }}{% endif %}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}"
+                   class="vcol-btn"
+                   {% if corte == c_code %}aria-current="page"{% endif %}
+                   aria-label="{{ c.etiqueta }}: Gasto Bruto $ {{ c.monto_erogado_bruto|floatformat:'2g' }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Clic para filtrar este cuatrimestre.">
+                  <span class="vcol-val font-tabular">
+                    {% if c.monto_erogado_bruto > 0 %}$ {{ c.monto_erogado_bruto|floatformat:"2g" }}{% else %}$ 0{% endif %}
+                  </span>
+                  <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
+                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: $ {{ c.monto_retencion_atp|floatformat:'2g' }}"></span>
+                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: $ {{ c.monto_neto_transferido|floatformat:'2g' }}"></span>
+                  </span>
+                </a>
+              {% endwith %}{% endif %}
+            {% endfor %}
+          </div>
+          <div class="vchart-xaxis" aria-hidden="true">
+            {% for c in reporte.cuatrimestres %}
+              {% if c.cuatrimestre == 1 %}{% with c_code="C1" c_short="1° Cuatr." %}
+                <div class="vx-item{% if corte == c_code %} is-active{% endif %}">
+                  <span class="vx-title">{{ c_short }}</span>
+                  <span class="vx-sub font-tabular">{{ c.fecha_inicio|date:"d/m" }}–{{ c.fecha_fin|date:"d/m" }} · {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}</span>
+                </div>
+              {% endwith %}{% elif c.cuatrimestre == 2 %}{% with c_code="C2" c_short="2° Cuatr." %}
+                <div class="vx-item{% if corte == c_code %} is-active{% endif %}">
+                  <span class="vx-title">{{ c_short }}</span>
+                  <span class="vx-sub font-tabular">{{ c.fecha_inicio|date:"d/m" }}–{{ c.fecha_fin|date:"d/m" }} · {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}</span>
+                </div>
+              {% endwith %}{% else %}{% with c_code="C3" c_short="3° Cuatr." %}
+                <div class="vx-item{% if corte == c_code %} is-active{% endif %}">
+                  <span class="vx-title">{{ c_short }}</span>
+                  <span class="vx-sub font-tabular">{{ c.fecha_inicio|date:"d/m" }}–{{ c.fecha_fin|date:"d/m" }} · {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}</span>
+                </div>
+              {% endwith %}{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-foot font-tabular">
+        <span>Acumulado período ({{ reporte.anio }}): <b>$ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }}</b> ({{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }})</span>
+        <span>Neto: $ {{ reporte.totales.monto_neto_transferido|floatformat:"2g" }} · ATP: $ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}</span>
+      </div>
+
+      <!-- Alternativa textual accesible para lectores de pantalla -->
+      <div class="sr-only">
+        <table id="ch1SrTable">
+          <caption>Valores exactos de evolución por cuatrimestre</caption>
+          <thead>
+            <tr>
+              <th scope="col">Cuatrimestre</th>
+              <th scope="col">Pagos</th>
+              <th scope="col">Gasto Bruto</th>
+              <th scope="col">Neto Transferido</th>
+              <th scope="col">Retención ATP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in reporte.cuatrimestres %}
+            <tr>
+              <td>{{ c.etiqueta }} ({{ c.fecha_inicio|date:"d/m/Y" }} al {{ c.fecha_fin|date:"d/m/Y" }})</td>
+              <td>{{ c.cantidad_pagos }}</td>
+              <td>$ {{ c.monto_erogado_bruto|floatformat:"2g" }}</td>
+              <td>$ {{ c.monto_neto_transferido|floatformat:"2g" }}</td>
+              <td>$ {{ c.monto_retencion_atp|floatformat:"2g" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- Tarjetas Resumen / KPIs Anuales -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <!-- KPI 1: Solicitudes -->
-        <div style="background: #ffffff; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); padding: 1.25rem; box-shadow: var(--shadow-sm);">
-            <div style="font-size: var(--text-xs, 0.75rem); text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">
-                Solicitudes Presentadas
-            </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: var(--ref-blue, #084298); margin: 0.35rem 0;" class="font-tabular">
-                {{ reporte.totales.cantidad_solicitudes }}
-            </div>
-            <div style="font-size: var(--text-sm, 0.875rem); color: #475569;" class="font-tabular">
-                Estimado: <strong>${{ reporte.totales.monto_solicitado }}</strong>
-            </div>
+    <!-- Gráfico 2: Top Centros de Costo (Barras horizontales limpias) -->
+    <div class="card chart-card" aria-labelledby="ch2Title" aria-describedby="ch2Desc">
+      <div class="chart-head">
+        <div>
+          <h2 id="ch2Title">Top Centros de Costo del Período</h2>
+          <p class="chart-q" id="ch2Desc">Hasta seis centros, ordenados por gasto bruto pagado en el período.</p>
         </div>
+      </div>
 
-        <!-- KPI 2: Erogaciones Brutas -->
-        <div style="background: #ffffff; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); padding: 1.25rem; box-shadow: var(--shadow-sm);">
-            <div style="font-size: var(--text-xs, 0.75rem); text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">
-                Total Facturado Bruto
+      <div class="hchart-list">
+        {% for cc in centros_costo_top %}
+          <div class="hbar-row">
+            <div class="hbar-head">
+              <span class="hbar-label"><b>{{ cc.codigo }}</b> · {{ cc.nombre }}</span>
+              <span class="hbar-metric font-tabular">$ {{ cc.monto_erogado_bruto|floatformat:"2g" }}</span>
             </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: #334155; margin: 0.35rem 0;" class="font-tabular">
-                ${{ reporte.totales.monto_erogado_bruto }}
+            <div class="hbar-track" aria-hidden="true">
+              <span class="hbar-fill" style="width: {{ cc.porcentaje_bruto_grafico|default:0|unlocalize }}%;"></span>
             </div>
-            <div style="font-size: var(--text-sm, 0.875rem); color: #475569;">
-                En <strong>{{ reporte.totales.cantidad_pagos }}</strong> pago(s) registrados
-            </div>
-        </div>
+          </div>
+        {% empty %}
+          <p class="chart-q">Sin pagos ejecutados en este corte.</p>
+        {% endfor %}
+      </div>
 
-        <!-- KPI 3: Retenciones ATP Chaco -->
-        <div style="background: #ffffff; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); padding: 1.25rem; box-shadow: var(--shadow-sm);">
-            <div style="font-size: var(--text-xs, 0.75rem); text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">
-                Retención ATP Chaco (IIBB)
-            </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: #b45309; margin: 0.35rem 0;" class="font-tabular">
-                ${{ reporte.totales.monto_retencion_atp }}
-            </div>
-            <div style="font-size: var(--text-sm, 0.875rem); color: #475569;">
-                Agente de retención provincial
-            </div>
-        </div>
+      <div class="chart-foot rep-chart-foot">
+        <a href="#desglose-centros" class="btn ghost">Ver desglose por centro</a>
+        <span>Total erogado del período: <b>$ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }}</b></span>
+      </div>
+    </div>
+  </div>
 
-        <!-- KPI 4: Neto Transferido -->
-        <div style="background: #ffffff; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); padding: 1.25rem; box-shadow: var(--shadow-sm);">
-            <div style="font-size: var(--text-xs, 0.75rem); text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">
-                Neto Bancario Transferido
-            </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: #15803d; margin: 0.35rem 0;" class="font-tabular">
-                ${{ reporte.totales.monto_neto_transferido }}
-            </div>
-            <div style="font-size: var(--text-sm, 0.875rem); color: #475569;">
-                Fondos efectivamente erogados
-            </div>
-        </div>
+  <!-- 4. ÚNICA TABLA INFERIOR: Desglose por Centro de Costo -->
+  <div class="card table-card" id="desglose-centros" tabindex="-1">
+    <div class="table-head">
+      <div>
+        <h2 id="tblCcTitle">Desglose por Centro de Costo</h2>
+        <p id="tblCcSub">Consolidado de solicitudes, compromisos pendientes y gasto ejecutado por área para el período seleccionado.</p>
+      </div>
+      {% if not centro_costo_seleccionado %}
+        <a href="?anio={{ reporte.anio }}&amp;corte={{ corte }}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if not mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}#desglose-centros" class="btn ghost">
+          {% if mostrar_sin_actividad %}Ocultar centros sin actividad{% else %}Mostrar centros sin actividad{% endif %}
+        </a>
+      {% endif %}
     </div>
 
-    <!-- SECCIÓN 1: Consolidado Cuatrimestral (C1, C2, C3) -->
-    <div style="background: #ffffff; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); margin-bottom: 2rem; box-shadow: var(--shadow-sm); overflow: hidden;">
-        <div style="padding: 1rem 1.25rem; background: var(--ref-bg-muted, #f8fafc); border-bottom: 1px solid var(--ref-border, #e2e8f0); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: var(--ref-deep-blue, #090979); font-weight: 700;">
-                1. Evolución por Cuatrimestre Calendario
-            </h3>
-            <span style="font-size: var(--text-xs, 0.75rem); color: #64748b;">Partición cuatrimestral canónica</span>
-        </div>
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; margin: 0; font-size: var(--text-sm, 0.875rem);">
-                <thead>
-                    <tr style="background: #f1f5f9; border-bottom: 2px solid var(--ref-border, #e2e8f0); color: #334155;">
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: left; font-weight: 700;">Cuatrimestre / Período</th>
-                        <th scope="col" style="padding: 0.75rem 0.75rem; text-align: center; font-weight: 700;">Solicitudes (#)</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Monto Solicitado</th>
-                        <th scope="col" style="padding: 0.75rem 0.75rem; text-align: center; font-weight: 700;">Pagos (#)</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Erogado Bruto</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Retención ATP</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Neto Transferido</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in reporte.cuatrimestres %}
-                        <tr style="border-bottom: 1px solid var(--ref-border, #e2e8f0); transition: background var(--transition-fast, 150ms);" onmouseover="this.style.background='var(--ref-bg-muted, #f8fafc)'" onmouseout="this.style.background='transparent'">
-                            <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--ref-deep-blue, #090979);">
-                                {{ c.etiqueta }}
-                                <div style="font-size: var(--text-xs, 0.75rem); color: #64748b; font-weight: normal;">
-                                    {{ c.fecha_inicio|date:"d/m/Y" }} al {{ c.fecha_fin|date:"d/m/Y" }}
-                                </div>
-                            </td>
-                            <td style="padding: 0.75rem 0.75rem; text-align: center;" class="font-tabular">
-                                {{ c.cantidad_solicitudes }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right;" class="font-tabular">
-                                ${{ c.monto_solicitado }}
-                            </td>
-                            <td style="padding: 0.75rem 0.75rem; text-align: center;" class="font-tabular">
-                                {{ c.cantidad_pagos }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 600;" class="font-tabular">
-                                ${{ c.monto_erogado_bruto }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right; color: #b45309;" class="font-tabular">
-                                ${{ c.monto_retencion_atp }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 700; color: #15803d;" class="font-tabular">
-                                ${{ c.monto_neto_transferido }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr style="background: var(--ref-bg-muted, #f8fafc); border-top: 2px solid var(--ref-border, #e2e8f0); font-weight: 800;">
-                        <td style="padding: 0.85rem 1rem; color: var(--ref-deep-blue, #090979);">TOTAL EJERCICIO {{ anio_seleccionado }}</td>
-                        <td style="padding: 0.85rem 0.75rem; text-align: center;" class="font-tabular">{{ reporte.totales.cantidad_solicitudes }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right;" class="font-tabular">${{ reporte.totales.monto_solicitado }}</td>
-                        <td style="padding: 0.85rem 0.75rem; text-align: center;" class="font-tabular">{{ reporte.totales.cantidad_pagos }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right;" class="font-tabular">${{ reporte.totales.monto_erogado_bruto }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right; color: #b45309;" class="font-tabular">${{ reporte.totales.monto_retencion_atp }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right; color: #15803d;" class="font-tabular">${{ reporte.totales.monto_neto_transferido }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+    <div class="tbl-wrap">
+      <table class="dense mob-cards" aria-labelledby="tblCcTitle">
+        <thead>
+          <tr>
+            <th scope="col">Centro de Costo</th>
+            <th scope="col" class="cnt">Solicitudes</th>
+            <th scope="col" class="num">Comprometido (Por pagar)</th>
+            <th scope="col" class="num">Bruto Pagado</th>
+            <th scope="col" class="num">Retención ATP</th>
+            <th scope="col" class="num">Neto Transferido</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cc in centros_costo_tabla %}
+          <tr>
+            <td data-label="Centro de Costo">
+              <div class="cc-cell-title">
+                <span class="cc-cell-code">{{ cc.codigo }}</span>
+                <span>{{ cc.nombre }}</span>
+                {% if not cc.activo %}
+                  <span class="chip neu">Inactivo</span>
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Solicitudes" class="cnt">
+              <b>{{ cc.cantidad_solicitudes }}</b>
+              <div class="cc-cell-sub font-tabular">$ {{ cc.monto_solicitado|floatformat:"2g" }}</div>
+            </td>
+            <td data-label="Comprometido (Por pagar)" class="num" style="color:{% if cc.monto_comprometido > 0 %}var(--blue);font-weight:700{% else %}var(--sub){% endif %}">
+              $ {{ cc.monto_comprometido|floatformat:"2g" }}
+              {% if cc.cantidad_comprometida > 0 %}
+                <div class="cc-cell-sub">{{ cc.cantidad_comprometida }} aceptada{{ cc.cantidad_comprometida|pluralize }}</div>
+              {% endif %}
+            </td>
+            <td data-label="Bruto Pagado" class="num" style="font-weight:700">
+              $ {{ cc.monto_erogado_bruto|floatformat:"2g" }}
+              <div class="cc-cell-sub">{{ cc.cantidad_pagos }} pago{{ cc.cantidad_pagos|pluralize }}</div>
+            </td>
+            <td data-label="Retención ATP" class="num" style="color:var(--warn)">
+              $ {{ cc.monto_retencion_atp|floatformat:"2g" }}
+            </td>
+            <td data-label="Neto Transferido" class="num" style="color:var(--ok);font-weight:700">
+              $ {{ cc.monto_neto_transferido|floatformat:"2g" }}
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="rep-table-empty">
+            <td colspan="6">No hay centros con actividad para los filtros seleccionados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td data-label="Total">TOTAL DEL PERÍODO</td>
+            <td data-label="Solicitudes" class="cnt">
+              {{ reporte.totales.cantidad_solicitudes }} ($ {{ reporte.totales.monto_solicitado|floatformat:"2g" }})
+            </td>
+            <td data-label="Comprometido (Por pagar)" class="num" style="color:var(--blue)">
+              $ {{ reporte.totales.monto_comprometido|floatformat:"2g" }}
+            </td>
+            <td data-label="Bruto Pagado" class="num">
+              $ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }} ({{ reporte.totales.cantidad_pagos }})
+            </td>
+            <td data-label="Retención ATP" class="num" style="color:var(--warn)">
+              $ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}
+            </td>
+            <td data-label="Neto Transferido" class="num" style="color:var(--ok)">
+              $ {{ reporte.totales.monto_neto_transferido|floatformat:"2g" }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
+  </div>
 
-    <!-- SECCIÓN 2: Desglose por Centro de Costo -->
-    <div style="background: #ffffff; border: 1px solid var(--ref-border, #e2e8f0); border-radius: var(--radius-md, 6px); margin-bottom: 2rem; box-shadow: var(--shadow-sm); overflow: hidden;">
-        <div style="padding: 1rem 1.25rem; background: var(--ref-bg-muted, #f8fafc); border-bottom: 1px solid var(--ref-border, #e2e8f0); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: var(--ref-deep-blue, #090979); font-weight: 700;">
-                2. Distribución Presupuestaria por Centro de Costo
-            </h3>
-            <span style="font-size: var(--text-xs, 0.75rem); color: #64748b;">Imputación institucional anual</span>
-        </div>
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; margin: 0; font-size: var(--text-sm, 0.875rem);">
-                <thead>
-                    <tr style="background: #f1f5f9; border-bottom: 2px solid var(--ref-border, #e2e8f0); color: #334155;">
-                        <th scope="col" style="padding: 0.75rem 0.75rem; text-align: left; font-weight: 700;">Código</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: left; font-weight: 700;">Centro de Costo</th>
-                        <th scope="col" style="padding: 0.75rem 0.5rem; text-align: center; font-weight: 700;">Estado</th>
-                        <th scope="col" style="padding: 0.75rem 0.75rem; text-align: center; font-weight: 700;">Solicitudes (#)</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Monto Solicitado</th>
-                        <th scope="col" style="padding: 0.75rem 0.75rem; text-align: center; font-weight: 700;">Pagos (#)</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Erogado Bruto</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Retención ATP</th>
-                        <th scope="col" style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">Neto Transferido</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for cc in reporte.centros_costo %}
-                        <tr style="border-bottom: 1px solid var(--ref-border, #e2e8f0); transition: background var(--transition-fast, 150ms);" onmouseover="this.style.background='var(--ref-bg-muted, #f8fafc)'" onmouseout="this.style.background='transparent'">
-                            <td style="padding: 0.75rem 0.75rem; font-weight: 700; color: #475569;" class="font-tabular">
-                                {{ cc.codigo }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; font-weight: 600; color: #1e293b;">
-                                {{ cc.nombre }}
-                            </td>
-                            <td style="padding: 0.75rem 0.5rem; text-align: center;">
-                                {% if cc.activo %}
-                                    <span class="badge" style="background: var(--color-success-bg, #ecfdf5); color: var(--color-success, #065f46); border: 1px solid var(--color-success-border, #a7f3d0);">Activo</span>
-                                {% else %}
-                                    <span class="badge" style="background: var(--color-error-bg, #fef2f2); color: var(--color-error, #b91c1c); border: 1px solid var(--color-error-border, #fecaca);">Inactivo</span>
-                                {% endif %}
-                            </td>
-                            <td style="padding: 0.75rem 0.75rem; text-align: center;" class="font-tabular">
-                                {{ cc.cantidad_solicitudes }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right;" class="font-tabular">
-                                ${{ cc.monto_solicitado }}
-                            </td>
-                            <td style="padding: 0.75rem 0.75rem; text-align: center;" class="font-tabular">
-                                {{ cc.cantidad_pagos }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 600;" class="font-tabular">
-                                ${{ cc.monto_erogado_bruto }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right; color: #b45309;" class="font-tabular">
-                                ${{ cc.monto_retencion_atp }}
-                            </td>
-                            <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 700; color: #15803d;" class="font-tabular">
-                                ${{ cc.monto_neto_transferido }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr style="background: var(--ref-bg-muted, #f8fafc); border-top: 2px solid var(--ref-border, #e2e8f0); font-weight: 800;">
-                        <td colspan="3" style="padding: 0.85rem 1rem; color: var(--ref-deep-blue, #090979);">TOTAL EJERCICIO {{ anio_seleccionado }}</td>
-                        <td style="padding: 0.85rem 0.75rem; text-align: center;" class="font-tabular">{{ reporte.totales.cantidad_solicitudes }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right;" class="font-tabular">${{ reporte.totales.monto_solicitado }}</td>
-                        <td style="padding: 0.85rem 0.75rem; text-align: center;" class="font-tabular">{{ reporte.totales.cantidad_pagos }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right;" class="font-tabular">${{ reporte.totales.monto_erogado_bruto }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right; color: #b45309;" class="font-tabular">${{ reporte.totales.monto_retencion_atp }}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right; color: #15803d;" class="font-tabular">${{ reporte.totales.monto_neto_transferido }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
+  <p class="foot">Reporte Directivo de Gastos · PS Cooperadora · UTN FRRe</p>
 </div>
 {% endblock %}

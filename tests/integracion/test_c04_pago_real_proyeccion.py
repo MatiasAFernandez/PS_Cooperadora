@@ -127,10 +127,12 @@ def test_c04_pago_real_y_proyeccion_documental(
 
     # 4. POST registra pago positivo en ARS con fecha del hecho y referencia externa sintética
     payload = {
-        "importe": "1.00",
+        "monto_bruto": "1.00",
+        "monto_retencion_atp": "0.00",
         "fecha_pago": "2026-10-16",
         "referencia_externa": "SINTETICA-C04-001",
         "referencia_documental": referencia_version_str,
+        "comprobante_bancario": archivo_pdf(),
     }
     conteo_bloquear_antes_post = len(llamadas_bloquear)
     respuesta_post = cliente.post(url_pagar, payload)
@@ -156,7 +158,9 @@ def test_c04_pago_real_y_proyeccion_documental(
     # 6. Reenviar el POST idéntico no duplica pago ni evento (idempotencia estricta)
     conteo_bloquear_antes_reenvio = len(llamadas_bloquear)
     conteo_listar_antes_reenvio = len(llamadas_listar)
-    respuesta_reenvio = cliente.post(url_pagar, payload)
+    respuesta_reenvio = cliente.post(
+        url_pagar, {**payload, "comprobante_bancario": archivo_pdf()}
+    )
     assert respuesta_reenvio.status_code == 302
     assert respuesta_reenvio.url == url_detalle
 
@@ -167,7 +171,11 @@ def test_c04_pago_real_y_proyeccion_documental(
     assert len(llamadas_listar) == conteo_listar_antes_reenvio
 
     # 7. Reenvío con payload conflictivo (importe distinto) produce 409 sin modificar registros
-    payload_conflicto = {**payload, "importe": "2.00"}
+    payload_conflicto = {
+        **payload,
+        "monto_bruto": "2.00",
+        "comprobante_bancario": archivo_pdf(),
+    }
     conteo_bloquear_antes_conflicto = len(llamadas_bloquear)
     conteo_listar_antes_conflicto = len(llamadas_listar)
     respuesta_conflicto = cliente.post(url_pagar, payload_conflicto)
@@ -314,10 +322,12 @@ def test_c04_pago_real_y_proyeccion_documental(
     ref_presupuesto_str = str(doc_presupuesto.referencia_version)
     url_pagar_presupuesto = reverse("gastos:pagar", kwargs={"pk": gasto_presupuesto.pk})
     payload_presupuesto = {
-        "importe": "50.00",
+        "monto_bruto": "50.00",
+        "monto_retencion_atp": "0.00",
         "fecha_pago": "2026-10-16",
         "referencia_externa": "SINTETICA-C04-PRES",
         "referencia_documental": ref_presupuesto_str,
+        "comprobante_bancario": archivo_pdf(),
     }
     resp_post_presupuesto = cliente.post(url_pagar_presupuesto, payload_presupuesto)
     assert resp_post_presupuesto.status_code == 302
