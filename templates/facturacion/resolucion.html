@@ -1,22 +1,32 @@
-<section class="panel" id="resolucion">
+<section class="panel fac-has-help" id="resolucion">
 <h3>Pendientes y resolución</h3>
-<p>Neto: {{ diagnostico.neto }} ARS. Ingreso confirmado: {{ diagnostico.confirmado }} ARS.</p>
-<p>Diferencia (neto − ingresos confirmados): <strong>{{ diagnostico.diferencia }} ARS</strong>.
-{% if diagnostico.diferencia > 0 %}Importe por cubrir con ingresos confirmados.
-{% elif diagnostico.diferencia < 0 %}Exceso confirmado: {{ diagnostico.exceso }} ARS.
-{% else %}Sin diferencia.{% endif %}
-Los cobros pendientes de verificación no se incluyen en el ingreso confirmado.</p>
-{% if diagnostico.terminal %}<p>Resolución definitiva: {{ solicitud.get_estado_display }}. El historial y los archivos autorizados se conservan; no admite nuevas operaciones ni reapertura.</p>
+{% include "facturacion/ayuda.html" with id="ayuda-resolucion" etiqueta="Pendientes y resolución" texto="La resolución es definitiva y conserva el historial y los documentos de respaldo. Si corresponde, podés mencionar una devolución externa en el motivo de anulación." only %}
+{% if diagnostico.terminal %}<div class="fac-total">La resolución es definitiva. Podés consultarla en el historial.</div>
 {% else %}
-<h4>Para cerrar</h4><ul>{% for falta in diagnostico.faltas_cierre %}<li>{{ falta }}</li>{% empty %}<li>Sin pendientes para el cierre normal.</li>{% endfor %}</ul>
-<h4>Para anular</h4><ul>{% for falta in diagnostico.faltas_anulacion %}<li>{{ falta }}</li>{% empty %}<li>Sin pendientes para la anulación.</li>{% endfor %}</ul>
-{% if puede_cerrar or puede_anular %}
+<div class="fac-resolution-grid">
+<div class="fac-total"><h4>Para cerrar</h4>
+{% if diagnostico.pendientes_cierre %}<ul>{% for mensaje, destino in diagnostico.pendientes_cierre %}<li>{% if destino %}<a href="{{ destino }}">{{ mensaje }}</a>{% else %}{{ mensaje }}{% endif %}</li>{% endfor %}</ul>
+{% else %}<span class="status-pill status-success">Sin pendientes para el cierre normal</span>{% endif %}
+{% if puede_cerrar %}
+<form class="record-actions" method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
+<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
+<button class="btn" name="accion" value="cerrar">Cerrar trámite</button>
+</form>{% endif %}
+</div>
+<div class="fac-total"><h4>Para anular</h4>
+{% if diagnostico.pendientes_anulacion %}<ul>{% for mensaje, destino in diagnostico.pendientes_anulacion %}<li>{% if destino %}<a href="{{ destino }}">{{ mensaje }}</a>{% else %}{{ mensaje }}{% endif %}</li>{% endfor %}</ul>
+{% else %}<span class="status-pill status-success">Sin pendientes para la anulación</span>{% endif %}
+{% if puede_anular %}
+<details class="record-maintenance">
+<summary>Anular trámite</summary>
 <form method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
 <input type="hidden" name="revision" value="{{ diagnostico.revision }}">
-<label for="motivo-resolucion">Motivo de resolución</label><textarea id="motivo-resolucion" name="motivo" required maxlength="2000"></textarea>
-{% if puede_cerrar %}<button name="accion" value="cerrar">Cerrar trámite</button>{% endif %}
-{% if puede_anular %}<button name="accion" value="anular">Anular trámite</button>{% endif %}
-</form>{% endif %}
+<label for="motivo-anulacion">Motivo de anulación</label>
+<textarea id="motivo-anulacion" name="motivo" required maxlength="2000"></textarea>
+<button class="btn btn-danger" name="accion" value="anular">Confirmar anulación</button>
+</form></details>{% endif %}
+</div>
+</div>
 {% endif %}
 
 </section>

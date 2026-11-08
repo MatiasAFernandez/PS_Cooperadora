@@ -147,20 +147,13 @@ def test_d01_documentos_y_reemplazo_conservan_version_anterior(escenario, datos)
     ] == str(anterior.referencia_version)
 
 
-@pytest.mark.parametrize(
-    "respuesta,modalidad",
-    [
-        (True, "CUENTA_CORRIENTE"),
-        (False, "BNA_COMUN"),
-        (False, "CUENTA_CORRIENTE"),
-    ],
-)
-def test_opcionales_no_inventan_restricciones(escenario, datos, respuesta, modalidad):
+@pytest.mark.parametrize("modalidad", ["BNA_COMUN", "CUENTA_CORRIENTE"])
+def test_no_exige_datos_de_operacion_ni_comprobante(escenario, datos, modalidad):
     solicitud = presentar(
         escenario,
         dict(
             datos,
-            presento_comprobante_pago=respuesta,
+            presento_comprobante_pago=False,
             modalidad_cobro=modalidad,
             numero_operacion_declarado="DATO-OPCIONAL",
         ),
@@ -168,6 +161,34 @@ def test_opcionales_no_inventan_restricciones(escenario, datos, respuesta, modal
     )
     assert solicitud.numero_operacion_declarado == "DATO-OPCIONAL"
     assert solicitud.documento_comprobante_inicial_id is not None
+
+
+def test_http_si_exige_los_tres_datos_y_permite_conservar_comprobante(escenario, datos):
+    c = cliente(escenario.usuarios["a"])
+    url = reverse("facturacion:presentar")
+    pago = dict(datos, presento_comprobante_pago=True, modalidad_cobro="CUENTA_CORRIENTE")
+    token = c.get(url).context["token"]
+    respuesta = c.post(url, dict(pago, token_presentacion=token))
+    assert respuesta.status_code == 400
+    assert set(respuesta.context["form"].errors) == {
+        "fecha_operacion_declarada", "numero_operacion_declarado", "archivo_comprobante",
+    }
+    assert not SolicitudFacturacion.objects.exists()
+    pago.update(
+        fecha_operacion_declarada="2026-10-12", numero_operacion_declarado="FICTICIA-1"
+    )
+    respuesta = c.post(url, dict(pago, token_presentacion=token, archivo_comprobante=pdf()))
+    assert respuesta.status_code == 302
+    solicitud = SolicitudFacturacion.objects.get()
+    documento_id = solicitud.documento_comprobante_inicial_id
+    observar(escenario, solicitud)
+    url = reverse("facturacion:corregir", args=[solicitud.pk])
+    respuesta = c.post(url, dict(pago, version_esperada=2, retirar_comprobante=True))
+    assert respuesta.status_code == 400
+    assert "archivo_comprobante" in respuesta.context["form"].errors
+    assert c.post(url, dict(pago, version_esperada=2)).status_code == 302
+    solicitud.refresh_from_db()
+    assert solicitud.documento_comprobante_inicial_id == documento_id
 
 
 def test_correccion_sin_archivo_conserva_y_retirada_explicita_preserva_historia(escenario, datos):

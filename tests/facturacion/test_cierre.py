@@ -20,7 +20,12 @@ from documentos.services import incorporar
 from facturacion import seguimiento
 from facturacion.cobros import registrar_cobro, verificar_cobro
 from facturacion.comprobantes import registrar_comprobante
-from facturacion.models import ActualizacionRespaldo, CobroExterno, ComprobanteExterno
+from facturacion.models import (
+    ActualizacionRespaldo,
+    CobroExterno,
+    ComprobanteExterno,
+    RectificacionCobro,
+)
 from facturacion.seguimiento import (
     actualizar_respaldo,
     diagnostico,
@@ -92,6 +97,7 @@ def cobro(e, s, importe="100.25", operacion="CIERRE-FICTICIO", confirmar=True):
         ),
     )
     if confirmar:
+        aceptar(e, c.documento)
         verificar_cobro(
             actor=operador(e), numero=s.pk, cobro_id=c.pk, datos={"resultado": "CONFIRMADO"}
         )
@@ -112,7 +118,6 @@ def aceptar(e, documento):
 def preparado(e, s):
     f, c = factura(e, s), cobro(e, s)
     aceptar(e, f.documento)
-    aceptar(e, c.documento)
     return f, c
 
 
@@ -166,6 +171,8 @@ def test_cierre_completo_historial_y_terminal_solo_consulta(escenario, solicitud
     cliente.force_login(escenario.usuarios["a"])
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
     assert "Cerrada" in contenido and "CIERRE" in contenido
+    assert 'id="titulo-acciones"' not in contenido
+    assert 'id="titulo-motivo-anulacion"' not in contenido
     assert "Informar cobro o anticipo" not in contenido
     assert "Registrar factura o nota externa" not in contenido
     respuesta = cliente.get(reverse("documentos:archivo", args=[f.documento_id]))
@@ -175,16 +182,17 @@ def test_cierre_completo_historial_y_terminal_solo_consulta(escenario, solicitud
 
 
 @pytest.mark.parametrize(
-    "caso", ["sin_factura", "faltante", "exceso", "pendiente", "pdf", "observada"]
+    "caso", ["sin_factura", "faltante", "pendiente", "pdf", "observada"]
 )
 def test_cierre_con_pendientes_no_modifica_hechos(escenario, solicitud, caso):
     if caso != "sin_factura":
         f = factura(escenario, solicitud)
         if caso != "pdf":
             aceptar(escenario, f.documento)
-    importe = "99.25" if caso == "faltante" else "101.25" if caso == "exceso" else "100.25"
+    importe = "99.25" if caso == "faltante" else "100.25"
     c = cobro(escenario, solicitud, importe=importe, confirmar=caso != "pendiente")
-    aceptar(escenario, c.documento)
+    if caso == "pendiente":
+        aceptar(escenario, c.documento)
     if caso == "observada":
         observar_solicitud_facturacion(
             actor=operador(escenario),
@@ -201,13 +209,17 @@ def test_cierre_con_pendientes_no_modifica_hechos(escenario, solicitud, caso):
     assert (solicitud.estado, solicitud.version_concurrencia, solicitud.eventos.count()) == antes
 
 
-@pytest.mark.parametrize("con_factura", [False, True])
-def test_anulacion_sin_ingresos_o_por_credito_total(escenario, solicitud, con_factura):
-    if con_factura:
+@pytest.mark.parametrize("neto", [None, "positivo", "cero", "negativo"])
+def test_anulacion_sin_ingresos_con_cualquier_neto(escenario, solicitud, neto):
+    if neto:
         f = factura(escenario, solicitud)
-        n = factura(escenario, solicitud, tipo="NOTA_CREDITO", numero="2")
         aceptar(escenario, f.documento)
-        aceptar(escenario, n.documento)
+        if neto != "positivo":
+            n = factura(
+                escenario, solicitud, tipo="NOTA_CREDITO", numero="2",
+                importe="101.25" if neto == "negativo" else "100.25",
+            )
+            aceptar(escenario, n.documento)
     resolver(escenario, solicitud, "anular")
     solicitud.refresh_from_db()
     assert solicitud.estado == "ANULADA"
@@ -215,26 +227,21 @@ def test_anulacion_sin_ingresos_o_por_credito_total(escenario, solicitud, con_fa
 
 
 @pytest.mark.parametrize(
-    "caso", ["confirmado", "pendiente", "neto_positivo", "neto_negativo", "pdf"]
+    "caso", ["pendiente", "pdf"]
 )
-def test_anulacion_bloqueada_no_presume_devolucion(escenario, solicitud, caso):
+def test_anulacion_bloqueada_por_ingreso_pendiente_o_respaldo(escenario, solicitud, caso):
     f = factura(escenario, solicitud)
     n = factura(
         escenario,
         solicitud,
         tipo="NOTA_CREDITO",
         numero="2",
-        importe="101.25"
-        if caso == "neto_negativo"
-        else "99.25"
-        if caso == "neto_positivo"
-        else "100.25",
     )
     if caso != "pdf":
         aceptar(escenario, f.documento)
         aceptar(escenario, n.documento)
-    if caso in {"confirmado", "pendiente"}:
-        cobro(escenario, solicitud, confirmar=caso == "confirmado")
+    if caso == "pendiente":
+        cobro(escenario, solicitud, confirmar=False)
     with pytest.raises(ValidationError):
         resolver(escenario, solicitud, "anular")
     solicitud.refresh_from_db()
@@ -261,6 +268,13 @@ def test_reemplazo_y_actualizacion_conservan_operacion_y_exigen_nueva_revision(
     assert objeto.documento_id == anterior.pk and objeto.importe == Decimal("100.25")
     nueva = respaldo_actual(objeto)
     assert nueva.reemplaza_id == anterior.pk and nueva.version == 2
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    revision = cliente.get(reverse("documentos:revision", args=[nueva.pk]))
+    assert revision.status_code == 200
+    assert [cobro for cobro, _ in revision.context["cobros_revision"]] == (
+        [c] if clase == "cobro" else []
+    )
     assert diagnostico(solicitud)["faltas_cierre"]
     assert ActualizacionRespaldo.objects.get().anterior_id == anterior.pk
     with pytest.raises(ValidationError):
@@ -302,28 +316,120 @@ def test_fallo_evento_revierte_resolucion_y_sql_no_elude_reglas(escenario, solic
         type(solicitud).objects.filter(pk=solicitud.pk).update(estado="ANULADA")  # Sin evento.
 
 
-def test_http_permisos_csrf_conservacion_y_cierre(escenario, solicitud):
+def test_http_permisos_csrf_y_cierre_sin_motivo(escenario, solicitud):
     preparado(escenario, solicitud)
     url = reverse("facturacion:resolver", args=[solicitud.pk])
     c = Client(enforce_csrf_checks=True)
     c.force_login(escenario.usuarios["o"])
     c.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     token = c.cookies["csrftoken"].value
-    datos = dict(
-        accion="cerrar", motivo="Motivo sintético", revision=diagnostico(solicitud)["revision"]
-    )
+    datos = dict(accion="cerrar", revision=diagnostico(solicitud)["revision"])
     assert c.post(url, datos).status_code == 403
     datos["csrfmiddlewaretoken"] = token
     assert c.post(url, datos).status_code == 403  # Capacidad independiente.
     escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_resolucion_facturacion"))
     r = c.post(url, dict(datos, revision="obsoleta"))
-    assert r.status_code == 409 and "Motivo sintético" in r.content.decode()
-    assert c.post(url, dict(datos, motivo="\t\n")).status_code == 400
+    assert r.status_code == 409 and '<textarea' not in r.content.decode()
     assert c.post(url, datos).status_code == 302
+    assert solicitud.eventos.get(tipo_evento="CIERRE").motivo_o_detalle == ""
     assert c.post(url, datos).status_code == 409
     b = Client()
     b.force_login(escenario.usuarios["b"])
     assert b.get(reverse("facturacion:detalle", args=[solicitud.pk])).status_code == 404
+
+
+def test_http_anulacion_exige_y_conserva_motivo(escenario, solicitud):
+    _, ingreso = preparado(escenario, solicitud)
+    revisar(
+        actor=operador(escenario),
+        documento_id=ingreso.documento_id,
+        resultado="RECHAZADO",
+        motivo="El respaldo requiere corrección",
+        revision_esperada=ingreso.documento.revisiones.get().pk,
+    )
+    estado = diagnostico(solicitud)
+    assert estado["confirmado"] == ingreso.importe
+    assert estado["faltas_cierre"] and not estado["faltas_anulacion"]
+    escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_resolucion_facturacion"))
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    url = reverse("facturacion:resolver", args=[solicitud.pk])
+    datos = dict(accion="anular", revision=diagnostico(solicitud)["revision"])
+    assert cliente.post(url, datos).status_code == 400
+    assert cliente.post(url, dict(datos, motivo="\t\n")).status_code == 400
+    motivo = "Motivo sintético de anulación"
+    respuesta = cliente.post(url, dict(datos, motivo=motivo, revision="obsoleta"))
+    assert respuesta.status_code == 409 and motivo in respuesta.content.decode()
+    assert cliente.post(url, dict(datos, motivo=motivo)).status_code == 302
+    assert solicitud.eventos.get(tipo_evento="ANULACION").motivo_o_detalle == motivo
+    assert solicitud.cobros.get().resultado == "CONFIRMADO"
+    assert ingreso.documento.revisiones.latest("pk").resultado == "RECHAZADO"
+    detalle = reverse("facturacion:detalle", args=[solicitud.pk])
+    for rol in ("o", "a"):
+        cliente.force_login(escenario.usuarios[rol])
+        respuesta = cliente.get(detalle)
+        assert respuesta.status_code == 200
+        html = respuesta.content.decode()
+        assert 'id="titulo-acciones"' not in html
+        assert html.index('id="titulo-motivo-anulacion"') < html.index(motivo)
+        assert html.index(motivo) < html.index('id="titulo-estado-cobro"')
+
+
+def test_rectificar_confirma_trazabilidad_y_recalcula_cierre(escenario, solicitud):
+    _, ingreso = preparado(escenario, solicitud)
+    revision = diagnostico(solicitud)["revision"]
+    url = reverse("facturacion:rectificar_cobro", args=[solicitud.pk, ingreso.pk])
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["a"])
+    assert cliente.post(url, {"motivo": "Error al cotejar"}).status_code == 403
+    escenario.usuarios["o"].groups.add(
+        Group.objects.get(name="demo_verificacion_cobros"),
+        Group.objects.get(name="demo_resolucion_facturacion"),
+    )
+    cliente.force_login(escenario.usuarios["o"])
+    assert cliente.get(url).status_code == 200
+    assert cliente.post(url, {"motivo": "\t\n"}).status_code == 400
+    assert cliente.post(url, {"motivo": "Error al cotejar"}).status_code == 302
+    assert cliente.post(url, {"motivo": "Reenvío"}).status_code == 409
+    ingreso.refresh_from_db()
+    assert ingreso.verificacion.resultado == "CONFIRMADO" and ingreso.resultado == "RECTIFICADO"
+    rectificacion = ingreso.verificacion.rectificacion
+    assert rectificacion.motivo == "Error al cotejar"
+    assert rectificacion.actor_id == escenario.usuarios["o"].pk
+    assert diagnostico(solicitud)["confirmado"] == 0
+    assert diagnostico(solicitud)["restante"] == ingreso.importe
+    lista = reverse("facturacion:lista")
+    assert not list(cliente.get(lista, {"estado": "COBRADA_EN_REVISION"}).context["pagina"])
+    cierre = reverse("facturacion:resolver", args=[solicitud.pk])
+    assert cliente.post(cierre, {"accion": "cerrar", "revision": revision}).status_code == 409
+    with pytest.raises(IntegrityError, match="Resolucion con pendientes"), transaction.atomic():
+        type(solicitud).objects.filter(pk=solicitud.pk).update(
+            estado="CERRADA", version_concurrencia=2
+        )
+    with pytest.raises(IntegrityError, match="Rectificacion inmutable"), transaction.atomic():
+        RectificacionCobro.objects.filter(pk=rectificacion.pk).update(motivo="Modificar")
+    html = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
+    assert "Ingreso rectificado" in html and "Ingreso verificado" in html
+    assert 'href="#cobros-externos">El total confirmado debe cubrir' in html
+    assert 'id="cobros-externos"' in html
+
+
+@pytest.mark.parametrize("estado", ["CERRADA", "ANULADA"])
+def test_sql_exige_evento_terminal_y_motivo_de_anulacion(escenario, solicitud, estado):
+    if estado == "CERRADA":
+        preparado(escenario, solicitud)
+    with pytest.raises(IntegrityError, match="Falta evento de resolucion"), transaction.atomic():
+        type(solicitud).objects.filter(pk=solicitud.pk).update(
+            estado=estado, version_concurrencia=2
+        )
+        if estado == "ANULADA":
+            solicitud.eventos.create(
+                actor_id=escenario.usuarios["o"].pk,
+                tipo_evento="ANULACION",
+                estado_resultante=estado,
+                motivo_o_detalle="\t\n\u00a0",
+                snapshot_datos={"version_resultante": 2},
+            )
 
 
 def test_dos_cierres_concurrentes_un_solo_evento(escenario, solicitud):
@@ -442,6 +548,13 @@ def test_http_actualizacion_upload_atomico_y_motivo_conservado(escenario, solici
     respuesta = cliente.post(url, dict(contenido, archivo=pdf()))
     assert respuesta.status_code == 400 and not ActualizacionRespaldo.objects.exists()
     assert not Documento.objects.filter(reemplaza=f.documento).exists()
+    archivo_invalido = SimpleUploadedFile("respaldo.txt", b"Texto", "text/plain")
+    respuesta = cliente.post(url, dict(contenido, motivo="PDF legible", archivo=archivo_invalido))
+    assert respuesta.status_code == 400
+    assert respuesta.context["error_archivo"] == (
+        "Tipo de archivo no soportado. Adjuntá un archivo en formato PDF (.pdf)."
+    )
+    assert not respuesta.context.get("errores")
     respuesta = cliente.post(url, dict(contenido, motivo="PDF legible", archivo=pdf()))
     assert respuesta.status_code == 302
     assert respaldo_actual(f).version == 2 and f.documento.version == 1
@@ -505,16 +618,53 @@ def test_upgrade_reversa_vacia_preservan_tramite_y_archivo(escenario, solicitud)
         MigrationExecutor(connection).migrate(finales)
 
 
-def test_dos_parciales_aceptados_cubren_neto_exacto(escenario, solicitud):
+@pytest.mark.parametrize("segundo_importe", ["40.15", "41.15"])
+def test_dos_parciales_aceptados_cubren_o_superan_neto(escenario, solicitud, segundo_importe):
     f = factura(escenario, solicitud)
-    c1 = cobro(escenario, solicitud, importe="60.10", operacion="PARCIAL-1")
-    c2 = cobro(escenario, solicitud, importe="40.15", operacion="PARCIAL-2")
-    for objeto in (f, c1, c2):
-        aceptar(escenario, objeto.documento)
-    assert diagnostico(solicitud)["confirmado"] == Decimal("100.25")
-    resolver(escenario, solicitud)
+    cobro(escenario, solicitud, importe="60.10", operacion="PARCIAL-1")
+    c2 = cobro(
+        escenario, solicitud, importe=segundo_importe, operacion="PARCIAL-2", confirmar=False
+    )
+    escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_verificacion_cobros"))
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    lista_url = reverse("facturacion:lista")
+    inicio_resumen = f'<template id="resumen-solicitud-{solicitud.pk}"'
+    html = cliente.get(lista_url).content.decode()
+    resumen = html.split(inicio_resumen, 1)[1].split("</template>", 1)[0]
+    assert "Facturada pendiente de cobro" in resumen
+    assert ("· Excedente" in resumen) == (segundo_importe == "41.15")
+    assert ('class="fac-covered"' in resumen) == (segundo_importe == "40.15")
+    url = reverse("facturacion:verificar_cobro", args=[solicitud.pk, c2.pk])
+    respuesta = cliente.get(url)
+    assert respuesta.status_code == 200
+    assert ("el total confirmado superará el neto" in respuesta.content.decode()) == (
+        segundo_importe == "41.15"
+    )
+    aceptar(escenario, c2.documento)
+    assert cliente.post(url, {"resultado": "CONFIRMADO"}).status_code == 302
+    html = cliente.get(lista_url).content.decode()
+    fila = html.split(f'<tr data-resumen="{solicitud.pk}">', 1)[1].split("</tr>", 1)[0]
+    resumen = html.split(inicio_resumen, 1)[1].split("</template>", 1)[0]
+    detalle = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
+    estado_detalle = detalle.split('class="fac-statuses"', 1)[1].split("</div>", 1)[0]
+    for vista in (fila, resumen, estado_detalle):
+        assert "Cobrada en revisión" in vista
+        assert ">Presentada<" not in vista
+    aceptar(escenario, f.documento)
+    assert diagnostico(solicitud)["confirmado"] == Decimal("60.10") + Decimal(segundo_importe)
+    escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_resolucion_facturacion"))
+    detalle_url = reverse("facturacion:detalle", args=[solicitud.pk])
+    detalle_para_cerrar = cliente.get(detalle_url)
+    assert "Sin pendientes para el cierre normal" in detalle_para_cerrar.content.decode()
+    respuesta = cliente.post(
+        reverse("facturacion:resolver", args=[solicitud.pk]),
+        {"accion": "cerrar", "revision": detalle_para_cerrar.context["diagnostico"]["revision"]},
+    )
+    assert respuesta.status_code == 302 and respuesta.url == detalle_url
     solicitud.refresh_from_db()
     assert solicitud.estado == "CERRADA"
+    assert solicitud.eventos.get(tipo_evento="CIERRE").motivo_o_detalle == ""
 
 
 def test_declaracion_inicial_no_se_ignora_al_anular(escenario, datos):
@@ -630,7 +780,7 @@ def test_diagnostico_y_actualizacion_no_filtran_metadatos_al_lector(escenario, s
     respuesta = lector.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     contenido = respuesta.content.decode()
     assert "Condiciones documentales no disponibles" in contenido
-    assert f"El respaldo #{a.nuevo_id}" not in contenido
+    assert f"Documento de respaldo #{a.nuevo_id}" not in contenido
     assert "Motivo documental reservado" not in contenido
     actor_sin_meta = replace(
         operador(escenario),

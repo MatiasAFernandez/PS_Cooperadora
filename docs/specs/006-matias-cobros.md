@@ -1,7 +1,7 @@
 # SPEC-006 — Registro de cobros y comprobantes de ingreso
 
-La corrección de cobros propios pendientes o rechazados se amplía por solicitud
-expresa de Matías del 02/11/2026 en [SPEC-019](019-matias-correccion-cobros.md)/#87.
+La corrección de datos y el tratamiento de ingresos confirmados o rectificados
+se definen en [SPEC-019](019-matias-correccion-cobros.md)/#87.
 Cada versión y verificación conserva sus datos; sólo un sucesor vigente cuenta
 en saldo y mantiene la unicidad de operación entre cobros vigentes. No se
 modifican ingresos confirmados ni se ejecutan cobros externos.
@@ -91,19 +91,29 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
   independiente registra un único resultado CONFIRMADO o RECHAZADO; rechazo exige
   motivo con texto. Actor, fecha y resultado son inmutables. La capacidad no se
   deduce de poder registrar, revisar PDFs, leer, ser staff ni ser superusuario.
-- Ajuste de demo aprobado por Matías el 25/10/2026: el operador con capacidades
+- El operador con capacidades
   de registro, verificación de cobro, revisión documental y metadatos puede marcar
-  «Cotejé el ingreso externo y doy conformidad al respaldo» en el alta. La casilla
-  empieza desmarcada. En una sola operación atómica se registran el cobro,
+  «Cotejé el ingreso externo y doy conformidad al documento de respaldo» en el alta. La casilla
+  empieza marcada y puede desmarcarse. En una sola operación atómica se registran el cobro,
   la conformidad documental ACEPTADO y la verificación CONFIRMADO, atribuidas al
   mismo actor. La conformidad no se presenta como revisión independiente.
   Un respaldo existente ya aceptado conserva su revisión; uno observado o rechazado
   exige resolver esa revisión antes de usar esta opción. Versiones reemplazadas
   no se aceptan. Cualquier fallo revierte los hechos y compensa el archivo nuevo.
   El solicitante no puede activar la opción, incluso mediante POST directo.
-- La confirmación verifica el ingreso externo, no la conformidad del archivo.
+- La confirmación verifica el ingreso externo y requiere que el respaldo vigente
+  vinculado esté aceptado. El rechazo de un ingreso sigue disponible con motivo.
+  El detalle muestra ambos estados a las cuentas con acceso a metadatos.
   Totales pendientes, confirmados y rechazados se consultan por separado; sólo el
   confirmado es insumo de #27. El resultado del PDF no altera estos totales.
+- En una solicitud abierta, una cuenta con permiso para verificar ingresos puede
+  rectificar una confirmación errónea una sola vez. Se agrega un hecho con motivo,
+  actor y fecha. La confirmación original permanece en el historial y el estado
+  vigente pasa a **Rectificado**. El importe se excluye de los cobros registrados
+  que computan para cobertura y del saldo confirmado. La operación original
+  conserva su identidad y su revisión documental.
+  Un documento de respaldo vinculado únicamente a cobros rectificados queda
+  disponible para consulta histórica y se excluye de los pendientes de revisión.
 - Unicidad, pertenencia documental, importes y conservación del historial se
   protegen en PostgreSQL; el servicio controla permisos y compensa archivos nuevos
   tras rollback mediante la operación documental ya existente.

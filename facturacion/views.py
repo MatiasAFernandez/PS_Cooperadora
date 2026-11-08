@@ -11,20 +11,28 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.views import View
 
-from documentos.policy import ArchivoInvalido
+from documentos.policy import ArchivoInvalido, TipoArchivoNoSoportado
+from documentos.revision import estado_revision_vigente
 from documentos.services import documentos_visibles
 from identidad.services import has_capability, resolve_actor
 
-from .atencion import acciones_inmediatas, solicitudes_atencion
+from .atencion import acciones_inmediatas, mensaje_espera, solicitudes_atencion
 from .cobros import puede_corregir_cobro, resumen_cobros
-from .comprobantes import resumen_comprobantes
+from .comprobantes import puede_registrar_comprobante, resumen_comprobantes
 from .consultas import filtrar_solicitudes
 from .forms import FiltroFacturacionForm, SolicitudFacturacionForm
+from .models import ComprobanteExterno
 from .models import EstadoSolicitudFacturacion as Estado
 from .permissions import (
     ObjetoNoVisibleError,
     filtrar_solicitudes_visibles,
     verificar_accion,
+)
+from .seguimiento import (
+    diagnostico_visible,
+    importes_cobro,
+    respaldo_actual,
+    respaldos_solo_rectificados,
 )
 from .workflow import (
     ConflictoConcurrenciaError,
@@ -90,9 +98,19 @@ def _version_post(request):
         raise ValidationError("Falta una versión válida. Recargá el formulario.") from exc
 
 
-def _errores(form, exc):
+def _mensaje_archivo(exc, *, solo_pdf=False):
+    if isinstance(exc, TipoArchivoNoSoportado):
+        formatos = "PDF (.pdf)" if solo_pdf else "PDF (.pdf), JPEG (.jpg, .jpeg) o PNG (.png)"
+        return f"Tipo de archivo no soportado. Adjuntá un archivo en formato {formatos}."
+    return str(exc)
+
+
+def _errores(form, exc, *, campo_archivo=None):
     """Combina errores del servicio sin repetir los que ya produjo el formulario."""
-    if hasattr(exc, "message_dict"):
+    if isinstance(exc, ArchivoInvalido) and campo_archivo in form.fields:
+        mensaje = _mensaje_archivo(exc, solo_pdf=campo_archivo == "archivo_pdf")
+        errores = {campo_archivo: [mensaje]}
+    elif hasattr(exc, "message_dict"):
         errores = exc.message_dict
     else:
         errores = {
@@ -133,13 +151,23 @@ class ListaSolicitudesView(FacturacionView):
         ):
             raise PermissionDenied
         filtro = FiltroFacturacionForm(request.GET)
-        consulta = filtrar_solicitudes(filtrar_solicitudes_visibles(self.actor), filtro)
+        visibles = filtrar_solicitudes_visibles(self.actor)
+        consulta = filtrar_solicitudes(
+            visibles, filtro, por_circuito=has_capability(self.actor, "facturacion.consultar_todas")
+        )
         pagina = Paginator(
-            consulta.prefetch_related("comprobantes", "cobros__verificacion").order_by(
-                "-fecha_presentacion", "-pk"
-            ),
+            consulta.prefetch_related(
+                "comprobantes", "cobros__verificacion__rectificacion"
+            ).order_by("-fecha_presentacion", "-pk"),
             25,
         ).get_page(request.GET.get("pagina"))
+        atencion = solicitudes_atencion(self.actor, visibles)
+        solicitudes = {tarjeta["solicitud"].pk: tarjeta["solicitud"] for tarjeta in atencion}
+        solicitudes.update((solicitud.pk, solicitud) for solicitud in pagina)
+        resumenes = [
+            (solicitud, importes_cobro(solicitud.comprobantes.all(), solicitud.cobros.all()))
+            for solicitud in solicitudes.values()
+        ]
         parametros = request.GET.copy()
         parametros.pop("pagina", None)
         return render(
@@ -150,9 +178,8 @@ class ListaSolicitudesView(FacturacionView):
                 "pagina": pagina,
                 "filtro_form": filtro,
                 "filtros_query": parametros.urlencode(),
-                "atencion": solicitudes_atencion(
-                    self.actor, filtrar_solicitudes_visibles(self.actor)
-                ),
+                "atencion": atencion,
+                "resumenes": resumenes,
             },
         )
 
@@ -193,7 +220,7 @@ class PresentarSolicitudView(FacturacionView):
             )
         except (ValidationError, ArchivoInvalido) as exc:
             form.is_valid()
-            _errores(form, exc)
+            _errores(form, exc, campo_archivo="archivo_comprobante")
             return self.mostrar(request, form, token, 400)
         return redirect("facturacion:detalle", numero=solicitud.pk)
 
@@ -201,11 +228,14 @@ class PresentarSolicitudView(FacturacionView):
 class DetalleSolicitudView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
-        from .seguimiento import diagnostico_visible, respaldo_actual
-
         diagnostico_actual = diagnostico_visible(self.actor, solicitud)
         eventos = list(solicitud.eventos.all())
-        comprobantes, neto = resumen_comprobantes(solicitud)
+        motivo_anulacion = ""
+        if solicitud.estado == Estado.ANULADA:
+            motivo_anulacion = next(
+                (e.motivo_o_detalle for e in eventos if e.tipo_evento == "ANULACION"), ""
+            )
+        comprobantes, _ = resumen_comprobantes(solicitud)
         cobros, totales_cobros, eventos_cobros = resumen_cobros(solicitud)
         from django.db.models import Q
 
@@ -216,10 +246,12 @@ class DetalleSolicitudView(FacturacionView):
         ).select_related("comprobante", "cobro")
         for objeto in [*comprobantes, *cobros]:
             objeto.respaldo_vinculado = respaldo_actual(objeto)
+            if has_capability(self.actor, "documentos.consultar_metadatos"):
+                objeto.estado_revision = estado_revision_vigente(objeto.respaldo_vinculado)
         for cobro in cobros:
             cobro.puede_corregir = puede_corregir_cobro(self.actor, cobro)
         historial = [e.como_historial() for e in eventos] + [
-            c.como_historial() for c in comprobantes
+            c.como_historial() for c in ComprobanteExterno.todos.filter(solicitud=solicitud)
         ]
         historial.extend(eventos_cobros)
         if has_capability(self.actor, "documentos.consultar_metadatos"):
@@ -236,6 +268,7 @@ class DetalleSolicitudView(FacturacionView):
                     tramite_base=solicitud.tramite_base,
                     sucesor__isnull=True,
                 )
+                .exclude(pk__in=respaldos_solo_rectificados(cobros))
                 .annotate(
                     resultado_revision=Subquery(
                         RevisionDocumento.objects.filter(documento_id=OuterRef("pk"))
@@ -253,7 +286,9 @@ class DetalleSolicitudView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "historial": historial,
+                "motivo_anulacion": motivo_anulacion,
                 "acciones_inmediatas": acciones_inmediatas(self.actor, solicitud),
+                "mensaje_espera": mensaje_espera(self.actor, solicitud, diagnostico_actual),
                 "pendientes_revision": pendientes_revision,
                 "diagnostico": diagnostico_actual,
                 "puede_cerrar": has_capability(self.actor, "facturacion.cerrar")
@@ -272,11 +307,8 @@ class DetalleSolicitudView(FacturacionView):
                 ),
                 "puede_verificar_cobro": has_capability(self.actor, "facturacion.verificar_cobro"),
                 "comprobantes": comprobantes,
-                "neto_comprobantes": neto,
-                "puede_registrar_comprobante": has_capability(
-                    self.actor, "facturacion.registrar_factura_externa"
-                )
-                and has_capability(self.actor, "documentos.incorporar"),
+                "factura_vigente": next((c for c in comprobantes if c.tipo == "FACTURA"), None),
+                "puede_registrar_comprobante": puede_registrar_comprobante(self.actor),
                 "versiones": [
                     {
                         "tipo": e.tipo_evento,
@@ -300,6 +332,8 @@ class DetalleSolicitudView(FacturacionView):
                 and solicitud.estado == Estado.OBSERVADA,
                 "puede_descargar": has_capability(self.actor, "documentos.recuperar_contenido"),
                 "puede_ver_revision": has_capability(self.actor, "documentos.consultar_metadatos"),
+                "puede_revisar_documentos": not diagnostico_actual["terminal"]
+                and has_capability(self.actor, "documentos.revisar"),
             },
         )
 
@@ -343,6 +377,10 @@ class CorregirSolicitudView(FacturacionView):
                 "form": form,
                 "titulo": "Corregir solicitud",
                 "solicitud": solicitud,
+                "nombre_respaldo_inicial": solicitud.documento_comprobante_inicial.nombre_original
+                if solicitud.documento_comprobante_inicial_id
+                and has_capability(self.actor, "documentos.consultar_metadatos")
+                else "Documento de respaldo vigente",
             },
             status=status,
         )
@@ -383,6 +421,6 @@ class CorregirSolicitudView(FacturacionView):
             )
         except (ValidationError, ArchivoInvalido) as exc:
             form.is_valid()
-            _errores(form, exc)
+            _errores(form, exc, campo_archivo="archivo_comprobante")
             return self.mostrar(request, solicitud, form, 400)
         return redirect("facturacion:detalle", numero=numero)

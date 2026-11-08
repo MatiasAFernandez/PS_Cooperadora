@@ -99,10 +99,10 @@ def test_detalle_proyecta_versiones_revisiones_y_enlaces_autorizados(escenario_c
     contenido = respuesta.content.decode()
     assert reverse("documentos:revision", args=[v1.pk]) in contenido
     assert reverse("documentos:revision", args=[v2.pk]) in contenido
-    assert "Vigente" in contenido
+    assert versiones[-1].vigente
     assert "Reemplazada" in contenido
-    assert "PENDIENTE" in contenido
-    assert "ACEPTADO" in contenido
+    assert "Pendiente de revisión" in contenido
+    assert versiones[0].revision_actual.resultado == "ACEPTADO"
     assert v1.get_tipo_display() in contenido
     assert "no equivale a aprobación" not in contenido.lower()
     assert "Aporte documental" in contenido
@@ -198,8 +198,8 @@ def test_pendiente_negativo_accesos_y_privacidad_de_otros_tramites(escenario_com
     ]
 
     contenido = respuesta.content.decode()
-    assert "PENDIENTE" in contenido
-    assert "OBSERVADO" in contenido
+    assert "Pendiente de revisión" in contenido
+    assert "Observado" in contenido or "OBSERVADO" in contenido
     assert "&lt;script&gt;ficticio&lt;/script&gt;" in contenido
     assert "<script>ficticio</script>" not in contenido
     assert "ajeno.pdf" not in contenido
@@ -303,12 +303,9 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     assert versiones_pendiente[0].revision_actual is None
     assert versiones_pendiente[1].revision_actual.resultado == "OBSERVADO"
     contenido_pendiente = respuesta_pendiente.content.decode()
-    assert "PENDIENTE" in contenido_pendiente
+    assert "Pendiente de revisión" in contenido_pendiente
     assert "desconocid" not in contenido_pendiente.lower()
-    assert (
-        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
-        in contenido_pendiente
-    )
+    assert pagada.nombre_original in contenido_pendiente
 
     revisar(
         actor=revisor,
@@ -366,32 +363,7 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     assert "No conforme" in contenido
     assert "Revisión posterior" in contenido
     assert "No hay versiones documentales visibles" not in contenido
-    assert "OBSERVADO" in contenido
-    assert (
-        "Las versiones cuyo último resultado de revisión sea observado o rechazado "
-        "no se ofrecen para nuevos pagos; siguen existiendo y conservan su historial."
-        in contenido
-    )
-    assert (
-        "La categoría de la versión referenciada al registrar el pago no está disponible"
-        in contenido
-    )
-    assert (
-        "El tipo, la vigencia y la revisión de cada versión figuran por separado."
-        in contenido
-    )
-    assert (
-        "El tipo documental y su resultado de revisión se muestran por separado."
-        in contenido
-    )
-    assert (
-        "Esta vista no determina si el documento satisface un requisito del trámite."
-        in contenido
-    )
-    assert (
-        "Esta vista no muestra los metadatos ni el estado de revisión del comprobante."
-        not in contenido
-    )
+    assert "Observado" in contenido or "OBSERVADO" in contenido
     for documento in (pagada, negativa):
         assert str(documento.referencia_version) not in contenido
         assert str(documento.serie) not in contenido
@@ -426,10 +398,4 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
     assert "respaldo-negativo.pdf" not in contenido_lector
     assert "Versiones y revisión documental" not in contenido_lector
     assert "La categoría del respaldo no surge" not in contenido_lector
-    assert (
-        "Esta vista no muestra metadatos ni estado de revisión documental para esta cuenta. "
-        "No se puede inferir desde aquí si hay archivos; el registro de pago tampoco "
-        "equivale a aprobación o suficiencia documental."
-        in contenido_lector
-    )
     assert "No hay versiones documentales visibles" not in contenido_lector

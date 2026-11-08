@@ -1,17 +1,77 @@
 {% extends "facturacion/base.html" %}
+{% block title %}Revisión documental — Cooperadora{% endblock %}
 {% block titulo_modulo %}Documentos — Cooperadora{% endblock %}
-{% block content %}
-<h2>Revisión documental</h2>
-<p>{{ documento.get_tipo_display }} — {{ documento.nombre_original }} — versión {{ documento.version }}</p>
-<p>Trámite {{ documento.referencia_tramite }}.</p>
-<p>Resultado documental: <strong>{% if actual %}{{ actual.get_resultado_display }}{% else %}Pendiente{% endif %}</strong>.</p>
-{% if documento.tipo == "COMPROBANTE_COBRO" %}<p class="notice">Aceptar este comprobante no confirma el cobro. La verificación del ingreso se registra por separado desde el detalle de la solicitud, en «Verificar ingreso».</p>{% endif %}
-{% if not vigente %}<p class="notice">Versión reemplazada. Se conserva su historial; la nueva versión requiere su propia revisión.</p>{% endif %}
-{% if puede_descargar %}<p><a href="{% url 'documentos:archivo' documento.pk %}">Descargar esta versión</a></p>{% endif %}
-<p class="notice">Una carga o una revisión no cierra por sí sola pendientes, pagos ni trámites.</p>
+{% block facturacion_content %}
+<header class="fac-header">
+    <div>
+        <h2>Revisión documental</h2>
+        <p class="fac-muted">{{ documento.tramite_base.get_circuito_display }} · Solicitud #{{ numero_solicitud }}</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ solicitud_url }}">Volver a la solicitud</a>
+</header>
+
+<div class="fac-review-grid{% if puede_revisar %} fac-review-grid-editable{% endif %}">
+<section class="panel" aria-labelledby="titulo-respaldo">
+    <div class="fac-header">
+        <div>
+            <h3 id="titulo-respaldo">Documento de respaldo de la solicitud</h3>
+            <p><strong>{{ documento.nombre_original }}</strong></p>
+        </div>
+        {% if puede_descargar %}
+        <a class="btn btn-secondary" href="{% url 'documentos:archivo' documento.pk %}">Descargar esta versión</a>
+        {% endif %}
+    </div>
+    <dl class="detail-grid">
+        <dt>Tipo de documento</dt><dd>{{ documento.get_tipo_display }}</dd>
+        <dt>Versión</dt><dd>{{ documento.version }} · {% if vigente %}Vigente{% else %}Reemplazada{% endif %}</dd>
+        <dt>Resultado documental</dt>
+        <dd>{% if actual %}
+            {% include "facturacion/estado.html" with estado=actual.resultado etiqueta=actual.get_resultado_display only %}
+            {% else %}{% include "facturacion/estado.html" with estado="PENDIENTE" etiqueta="Pendiente" only %}{% endif %}</dd>
+    </dl>
+    {% if cobros_revision %}
+    <section aria-labelledby="titulo-datos-cobro">
+        <h4 id="titulo-datos-cobro">Datos ingresados del cobro</h4>
+        {% for cobro, medio in cobros_revision %}
+        <dl class="detail-grid">
+            <dt>Medio o cuenta de destino</dt><dd>{{ medio }}</dd>
+            <dt>Operación</dt><dd>{{ cobro.numero_operacion }}</dd>
+            <dt>Fecha de operación</dt><dd>{{ cobro.fecha_operacion|date:"d/m/Y" }}</dd>
+            <dt>Importe</dt><dd>$ {{ cobro.importe|floatformat:2 }} {{ cobro.moneda }}</dd>
+        </dl>
+        {% endfor %}
+    </section>
+    {% elif documento.tipo == "COMPROBANTE_COBRO" and documento.tramite_base.circuito == "FACTURACION" %}
+    <p class="fac-muted">Este documento todavía no está vinculado a un cobro.</p>
+    {% endif %}
+    {% if not vigente %}
+    <p class="notice fac-warning">Versión reemplazada. El historial queda disponible y la nueva versión requiere su propia revisión.</p>
+    {% elif terminal %}
+    <p class="notice">El trámite tiene una resolución definitiva. La revisión queda disponible para consulta.</p>
+    {% endif %}
+    {% if documento.tipo == "COMPROBANTE_COBRO" %}
+    <p class="notice">Aceptar este comprobante no confirma el cobro. Registrá la verificación del ingreso desde «Verificar ingreso» en el detalle de la solicitud.</p>
+    {% endif %}
+</section>
+
 {% if puede_revisar %}
-<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Registrar revisión</button></form>
-{% elif form.errors %}{{ form.non_field_errors }}{% endif %}
-<h3>Historial de esta versión</h3>
-{% include "comunes/historial_eventos.html" %}
+<section class="panel fac-has-help" aria-labelledby="titulo-registrar-revision">
+    <h3 id="titulo-registrar-revision">Registrar revisión</h3>
+    {% include "facturacion/ayuda.html" with id="ayuda-registrar-revision" etiqueta="Registrar revisión" texto="El historial de esta versión conserva el resultado, la fecha y la cuenta que revisó el documento de respaldo." only %}
+    <form method="post">
+        {% csrf_token %}
+        {% include "facturacion/campos_formulario.html" %}
+        <button class="btn" type="submit">Registrar revisión</button>
+    </form>
+</section>
+{% elif form.errors %}
+<section class="panel" aria-label="Errores de revisión">{{ form.errors }}</section>
+{% endif %}
+</div>
+
+<section class="panel" aria-labelledby="titulo-historial-documental">
+    <h3 id="titulo-historial-documental">Historial de esta versión</h3>
+    {% if historial %}{% include "comunes/historial_eventos.html" %}
+    {% else %}<p class="fac-muted">Todavía no se registraron revisiones para esta versión.</p>{% endif %}
+</section>
 {% endblock %}

@@ -5,11 +5,12 @@ from typing import Any
 import pytest
 from django.test.client import Client
 from django.urls import reverse
-from playwright.sync_api import sync_playwright
 
 from gastos.contracts import OpcionDocumental
 from gastos.models import EstadoSolicitud
 from tests.soporte_pagos import pdf_comprobante
+
+sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
 
 CAPS_PAGO_UI = (
     "gastos.consultar_todas",

@@ -339,8 +339,8 @@ class DocumentoGastoForm(forms.Form):
     """Formulario de aporte o reemplazo; los servicios documentales revalidan."""
 
     archivo = forms.FileField(
-        label="Archivo de respaldo",
-        error_messages={"required": "Seleccione un archivo de respaldo."},
+        label="Documento de respaldo",
+        error_messages={"required": "Seleccione un documento de respaldo."},
         widget=forms.ClearableFileInput(
             attrs={"accept": ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"}
         ),

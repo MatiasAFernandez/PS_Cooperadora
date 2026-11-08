@@ -2,22 +2,44 @@
 
 ## Acceso y atención — ajuste de #80/#78/#87
 
+### Presentación visual
+
+Facturación reutiliza la tipografía Montserrat, la grilla de 1140 px y los tokens
+de la [guía institucional](../visual-guide/README.md), igual que el circuito de
+gastos. El listado agrupa filtros y tarjetas de atención; el detalle separa datos,
+comprobantes, cobros, resolución e historial en paneles. Los formularios usan dos
+columnas en escritorio y una en pantallas pequeñas. Los controles tienen una
+altura mínima de 44 px; las tablas conservan desplazamiento horizontal.
+
+Las píldoras acompañan el texto del estado: observaciones y cobros pendientes en
+ámbar, ingresos confirmados en verde, rechazados en rojo y trámites terminales
+en neutro. La revisión documental y la confirmación del ingreso siguen siendo
+acciones independientes; el color no modifica permisos ni condiciones de cierre.
+
+### Recorrido de atención
+
 El solicitante entra por Solicitud de Facturación; Nueva solicitud permanece
 dentro del listado. Las tarjetas previas a los filtros muestran como máximo
 dos trámites con acciones propias; Cooperadora ve hasta tres y su siguiente
 acción. El detalle comienza con las acciones inmediatas. El listado muestra
 cuatro filas con desplazamiento vertical, manteniendo paginación y filtros.
 
-En el formulario, elegir Sí en comprobante de pago muestra fecha, operación y
-archivo; elegir No los oculta y no envía esos campos. Alternar no borra lo
+En el formulario, elegir Sí en comprobante de pago exige fecha, número de
+operación y archivo con cualquier medio o cuenta. Elegir No oculta los datos
+de la operación. Alternar no borra lo
 escrito en pantalla. Opción 35 ya no se ofrece para nuevas cargas/correcciones.
 
-Para un cobro propio pendiente o rechazado, usar Corregir cobro en el detalle
-o desde la tarjeta cuando tenga rechazo/documentación observada. Completar
-datos y motivo; el archivo nuevo es opcional. Se conserva la versión anterior
-y la nueva vuelve a revisión documental/verificación. El ordinal visible no
-cambia. Un cobro confirmado no admite este flujo; requiere intervención de
-Cooperadora. Consultar [SPEC-019](../specs/019-matias-correccion-cobros.md).
+En Cobros externos, abrir **Modificar cobro** e indicar el motivo. Si sólo
+cambia el documento vinculado de un ingreso confirmado, se conserva la
+confirmación. Si cambian sus datos, se rectifica la confirmación previa y
+Cooperadora revisa el documento y verifica el importe corregido. El historial
+conserva las versiones con el mismo número de cobro. Consultar
+[SPEC-019](../specs/019-matias-correccion-cobros.md).
+
+En **Comprobantes externos registrados**, usar **Modificar comprobante externo**
+para corregir datos transcritos o actualizar el PDF de una factura o nota.
+El neto se calcula con los registros vigentes. Las notas nuevas se cargan
+por separado con **Registrar factura o nota externa**.
 
 ## Recorrido base
 
@@ -28,6 +50,12 @@ explícita del trámite. No realiza emisión fiscal ni transferencias. Las oblig
 perfil provisional de demo.
 
 ## Preparación
+
+Para actualizar una instalación existente, detener el servidor, ejecutar
+`python manage.py migrate` y volver a iniciarlo. Este corte incorpora las
+migraciones de Facturación 0016 a 0022, incluidas las rectificaciones de cobros
+y las versiones de comprobantes externos. El código nuevo requiere ese esquema
+para consultar los registros vigentes.
 
 Desde una versión con solicitudes, revisión documental, comprobantes de #25 y
 cobros de #26 y resolución de #27, con el entorno Python
@@ -63,8 +91,9 @@ ampliar esa capacidad; no revoca un grupo ya asignado. No otorga permiso de pago
 4. Salir y entrar como demo_o. Abrir el detalle y observar con motivo no vacío.
 5. Volver como demo_a, abrir Corregir, completar lo observado y reenviar. La
    nota de corrección es opcional. Se conserva la versión anterior.
-6. El reemplazo de archivo conserva la serie documental y el archivo anterior.
-   La retirada explícita desvincula sin borrar historia; se deniega si incumple D01.
+6. En la corrección, la tarjeta muestra el respaldo guardado. Seleccionar o
+   arrastrar otro archivo prepara su reemplazo. La cruz prepara el retiro, que
+   puede deshacerse antes de guardar. El historial conserva el archivo anterior.
 7. demo_b no ve la solicitud de A ni la obtiene por URL directa (404).
    demo_l consulta todas sin modificar ni recibir descarga documental por defecto.
 8. Comprobar teclado, etiquetas, mensajes y datos conservados ante errores.
@@ -74,21 +103,36 @@ El pago declarado queda pendiente de verificación. La revisión documental se a
 desde el detalle mediante el enlace del respaldo, como explica la sección siguiente.
 El registro de comprobantes y cobros externos se describe a continuación.
 
-Las solicitudes se numeran desde 1 por solicitante, también para los registros
-existentes. El correo del titular distingue números iguales en la consulta global.
-La búsqueda numérica usa ese número (o CUIT exacto), sin modificar los enlaces y
-referencias internas. **Observaciones (opcional)** puede quedar vacío tanto al
+Cada solicitante ve su numeración propia desde 1. La operadora ve el ID único
+del circuito de Facturación, con una secuencia propia separada de Gastos.
+El listado muestra el ID y, en **Solicitante**, el correo de envío de
+la factura. Seleccionar una fila o tarjeta de atención abre el resumen lateral.
+Con teclado, usar Enter o Espacio. Cerrar con Escape, la cruz o un clic en el fondo.
+Los íconos de información se ubican arriba a la derecha y muestran la ayuda al
+pasar el cursor o al recibir el foco.
+El resumen muestra el neto junto a la suma de cobros pendientes y confirmados.
+El total registrado se muestra en gris si queda por debajo del neto, en verde
+si coincide y en amarillo con la etiqueta **Excedente** si lo supera.
+**Ver Detalle** abre la solicitud completa. Los formularios aceptan seleccionar
+archivos o arrastrarlos al campo de carga.
+La búsqueda numérica usa el número visible para la cuenta o el CUIT exacto.
+**Observaciones (opcional)** puede quedar vacío tanto al
 presentar como al corregir. Aplicar la migración 0014 antes de usar este cambio;
 no borra datos. Su reversa exige no tener solicitudes con observaciones vacías.
 
-Los cobros se numeran desde 1 dentro de cada solicitud. Aceptar su comprobante
-en la revisión documental no confirma el ingreso: éste continúa PENDIENTE hasta
-registrar su verificación desde **Verificar ingreso**, en el detalle de la
-solicitud. Una lista de respaldos sin revisiones pendientes no implica que todos
-los ingresos estén confirmados.
+Los cobros se numeran desde 1 dentro de cada solicitud. **Constatar Ingreso**
+permite registrar el resultado. Para confirmarlo, primero hay que aceptar el
+documento de respaldo vigente. Las tarjetas muestran por separado
+el estado del ingreso y el de la revisión documental.
 
-Si operadora registra un ingreso que ya cotejó, puede marcar **Cotejé el ingreso
-externo y doy conformidad al respaldo** antes de guardar. Esta opción requiere
+Si se confirmó un ingreso por error, en el detalle de un trámite abierto usá
+**Rectificar ingreso** en ese cobro e ingresá el motivo. El historial muestra la
+confirmación original y la rectificación. El cobro rectificado sale del total
+confirmado y el detalle recalcula el saldo pendiente. Aplicar la migración 0020.
+
+Al registrar un cobro como operadora, **Cotejé el ingreso externo y doy
+conformidad al documento de respaldo** aparece marcada. Revisar la casilla antes de guardar.
+Esta opción requiere
 los permisos explícitos de registro, verificación, revisión documental y metadatos.
 Guarda cobro, conformidad del respaldo y confirmación en una sola operación,
 conservando actor y fecha; no representa revisión por otra persona. Sin marcar,
@@ -137,8 +181,9 @@ negativo. La [spec](../specs/005-matias-facturas-notas.md) delimita el perfil de
    ya tenía comprobante inicial, puede elegirse como respaldo en lugar de subir
    otro. No reutilizar la misma versión para dos cobros ni el mismo número de
    operación en la misma cuenta, incluso en otra solicitud.
-3. Como O, preparado explícitamente con `--verificacion-cobros`, abrir
-   **Verificar ingreso**. Confirmar ambos: total confirmado 100,25 ARS. Rechazar
+3. Aceptar ambos respaldos en revisión documental. Como O, preparado explícitamente
+   con `--verificacion-cobros`, abrir
+   **Constatar Ingreso**. Confirmar ambos: total confirmado 100,25 ARS. Rechazar
    exige motivo; el rechazado se conserva pero no suma al confirmado. Una
    verificación registrada no se edita ni repite; una corrección requiere un
    diseño posterior, no borrar historia ni inventar otra operación.
@@ -164,21 +209,28 @@ cancelado ni suficiencia documental. Ver [SPEC-006](../specs/006-matias-cobros.m
    por 60,10 y 40,15. En revisión documental, aceptar la factura y los dos respaldos
    de ingreso. No hace falta aceptar archivos ajenos a esos registros. Las notas
    que existan también requieren respaldo aceptado.
-2. El detalle muestra el estado de solicitud (Presentada/Observada) y el seguimiento
-   financiero. La cobertura muestra **Cobrada en revisión** sin resolver el trámite.
-   El diagnóstico enumera causas de bloqueo para cerrar y para anular.
-3. Entrar como O preparado con `--resolucion-facturacion`. Completar motivo y
-   **Cerrar trámite**. Se exige neto positivo, igualdad exacta y ausencia de cobros
-   pendientes, además de las aceptaciones. Si se declaró transferencia en el
-   formulario inicial, registrar su medio/operación como cobro y verificarlo;
-   esa declaración no se descarta ni se confirma automáticamente.
-4. Faltante, exceso, neto negativo, observación pendiente o respaldo sin aceptación
-   vigente impiden cerrar. Un dato cambiado desde que se abrió el detalle devuelve
-   409 y conserva el motivo; recargar para decidir sobre el diagnóstico actual.
-5. **Anular trámite** exige motivo y permite sólo solicitud sin factura ni ingresos
-   pendientes/confirmados, o factura con neto exactamente cero por notas, respaldos
-   aceptados y ausencia de esos ingresos. La nota no acredita devolución de dinero.
-   No ejecuta anulación fiscal externa. Un ingreso rechazado se conserva y no cuenta.
+2. El detalle muestra un solo estado vigente. Con el neto cubierto por ingresos
+   confirmados, muestra **Cobrada en revisión** hasta que se resuelva el trámite.
+   **Estado de cobro**, debajo de **Acciones inmediatas**, muestra el neto, el
+   importe confirmado y el saldo pendiente. En la vista de Cooperadora,
+   **Pendientes y resolución** enumera las condiciones de cierre y anulación.
+   Seleccioná un pendiente para ir a la sección o al registro correspondiente.
+3. Entrar como O preparado con `--resolucion-facturacion` y pulsar **Cerrar trámite**.
+   El cierre se registra sin completar un motivo. Se exige neto positivo, cobertura
+   total con ingresos confirmados y ausencia de cobros pendientes, además de las
+   aceptaciones. Aplicar las migraciones hasta 0017 para cerrar con excedente y sin
+   motivo. Si se declaró una transferencia en el formulario inicial, registrar su
+   medio y operación como cobro y verificarlo.
+4. Un faltante, un neto negativo, una observación pendiente o un respaldo sin
+   aceptación vigente impiden cerrar. Al verificar, se advierte si el cobro supera
+   el importe solicitado o si la confirmación supera el neto acumulado. Un dato
+   cambiado desde que se abrió el detalle devuelve 409 y conserva el motivo de
+   anulación si se ingresó. Recargar para decidir sobre el diagnóstico actual.
+5. **Anular trámite** exige motivo, ausencia de ingresos pendientes de verificación
+   y aceptación de los respaldos de factura y notas que existan. Se admite cualquier
+   neto y se conservan los ingresos confirmados. Aplicar las migraciones hasta 0019.
+   Una devolución o regularización externa se puede mencionar en el motivo.
+   La anulación del trámite no ejecuta una anulación fiscal externa.
 6. CERRADA y ANULADA son definitivos. Consultar historial y descargar con permiso
    sigue disponible; nuevas operaciones, revisiones y reapertura se deniegan.
    Sin el grupo de resolución no se habilita la acción por ser operador/revisor.
@@ -187,7 +239,7 @@ cancelado ni suficiencia documental. Ver [SPEC-006](../specs/006-matias-cobros.m
 
 ## Sustituir el respaldo vinculado a un registro
 
-1. Antes de resolver el trámite, como O abrir **Actualizar vínculo del respaldo**
+1. Antes de resolver el trámite, como O abrir **Actualizar vínculo del documento de respaldo**
    en la factura/nota o cobro. Elegir una sucesora vigente existente de la misma
    serie/tipo/trámite, o adjuntar un archivo nuevo y motivo (una sola opción).
 2. Una carga nueva crea la sucesora y su vínculo en una operación; requiere permiso
@@ -208,7 +260,7 @@ Las condiciones completas y los límites de regularización están en
 ## Revisión documental
 
 1. Presentar como demo_a una solicitud sintética con respaldo. En el detalle,
-   abrir **Revisión de respaldos** y el enlace de la versión. A puede consultar
+   abrir **Revisión de documentos de respaldo** y el enlace de la versión. A puede consultar
    el historial con metadatos y acceso a su trámite; no recibe permiso de revisión.
 2. Entrar como demo_o, preparado con `--revision-documental`, y abrir ese mismo
    enlace. La página exige acceso al trámite y metadatos; para registrar exige

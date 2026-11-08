@@ -271,6 +271,14 @@
                 <details class="sd-details sd-details-flush">
                     <summary id="historial-heading">Historial de decisiones, pagos y documentos</summary>
                     {% include "comunes/historial_eventos.html" with historial=cronologia %}
+                    {% for version in versiones_documentales %}
+                        {% if not version.vigente %}
+                            <p class="sd-small">
+                                <a href="{% url 'documentos:revision' version.documento_id %}">{{ version.nombre }} · versión {{ version.version }}</a>
+                                <span class="sd-pill sd-pill-neutral">Reemplazada</span>
+                            </p>
+                        {% endif %}
+                    {% endfor %}
                 </details>
             </section>
         </div>

@@ -539,7 +539,7 @@ def test_view_detalle_muestra_tipo_flujo_y_centro_costo(
 
     assert response.status_code == 200
     contenido = response.content.decode("utf-8")
-    assert "Modalidad de Gasto" in contenido
+    assert "Centro de costo" in contenido
     assert "Reintegro a solicitante" in contenido
     assert "Secretaría de Posgrado" in contenido
     assert "(secretaria-posgrado)" in contenido

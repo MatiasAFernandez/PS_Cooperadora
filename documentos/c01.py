@@ -44,9 +44,9 @@ class ProveedorDocumentalGastos:
             actor, "documentos.ver_metadatos"
         )
         if not metadatos or not visible_expenses(actor).filter(pk=gasto.pk).exists():
-            raise DocumentVerificationError("Respaldo documental no disponible.")
+            raise DocumentVerificationError("Documento de respaldo no disponible.")
         if pago and not has_capability(actor, "gastos.registrar_pago"):
-            raise DocumentVerificationError("Respaldo documental no disponible.")
+            raise DocumentVerificationError("Documento de respaldo no disponible.")
 
     @staticmethod
     def _tipos(tipos_admitidos: Collection[str]) -> list[str]:
@@ -99,12 +99,12 @@ class ProveedorDocumentalGastos:
         # tomar el primer bloqueo. La transacción exterior conserva ambos.
         gasto_bloqueado = visible_expenses(actor).select_for_update().filter(pk=gasto.pk).first()
         if gasto_bloqueado is None:
-            raise DocumentVerificationError("Respaldo documental no disponible.")
+            raise DocumentVerificationError("Documento de respaldo no disponible.")
         self._autorizar(actor, gasto_bloqueado, pago=True)
         try:
             referencia = UUID(referencia_documental)
         except (ValueError, TypeError, AttributeError) as exc:
-            raise DocumentVerificationError("Respaldo documental no disponible.") from exc
+            raise DocumentVerificationError("Documento de respaldo no disponible.") from exc
         documento = (
             documentos_visibles(actor)
             .filter(
@@ -115,13 +115,13 @@ class ProveedorDocumentalGastos:
             .first()
         )
         if documento is None:
-            raise DocumentVerificationError("Respaldo documental no disponible.")
+            raise DocumentVerificationError("Documento de respaldo no disponible.")
         bloquear_serie(documento)
         if Documento.objects.filter(reemplaza=documento).exists():
-            raise DocumentVerificationError("Respaldo documental no disponible.")
+            raise DocumentVerificationError("Documento de respaldo no disponible.")
         revision = documento.revisiones.order_by("-id").first()
         if revision and revision.resultado != RevisionDocumento.Resultado.ACEPTADO:
-            raise DocumentVerificationError("Respaldo documental no disponible.")
+            raise DocumentVerificationError("Documento de respaldo no disponible.")
         # La fila raíz serializa también los reemplazos: ningún sucesor puede
         # aparecer entre esta comprobación y el commit del pago exterior.
         Documento.objects.select_for_update().get(pk=documento.pk)

@@ -19,7 +19,7 @@ from django.db.models.functions import Coalesce
 from .models import CobroExterno, ComprobanteExterno
 
 
-def filtrar_solicitudes(consulta, form):
+def filtrar_solicitudes(consulta, form, *, por_circuito=False):
     if not form.is_valid():
         return consulta.none()
     consulta = form.filtrar_fecha(consulta, "fecha_presentacion")
@@ -32,8 +32,12 @@ def filtrar_solicitudes(consulta, form):
             | Q(detalle_factura__icontains=texto)
         )
         if texto.isascii() and texto.isdigit() and len(texto) <= 18:
-            consulta = consulta.con_numero_solicitante()
-            criterio = Q(_numero_solicitante=int(texto)) | Q(cuit_receptor=texto)
+            if por_circuito:
+                numero = Q(pk=int(texto))
+            else:
+                consulta = consulta.con_numero_solicitante()
+                numero = Q(_numero_solicitante=int(texto))
+            criterio = numero | Q(cuit_receptor=texto)
         consulta = consulta.filter(criterio)
     estado = form.cleaned_data["estado"]
     if not estado:
@@ -65,6 +69,7 @@ def filtrar_solicitudes(consulta, form):
         CobroExterno.objects.filter(
             solicitud_id=OuterRef("pk"),
             verificacion__resultado="CONFIRMADO",
+            verificacion__rectificacion__isnull=True,
         )
         .order_by()
         .values("solicitud_id")

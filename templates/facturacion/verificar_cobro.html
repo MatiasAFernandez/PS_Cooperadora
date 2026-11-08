@@ -1,9 +1,22 @@
 {% extends "facturacion/base.html" %}
-{% block content %}
-<h2>Verificar ingreso del cobro #{{ cobro.numero_en_solicitud }}</h2>
+{% block facturacion_content %}
+<header class="fac-page-title fac-has-help">
+<h2>Constatar Ingreso del cobro #{{ cobro.numero_en_solicitud }}</h2>
+{% include "facturacion/ayuda.html" with id="ayuda-verificar" etiqueta="Constatar Ingreso" texto="Cotejá el movimiento externo y registrá el resultado. Para confirmar el ingreso, primero aceptá el documento de respaldo vigente. La constatación queda en el historial." only %}
+</header>
 <p>{{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — {{ cobro.fecha_operacion|date:"d/m/Y" }}.</p>
-<p>Confirmar acredita la verificación del ingreso externo. La revisión documental es independiente y esta acción no cierra el trámite. La verificación registrada se conserva sin edición.</p>
-{% if cobro.resultado == "PENDIENTE" %}<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Registrar verificación</button></form>
+{% if cobro.resultado == "PENDIENTE" %}
+{% if not respaldo_aceptado %}
+<div class="notice fac-warning">Para confirmar el ingreso, primero aceptá el documento de respaldo vigente.
+{% if respaldo %}<a href="{% url 'documentos:revision' respaldo.pk %}">Consultar revisión documental</a>{% endif %}</div>
+{% endif %}
+{% if supera_importe_solicitado or supera_neto %}
+<div class="notice fac-warning fac-overpayment" role="status">
+{% if supera_importe_solicitado %}<p><strong>El cobro supera el importe solicitado de $ {{ solicitud.importe_factura|floatformat:2 }}.</strong></p>{% endif %}
+{% if supera_neto %}<p><strong>Si confirmás este cobro, el total confirmado superará el neto de la factura.</strong></p>{% endif %}
+<p>Cotejá el importe con el movimiento externo antes de confirmar.</p>
+</div>{% endif %}
+<form class="fac-form" method="post">{% csrf_token %}{% include "facturacion/campos_formulario.html" %}<button type="submit">Guardar constatación</button></form>
 {% else %}<p>Resultado registrado: {{ cobro.resultado }}.</p>{{ form.non_field_errors }}{% endif %}
-<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+<p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
 {% endblock %}

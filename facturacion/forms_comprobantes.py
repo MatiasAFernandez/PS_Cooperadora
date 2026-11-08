@@ -4,8 +4,15 @@ from decimal import Decimal
 
 from django import forms
 
+from documentos.models import Documento
+
 from .models import ComprobanteExterno
 from .validation import validar_cuit
+
+DATOS_COMPROBANTE = (
+    "cuit_emisor", "letra", "punto_venta", "numero", "fecha_emision", "importe",
+    "procedencia", "origen_aclaracion",
+)
 
 
 class ComprobanteExternoForm(forms.Form):
@@ -54,6 +61,17 @@ class ComprobanteExternoForm(forms.Form):
         max_length=200,
         help_text="Obligatoria si seleccionás Otro.",
     )
+    aceptar_respaldo = forms.BooleanField(
+        label="Revisé el PDF y doy conformidad al documento de respaldo",
+        required=False,
+        initial=True,
+        help_text="Guarda la conformidad documental a tu nombre junto con el comprobante.",
+    )
+
+    def __init__(self, *args, puede_aceptar=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not puede_aceptar:
+            del self.fields["aceptar_respaldo"]
 
     def clean(self):
         datos = super().clean()
@@ -63,4 +81,47 @@ class ComprobanteExternoForm(forms.Form):
             self.add_error("origen_aclaracion", "Indicá el sistema o procedencia del comprobante.")
         if origen == "EXTERNO_XUBIO":
             datos["origen_aclaracion"] = ""
+        return datos
+
+
+class ModificarComprobanteForm(ComprobanteExternoForm):
+    nuevo = forms.ModelChoiceField(
+        label="Versión sucesora vigente existente",
+        queryset=Documento.objects.none(),
+        required=False,
+        empty_label="Conservar el PDF vinculado",
+        help_text="Elegí una versión ya cargada del mismo comprobante o adjuntá un PDF nuevo.",
+    )
+    motivo = forms.CharField(label="Motivo del cambio", max_length=2000, widget=forms.Textarea)
+    revision = forms.CharField(widget=forms.HiddenInput)
+    field_order = ("tipo", *DATOS_COMPROBANTE, "nuevo", "archivo_pdf", "motivo")
+
+    def __init__(self, *args, comprobante, revision, puede_corregir, puede_adjuntar, opciones=None):
+        super().__init__(
+            *args,
+            initial={
+                campo: getattr(comprobante, campo) for campo in ("tipo", *DATOS_COMPROBANTE)
+            } | {"revision": revision},
+        )
+        self.fields["tipo"].disabled = True
+        for campo in DATOS_COMPROBANTE:
+            self.fields[campo].disabled = not puede_corregir
+        self.fields["fecha_emision"].widget.format = "%Y-%m-%d"
+        if puede_adjuntar:
+            self.fields["archivo_pdf"].required = False
+            self.fields["archivo_pdf"].label = "Nuevo PDF del comprobante"
+        else:
+            del self.fields["archivo_pdf"]
+        if opciones is None:
+            del self.fields["nuevo"]
+        else:
+            self.fields["nuevo"].queryset = opciones
+            self.fields["nuevo"].label_from_instance = lambda documento: (
+                f"{documento.nombre_original} — versión {documento.version}"
+            )
+
+    def clean(self):
+        datos = super().clean()
+        if datos.get("nuevo") and datos.get("archivo_pdf"):
+            raise forms.ValidationError("Elegí una versión existente o adjuntá un PDF nuevo.")
         return datos

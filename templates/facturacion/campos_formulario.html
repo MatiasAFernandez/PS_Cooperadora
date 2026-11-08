@@ -1,0 +1,26 @@
+{{ form.non_field_errors }}
+{% for field in form.hidden_fields %}{{ field.errors }}{{ field }}{% endfor %}
+<div class="fac-form-fields">
+{% for field in form.visible_fields %}
+{% if field.name == "retirar_comprobante" %}
+    {% if solicitud.documento_comprobante_inicial_id %}
+        {% include "facturacion/respaldo_inicial.html" %}
+    {% elif field.errors %}
+        {{ field.errors }}
+    {% endif %}
+{% else %}
+<div class="form-group"{% if field.name == "fecha_operacion_declarada" or field.name == "numero_operacion_declarado" or field.name == "archivo_comprobante" %} data-pago-declarado{% endif %}{% if field.name == "procedencia" or field.name == "origen_aclaracion" %} data-origen-comprobante{% endif %}>
+    {% if field.field.widget.input_type != "file" %}{{ field.errors }}{% endif %}
+    <div class="fac-field-label{% if field.help_text %} fac-has-help{% endif %}{% if field.field.widget.input_type == 'checkbox' %} fac-checkbox-label{% endif %}">
+        {% if field.field.widget.input_type == "checkbox" %}{{ field }}{% endif %}
+        {{ field.label_tag }}
+        {% if field.help_text %}{% with id=field.auto_id|add:"_helptext" %}
+        {% include "facturacion/ayuda.html" with id=id etiqueta=field.label texto=field.help_text only %}
+        {% endwith %}{% endif %}
+    </div>
+    {% if field.field.widget.input_type != "checkbox" %}{{ field }}{% endif %}
+    {% if field.field.widget.input_type == "file" %}{{ field.errors }}{% endif %}
+</div>
+{% endif %}
+{% endfor %}
+</div>

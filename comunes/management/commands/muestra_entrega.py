@@ -162,11 +162,11 @@ def crear():
             "importe": "100.25",
         },
     )
+    for d in (factura.documento, cobro.documento):
+        revisar(actor=o, documento_id=d.pk, resultado="ACEPTADO", motivo="", revision_esperada=0)
     verificar_cobro(
         actor=o, numero=solicitud.pk, cobro_id=cobro.pk, datos={"resultado": "CONFIRMADO"}
     )
-    for d in (factura.documento, cobro.documento):
-        revisar(actor=o, documento_id=d.pk, resultado="ACEPTADO", motivo="", revision_esperada=0)
     resolver_tramite(
         actor=o,
         numero=solicitud.pk,

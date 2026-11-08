@@ -63,16 +63,24 @@ class CobroExterno(models.Model):
     @property
     def resultado(self):
         try:
-            return self.verificacion.resultado
+            verificacion = self.verificacion
         except VerificacionCobro.DoesNotExist:
             return "PENDIENTE"
+        if hasattr(verificacion, "rectificacion"):
+            return "RECTIFICADO"
+        return verificacion.resultado
+
+    @cached_property
+    def cobro_original(self):
+        original = self
+        while original.reemplaza_id:
+            original = original.reemplaza
+        return original
 
     @cached_property
     def numero_en_solicitud(self):
         """Ordinal visible; la identidad global se conserva para URLs y relaciones."""
-        original = self
-        while original.reemplaza_id:
-            original = original.reemplaza
+        original = self.cobro_original
         return (
             type(self)
             .todos.filter(solicitud_id=self.solicitud_id, reemplaza__isnull=True)
@@ -147,5 +155,25 @@ class VerificacionCobro(models.Model):
             actor_id=str(self.actor_id),
             fecha_hora=self.fecha,
             estado_resultante=self.resultado,
+            motivo_o_detalle=f"Cobro #{numero_cobro}. {self.motivo}",
+        )
+
+
+class RectificacionCobro(models.Model):
+    verificacion = models.OneToOneField(
+        VerificacionCobro, on_delete=models.PROTECT, related_name="rectificacion"
+    )
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha = models.DateTimeField(auto_now_add=True)
+    motivo = models.TextField(max_length=2000)
+
+    def como_historial(self, *, cobro, numero_cobro):
+        return EventoHistorialDTO(
+            evento_id=self.pk,
+            tramite_ref=f"facturacion:{cobro.solicitud_id}",
+            tipo_evento="cobro_rectificado",
+            actor_id=str(self.actor_id),
+            fecha_hora=self.fecha,
+            estado_resultante="RECTIFICADO",
             motivo_o_detalle=f"Cobro #{numero_cobro}. {self.motivo}",
         )

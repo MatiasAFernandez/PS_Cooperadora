@@ -18,14 +18,16 @@ def ultima_revision(documento):
     return documento.revisiones.order_by("-id").first()
 
 
+def estado_revision_vigente(documento):
+    if Documento.objects.filter(reemplaza=documento).exists():
+        return "REEMPLAZADO"
+    revision = ultima_revision(documento)
+    return revision.resultado if revision else "PENDIENTE"
+
+
 def version_aceptada(documento):
     """Conformidad de la versión vigente; el circuito decide qué pendiente satisface."""
-    revision = ultima_revision(documento)
-    return (
-        revision is not None
-        and revision.resultado == RevisionDocumento.Resultado.ACEPTADO
-        and not Documento.objects.filter(reemplaza=documento).exists()
-    )
+    return estado_revision_vigente(documento) == RevisionDocumento.Resultado.ACEPTADO
 
 
 def consultar_revision(*, actor, documento_id):

@@ -6,6 +6,12 @@ La [demo](../evidence/demo-2026-10-29.md) solicita evitar el archivo duplicado d
 
 > Ampliación aprobada por Matías el 25/10/2026: Xubio predeterminado y Otro con aclaración para los tres tipos; etiquetas documentales neutrales y códigos históricos conservados. Ver [SPEC-012](012-mejoras-demo-consultas.md).
 
+El formulario de factura y notas ofrece la conformidad documental en la misma
+carga a la operadora con permiso de revisar y consultar metadatos. La casilla
+aparece marcada y puede desmarcarse para dejar el PDF pendiente. Cuando se confirma,
+se guardan el PDF, el comprobante y el resultado documental **Aceptado** en una
+sola operación. El historial atribuye la conformidad a quien registró el comprobante.
+
 - Estado: perfil provisional de demo precisado; pendiente de validación institucional.
 - Autor y responsable principal: Matías Alejandro Fernández.
 - Issue I2: [#25](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/25).
@@ -36,6 +42,8 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
 - Asociación de cada registro con su solicitud de facturación y, cuando corresponda,
   con el documento respaldatorio protegido.
 - Consulta de las asociaciones por usuarios autorizados.
+- Modificación de los datos transcritos y del PDF desde **Modificar
+  comprobante externo**, para solicitudes abiertas y cuentas autorizadas.
 
 ### No incluye
 
@@ -64,10 +72,15 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
   1–99999999 son límites técnicos de demo, no validación fiscal externa.
 - Fecha de emisión, importe positivo de hasta dos decimales (máximo
   9999999999,99) y PDF protegido hasta 10 MiB son obligatorios.
-- Registro, versión exacta del PDF, actor y fecha se conservan sin edición ni
-  eliminación. La incorporación es atómica y reutiliza la compensación documental.
-  #27 permite una asociación documental sucesora explícita y auditable sin cambiar
-  la FK original ni los datos monetarios del comprobante; consultar SPEC-007.
+  El formulario de alta propone el importe de la solicitud y permite editarlo.
+  Un formato no admitido se indica junto al campo de carga del PDF.
+- Los datos históricos, el PDF, el actor y la fecha se conservan. Si cambia
+  sólo el PDF, se registra el vínculo sucesor de SPEC-007 y se conserva el neto.
+  Si cambian datos, se registra el motivo y una versión sucesora del mismo tipo
+  con un PDF pendiente de revisión. Sólo las versiones vigentes integran el neto
+  y el diagnóstico de cierre. Las notas siguen asociadas a la factura del
+  trámite, y el emisor y la letra deben ser compatibles con las notas vigentes.
+  Las verificaciones de cobro conservan su resultado.
 - El registro refleja una operación externa; por sí solo no acredita un cobro.
 - El neto informativo suma factura y débitos y resta créditos, sin conversión de
   moneda, verificación de ingreso ni transición de estado. Puede resultar cero
@@ -90,6 +103,8 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
   `facturacion.registrar_factura_externa` y `documentos.incorporar`.
   La consulta respeta visibilidad del trámite; descargar exige su capacidad
   documental independiente, también por URL directa.
+- Corregir datos exige los permisos de registro. Cambiar sólo el PDF exige
+  los permisos de actualización documental definidos en SPEC-007.
 - Datos sintéticos o anonimizados para pruebas: comprobantes ficticios sin números
   ni datos fiscales reales.
 
@@ -113,8 +128,7 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
 ## Preguntas abiertas
 
 - ¿Qué transición produce una nota de crédito que deja el neto en cero?
-- Validación institucional del perfil, monedas y eventual corrección de datos
-  registrados; no se modifica silenciosamente un comprobante existente.
+- Validación institucional del perfil y las monedas.
 
 ## Decisiones
 

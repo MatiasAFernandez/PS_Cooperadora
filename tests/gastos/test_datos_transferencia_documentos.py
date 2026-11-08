@@ -139,9 +139,7 @@ def test_proforma_y_factura_posterior_se_distinguen_sin_modificar_el_pago(
     assert proforma.nombre_original in contenido
     assert "Presupuesto o proforma" in contenido
     assert "Seguimiento de factura definitiva" in contenido
-    assert "Una proforma no es una factura definitiva" in contenido
-    assert "No hay una factura definitiva vigente incorporada" in contenido
-    assert "no cierra el trámite" in contenido
+    assert "Factura definitiva no incorporada." in contenido
 
     factura = _factura(e)
     revisor = Actor(
@@ -161,11 +159,9 @@ def test_proforma_y_factura_posterior_se_distinguen_sin_modificar_el_pago(
     assert segunda.context["factura_vigente"].documento_id == factura.pk
     assert segunda.context["respaldo_categoria"] == "presupuesto"
     contenido_posterior = segunda.content.decode()
-    assert "Hay una factura vigente incorporada" in contenido_posterior
-    assert "Último resultado propio de la factura" in contenido_posterior
+    assert "Factura vigente:" in contenido_posterior
     assert "Factura de proveedor" in contenido_posterior
     assert "Aceptado" in contenido_posterior
-    assert "no modifica el pago" in contenido_posterior
 
     pago.refresh_from_db()
     assert pago.referencia_documental == "doc-proforma-74"
@@ -223,6 +219,6 @@ def test_pagina_de_pago_sin_opciones_muestra_camino(
     assert response.status_code == 200
     contenido = response.content.decode()
     assert "No hay opciones documentales disponibles" in contenido
-    assert "Aportar factura, presupuesto o proforma" in contenido
+    assert "Cargar o reemplazar respaldo comercial" in contenido
     assert reverse("gastos:documentos", kwargs={"pk": e.gasto.pk}) in contenido
     assert "disabled" in contenido

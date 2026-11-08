@@ -145,6 +145,7 @@
         .solicitudes-tabla thead { position: sticky; top: 0; z-index: 1; }
         .solicitudes-tabla tbody tr { height: var(--row-height-dense, 44px); }
     </style>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header class="app-topbar">
@@ -209,5 +210,6 @@
     });
     </script>
     {% if actor %}<script src="{% static 'js/navegacion.js' %}" defer></script>{% endif %}
+    <script src="{% static 'js/adjuntar_archivos.js' %}" defer></script>
 </body>
 </html>

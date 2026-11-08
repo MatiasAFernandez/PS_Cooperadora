@@ -43,12 +43,19 @@ el cobro; no acredita revisión independiente. Una aceptación previa se conserv
 sin duplicación y una revisión desfavorable no se sobrescribe desde el alta.
 Los hechos se confirman o revierten junto con el cobro y su verificación. Otros
 aportes y los cobros informados por el solicitante mantienen su revisión separada.
+Para confirmar un cobro, el circuito exige una aceptación vigente de su respaldo
+vinculado según [SPEC-006](../specs/006-matias-cobros.md).
+El alta de facturas y notas externas también puede registrar la conformidad del
+mismo actor usando este servicio, según [SPEC-005](../specs/005-matias-facturas-notas.md).
 
 La consulta se autoriza con metadatos y acceso por objeto. Un objeto ajeno o
 inexistente devuelve 404; sin capacidad suficiente se deniega con 403. La página
 `/documentos/<id>/revision/` permite consultar y, con permiso, registrar por POST
-con CSRF. Los respaldos de facturación enlazan esta página. La integración de
-la navegación propia de gastos sigue bajo responsabilidad de Franco en #28.
+con CSRF. La revisión muestra el documento de respaldo, su resultado y su
+historial, con un enlace al detalle de la solicitud de origen. Para un documento
+vinculado a un cobro de facturación, muestra el medio o cuenta de destino, la
+operación, la fecha y el importe del registro asociado a esa versión. La
+integración de la navegación propia de gastos sigue bajo responsabilidad de Franco en #28.
 
 ## Concurrencia, reemplazo y atomicidad
 

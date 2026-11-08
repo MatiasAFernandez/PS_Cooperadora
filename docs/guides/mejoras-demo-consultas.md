@@ -36,7 +36,7 @@ producto ni se habilitan datos reales.
    configurada, incluyendo límites de medianoche.
 4. Incorporar factura/nota y cobro sintéticos. Revisiones por atender reúne sus
    versiones vigentes sin revisión o con resultado Observado/Rechazado; una
-   aceptación las retira de esa lista y las mantiene en Respaldos conservados.
+   aceptación las retira de esa lista y las mantiene en Documentos de respaldo conservados.
    Se conserva el historial de todas las versiones. Sin metadatos no se revelan
    nombres ni resultados documentales.
 5. En Pendientes y resolución, comparar neto e ingresos confirmados. Se muestra

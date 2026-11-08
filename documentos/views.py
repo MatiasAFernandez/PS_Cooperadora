@@ -1,10 +1,15 @@
 """Rutas HTTP protegidas para metadatos y contenido documental."""
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from comunes.models import Circuito
+from facturacion.choices import ModalidadCobro
+from facturacion.models import CobroExterno
 from identidad.services import has_capability, resolve_actor
 
 from .forms import RevisionDocumentoForm
@@ -101,10 +106,20 @@ def documento_revision(request, documento_id: int):
         documento, revisiones = consultar_revision(actor=actor, documento_id=documento_id)
         actual = ultima_revision(documento)
         vigente = not documento.__class__.objects.filter(reemplaza=documento).exists()
-        terminal = (
-            documento.tramite_base.circuito == "FACTURACION"
-            and documento.tramite_base.solicitud_facturacion.estado in {"CERRADA", "ANULADA"}
-        )
+        base = documento.tramite_base
+        terminal = False
+        if base.circuito == Circuito.FACTURACION:
+            solicitud = base.solicitud_facturacion
+            terminal = solicitud.estado in {"CERRADA", "ANULADA"}
+            numero_solicitud = (
+                base.numero_publico
+                if has_capability(actor, "facturacion.consultar_todas")
+                else solicitud.numero_solicitante
+            )
+            solicitud_url = reverse("facturacion:detalle", args=[base.numero_publico])
+        else:
+            numero_solicitud = base.numero_publico
+            solicitud_url = reverse("gastos:detalle", args=[base.numero_publico])
         puede_revisar = has_capability(actor, "documentos.revisar") and vigente and not terminal
         form = RevisionDocumentoForm(initial={"revision_esperada": actual.pk if actual else 0})
         status = 200
@@ -123,8 +138,18 @@ def documento_revision(request, documento_id: int):
                     status = 409
                 else:
                     return redirect("documentos:revision", documento_id=documento_id)
+        cobros_revision = []
+        if base.circuito == Circuito.FACTURACION and documento.tipo == "COMPROBANTE_COBRO":
+            cobros = CobroExterno.todos.filter(solicitud=solicitud).filter(
+                Q(documento=documento) | Q(actualizaciones_respaldo__nuevo=documento)
+            ).distinct()
+            medios = dict(ModalidadCobro.choices)
+            cobros_revision = [(cobro, medios.get(cobro.medio, cobro.medio)) for cobro in cobros]
         respuesta = render(request, "documentos/revision.html", {
             "actor": actor, "documento": documento, "actual": actual, "vigente": vigente,
+            "numero_solicitud": numero_solicitud, "solicitud_url": solicitud_url,
+            "terminal": terminal,
+            "cobros_revision": cobros_revision,
             "puede_revisar": puede_revisar, "form": form,
             "puede_descargar": has_capability(actor, "documentos.recuperar_contenido"),
             "historial": [r.como_historial() for r in revisiones],

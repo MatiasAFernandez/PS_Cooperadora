@@ -1,20 +1,30 @@
 {% extends "facturacion/base.html" %}
-{% block content %}<h2>Solicitudes de facturación</h2>
-{% if "facturacion.presentar" in actor.capabilities %}<p><a class="btn" href="{% url 'facturacion:presentar' %}">Nueva solicitud</a></p>{% endif %}
+{% load static %}
+{% block facturacion_content %}
+<header class="fac-header fac-page-title fac-has-help">
+<h2>Solicitudes de facturación</h2>
+{% if "facturacion.presentar" in actor.capabilities %}<a class="btn" href="{% url 'facturacion:presentar' %}">Nueva solicitud</a>{% endif %}
+{% include "facturacion/ayuda.html" with id="ayuda-lista" etiqueta="Solicitudes de facturación" texto="Seleccioná una fila para abrir el resumen lateral. La columna Solicitante muestra el correo al que Cooperadora enviará la factura." only %}
+</header>
+<p class="visually-hidden-module-title" id="ayuda-abrir-resumen">Presioná Enter o Espacio para abrir el resumen.</p>
 {% include "facturacion/atencion.html" %}
-<form method="get">
+<form method="get" class="panel fac-filters" aria-label="Filtros de solicitudes">
 {% include "comunes/campos_filtro.html" with form=filtro_form %}
+<div class="filter-actions">
 <button type="submit">Filtrar</button> <a href="{% url 'facturacion:lista' %}">Quitar filtro</a>
+</div>
 </form>
 <div class="solicitudes-scroll" tabindex="0" role="region" aria-label="Lista de solicitudes de facturación">
-<table class="solicitudes-tabla"><thead><tr><th>ID de Solicitud</th><th>Fecha de Presentación</th><th>Receptor</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>
-{% for solicitud in pagina %}<tr><td>{{ solicitud.numero_solicitante }}<br><small>{{ solicitud.correo_solicitante }}</small></td>
-<td>{{ solicitud.fecha_presentacion }}</td><td>{{ solicitud.nombre_receptor }}</td><td><span class="badge">{{ solicitud.get_estado_display }}</span> — seguimiento: {{ solicitud.estado_seguimiento }}</td><td><a class="btn" href="{% url 'facturacion:detalle' solicitud.pk %}">Ver Detalle</a></td></tr>
-{% empty %}<tr><td colspan="5">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
+<table class="solicitudes-tabla"><thead><tr><th scope="col">ID</th><th scope="col">Solicitante</th><th scope="col">Fecha de Presentación</th><th scope="col">Receptor</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead><tbody>
+{% for solicitud in pagina %}<tr data-resumen="{{ solicitud.pk }}"><td class="fac-number">#{{ solicitud.numero_visible }}</td><td class="fac-email">{{ solicitud.email_envio_factura }}</td>
+<td class="fac-date">{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</td><td>{{ solicitud.nombre_receptor }}</td><td>{% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}</td><td><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Ver Detalle</a></td></tr>
+{% empty %}<tr><td colspan="6" class="fac-empty">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
 </div>
-<nav aria-label="Páginas">{% if pagina.has_previous %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+<nav class="fac-pagination" aria-label="Páginas">{% if pagina.has_previous %}<a class="btn btn-secondary" href="?{{ filtros_query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
 <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-{% if pagina.has_next %}<a href="?{{ filtros_query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>
+{% if pagina.has_next %}<a class="btn btn-secondary" href="?{{ filtros_query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>
+{% include "facturacion/resumen_lateral.html" %}
+<script src="{% static 'facturacion/js/resumen_lateral.js' %}?v=2" defer></script>
 <script>
 document.querySelectorAll('.solicitudes-scroll').forEach(function (region) {
     const tabla = region.querySelector('table');

@@ -11,30 +11,46 @@ from comunes.models import TramiteBase
 from documentos.acceso import documentos_visibles
 from documentos.models import Documento, RevisionDocumento
 from documentos.operaciones import operacion_documental
-from documentos.policy import ArchivoInvalido, validar_archivo
+from documentos.policy import validar_archivo
 from documentos.revision import version_aceptada
 from documentos.services import bloquear_serie, incorporar
 from identidad.services import has_capability
 
 from .choices import ModalidadCobro
-from .models import ActualizacionRespaldo, CobroExterno, SolicitudFacturacion
+from .comprobantes import pdf_comprobante
+from .models import ActualizacionRespaldo, CobroExterno, ComprobanteExterno, SolicitudFacturacion
 from .permissions import ObjetoNoVisibleError, filtrar_solicitudes_visibles
 from .workflow import ConflictoConcurrenciaError, _evento, _serializar
 
 TERMINALES = {"CERRADA", "ANULADA"}
 
 
+def importes_cobro(comprobantes, cobros):
+    cero = Decimal("0.00")
+    neto = sum(
+        (-c.importe if c.tipo == "NOTA_CREDITO" else c.importe for c in comprobantes), cero
+    )
+    confirmado = sum((c.importe for c in cobros if c.resultado == "CONFIRMADO"), cero)
+    pendiente = sum((c.importe for c in cobros if c.resultado == "PENDIENTE"), cero)
+    return dict(
+        hay_factura=any(c.tipo == "FACTURA" for c in comprobantes),
+        neto=neto,
+        confirmado=confirmado,
+        pendiente=pendiente,
+        registrado=confirmado + pendiente,
+        restante=max(neto - confirmado, cero),
+    )
+
+
 def estado_visible(solicitud):
     if solicitud.estado != "PRESENTADA":
         return solicitud.get_estado_display()
-    comprobantes = list(solicitud.comprobantes.all())
-    if not any(c.tipo == "FACTURA" for c in comprobantes):
+    importes = importes_cobro(solicitud.comprobantes.all(), solicitud.cobros.all())
+    if not importes["hay_factura"]:
         return "Presentada"
-    neto = sum((-c.importe if c.tipo == "NOTA_CREDITO" else c.importe) for c in comprobantes)
-    confirmado = sum(c.importe for c in solicitud.cobros.all() if c.resultado == "CONFIRMADO")
     return (
         "Cobrada en revisión"
-        if neto >= 0 and confirmado >= neto
+        if 0 <= importes["neto"] <= importes["confirmado"]
         else "Facturada pendiente de cobro"
     )
 
@@ -44,8 +60,15 @@ def exigir_abierta(solicitud):
         raise PermissionDenied("El trámite es terminal y sólo admite consulta.")
 
 
-def motivo_valido(motivo):
-    if not isinstance(motivo, str) or not motivo.strip() or len(motivo) > 2000 or "\x00" in motivo:
+def motivo_valido(motivo, *, obligatorio=True):
+    if motivo is None and not obligatorio:
+        return ""
+    if (
+        not isinstance(motivo, str)
+        or len(motivo) > 2000
+        or "\x00" in motivo
+        or (obligatorio and not motivo.strip())
+    ):
         raise ValidationError("Indicá un motivo con texto de hasta 2000 caracteres.")
     return motivo.strip()
 
@@ -55,29 +78,61 @@ def respaldo_actual(objeto):
     return actualizacion.nuevo if actualizacion else objeto.documento
 
 
+def puede_actualizar_respaldo(actor):
+    return has_capability(actor, "facturacion.actualizar_respaldo") and has_capability(
+        actor, "documentos.consultar_metadatos"
+    )
+
+
+def sucesores_respaldo(actor, anterior):
+    return documentos_visibles(actor).filter(
+        tramite_base_id=anterior.tramite_base_id,
+        serie=anterior.serie,
+        tipo=anterior.tipo,
+        version__gt=anterior.version,
+        sucesor__isnull=True,
+    )
+
+
+def sucesores_respaldo_cobro(actor, anterior):
+    return sucesores_respaldo(actor, anterior).exclude(
+        pk__in=ActualizacionRespaldo.objects.values("nuevo_id")
+    ).exclude(pk__in=CobroExterno.todos.values("documento_id"))
+
+
+def sucesores_respaldo_comprobante(actor, anterior):
+    return sucesores_respaldo(actor, anterior).filter(formato="application/pdf").exclude(
+        pk__in=ActualizacionRespaldo.objects.values("nuevo_id")
+    ).exclude(pk__in=ComprobanteExterno.todos.values("documento_id"))
+
+
+def respaldos_solo_rectificados(cobros):
+    rectificados = [cobro for cobro in cobros if cobro.resultado == "RECTIFICADO"]
+    if not rectificados:
+        return set()
+    return {respaldo_actual(cobro).pk for cobro in rectificados} - {
+        respaldo_actual(cobro).pk for cobro in cobros if cobro.resultado != "RECTIFICADO"
+    }
+
+
 def diagnostico(solicitud):
     comprobantes = list(solicitud.comprobantes.select_related("documento"))
-    cobros = list(solicitud.cobros.select_related("documento", "verificacion"))
-    neto = sum(
-        ((-c.importe if c.tipo == "NOTA_CREDITO" else c.importe) for c in comprobantes),
-        Decimal("0.00"),
-    )
-    confirmado = sum((c.importe for c in cobros if c.resultado == "CONFIRMADO"), Decimal("0.00"))
-    pendientes = [c for c in cobros if c.resultado == "PENDIENTE"]
-    factura = any(c.tipo == "FACTURA" for c in comprobantes)
-    faltas_cierre, faltas_anulacion = [], []
+    cobros = list(solicitud.cobros.select_related("documento", "verificacion__rectificacion"))
+    importes = importes_cobro(comprobantes, cobros)
+    neto, confirmado, factura = importes["neto"], importes["confirmado"], importes["hay_factura"]
+    faltas_cierre, faltas_anulacion = {}, {}
     if not factura:
-        faltas_cierre.append("Falta registrar la factura.")
+        faltas_cierre["Falta registrar la factura."] = "#comprobantes-externos"
     if neto <= 0:
-        faltas_cierre.append("El cierre normal exige neto positivo.")
-    if confirmado != neto:
-        faltas_cierre.append("El total confirmado debe ser exactamente igual al neto.")
+        faltas_cierre["El cierre normal exige neto positivo."] = "#comprobantes-externos"
+    if confirmado < neto:
+        faltas_cierre["El total confirmado debe cubrir al menos el neto."] = "#cobros-externos"
     if solicitud.estado == "OBSERVADA":
-        faltas_cierre.append("La observación de la solicitud sigue pendiente de corrección.")
-    if pendientes:
+        mensaje = "La observación de la solicitud sigue pendiente de corrección."
+        faltas_cierre[mensaje] = "#observacion-solicitud"
+    if importes["pendiente"]:
         mensaje = "Hay ingresos pendientes de verificación."
-        faltas_cierre.append(mensaje)
-        faltas_anulacion.append(mensaje)
+        faltas_cierre[mensaje] = faltas_anulacion[mensaje] = "#cobros-externos"
     if (
         solicitud.presento_comprobante_pago
         and solicitud.modalidad_cobro in {"MERCADO_PAGO", "BNA_COMUN", "BNA_UVT", "NBCH"}
@@ -89,16 +144,7 @@ def diagnostico(solicitud):
         mensaje = (
             "La operación declarada inicialmente aún debe registrarse y verificarse como cobro."
         )
-        faltas_cierre.append(mensaje)
-        faltas_anulacion.append(mensaje)
-    if confirmado:
-        faltas_anulacion.append(
-            "Hay ingresos confirmados; falta definir su regularización/devolución."
-        )
-    if factura and neto != 0:
-        faltas_anulacion.append(
-            "La factura sólo permite anulación cuando su neto es exactamente cero."
-        )
+        faltas_cierre[mensaje] = faltas_anulacion[mensaje] = "#cobros-externos"
     documentos, faltas_documentales = [], []
     for objeto in [*comprobantes, *(c for c in cobros if c.resultado == "CONFIRMADO")]:
         documento = respaldo_actual(objeto)
@@ -113,13 +159,14 @@ def diagnostico(solicitud):
                 )
             )
             mensaje = (
-                f'{etiqueta} — respaldo "{documento.nombre_original}", '
+                f'{etiqueta} — documento de respaldo "{documento.nombre_original}", '
                 f"versión {documento.version}: debe ser vigente y estar ACEPTADO."
             )
             faltas_documentales.append(mensaje)
-            faltas_cierre.append(mensaje)
+            prefijo = "comprobante" if objeto in comprobantes else "cobro"
+            faltas_cierre[mensaje] = f"#{prefijo}-{objeto.pk}"
             if objeto in comprobantes:
-                faltas_anulacion.append(mensaje)
+                faltas_anulacion[mensaje] = faltas_cierre[mensaje]
     # Incluye todos los aportes/revisiones: una pantalla anterior no resuelve un trámite cambiado.
     docs = list(
         Documento.objects.filter(tramite_base=solicitud.tramite_base).values_list(
@@ -159,13 +206,13 @@ def diagnostico(solicitud):
             else "FACTURADA_PENDIENTE_COBRO"
         )
     return dict(
-        neto=neto,
-        confirmado=confirmado,
+        **importes,
         diferencia=neto - confirmado,
         exceso=max(confirmado - neto, Decimal("0.00")),
         estado=estado,
-        faltas_cierre=faltas_cierre,
-        faltas_anulacion=faltas_anulacion,
+        faltas_cierre=list(faltas_cierre),
+        faltas_anulacion=list(faltas_anulacion),
+        destinos_pendientes=faltas_cierre | faltas_anulacion,
         revision=revision,
         terminal=solicitud.estado in TERMINALES,
         documentos=documentos,
@@ -175,6 +222,7 @@ def diagnostico(solicitud):
 
 def diagnostico_visible(actor, solicitud):
     resultado = diagnostico(solicitud)
+    destinos = resultado.pop("destinos_pendientes")
     if not has_capability(actor, "documentos.consultar_metadatos"):
         for campo in ("faltas_cierre", "faltas_anulacion"):
             resultado[campo] = [
@@ -183,6 +231,10 @@ def diagnostico_visible(actor, solicitud):
             resultado[campo].append("Condiciones documentales no disponibles para esta cuenta.")
         resultado["documentos"] = []
         resultado["faltas_documentales"] = []
+    for accion in ("cierre", "anulacion"):
+        resultado[f"pendientes_{accion}"] = [
+            (mensaje, destinos.get(mensaje)) for mensaje in resultado[f"faltas_{accion}"]
+        ]
     return resultado
 
 
@@ -202,12 +254,12 @@ def _bloquear(actor, numero, capacidad):
     return solicitud
 
 
-def resolver_tramite(*, actor, numero, accion, motivo, revision_esperada):
+def resolver_tramite(*, actor, numero, accion, revision_esperada, motivo=None):
     if accion not in {"cerrar", "anular"}:
         raise ValidationError("Acción de resolución inválida.")
     with transaction.atomic():
         solicitud = _bloquear(actor, numero, f"facturacion.{accion}")
-        motivo = motivo_valido(motivo)
+        motivo = motivo_valido(motivo, obligatorio=accion == "anular")
         estado = diagnostico(solicitud)
         if revision_esperada != estado["revision"]:
             raise ConflictoConcurrenciaError("El trámite cambió. Recargá el detalle.")
@@ -242,14 +294,15 @@ def actualizar_respaldo(
         )
         if objeto is None:
             raise ObjetoNoVisibleError
+        if clase == "cobro" and objeto.resultado == "RECTIFICADO":
+            raise ValidationError("Para reutilizar el cobro rectificado, corregí sus datos.")
         anterior = respaldo_actual(objeto)
         bloquear_serie(anterior)
         if bool(nuevo_id) == bool(archivo):
             raise ValidationError("Elegí una versión existente o un nuevo archivo, sólo uno.")
         if archivo:
-            validado = validar_archivo(archivo)
-            if clase == "comprobante" and validado.formato != "application/pdf":
-                raise ArchivoInvalido("El comprobante externo requiere PDF.")
+            validar = pdf_comprobante if clase == "comprobante" else validar_archivo
+            validado = validar(archivo)
             nuevo = incorporar(
                 actor=actor,
                 referencia=f"facturacion:{numero}",
@@ -258,22 +311,12 @@ def actualizar_respaldo(
                 procedencia="EXTERNO_BANCO"
                 if anterior.tipo == "COMPROBANTE_COBRO"
                 else objeto.procedencia,
-                reemplaza_id=anterior.pk,
+                reemplaza_id=Documento.objects.filter(serie=anterior.serie).latest("version").pk,
                 _escrituras=escrituras,
             )
             nuevo_id = nuevo.pk
-        nuevo = (
-            documentos_visibles(actor)
-            .filter(
-                pk=nuevo_id,
-                tramite_base=solicitud.tramite_base,
-                serie=anterior.serie,
-                tipo=anterior.tipo,
-                version__gt=anterior.version,
-            )
-            .first()
-        )
-        if nuevo is None or Documento.objects.filter(reemplaza=nuevo).exists():
+        nuevo = sucesores_respaldo(actor, anterior).filter(pk=nuevo_id).first()
+        if nuevo is None:
             raise ValidationError(
                 "Elegí la versión sucesora vigente del mismo trámite, tipo y serie."
             )
@@ -281,7 +324,7 @@ def actualizar_respaldo(
             raise ValidationError("La versión debe conservar el origen del comprobante.")
         if clase == "comprobante" and nuevo.formato != "application/pdf":
             raise ValidationError("El comprobante externo requiere PDF.")
-        otros = solicitud.comprobantes if clase == "comprobante" else solicitud.cobros
+        otros = ComprobanteExterno.todos if clase == "comprobante" else CobroExterno.todos
         if otros.exclude(pk=objeto.pk).filter(documento=nuevo).exists() or (
             ActualizacionRespaldo.objects.filter(nuevo=nuevo).exists()
         ):

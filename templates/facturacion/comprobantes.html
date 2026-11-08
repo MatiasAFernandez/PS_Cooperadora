@@ -1,18 +1,21 @@
-<section class="panel">
+<section class="panel fac-has-help fac-pendiente-destino" id="comprobantes-externos" tabindex="-1">
 <h3>Comprobantes externos registrados</h3>
+{% include "facturacion/ayuda.html" with id="ayuda-comprobantes" etiqueta="Comprobantes externos registrados" texto="Reúne la factura emitida y sus notas. El neto suma los débitos y resta los créditos a la factura." only %}
 {% if puede_registrar_comprobante and not diagnostico.terminal %}<p><a class="btn" href="{% url 'facturacion:registrar_comprobante' solicitud.pk %}">Registrar factura o nota externa</a></p>{% endif %}
 {% if comprobantes %}
-<p>Neto registrado: <strong>{{ neto_comprobantes }}</strong> (factura + débitos − créditos). Es informativo: no acredita saldo cobrado ni cierre.</p>
-<ul class="record-list">{% for c in comprobantes %}<li class="record-card">
+<ul class="record-list">{% for c in comprobantes %}<li class="record-card fac-pendiente-destino" id="comprobante-{{ c.pk }}" tabindex="-1">
 <p><strong>{{ c.identificacion }}</strong> — emisor {{ c.cuit_emisor }} — emisión {{ c.fecha_emision|date:"d/m/Y" }} — importe {{ c.importe }}.
-{% if c.factura_origen %}Vinculada a {{ c.factura_origen.identificacion }}.{% endif %}
+{% if c.factura_origen_id %}Vinculada a {{ factura_vigente.identificacion }}.{% endif %}
 </p><p>Origen {{ c.origen_mostrado }}. Registrado por actor #{{ c.actor_id }} el {{ c.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
+{% if c.estado_revision %}<p>Revisión documental: {% include "facturacion/estado.html" with estado=c.estado_revision only %}</p>{% endif %}
 <div class="record-actions" role="group" aria-label="Acciones de {{ c.identificacion }}">
-{% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' c.respaldo_vinculado.pk %}">Descargar PDF vinculado</a>{% endif %}
-{% if puede_ver_revision %}<a class="btn" href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}">Consultar revisión documental</a>{% endif %}
-</div>
-{% if puede_actualizar_respaldo and not diagnostico.terminal %}<div class="record-maintenance"><p>Si el respaldo fue reemplazado, actualizá su vínculo.</p><div class="record-actions"><a class="btn btn-secondary" href="{% url 'facturacion:actualizar_respaldo' solicitud.pk 'comprobante' c.pk %}">Actualizar vínculo del respaldo</a></div></div>{% endif %}
-</li>{% endfor %}</ul>
+{% if not diagnostico.terminal %}
+{% if puede_registrar_comprobante or puede_actualizar_respaldo %}<a class="btn btn-secondary" href="{% url 'facturacion:modificar_comprobante' solicitud.pk c.pk %}">Modificar comprobante externo</a>{% endif %}
 {% endif %}
+{% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' c.respaldo_vinculado.pk %}">Descargar PDF vinculado</a>{% endif %}
+{% if puede_ver_revision %}<a class="btn" href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}">{% if puede_revisar_documentos and c.estado_revision == "PENDIENTE" %}Realizar revisión documental{% else %}Consultar revisión documental{% endif %}</a>{% endif %}
+</div>
+</li>{% endfor %}</ul>
+{% else %}<p class="fac-empty">Sin comprobantes externos registrados.</p>{% endif %}
 
 </section>

@@ -62,7 +62,7 @@ def test_detalle_no_infiere_respaldo_por_estado(
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Esta vista no muestra metadatos ni estado de revisión" in content
+    assert response.context["versiones_documentales"] is None
     assert "por aportar" not in content
     assert "No se solicita documentación en esta etapa" not in content
     assert response.context["puede_ver_documentos"] is False
@@ -84,7 +84,7 @@ def test_decision_y_error_de_decision_no_alteran_mensaje_documental(
 
     response = cliente_solicitante.get(detalle)
     assert response.status_code == 200
-    assert "Esta vista no muestra metadatos ni estado de revisión" in response.content.decode()
+    assert response.context["versiones_documentales"] is None
 
     error = cliente_operadora.post(
         decidir,
@@ -96,7 +96,7 @@ def test_decision_y_error_de_decision_no_alteran_mensaje_documental(
         },
     )
     assert error.status_code == 400
-    assert "Esta vista no muestra metadatos ni estado de revisión" in error.content.decode()
+    assert not error.context["versiones_documentales"]
 
     aceptada = cliente_operadora.post(
         decidir,
@@ -110,7 +110,7 @@ def test_decision_y_error_de_decision_no_alteran_mensaje_documental(
     assert aceptada.status_code == 302
     final = cliente_solicitante.get(detalle)
     assert final.status_code == 200
-    assert "Esta vista no muestra metadatos ni estado de revisión" in final.content.decode()
+    assert final.context["versiones_documentales"] is None
 
 
 @pytest.mark.django_db
@@ -153,7 +153,7 @@ def test_sin_capacidad_incorporar_no_ve_enlace_ni_formulario(
     cliente = auth_client(accounts["demo_a"])
     contenido = cliente.get(reverse("gastos:detalle", kwargs={"pk": solicitud.pk})).content.decode()
 
-    assert "Cargar o reemplazar un respaldo" not in contenido
+    assert "Cargar o reemplazar respaldo comercial" not in contenido
     assert 'type="file"' not in contenido
     assert cliente.get(reverse("gastos:documentos", kwargs={"pk": solicitud.pk})).status_code == 403
 
