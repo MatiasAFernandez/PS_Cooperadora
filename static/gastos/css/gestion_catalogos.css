@@ -1,0 +1,669 @@
+/**
+ * Estilos para Gestión de Catálogos y Parámetros — PS_Cooperadora
+ * Estándar visual UTN FRRe / Calidad 2026:
+ *  - Ancho máximo institucional 1140px (--content-width).
+ *  - Paleta azul institucional (#090979, #084298, #0d6efd).
+ *  - Tipografía Montserrat con fallback estándar.
+ *  - Controles y zonas de interacción ergonómicas (>= 44px).
+ *  - Chips atenuados de estado con contraste certificado (> 6:1).
+ *  - Bordes sutiles (1px #e2e8f0), esquinas suaves (rounded-md).
+ *  - Totalmente adaptativo y sin scroll horizontal en 390px.
+ */
+
+:root {
+  --ref-deep-blue: #090979;
+  --ref-blue: #084298;
+  --ref-bright-blue: #0d6efd;
+  --ref-text: #1e293b;
+  --ref-heading: #37423b;
+  --ref-bg-surface: #ffffff;
+  --ref-bg-muted: #f8fafc;
+  --ref-border: #e2e8f0;
+  --ref-border-strong: #cbd5e1;
+
+  --color-success: #166534;
+  --color-success-bg: #effaf2;
+  --color-success-border: #bbf7d0;
+
+  --color-error: #9f1239;
+  --color-error-bg: #fff1f2;
+  --color-error-border: #fecdd3;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --row-height-dense: 44px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* -------------------------------------------------------------------------
+ * Layout Principal y Contenedor
+ * ------------------------------------------------------------------------- */
+.catalog-admin {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* -------------------------------------------------------------------------
+ * Cabeceras de Página y de Sección
+ * ------------------------------------------------------------------------- */
+.catalog-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.catalog-heading > div {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.catalog-eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.catalog-heading h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ref-deep-blue, #090979);
+  line-height: 1.25;
+}
+
+.catalog-heading h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ref-deep-blue, #090979);
+  line-height: 1.3;
+}
+
+.catalog-heading p {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+/* -------------------------------------------------------------------------
+ * Mensajes de Estado / Flash Messages
+ * ------------------------------------------------------------------------- */
+.catalog-message {
+  background: var(--color-success-bg, #effaf2);
+  color: var(--color-success, #166534);
+  border: 1px solid var(--color-success-border, #bbf7d0);
+  border-radius: var(--radius-md, 6px);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+}
+
+/* -------------------------------------------------------------------------
+ * Tarjetas de Sección (.catalog-card)
+ * ------------------------------------------------------------------------- */
+.catalog-card {
+  background: #ffffff;
+  border: 1px solid var(--ref-border, #e2e8f0);
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+  box-sizing: border-box;
+}
+
+/* -------------------------------------------------------------------------
+ * Formulario Desplegable de Nuevo Centro (.catalog-add)
+ * ------------------------------------------------------------------------- */
+.catalog-add {
+  margin-bottom: 1.25rem;
+}
+
+.catalog-add > summary.btn {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  background: var(--ref-blue, #084298);
+  color: #ffffff;
+  border-radius: var(--radius-md, 6px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-fast, 150ms ease);
+}
+
+.catalog-add > summary.btn:hover {
+  background: var(--ref-deep-blue, #090979);
+}
+
+.catalog-add > summary::-webkit-details-marker {
+  display: none;
+}
+
+.catalog-add > summary svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Cajas de Formulario (.catalog-box)
+ * ------------------------------------------------------------------------- */
+.catalog-box {
+  background: var(--ref-bg-muted, #f8fafc);
+  border: 1px solid var(--ref-border, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+  padding: 1.15rem;
+  margin-top: 0.75rem;
+  box-sizing: border-box;
+}
+
+.catalog-box label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ref-heading, #37423b);
+  margin-bottom: 0.35rem;
+}
+
+.catalog-box input[type="text"] {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md, 6px);
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: #ffffff;
+  color: #1e293b;
+  transition: border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
+}
+
+.catalog-box input[type="text"]:focus {
+  border-color: var(--ref-bright-blue, #0d6efd);
+  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
+  outline: none;
+}
+
+.catalog-box input[aria-invalid="true"] {
+  border-color: var(--color-error, #9f1239);
+  background-color: #fffafa;
+}
+
+/* -------------------------------------------------------------------------
+ * Grilla de Campos (.catalog-fields)
+ * ------------------------------------------------------------------------- */
+.catalog-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.catalog-fields > div {
+  min-width: 0;
+}
+
+.catalog-fields label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ref-heading, #37423b);
+  margin-bottom: 0.35rem;
+}
+
+.catalog-fields input:not([type="checkbox"]):not([type="radio"]),
+.catalog-fields select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md, 6px);
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+.catalog-fields input:focus,
+.catalog-fields select:focus {
+  border-color: var(--ref-bright-blue, #0d6efd);
+  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
+  outline: none;
+}
+
+.catalog-fields small {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* -------------------------------------------------------------------------
+ * Checkbox de Disponibilidad (.catalog-check)
+ * ------------------------------------------------------------------------- */
+.catalog-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 1.15rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.catalog-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--ref-blue, #084298);
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------------------------
+ * Barra de Herramientas / Búsqueda y Filtro (.catalog-tools)
+ * ------------------------------------------------------------------------- */
+.catalog-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--ref-bg-muted, #f8fafc);
+  border: 1px solid var(--ref-border, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+}
+
+.catalog-tools[hidden] {
+  display: none !important;
+}
+
+.catalog-search {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.catalog-search label,
+.catalog-tools label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+.catalog-search input[type="search"],
+.catalog-tools select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md, 6px);
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+.catalog-search input[type="search"]:focus,
+.catalog-tools select:focus {
+  border-color: var(--ref-bright-blue, #0d6efd);
+  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
+  outline: none;
+}
+
+.catalog-filter-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+  background: var(--ref-bg-muted, #f8fafc);
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-md, 6px);
+  margin: 1rem 0;
+}
+
+.catalog-filter-empty[hidden] {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------
+ * Tabla Densa de Centros de Costo (.catalog-table)
+ * ------------------------------------------------------------------------- */
+.catalog-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.catalog-table thead th {
+  background: var(--ref-bg-muted, #f8fafc);
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ref-border, #e2e8f0);
+  height: var(--row-height-dense, 44px);
+  box-sizing: border-box;
+}
+
+.catalog-table tbody tr {
+  border-bottom: 1px solid var(--ref-border, #e2e8f0);
+  transition: background-color var(--transition-fast, 150ms ease);
+}
+
+.catalog-table tr[data-catalog-row][hidden] {
+  display: none;
+}
+
+.catalog-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.catalog-table tbody tr[data-status="inactivo"] {
+  background-color: #fafbfc;
+}
+
+.catalog-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+.catalog-code code {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--ref-deep-blue, #090979);
+  background: #edf2f7;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.catalog-name strong {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Píldoras / Chips de Estado */
+.catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.catalog-chip.catalog-chip-active {
+  background: #ecfdf5;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+/* -------------------------------------------------------------------------
+ * Acciones de Fila y Detalles (.catalog-actions, .catalog-action)
+ * ------------------------------------------------------------------------- */
+.catalog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.catalog-actions form {
+  margin: 0;
+  display: inline-block;
+}
+
+.catalog-action {
+  position: relative;
+  display: inline-block;
+}
+
+.catalog-action > summary.btn {
+  list-style: none;
+  min-height: 38px;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.catalog-action > summary::-webkit-details-marker {
+  display: none;
+}
+
+.catalog-action[open] > summary {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+/* Ventana flotante de formulario en Desktop */
+@media (min-width: 641px) {
+  .catalog-action .catalog-box {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 30;
+    width: 320px;
+    max-width: 90vw;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--radius-md, 6px);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+    padding: 1rem;
+    text-align: left;
+    margin: 0;
+  }
+}
+
+.catalog-action .catalog-box label {
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.catalog-action .catalog-box input[type="text"] {
+  min-height: 40px;
+  padding: 0.45rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.catalog-action .catalog-box p {
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.45;
+  margin: 0 0 0.75rem;
+}
+
+.catalog-action .catalog-box button[type="submit"] {
+  width: 100%;
+  min-height: 38px;
+}
+
+.btn.catalog-confirm {
+  background: var(--color-error, #9f1239);
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+
+.btn.catalog-confirm:hover {
+  background: #881337;
+  color: #ffffff;
+}
+
+.catalog-atp-save {
+  min-height: 44px;
+  padding: 0.55rem 1.35rem;
+}
+
+/* -------------------------------------------------------------------------
+ * Errores de Validación (Django form errors)
+ * ------------------------------------------------------------------------- */
+.errorlist {
+  color: var(--color-error, #9f1239);
+  font-size: 0.75rem;
+  font-weight: 600;
+  list-style: none;
+  padding-left: 0;
+  margin: 0.35rem 0 0;
+}
+
+.errorlist li {
+  margin-bottom: 0.15rem;
+}
+
+/* -------------------------------------------------------------------------
+ * Responsivo y Móvil estricto (390px sin scroll horizontal)
+ * ------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .catalog-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .catalog-heading .btn {
+    width: 100%;
+  }
+
+  .catalog-card {
+    padding: 1rem;
+  }
+
+  .catalog-fields {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .catalog-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .catalog-search,
+  .catalog-tools > div:not(.catalog-search) {
+    width: 100%;
+    flex: none;
+  }
+
+  /* Conversión de filas de tabla en tarjetas móviles legibles */
+  .catalog-table,
+  .catalog-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .catalog-table thead {
+    display: none;
+  }
+
+  .catalog-table tr[data-catalog-row] {
+    display: block;
+    padding: 0.85rem;
+    margin-bottom: 0.75rem;
+    background: #ffffff;
+    border: 1px solid var(--ref-border, #e2e8f0);
+    border-radius: var(--radius-md, 6px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .catalog-table td {
+    display: block;
+    padding: 0.25rem 0;
+    border: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .catalog-table td.catalog-code {
+    margin-bottom: 0.25rem;
+  }
+
+  .catalog-table td.catalog-name {
+    margin-bottom: 0.35rem;
+  }
+
+  .catalog-table td.catalog-name strong {
+    font-size: 0.95rem;
+    display: block;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .catalog-table td.catalog-state {
+    margin-bottom: 0.5rem;
+  }
+
+  .catalog-table td.catalog-actions {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+    text-align: left;
+  }
+
+  .catalog-actions {
+    justify-content: stretch;
+    gap: 0.5rem;
+  }
+
+  .catalog-actions details.catalog-action,
+  .catalog-actions form {
+    width: 100%;
+  }
+
+  .catalog-actions .btn {
+    width: 100%;
+  }
+
+  .catalog-action .catalog-box {
+    position: static;
+    width: 100%;
+    margin-top: 0.5rem;
+    box-sizing: border-box;
+  }
+}

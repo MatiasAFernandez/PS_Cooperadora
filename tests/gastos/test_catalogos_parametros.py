@@ -266,6 +266,76 @@ def test_gestion_catalogos_crear_centro_post(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("nombre", "status_code"),
+    [("Laboratorio de Sistemas", 302), ("x" * 151, 400)],
+)
+def test_gestion_catalogos_editar_solo_nombre(
+    client: Client,
+    demo_accounts: tuple[dict[str, Any], str],
+    nombre: str,
+    status_code: int,
+) -> None:
+    _, password = demo_accounts
+    client.login(username="demo_o", password=password)
+    centro = CentroCosto.objects.create(
+        codigo="lab-sistemas", nombre="Sistemas", activo=True
+    )
+    url = reverse("gastos:gestion_catalogos")
+
+    response = client.post(
+        url,
+        {
+            "csrfmiddlewaretoken": issue_csrf_credentials(client),
+            "action": "editar_centro",
+            "centro_id": centro.pk,
+            "nombre": nombre,
+            "codigo": "otro-codigo",
+            "activo": "",
+        },
+    )
+
+    assert response.status_code == status_code
+    centro.refresh_from_db()
+    assert centro.codigo == "lab-sistemas"
+    assert centro.activo is True
+    if status_code == 302:
+        assert response.url == url
+        assert centro.nombre == nombre
+    else:
+        assert centro.nombre == "Sistemas"
+        assert response.context["centro_editado_id"] == centro.pk
+        formulario = response.context["centro_edicion_form"]
+        assert formulario["nombre"].value() == nombre
+        assert "nombre" in formulario.errors
+        assert f'id="catalog-error-{centro.pk}"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_gestion_catalogos_deniega_edicion_a_solicitante(
+    client: Client,
+    demo_accounts: tuple[dict[str, Any], str],
+) -> None:
+    _, password = demo_accounts
+    client.login(username="demo_a", password=password)
+    centro = CentroCosto.objects.create(codigo="lab-sistemas", nombre="Sistemas")
+
+    response = client.post(
+        reverse("gastos:gestion_catalogos"),
+        {
+            "csrfmiddlewaretoken": issue_csrf_credentials(client),
+            "action": "editar_centro",
+            "centro_id": centro.pk,
+            "nombre": "Otro nombre",
+        },
+    )
+
+    assert response.status_code == 403
+    centro.refresh_from_db()
+    assert centro.nombre == "Sistemas"
+
+
+@pytest.mark.django_db
 def test_gestion_catalogos_actualizar_atp_post(
     client: Client,
     demo_accounts: tuple[dict[str, Any], str],

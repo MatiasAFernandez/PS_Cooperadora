@@ -3,6 +3,7 @@
 from decimal import Decimal
 from typing import Any
 
+from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
@@ -1223,6 +1224,9 @@ def _puede_administrar_catalogos(actor: Any) -> bool:
     )
 
 
+CentroCostoEdicionForm = forms.modelform_factory(CentroCosto, fields=["nombre"])
+
+
 class GestionCatalogosView(View):
     """Administración de catálogos (centros de costo) y parámetros de Cooperadora."""
 
@@ -1283,6 +1287,39 @@ class GestionCatalogosView(View):
                     "centros_costo": centros,
                     "centro_form": centro_form,
                     "atp_form": atp_form,
+                },
+                status=400,
+            )
+
+        if action == "editar_centro":
+            try:
+                centro_id = int(request.POST.get("centro_id", ""))
+            except ValueError as exc:
+                raise Http404("Centro de costo no encontrado.") from exc
+            centro = get_object_or_404(CentroCosto, pk=centro_id)
+            edicion_form = CentroCostoEdicionForm(
+                request.POST, instance=centro, auto_id=f"id_centro_{centro.pk}_%s"
+            )
+            if edicion_form.is_valid():
+                centro.nombre = edicion_form.cleaned_data["nombre"]
+                centro.save(update_fields=["nombre"])
+                messages.success(request, "Nombre del centro de costo actualizado.")
+                return redirect(reverse("gastos:gestion_catalogos"))
+            return render(
+                request,
+                "gastos/gestion_catalogos.html",
+                {
+                    "actor": self.actor,
+                    "centros_costo": centros,
+                    "centro_form": CentroCostoForm(),
+                    "atp_form": ParametrosATPForm(
+                        initial={
+                            "base_imponible_atp": obtener_base_imponible_atp(),
+                            "alicuota_atp": obtener_alicuota_atp(),
+                        }
+                    ),
+                    "centro_editado_id": centro.pk,
+                    "centro_edicion_form": edicion_form,
                 },
                 status=400,
             )
