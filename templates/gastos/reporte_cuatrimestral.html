@@ -30,7 +30,7 @@
   </div>
 
   <!-- 1. BARRA DE CONTROL SUPERIOR: Ejercicio + Período + Modalidad -->
-  <form class="card control-bar" id="repForm" method="get" action="{% url 'gastos:reporte_cuatrimestral' %}" aria-label="Filtros del reporte">
+  <form class="card control-bar" id="repForm" method="get" action="{% url 'gastos:reporte_cuatrimestral' %}" aria-label="Filtros del reporte" data-filtros-reporte>
     <input type="hidden" name="corte" id="id_corte" value="{{ corte|default:'ANIO' }}">
     {% if mostrar_sin_actividad %}<input type="hidden" name="sin_actividad" value="1">{% endif %}
     <div class="control-main">
@@ -87,10 +87,8 @@
       </div>
     </details>
     <div class="rep-filter-actions">
-      <button type="submit" class="btn" id="btnAplicarFiltros">Aplicar filtros</button>
-      {% if corte and corte != 'ANIO' or modalidad or centro_costo_seleccionado %}
-        <a href="?anio={{ reporte.anio }}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn ghost" id="btnResetFiltros">Restablecer filtros</a>
-      {% endif %}
+      <a href="{% url 'gastos:reporte_cuatrimestral' %}" class="btn ghost" id="btnResetFiltros">Limpiar filtros</a>
+      <noscript><button type="submit" class="btn">Actualizar reporte</button></noscript>
     </div>
 
     <div class="control-meta">
@@ -424,4 +422,5 @@
 
   <p class="foot">Reporte Directivo de Gastos · PS Cooperadora · UTN FRRe</p>
 </div>
+<script src="{% static 'gestion/filtros_reporte.js' %}" defer></script>
 {% endblock %}

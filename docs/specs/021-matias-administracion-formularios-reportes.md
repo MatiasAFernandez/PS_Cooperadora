@@ -49,7 +49,7 @@ requiere capacidad administrativa, también mediante POST directo.
 
 ## Reporte de facturación: diccionario técnico
 
-Población: solicitudes operativas presentadas en el año/cuatrimestre local
+Población: solicitudes operativas presentadas en el año, cuatrimestre o trimestre local
 elegido; se excluyen borradores y anuladas y se informa la cantidad de anuladas.
 Se analizan los importes vigentes al consultar de esa población; no se presenta
 como movimiento de caja por fecha de cobro.
@@ -80,6 +80,17 @@ pestañas Gastos y Facturación según permisos. Configuración de Gastos incorp
 los mismos formularios de Centros de costo y ATP mediante un parcial reutilizado.
 Se mantienen layout, tokens, navegación y componentes existentes, Django y JS
 nativo. Escritorio y móvil forman parte de la verificación.
+
+En Reporte, las pestañas preceden al título de cada circuito. Facturación ofrece
+botones de año completo, tres cuatrimestres (enero–abril, mayo–agosto,
+septiembre–diciembre) y cuatro trimestres (enero–marzo, abril–junio,
+julio–septiembre, octubre–diciembre) para el año seleccionado. Se elige un único
+período; cambiarlo conserva el año y el orden de grupos. Los parámetros de trimestre
+y cuatrimestre simultáneos se rechazan. La tabla de evolución conserva su
+agrupación por cuatrimestre dentro de la población filtrada.
+En ambos reportes, las selecciones aplican los filtros automáticamente mediante
+GET. Limpiar filtros vuelve al año actual y los valores iniciales del circuito.
+Sin JavaScript, se ofrece Actualizar reporte como alternativa.
 
 ## Aceptación
 

@@ -1,7 +1,7 @@
 """Resumen de cohortes de solicitudes; importes monetarios siempre separados."""
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Prefetch
@@ -11,9 +11,10 @@ from facturacion.models import ComprobanteExterno, SolicitudFacturacion
 from facturacion.models_cobros import CobroExterno
 
 
-def reporte_facturacion(anio, cuatrimestre=None, orden="cantidad"):
-    mes = (cuatrimestre - 1) * 4 + 1 if cuatrimestre else 1
-    hasta_mes = mes + 4 if cuatrimestre else 13
+def reporte_facturacion(anio, cuatrimestre=None, orden="cantidad", *, trimestre=None):
+    meses = 3 if trimestre else 4 if cuatrimestre else 12
+    mes = ((trimestre or cuatrimestre or 1) - 1) * meses + 1
+    hasta_mes = mes + meses
     inicio = date(anio, mes, 1)
     fin = date(anio + 1, 1, 1) if hasta_mes == 13 else date(anio, hasta_mes, 1)
     solicitudes = (
@@ -51,6 +52,8 @@ def reporte_facturacion(anio, cuatrimestre=None, orden="cantidad"):
             etiquetas_centros.update(dict(campo["opciones"]))
     cero = Decimal("0.00")
     total = dict(
+        inicio=inicio,
+        fin=fin - timedelta(days=1),
         cantidad=0,
         anuladas=0,
         solicitado=cero,
