@@ -281,13 +281,13 @@ def test_datos_invalidos_sin_registro_ni_pdf(escenario, solicitud, entrada, camp
     assert not ComprobanteExterno.objects.exists() and not Documento.objects.exists()
 
 
-def test_pdf_obligatorio_y_solo_pdf(escenario, solicitud, entrada):
+def test_otro_origen_pdf_obligatorio_y_solo_pdf(escenario, solicitud, entrada):
     for archivo in (None, SimpleUploadedFile("x.png", b"\x89PNG\r\n\x1a\nX", "image/png")):
         with pytest.raises((ValidationError, ArchivoInvalido)):
             registrar_comprobante(
                 actor=escenario.actores["o"],
                 numero_publico=solicitud.pk,
-                datos=entrada,
+                datos=dict(entrada, procedencia="EXTERNO_OTRO", origen_aclaracion="Ficticio"),
                 archivo_pdf=archivo,
             )
     assert not Documento.objects.exists() and not ComprobanteExterno.objects.exists()

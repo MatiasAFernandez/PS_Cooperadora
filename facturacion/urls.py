@@ -11,10 +11,15 @@ from .views_cobros import (
     VerificarCobroView,
 )
 from .views_comprobantes import ModificarComprobanteView, RegistrarComprobanteView
+from .views_envios import ConfirmarRecepcionView, DeclararEnvioView
 from .views_seguimiento import ActualizarRespaldoView, ResolverTramiteView
 
 app_name = "facturacion"
 urlpatterns = [
+    path("<int:numero>/comprobantes/<int:comprobante_id>/envio/",
+         DeclararEnvioView.as_view(), name="declarar_envio"),
+    path("<int:numero>/envios/<int:envio_id>/recepcion/",
+         ConfirmarRecepcionView.as_view(), name="confirmar_recepcion"),
     path("<int:numero>/cobros/<int:cobro_id>/corregir/", ModificarCobroView.as_view(),
          name="corregir_cobro"),
     path("<int:numero>/cobros/<int:cobro_id>/rectificar/", RectificarCobroView.as_view(),

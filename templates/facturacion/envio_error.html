@@ -1,0 +1,11 @@
+{% extends "facturacion/base.html" %}
+{% block facturacion_content %}
+<h2>Informar envío de {{ comprobante.identificacion }}</h2>
+<p role="alert">No se pudo registrar el envío: {{ error }}</p>
+<form class="fac-form" method="post">{% csrf_token %}
+{{ form.destinatario.as_field_group }}
+{{ form.fecha_envio.as_field_group }}
+<button type="submit">Guardar envío informado</button>
+</form>
+<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+{% endblock %}

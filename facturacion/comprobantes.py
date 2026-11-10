@@ -27,9 +27,7 @@ TIPOS_DOCUMENTALES = {
 
 
 def puede_registrar_comprobante(actor):
-    return has_capability(actor, "facturacion.registrar_factura_externa") and has_capability(
-        actor, "documentos.incorporar"
-    )
+    return has_capability(actor, "facturacion.registrar_factura_externa")
 
 
 def autorizar_registro(actor, numero):
@@ -72,6 +70,8 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
     aceptar = ComprobanteExternoForm.base_fields["aceptar_respaldo"].clean(
         datos.get("aceptar_respaldo")
     )
+    if archivo_pdf and not has_capability(actor, "documentos.incorporar"):
+        raise PermissionDenied("No tenés permiso para incorporar archivos.")
     if aceptar and not puede_aceptar:
         raise PermissionDenied(
             "No tenés permiso para aceptar el documento de respaldo al registrar."
@@ -84,7 +84,7 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
     if not form.is_valid():
         raise ValidationError({campo: list(errores) for campo, errores in form.errors.items()})
     limpio = form.cleaned_data
-    archivo = pdf_comprobante(archivo_pdf)
+    archivo = pdf_comprobante(archivo_pdf) if archivo_pdf else None
     try:
         with operacion_documental() as escrituras:
             # Mismo orden que el recorrido de solicitud: cabecera -> solicitud -> documento.
@@ -122,7 +122,7 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
                 tipo=TIPOS_DOCUMENTALES[limpio["tipo"]],
                 procedencia=limpio["procedencia"],
                 _escrituras=escrituras,
-            )
+            ) if archivo else None
             comprobante = ComprobanteExterno.objects.create(
                 solicitud=solicitud,
                 documento=documento,
@@ -134,7 +134,7 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
                 importe=limpio["importe"],
                 **identidad,
             )
-            if aceptar:
+            if aceptar and documento is not None:
                 revisar(
                     actor=actor,
                     documento_id=documento.pk,
@@ -142,6 +142,9 @@ def registrar_comprobante(*, actor, numero_publico, datos, archivo_pdf):
                     motivo="Conformidad del documento de respaldo al registrar el comprobante.",
                     revision_esperada=0,
                 )
+            from .envios import declarar_envio
+
+            declarar_envio(actor=actor, comprobante=comprobante, datos=datos)
             return comprobante
     except ConflictoRevision as exc:
         raise ConflictoConcurrenciaError(str(exc)) from exc
@@ -185,7 +188,8 @@ def corregir_comprobante(*, actor, numero, comprobante_id, datos, archivo_pdf=No
                 puede_corregir=True,
                 puede_adjuntar=True,
                 opciones=(
-                    sucesores_respaldo_comprobante(actor, anterior) if puede_vincular else None
+                    sucesores_respaldo_comprobante(actor, anterior)
+                    if puede_vincular and anterior else None
                 ),
             )
             if not form.is_valid():
@@ -194,7 +198,9 @@ def corregir_comprobante(*, actor, numero, comprobante_id, datos, archivo_pdf=No
                 )
             limpio = form.cleaned_data
             campos = {campo: limpio[campo] for campo in DATOS_COMPROBANTE}
-            if all(valor == getattr(previo, campo) for campo, valor in campos.items()):
+            if not archivo_pdf and all(
+                valor == getattr(previo, campo) for campo, valor in campos.items()
+            ):
                 raise ValidationError("Modificá al menos un dato del comprobante.")
             factura = solicitud.comprobantes.filter(tipo="FACTURA").get()
             emisor = (limpio["cuit_emisor"], limpio["letra"])
@@ -218,21 +224,28 @@ def corregir_comprobante(*, actor, numero, comprobante_id, datos, archivo_pdf=No
 
             fuente = limpio.get("nuevo") or anterior
             archivo = limpio["archivo_pdf"]
-            if archivo is None:
+            if archivo is not None and not has_capability(actor, "documentos.incorporar"):
+                raise PermissionDenied("No tenés permiso para incorporar archivos.")
+            if archivo is None and fuente is not None:
                 with almacenamiento().open(fuente.archivo, "rb") as origen:
                     archivo = SimpleUploadedFile(
                         fuente.nombre_original, origen.read(), fuente.formato
                     )
-            ultima_version = Documento.objects.filter(serie=anterior.serie).latest("version")
-            documento = incorporar(
-                actor=actor,
-                referencia=f"facturacion:{numero}",
-                archivo=pdf_comprobante(archivo),
-                tipo=anterior.tipo,
-                procedencia=limpio["procedencia"],
-                reemplaza_id=ultima_version.pk,
-                _escrituras=escrituras,
-            )
+            documento = None
+            if archivo is not None:
+                ultima_version = (
+                    Documento.objects.filter(serie=anterior.serie).latest("version")
+                    if anterior else None
+                )
+                documento = incorporar(
+                    actor=actor,
+                    referencia=f"facturacion:{numero}",
+                    archivo=pdf_comprobante(archivo),
+                    tipo=TIPOS_DOCUMENTALES[previo.tipo],
+                    procedencia=limpio["procedencia"],
+                    reemplaza_id=ultima_version.pk if ultima_version else None,
+                    _escrituras=escrituras,
+                )
             ComprobanteExterno.objects.filter(pk=previo.pk).update(sustituido=True)
             return ComprobanteExterno.objects.create(
                 solicitud=solicitud,

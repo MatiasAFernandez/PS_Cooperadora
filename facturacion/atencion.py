@@ -93,7 +93,6 @@ def acciones_inmediatas(actor, solicitud):
         if (
             not factura
             and capacidad("facturacion.registrar_factura_externa")
-            and capacidad("documentos.incorporar")
         ):
             acciones.append(
                 Accion(
@@ -149,6 +148,8 @@ def acciones_inmediatas(actor, solicitud):
         if puede_actualizar_respaldo(actor):
             for comprobante in comprobantes:
                 documento = respaldo_actual(comprobante)
+                if documento is None:
+                    continue
                 revision = ultima_revision(documento)
                 if (revision and revision.resultado in {"OBSERVADO", "RECHAZADO"}) or (
                     Documento.objects.filter(reemplaza=documento).exists()

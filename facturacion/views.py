@@ -236,6 +236,22 @@ class DetalleSolicitudView(FacturacionView):
                 (e.motivo_o_detalle for e in eventos if e.tipo_evento == "ANULACION"), ""
             )
         comprobantes, _ = resumen_comprobantes(solicitud)
+        from django.utils import timezone
+
+        from .envios import EnvioForm
+        from .models import ConfirmacionRecepcion, EnvioComprobante
+
+        titular = solicitud.tramite_base.solicitante_actor_id == str(self.actor.subject_id)
+        envios = list(EnvioComprobante.objects.filter(
+            comprobante__solicitud=solicitud
+        ).select_related("comprobante", "confirmacion").order_by("pk"))
+        for comprobante in comprobantes:
+            comprobante.ultimo_envio = next(
+                (e for e in reversed(envios) if e.comprobante_id == comprobante.pk), None
+            )
+            comprobante.form_envio = EnvioForm(initial={
+                "destinatario": solicitud.email_envio_factura, "fecha_envio": timezone.localdate(),
+            })
         cobros, totales_cobros, eventos_cobros = resumen_cobros(solicitud)
         from django.db.models import Q
 
@@ -247,12 +263,19 @@ class DetalleSolicitudView(FacturacionView):
         for objeto in [*comprobantes, *cobros]:
             objeto.respaldo_vinculado = respaldo_actual(objeto)
             if has_capability(self.actor, "documentos.consultar_metadatos"):
-                objeto.estado_revision = estado_revision_vigente(objeto.respaldo_vinculado)
+                objeto.estado_revision = (
+                    estado_revision_vigente(objeto.respaldo_vinculado)
+                    if objeto.respaldo_vinculado else None
+                )
         for cobro in cobros:
             cobro.puede_corregir = puede_corregir_cobro(self.actor, cobro)
         historial = [e.como_historial() for e in eventos] + [
             c.como_historial() for c in ComprobanteExterno.todos.filter(solicitud=solicitud)
         ]
+        historial.extend(e.como_historial() for e in envios)
+        historial.extend(c.como_historial() for c in ConfirmacionRecepcion.objects.filter(
+            envio__comprobante__solicitud=solicitud
+        ).select_related("envio__comprobante"))
         historial.extend(eventos_cobros)
         if has_capability(self.actor, "documentos.consultar_metadatos"):
             historial.extend(a.como_historial() for a in actualizaciones)
@@ -307,6 +330,7 @@ class DetalleSolicitudView(FacturacionView):
                 ),
                 "puede_verificar_cobro": has_capability(self.actor, "facturacion.verificar_cobro"),
                 "comprobantes": comprobantes,
+                "es_titular": titular,
                 "factura_vigente": next((c for c in comprobantes if c.tipo == "FACTURA"), None),
                 "puede_registrar_comprobante": puede_registrar_comprobante(self.actor),
                 "versiones": [

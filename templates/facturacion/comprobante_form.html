@@ -3,15 +3,17 @@
 <header class="fac-page-title fac-has-help">
 {% if comprobante %}
 <h2>Modificar comprobante externo</h2>
-{% include "facturacion/ayuda.html" with id="ayuda-comprobante" etiqueta="Modificar comprobante externo" texto="Corregí los datos transcritos o actualizá el PDF del comprobante. Si cambiás los datos, la versión anterior queda en el historial y el nuevo registro requiere revisión documental. Para una nota emitida por separado, usá Registrar factura o nota externa." only %}
+{% include "facturacion/ayuda.html" with id="ayuda-comprobante" etiqueta="Modificar comprobante externo" texto="Corregí los datos transcritos o actualizá el PDF del comprobante. Si cambiás los datos, la versión anterior queda en el historial y el PDF nuevo requiere revisión documental cuando se adjunta. Para una nota emitida por separado, usá Registrar factura o nota externa." only %}
 {% else %}
 <h2>Registrar comprobante externo — solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}</h2>
-{% include "facturacion/ayuda.html" with id="ayuda-comprobante" etiqueta="Registrar comprobante externo" texto="Copiá los datos del comprobante emitido y adjuntá su PDF. Registrá primero la factura y después sus notas, con el mismo emisor y letra." only %}
+{% include "facturacion/ayuda.html" with id="ayuda-comprobante" etiqueta="Registrar comprobante externo" texto="Copiá los datos del comprobante emitido. Si está en Xubio, adjuntar el PDF es opcional. Registrá primero la factura y después sus notas, con el mismo emisor y letra." only %}
 {% endif %}
 </header>
 {% if comprobante %}<p><strong>{{ comprobante.identificacion }}</strong> · Solicitud {{ solicitud.numero_visible }}.</p>{% endif %}
 {% if documento_actual %}<p>PDF vinculado <strong>{{ documento_actual.nombre_original }}</strong> · versión {{ documento_actual.version }}.</p>{% endif %}
 {% if factura %}<p>Factura vinculada: {{ factura.identificacion }} — CUIT {{ factura.cuit_emisor }}.</p>{% endif %}
+<p class="notice">Si el comprobante ya existe en Xubio, no necesitás volver a cargar el PDF: registrá sus datos para vincularlo con esta solicitud. Para Otro origen, el PDF es obligatorio.</p>
+<p>Informar el envío es opcional. Registra lo realizado en Xubio u otro correo; no envía mensajes ni confirma su entrega.</p>
 <form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}
 {% include "facturacion/campos_formulario.html" %}
 {% if form.errors %}<p>Los datos se conservaron. Si elegiste un PDF, volvé a seleccionarlo.</p>{% endif %}
@@ -23,15 +25,41 @@
     const origen = document.getElementById('id_procedencia');
     const aclaracion = document.getElementById('id_origen_aclaracion');
     const grupo = aclaracion.closest('[data-origen-comprobante]');
+    const archivo = document.getElementById('id_archivo_pdf');
+    const enviado = document.getElementById("id_enviado");
+    const destinatario = document.getElementById("id_destinatario");
+    const fechaEnvio = document.getElementById("id_fecha_envio");
+    function actualizarEnvio() {
+        for (const campo of [destinatario, fechaEnvio]) {
+            if (campo) {
+                campo.closest(".form-group").hidden = !enviado.checked;
+                campo.disabled = !enviado.checked;
+                campo.required = enviado.checked;
+            }
+        }
+    }
+    if (enviado) {
+        enviado.addEventListener("change", actualizarEnvio);
+        actualizarEnvio();
+    }
+    const aceptar = document.getElementById('id_aceptar_respaldo');
 
     function actualizarOrigen() {
         const esOtro = origen.value === 'EXTERNO_OTRO';
         grupo.hidden = !esOtro;
         aclaracion.disabled = origen.disabled || !esOtro;
         aclaracion.required = esOtro && !origen.disabled;
+        if (archivo) {
+            archivo.required = esOtro && !{{ form.conserva_archivo|yesno:"true,false" }};
+        }
+        if (aceptar) {
+            aceptar.disabled = !archivo || archivo.files.length === 0;
+            aceptar.closest('.form-group').hidden = aceptar.disabled;
+        }
     }
 
     origen.addEventListener('change', actualizarOrigen);
+    if (archivo) archivo.addEventListener('change', actualizarOrigen);
     window.addEventListener('pageshow', actualizarOrigen);
     actualizarOrigen();
 })();

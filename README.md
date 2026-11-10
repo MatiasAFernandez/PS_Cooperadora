@@ -41,6 +41,12 @@ describe los ajustes aprobados tras el ensayo local: estilos comunes, filtros de
 presentación, respaldos por revisar, diferencia financiera, origen alternativo y
 PDF de solicitud (sin emisión fiscal ni integración con Xubio).
 
+La [preparación de Xubio para Sistemas](docs/guides/preparacion-xubio.md) reúne
+las fuentes, mapeos y puntos de extensión para una conexión futura fuera del
+alcance del proyecto. Incluye el contrato propuesto de referencias sin duplicar
+PDF. El registro manual de Xubio admite PDF opcional desde la migración 0023;
+la conexión API continúa fuera del alcance.
+
 ## Puesta en marcha local en Windows
 
 Requisitos: Python 3.11 y Docker Desktop iniciado con el motor de contenedores
