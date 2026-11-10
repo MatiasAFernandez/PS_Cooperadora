@@ -429,6 +429,7 @@ def crear_solicitud_gasto(
     centro_costo: Any = None,
     datos_transferencia: Mapping[str, Any] | None = None,
     fecha_referencia: date | None = None,
+    datos_formulario=None, archivos_formulario=None, _escrituras=None,
 ) -> SolicitudGasto:
     """Crea cabecera y solicitud juntas con valores fijados por el servidor.
 
@@ -442,6 +443,20 @@ def crear_solicitud_gasto(
     """
     if not has_capability(actor, "gastos.presentar"):
         raise PermissionDenied("El actor no posee la capacidad 'gastos.presentar'.")
+
+    from django.core.exceptions import ValidationError
+
+    from gastos.forms import SolicitudGastoForm
+    from gestion.formularios import guardar_respuesta
+
+    entrada = datos_formulario.copy() if datos_formulario is not None else {}
+    entrada.update(concepto=concepto, monto_estimado=monto_estimado,
+                   unidad_requirente=unidad_requirente, tipo_flujo=tipo_flujo,
+                   centro_costo=getattr(centro_costo, "pk", centro_costo) or "")
+    formulario = SolicitudGastoForm(entrada, archivos_formulario)
+    if formulario.config_revision:
+        if not formulario.is_valid():
+            raise ValidationError({k: list(v) for k, v in formulario.errors.items()})
 
     # Control determinista de deuda documental (GAST-R07)
     resumen_deuda = verificar_deuda_documental_solicitante(actor, fecha_referencia=fecha_referencia)
@@ -506,6 +521,7 @@ def crear_solicitud_gasto(
             actor_id=actor.subject_id,
             **datos_validos,
         )
+    guardar_respuesta(actor=actor, tramite=base, form=formulario, escrituras=_escrituras)
     return solicitud
 
 

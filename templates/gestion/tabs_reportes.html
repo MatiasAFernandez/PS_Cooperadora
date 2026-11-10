@@ -1,0 +1,4 @@
+<nav class="gestion-tabs" aria-label="Reportes por circuito">
+{% if "gastos.consultar_todas" in actor.capabilities %}<a href="{% url 'gestion:reporte_gastos' %}"{% if reporte_circuito == 'GASTO' %} aria-current="page"{% endif %}>Gastos</a>{% endif %}
+{% if "facturacion.consultar_todas" in actor.capabilities %}<a href="{% url 'gestion:reporte_facturacion' %}"{% if reporte_circuito == 'FACTURACION' %} aria-current="page"{% endif %}>Facturación</a>{% endif %}
+</nav>

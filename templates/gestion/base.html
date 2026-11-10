@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}PS Cooperadora — Gestión{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'gastos/css/gestion_catalogos.css' %}">{% endblock %}
+{% block content %}<div class="gestion-wrap">{% block gestion_content %}{% endblock %}</div>{% endblock %}

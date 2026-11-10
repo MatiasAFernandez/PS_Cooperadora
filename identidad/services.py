@@ -7,6 +7,7 @@ from django.contrib.auth import get_user
 from django.http import HttpRequest
 
 GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
+    "demo_administracion": frozenset({"gestion.configurar"}),
     "demo_solicitante": frozenset({"gastos.presentar", "gastos.consultar_propias"}),
     "demo_operadora": frozenset({"gastos.consultar_todas", "gastos.decidir"}),
     "demo_lectura": frozenset({"gastos.consultar_todas"}),

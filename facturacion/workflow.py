@@ -17,6 +17,7 @@ from comunes.models import TramiteBase
 from documentos import services as documentos
 from documentos.operaciones import operacion_documental
 from documentos.policy import validar_archivo
+from gestion.formularios import guardar_respuesta
 from identidad.services import Actor, has_capability
 
 from .forms import SolicitudFacturacionForm
@@ -72,18 +73,21 @@ def _version(value):
         raise ValidationError("La versión esperada debe ser un entero positivo.")
 
 
-def _datos(datos, archivo, documento_actual=False):
+def _datos(datos, archivo, documento_actual=False, archivos_adicionales=None, tramite=None):
     # Form valida tipos/longitudes/catálogos también al invocar el servicio en Python.
+    archivos = archivos_adicionales.copy() if archivos_adicionales is not None else {}
+    if archivo is not None:
+        archivos["archivo_comprobante"] = archivo
     form = SolicitudFacturacionForm(
         datos,
-        {"archivo_comprobante": archivo} if archivo is not None else None,
-        documento_actual=documento_actual,
+        archivos,
+        documento_actual=documento_actual, tramite_config=tramite,
     )
     if not form.is_valid():
         raise ValidationError({k: list(v) for k, v in form.errors.items()})
     limpio = form.cleaned_data
     validado = validar_archivo(archivo) if archivo is not None else None
-    return limpio, validado
+    return limpio, validado, form
 
 
 def _asignar(solicitud, limpio):
@@ -144,7 +148,11 @@ def _evento(solicitud, actor, tipo, antes=None, observacion=None, nota=None):
 
 def _validar_modelo(solicitud):
     # La clave se comprueba con constraint SQL nombrada, incluso en carreras.
-    solicitud.full_clean(exclude=["clave_idempotencia"])
+    # Catálogos editables se validan en el formulario de negocio; el resto del
+    # modelo y sus constraints conservan la validación, además de PostgreSQL.
+    for nombre in ("producto_servicio", "condicion_iva"):
+        solicitud._meta.get_field(nombre).run_validators(getattr(solicitud, nombre))
+    solicitud.full_clean(exclude=["clave_idempotencia", "producto_servicio", "condicion_iva"])
 
 
 def _adjuntar(solicitud, actor, limpio, archivo, escrituras):
@@ -184,7 +192,9 @@ def _adjuntar(solicitud, actor, limpio, archivo, escrituras):
             )
 
 
-def presentar_solicitud_facturacion(*, actor, datos, token_presentacion, archivo_comprobante=None):
+def presentar_solicitud_facturacion(
+    *, actor, datos, token_presentacion, archivo_comprobante=None, archivos_adicionales=None
+):
     if not has_capability(actor, "facturacion.presentar"):
         raise PermissionDenied("No tenés permiso para presentar.")
     clave = verificar_token(actor, token_presentacion)
@@ -193,7 +203,8 @@ def presentar_solicitud_facturacion(*, actor, datos, token_presentacion, archivo
     if not actor.email_registrado:
         raise ValidationError("La cuenta necesita un correo de presentación configurado.")
     validate_email(actor.email_registrado)
-    limpio, archivo = _datos(datos, archivo_comprobante)
+    limpio, archivo, formulario = _datos(datos, archivo_comprobante,
+                             archivos_adicionales=archivos_adicionales)
     try:
         with operacion_documental() as escrituras:
             solicitud = crear_solicitud_tecnica(actor=actor)
@@ -207,6 +218,8 @@ def presentar_solicitud_facturacion(*, actor, datos, token_presentacion, archivo
             solicitud.estado = Estado.PRESENTADA
             _validar_modelo(solicitud)
             solicitud.save()
+            guardar_respuesta(actor=actor, tramite=solicitud.tramite_base,
+                              form=formulario, escrituras=escrituras)
             _evento(solicitud, actor, "PRESENTACION")
     except IntegrityError as exc:
         causa = exc.__cause__
@@ -278,13 +291,15 @@ def corregir_solicitud_facturacion(
     version_esperada,
     nota_correccion="",
     archivo_comprobante=None,
+    archivos_adicionales=None,
 ):
     if not isinstance(actor, Actor):
         raise PermissionDenied
     with operacion_documental() as escrituras:
         solicitud = _bloquear(actor, numero_publico, "corregir", version_esperada)
-        limpio, archivo = _datos(
-            datos, archivo_comprobante, bool(solicitud.documento_comprobante_inicial_id)
+        limpio, archivo, formulario = _datos(
+            datos, archivo_comprobante, bool(solicitud.documento_comprobante_inicial_id),
+            archivos_adicionales=archivos_adicionales, tramite=solicitud.tramite_base,
         )
         if not isinstance(nota_correccion, str):
             raise ValidationError("La nota de corrección debe ser texto.")
@@ -298,5 +313,7 @@ def corregir_solicitud_facturacion(
         solicitud.version_concurrencia += 1
         _validar_modelo(solicitud)
         solicitud.save()
+        guardar_respuesta(actor=actor, tramite=solicitud.tramite_base,
+                          form=formulario, escrituras=escrituras)
         _evento(solicitud, actor, "CORRECCION", antes, observacion, nota_correccion.strip())
     return solicitud

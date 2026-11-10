@@ -1,0 +1,7 @@
+{{ form.configuracion_revision.errors }}{{ form.configuracion_revision }}
+{% for clave, campo in form.fields.items %}{% if clave in form.campos_adicionales %}
+{% for field in form %}{% if field.name == clave %}
+{% if campo.es_seccion %}<section class="ns-section"><h3>{{ campo.label }}</h3><p>{{ campo.help_text }}</p></section>
+{% else %}<div class="form-group">{{ field.label_tag }}{{ field }}{% if field.help_text %}<p>{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>{% endif %}
+{% endif %}{% endfor %}
+{% endif %}{% endfor %}

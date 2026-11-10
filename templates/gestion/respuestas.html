@@ -1,0 +1,10 @@
+{% with respuestas=solicitud.tramite_base.respuestas_formulario.all %}
+{% if respuestas %}<details class="gestion-card"><summary>Datos del formulario configurable e historial</summary>
+{% for respuesta in respuestas %}<section><h3>Versión {{ respuesta.revision }} · {{ respuesta.fecha|date:"d/m/Y H:i" }}</h3>
+<dl>{% for item in respuesta.datos.values %}<dt>{{ item.etiqueta }}</dt><dd>
+{% if item.tipo == "documento" %}
+{% if "documentos.consultar_metadatos" in actor.capabilities %}{{ item.valor|default:"—" }}{% if item.documento_id and "documentos.descargar" in actor.capabilities %} · <a href="{% url 'documentos:archivo' item.documento_id %}">Descargar adjunto</a>{% endif %}
+{% else %}Información documental no disponible para esta cuenta.{% endif %}
+{% else %}{{ item.valor|default:"—" }}{% endif %}
+</dd>{% endfor %}</dl></section>{% endfor %}
+</details>{% endif %}{% endwith %}

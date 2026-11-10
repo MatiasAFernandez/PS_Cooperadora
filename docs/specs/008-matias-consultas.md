@@ -1,11 +1,19 @@
 # SPEC-008 — Búsqueda, filtros y resúmenes de facturación y cobros
 
-- Estado: filtros implementados en PR #71/#73; resúmenes pendientes de definición/implementación. Necesidad de métricas confirmada en la demo del 29/10/2026.
+- Estado: filtros integrados; resúmenes implementados localmente el 10/11/2026
+  con el diccionario técnico de SPEC-021. Validación institucional separada.
 - Issue: [#30](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/30), fuente del estado operativo.
 - Responsable principal: Matías Alejandro Fernández.
 - Rol de Franco Damián Sánchez: acordar presentación/contratos y mantener consultas y productores de gastos.
 - Validador: Cooperadora para métricas y permisos; equipo para cálculo e interfaces.
 - Plan: RF-007, RNF-003 y M-E09; prioridad SHOULD sin reclasificación automática.
+
+El [diccionario de SPEC-021](021-matias-administracion-formularios-reportes.md)
+precisa población por presentación local, exclusión de anuladas, importes vigentes,
+notas, parciales, promedios y agrupaciones. La entrega implementa ese criterio
+explícito y lo muestra en pantalla; no atribuye a la demo fórmulas no confirmadas.
+Las preguntas originales siguientes conservan su carácter de validación institucional.
+
 
 ## Problema y valor
 

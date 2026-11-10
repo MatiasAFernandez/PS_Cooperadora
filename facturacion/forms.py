@@ -5,12 +5,13 @@ from decimal import Decimal
 from django import forms
 
 from comunes.filtros import FiltroFechaForm
+from gestion.formularios import FormularioConfigurableMixin
 
 from .choices import CentroCosto, CondicionIVA, ModalidadCobro, ProductoServicio
 from .validation import validar_cuit
 
 
-class SolicitudFacturacionForm(forms.Form):
+class SolicitudFacturacionForm(FormularioConfigurableMixin, forms.Form):
     presento_comprobante_pago = forms.TypedChoiceField(
         label="¿Presentaste comprobante de pago?",
         choices=[("", "Seleccioná…"), ("True", "Sí"), ("False", "No")],
@@ -66,7 +67,7 @@ class SolicitudFacturacionForm(forms.Form):
         required=False,
     )
 
-    def __init__(self, *args, documento_actual=False, **kwargs):
+    def __init__(self, *args, documento_actual=False, tramite_config=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.documento_actual = documento_actual
         self.fields["centro_costo"].choices = [
@@ -77,6 +78,7 @@ class SolicitudFacturacionForm(forms.Form):
         orden.remove("presento_comprobante_pago")
         orden.insert(orden.index("fecha_operacion_declarada"), "presento_comprobante_pago")
         self.order_fields(orden)
+        self.configurar("FACTURACION", tramite=tramite_config)
 
     def clean(self):
         data = super().clean()

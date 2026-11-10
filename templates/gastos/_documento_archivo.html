@@ -3,6 +3,7 @@
         {{ field.label }}
         {% if field.field.required %}<span class="sd-required" aria-hidden="true">*</span>{% endif %}
     </label>
+    {% if field.help_text %}<p>{{ field.help_text }}</p>{% endif %}
     <div class="sd-aporte-upload" data-aporte-upload>
         <div class="sd-dropzone" data-aporte-drop>
             {{ field }}

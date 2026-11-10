@@ -84,10 +84,10 @@
                 <div class="ns-field">
                     <div class="ns-label-row">
                         <label for="{{ form.concepto.id_for_label }}">
-                            Concepto / justificación <span class="ns-required" aria-hidden="true">*</span>
+                            {{ form.concepto.label }} <span class="ns-required" aria-hidden="true">*</span>
                         </label>
                     </div>
-                    {{ form.concepto }}
+                    {{ form.concepto }}{% if form.concepto.help_text %}<p>{{ form.concepto.help_text }}</p>{% endif %}
                     {% if form.concepto.errors %}
                         <div class="ns-field-error" role="alert">{{ form.concepto.errors }}</div>
                     {% endif %}
@@ -96,10 +96,10 @@
                 <div class="ns-field">
                     <div class="ns-label-row">
                         <label for="{{ form.monto_estimado.id_for_label }}">
-                            Importe estimado · ARS <span class="ns-required" aria-hidden="true">*</span>
+                            {{ form.monto_estimado.label }} <span class="ns-required" aria-hidden="true">*</span>
                         </label>
                     </div>
-                    {{ form.monto_estimado }}
+                    {{ form.monto_estimado }}{% if form.monto_estimado.help_text %}<p>{{ form.monto_estimado.help_text }}</p>{% endif %}
                     {% if form.monto_estimado.errors %}
                         <div class="ns-field-error" role="alert">{{ form.monto_estimado.errors }}</div>
                     {% endif %}
@@ -111,17 +111,17 @@
                     <div class="ns-label-row">
                         <label for="{{ form.tipo_flujo.id_for_label }}">{{ form.tipo_flujo.label }}</label>
                     </div>
-                    {{ form.tipo_flujo }}
+                    {{ form.tipo_flujo }}{% if form.tipo_flujo.help_text %}<p>{{ form.tipo_flujo.help_text }}</p>{% endif %}
                     {% if form.tipo_flujo.errors %}
                         <div class="ns-field-error" role="alert">{{ form.tipo_flujo.errors }}</div>
                     {% endif %}
                 </div>
 
-                <div class="ns-field">
+                <div class="ns-field"{% if form.centro_costo.is_hidden %} hidden{% endif %}>
                     <div class="ns-label-row">
                         <label for="{{ form.centro_costo.id_for_label }}">{{ form.centro_costo.label }}</label>
                     </div>
-                    {{ form.centro_costo }}
+                    {{ form.centro_costo }}{% if form.centro_costo.help_text %}<p>{{ form.centro_costo.help_text }}</p>{% endif %}
                     {% if form.centro_costo.errors %}
                         <div class="ns-field-error" role="alert">{{ form.centro_costo.errors }}</div>
                     {% endif %}
@@ -133,7 +133,7 @@
                             {{ form.unidad_requirente.label }} <span class="ns-required" aria-hidden="true">*</span>
                         </label>
                     </div>
-                    {{ form.unidad_requirente }}
+                    {{ form.unidad_requirente }}{% if form.unidad_requirente.help_text %}<p>{{ form.unidad_requirente.help_text }}</p>{% endif %}
                     {% if form.unidad_requirente.errors %}
                         <div class="ns-field-error" role="alert">{{ form.unidad_requirente.errors }}</div>
                     {% endif %}
@@ -151,7 +151,7 @@
         </div>
 
         {% if puede_adjuntar_respaldo %}
-        <details class="ns-transfer-details ns-respaldo-details{% if respaldo_form.errors %} has-error{% endif %}" id="ns-respaldo-details" data-respaldo-details{% if respaldo_form.errors or respaldo_form.files %} open{% endif %}>
+        <details{% if respaldo_form.respaldo_archivo.is_hidden %} hidden{% endif %} class="ns-transfer-details ns-respaldo-details{% if respaldo_form.errors %} has-error{% endif %}" id="ns-respaldo-details" data-respaldo-details{% if respaldo_form.errors or respaldo_form.files %} open{% endif %}>
             <summary class="ns-transfer-summary">
                 <span class="ns-transfer-summary-left">
                     <span>Respaldo del gasto</span>
@@ -213,7 +213,7 @@
                         <div class="ns-label-row">
                             <label for="{{ datos_form.titular_nombre.id_for_label }}">{{ datos_form.titular_nombre.label }} de la cuenta</label>
                         </div>
-                        {{ datos_form.titular_nombre }}
+                        {{ datos_form.titular_nombre }}{% if datos_form.titular_nombre.help_text %}<p>{{ datos_form.titular_nombre.help_text }}</p>{% endif %}
                         {% if datos_form.titular_nombre.errors %}
                             <div class="ns-field-error" role="alert">{{ datos_form.titular_nombre.errors }}</div>
                         {% endif %}
@@ -223,7 +223,7 @@
                         <div class="ns-label-row">
                             <label for="{{ datos_form.identificacion.id_for_label }}">{{ datos_form.identificacion.label }}</label>
                         </div>
-                        {{ datos_form.identificacion }}
+                        {{ datos_form.identificacion }}{% if datos_form.identificacion.help_text %}<p>{{ datos_form.identificacion.help_text }}</p>{% endif %}
                         {% if datos_form.identificacion.errors %}
                             <div class="ns-field-error" role="alert">{{ datos_form.identificacion.errors }}</div>
                         {% endif %}
@@ -233,7 +233,7 @@
                         <div class="ns-label-row">
                             <label for="{{ datos_form.cbu_alias.id_for_label }}">{{ datos_form.cbu_alias.label }}</label>
                         </div>
-                        {{ datos_form.cbu_alias }}
+                        {{ datos_form.cbu_alias }}{% if datos_form.cbu_alias.help_text %}<p>{{ datos_form.cbu_alias.help_text }}</p>{% endif %}
                         {% if datos_form.cbu_alias.errors %}
                             <div class="ns-field-error" role="alert">{{ datos_form.cbu_alias.errors }}</div>
                         {% endif %}
@@ -243,7 +243,7 @@
                         <div class="ns-label-row">
                             <label for="{{ datos_form.correo_comprobante.id_for_label }}">{{ datos_form.correo_comprobante.label }}</label>
                         </div>
-                        {{ datos_form.correo_comprobante }}
+                        {{ datos_form.correo_comprobante }}{% if datos_form.correo_comprobante.help_text %}<p>{{ datos_form.correo_comprobante.help_text }}</p>{% endif %}
                         {% if datos_form.correo_comprobante.errors %}
                             <div class="ns-field-error" role="alert">{{ datos_form.correo_comprobante.errors }}</div>
                         {% endif %}
@@ -257,6 +257,7 @@
             </div>
         </details>
 
+        {% include "gestion/campos_adicionales.html" %}
         <div class="ns-actions-bar">
             <div class="ns-actions-buttons">
                 {% if resumen_deuda and resumen_deuda.tiene_bloqueo %}

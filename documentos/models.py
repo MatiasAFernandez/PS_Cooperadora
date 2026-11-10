@@ -8,6 +8,7 @@ from django.db import IntegrityError, models
 
 class Documento(models.Model):
     class Tipo(models.TextChoices):
+        ANEXO_SOLICITUD = "ANEXO_SOLICITUD", "Anexo de formulario"
         PRESUPUESTO_PROFORMA = "PRESUPUESTO_PROFORMA", "Presupuesto o proforma"
         FACTURA_PROVEEDOR = "FACTURA_PROVEEDOR", "Factura de proveedor"
         TICKET_NO_FISCAL = "TICKET_NO_FISCAL", "Ticket no fiscal"

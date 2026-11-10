@@ -1,12 +1,23 @@
 # SPEC-014 — Administración de catálogos y capacidades operativas
 
+## Implementación local del 10/11/2026
+
+El pedido actual amplía el mantenimiento a formularios de ambos circuitos.
+[SPEC-021](021-matias-administracion-formularios-reportes.md) define la cuenta
+administradora, campos esenciales protegidos (confirmado por el usuario),
+versiones, respuestas y reportes separados. Se implementa localmente sin declarar
+validación institucional ni cierre remoto de #77. El antecedente del 02/11 sigue
+siendo histórico; las excepciones de #85 no se incluyen.
+
+
 Ajuste puntual solicitado por Matías el 02/11/2026: retirar Opción 35 de las
 opciones elegibles del formulario de facturación. Se mantiene el código histórico
 en datos y catálogos internos para no reescribir trámites previos. Una nueva
 presentación/corrección debe seleccionar otra opción válida. Este ajuste no
 implementa el editor de catálogos ni completa #77.
 
-- Estado: para validar matriz y catálogo exactos.
+- Estado: administración de formularios implementada localmente en SPEC-021;
+  validación institucional y excepciones de #85 separadas.
 - Issue: [#77](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/77), [#85](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/85).
 - Responsable principal: Matías Alejandro Fernández.
 - Rol del compañero: Franco Damián Sánchez revisa contratos compartidos y mantiene gastos/pagos.

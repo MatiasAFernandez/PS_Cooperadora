@@ -217,6 +217,7 @@ class PresentarSolicitudView(FacturacionView):
                 datos=request.POST,
                 token_presentacion=token,
                 archivo_comprobante=request.FILES.get("archivo_comprobante"),
+                archivos_adicionales=request.FILES,
             )
         except (ValidationError, ArchivoInvalido) as exc:
             form.is_valid()
@@ -228,6 +229,12 @@ class PresentarSolicitudView(FacturacionView):
 class DetalleSolicitudView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
+        respuesta_config = solicitud.tramite_base.respuestas_formulario.order_by("-pk").first()
+        valores_configurados = respuesta_config.datos if respuesta_config else {}
+        datos_configurados = {
+            clave: item["valor"] for clave, item in valores_configurados.items()
+            if item.get("tipo") != "documento"
+        }
         diagnostico_actual = diagnostico_visible(self.actor, solicitud)
         eventos = list(solicitud.eventos.all())
         motivo_anulacion = ""
@@ -314,6 +321,7 @@ class DetalleSolicitudView(FacturacionView):
                 "mensaje_espera": mensaje_espera(self.actor, solicitud, diagnostico_actual),
                 "pendientes_revision": pendientes_revision,
                 "diagnostico": diagnostico_actual,
+                "datos_configurados": datos_configurados,
                 "puede_cerrar": has_capability(self.actor, "facturacion.cerrar")
                 and has_capability(self.actor, "documentos.consultar_metadatos"),
                 "puede_anular": has_capability(self.actor, "facturacion.anular")
@@ -422,7 +430,7 @@ class CorregirSolicitudView(FacturacionView):
             request,
             solicitud,
             SolicitudFacturacionForm(
-                initial=initial,
+                initial=initial, tramite_config=solicitud.tramite_base,
                 documento_actual=bool(solicitud.documento_comprobante_inicial_id),
             ),
         )
@@ -431,7 +439,7 @@ class CorregirSolicitudView(FacturacionView):
         solicitud = self._solicitud(numero)
         form = SolicitudFacturacionForm(
             request.POST,
-            request.FILES,
+            request.FILES, tramite_config=solicitud.tramite_base,
             documento_actual=bool(solicitud.documento_comprobante_inicial_id),
         )
         try:
@@ -442,6 +450,7 @@ class CorregirSolicitudView(FacturacionView):
                 version_esperada=_version_post(request),
                 nota_correccion=request.POST.get("nota_correccion", ""),
                 archivo_comprobante=request.FILES.get("archivo_comprobante"),
+                archivos_adicionales=request.FILES,
             )
         except (ValidationError, ArchivoInvalido) as exc:
             form.is_valid()

@@ -131,21 +131,21 @@ def test_usuario_con_consultar_todas_accede_con_200(
 def test_visibilidad_boton_reporte_en_panel_segun_permisos(
     create_actor: Any, auth_client: Any
 ) -> None:
-    """El botón 'Reporte Cuatrimestral' en solicitud_list.html sólo se muestra a autorizados."""
+    """La entrada 'Reporte' en solicitud_list.html sólo se muestra a autorizados."""
     solicitante, _ = create_actor("solic_panel", ["gastos.presentar"])
     directivo, _ = create_actor("dir_panel", ["gastos.consultar_todas"])
 
     client_solic = auth_client(solicitante)
     res_solic = client_solic.get(reverse("gastos:lista"))
     assert res_solic.status_code == 200
-    enlace_reporte = f'href="{reverse("gastos:reporte_cuatrimestral")}"'
+    enlace_reporte = f'href="{reverse("gestion:reporte_gastos")}"'
     assert enlace_reporte not in res_solic.content.decode()
 
     client_dir = auth_client(directivo)
     res_dir = client_dir.get(reverse("gastos:lista"))
     assert res_dir.status_code == 200
     assert enlace_reporte in res_dir.content.decode()
-    assert reverse("gastos:reporte_cuatrimestral") in res_dir.content.decode()
+    assert reverse("gestion:reporte_gastos") in res_dir.content.decode()
 
 
 # ---------------------------------------------------------------------------

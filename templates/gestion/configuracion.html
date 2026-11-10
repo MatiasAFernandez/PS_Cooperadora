@@ -1,0 +1,13 @@
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Configuración — Cooperadora{% endblock %}
+{% block gestion_content %}
+<header class="gestion-heading"><div><p class="gestion-eyebrow">Gestión</p><h1>Configuración</h1></div></header>
+{% include "gestion/tabs_configuracion.html" %}
+{% if circuito == 'GASTO' %}<details class="gestion-card"><summary>Catálogos y parámetros · Centros de costo y ATP</summary><div class="catalog-admin">{% include "gastos/_catalogos_contenido.html" %}</div></details>{% endif %}
+<section class="gestion-card"><header class="gestion-heading"><div><h2>Formulario de {% if circuito == 'GASTO' %}gastos{% else %}facturación{% endif %}</h2><p>Versión {{ revision }}. Los cambios rigen para nuevas presentaciones. Las respuestas anteriores se conservan.</p></div><a class="btn" href="{% url 'gestion:campo_nuevo' circuito %}">Agregar campo o sección</a></header>
+<p>Los campos esenciales están protegidos. Podés editar sus textos; los códigos que controlan el circuito se conservan. Retirar un campo adicional no borra su historial.</p>
+<div class="gestion-field-list">{% for campo in campos %}<article class="gestion-field"><div><h3>{{ campo.etiqueta }}</h3><p>{{ campo.ayuda }}</p><span class="badge">{% if campo.protegido %}Esencial · protegido{% elif campo.requerido %}Obligatorio{% else %}Opcional{% endif %}</span> {% if not campo.activo %}<span class="badge">Retirado</span>{% endif %}</div><a class="btn btn-secondary" href="{% url 'gestion:campo' circuito campo.clave %}">Editar<span class="sr-only"> {{ campo.etiqueta }}</span></a></article>{% endfor %}</div>
+</section>
+{% if circuito == 'GASTO' %}<script src="{% static 'gastos/js/gestion_catalogos.js' %}" defer></script>{% endif %}
+{% endblock %}

@@ -1,0 +1,6 @@
+<nav class="gestion-tabs" aria-label="Configuración por circuito">
+{% if "gestion.configurar" in actor.capabilities %}
+<a href="{% url 'gestion:configuracion' 'GASTO' %}"{% if circuito == 'GASTO' %} aria-current="page"{% endif %}>Gastos</a>
+<a href="{% url 'gestion:configuracion' 'FACTURACION' %}"{% if circuito == 'FACTURACION' %} aria-current="page"{% endif %}>Facturación</a>
+{% endif %}
+</nav>

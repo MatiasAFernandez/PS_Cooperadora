@@ -6,9 +6,11 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">
+
 {% endblock %}
 
 {% block content %}
+{% include "gestion/tabs_reportes.html" with reporte_circuito="GASTO" %}
 <div class="rep-wrap">
   <!-- Cabecera de Página y Accesos Rápidos -->
   <div class="top">
