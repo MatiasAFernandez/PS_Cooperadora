@@ -1,12 +1,12 @@
 # SPEC-014 — Administración de catálogos y capacidades operativas
 
-## Implementación local del 10/11/2026
+## Implementación del 10/11/2026
 
 El pedido actual amplía el mantenimiento a formularios de ambos circuitos.
 [SPEC-021](021-matias-administracion-formularios-reportes.md) define la cuenta
 administradora, campos esenciales protegidos (confirmado por el usuario),
-versiones, respuestas y reportes separados. Se implementa localmente sin declarar
-validación institucional ni cierre remoto de #77. El antecedente del 02/11 sigue
+versiones, respuestas y reportes separados. La base está integrada mediante PR #105
+(76567e8), sin declarar validación institucional ni cierre de #77. El antecedente del 02/11 sigue
 siendo histórico; las excepciones de #85 no se incluyen.
 
 
@@ -16,7 +16,7 @@ en datos y catálogos internos para no reescribir trámites previos. Una nueva
 presentación/corrección debe seleccionar otra opción válida. Este ajuste no
 implementa el editor de catálogos ni completa #77.
 
-- Estado: administración de formularios implementada localmente en SPEC-021;
+- Estado: administración de formularios implementada en SPEC-021;
   validación institucional y excepciones de #85 separadas.
 - Issue: [#77](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/77), [#85](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/85).
 - Responsable principal: Matías Alejandro Fernández.
@@ -38,6 +38,24 @@ Administración autorizada de los catálogos acordados y definición del perfil 
 Convertir staff/superusuario en autoridad implícita; motor genérico de políticas; implementar reglas de deuda de gastos o inventar plazos, umbrales y sanciones.
 
 ## Requisitos verificables
+
+Matriz técnica vigente de la demo (las facultades se combinan por capacidades):
+
+| Perfil/capacidad | Formularios de ambos circuitos | Catálogos y ATP de gastos | Reportes | Operación |
+|---|---|---|---|---|
+| Administrador preparado por comando | Edita con `gestion.configurar` | Conserva acceso operativo | Ambos | Facultades de operadora de ambos circuitos |
+| Operador sin gestión | Sin edición del esquema | Si tiene `gastos.decidir` o `gastos.registrar_pago` | Según lectura global del circuito | Según sus capacidades |
+| Lector global | Sin edición | Sin edición por ser lector | Sólo circuito autorizado | Sin escritura por ser lector |
+| Solicitante | Sin edición | Sin edición | Sin reporte global | Trámites propios según capacidades |
+
+Los catálogos editables de facturación son producto/servicio, condición IVA y
+centro de costo; los códigos que gobiernan reglas financieras permanecen
+protegidos. Los centros y parámetros ATP de gastos conservan su productor y
+permisos existentes. La cuenta administradora no habilita excepciones de #85.
+La asignación de cargos institucionales no se deduce de los grupos de demo.
+El responsable del pedido confirmó este alcance de demo el 10/11/2026 y difirió
+la asignación de cargos institucionales a la puesta en marcha. Esta confirmación
+no se atribuye a Cooperadora ni sustituye la revisión de interfaces de Franco.
 
 - `ADM-R01`: un administrador con capacidad explícita mantiene las opciones acordadas sin modificar código.
 - `ADM-R02`: conservar referencias históricas al cambiar o retirar opciones; una opción no utilizable para nuevas altas no elimina trámites anteriores.
