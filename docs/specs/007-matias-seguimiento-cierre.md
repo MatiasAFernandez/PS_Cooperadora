@@ -1,8 +1,23 @@
 # SPEC-007 — Estados, historial, pendientes y cierre de facturación
 
+## Actualización local — 10/11/2026
+
+El registro de facturas/notas Xubio admite PDF opcional con la migración 0023.
+Una referencia sin archivo no exige revisión documental ni bloquea por esa ausencia
+el cierre/anulación. Un PDF aportado conserva sus controles. Otro origen, cobros
+y gastos mantienen sus requisitos. Esta actualización sustituye las menciones
+anteriores a PDF obligatorio para Xubio; la API sigue fuera del alcance. El envío declarado y el acuse voluntario
+del titular se incorporan mediante 0024, sin requisitos nuevos de cierre. Ver [SPEC-018](../specs/018-matias-registro-externo-simplificado.md).
+
+
 ## Validación y alcance posterior al 29/10/2026
 
 La [demo](../evidence/demo-2026-10-29.md) muestra cierre explícito tras dos cobros y conserva historial. No acredita aprobación de cada excepción de cancelación/anulación. #76/[SPEC-018](018-matias-registro-externo-simplificado.md) debe adaptar conjuntamente el cierre si se dispensa duplicar el archivo de Xubio; volver opcional el formulario no basta. Las reglas técnicas de abajo siguen vigentes hasta integrar ese cambio y no se trasladan a gastos.
+
+El [contrato propuesto de referencias Xubio](../contracts/referencias-xubio.md)
+del 10/11/2026 precisa esa adaptación de cierre/anulación y sus escenarios de
+aceptación. Es preparación documental: no activa la dispensa ni modifica los
+controles financieros, documentales o SQL existentes.
 
 > Ajustes de consulta aprobados el 25/10/2026: diferencia neto/confirmado, impedimentos con nombres específicos y lista de revisiones por atender. Las reglas de cierre no cambian. Ver [SPEC-012](012-mejoras-demo-consultas.md).
 
@@ -156,6 +171,14 @@ Facturación toma cabecera antes de solicitud y raíces documentales. Revisión 
 reemplazo de facturación toman la misma cabecera antes de la raíz; gastos/C01
 mantienen su contrato y orden. SQL protege operaciones posteriores a terminales,
 las condiciones de resolución, el motivo de anulación y la preservación del evento terminal.
+
+### Excepción acotada de comunicación
+
+El titular puede confirmar recepción de un envío ya informado después del cierre
+o anulación. Este hecho separado no cambia el estado ni los hechos financieros,
+no requiere reapertura y no habilita nuevas declaraciones de envío en terminales.
+Envío/recepción son informativos y no forman parte de la huella de resolución,
+porque no alteran ninguna de sus condiciones. Ver SPEC-018 y el contrato de referencias.
 
 ## Criterios de aceptación
 

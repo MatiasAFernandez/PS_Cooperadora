@@ -65,6 +65,8 @@ class ActualizarRespaldoView(FacturacionView):
         if objeto is None:
             raise Http404
         anterior = respaldo_actual(objeto)
+        if anterior is None:
+            raise Http404
         opciones = sucesores_respaldo(self.actor, anterior)
         return dict(
             actor=self.actor,

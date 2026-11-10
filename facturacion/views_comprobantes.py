@@ -2,6 +2,7 @@
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from documentos.policy import ArchivoInvalido
 from identidad.services import has_capability
@@ -44,7 +45,9 @@ class RegistrarComprobanteView(FacturacionView):
     def get(self, request, numero):
         solicitud = autorizar_registro(self.actor, numero)
         form = ComprobanteExternoForm(
-            initial={"importe": solicitud.importe_factura},
+            initial={"importe": solicitud.importe_factura,
+                     "destinatario": solicitud.email_envio_factura,
+                     "fecha_envio": timezone.localdate()},
             puede_aceptar=puede_aceptar_al_registrar(self.actor),
         )
         return self.mostrar(request, solicitud, form)
@@ -85,7 +88,7 @@ class ModificarComprobanteView(FacturacionView):
             raise PermissionDenied
         anterior = respaldo_actual(comprobante)
         opciones = None
-        if puede_vincular:
+        if puede_vincular and anterior:
             opciones = sucesores_respaldo_comprobante(self.actor, anterior)
             if not puede_corregir:
                 opciones = opciones.filter(procedencia=comprobante.procedencia)
@@ -145,7 +148,9 @@ class ModificarComprobanteView(FacturacionView):
             raise ConflictoConcurrenciaError("El trámite cambió. Recargá el formulario.")
         nuevo = datos.get("nuevo")
         archivo = datos.get("archivo_pdf")
-        if any(datos[campo] != getattr(comprobante, campo) for campo in DATOS_COMPROBANTE):
+        if (archivo and not comprobante.documento_id) or any(
+            datos[campo] != getattr(comprobante, campo) for campo in DATOS_COMPROBANTE
+        ):
             corregir_comprobante(
                 actor=self.actor,
                 numero=numero,

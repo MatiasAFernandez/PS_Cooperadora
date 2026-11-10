@@ -257,7 +257,9 @@ class ComprobanteExterno(models.Model):
     factura_origen = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.PROTECT, related_name="notas"
     )
-    documento = models.OneToOneField("documentos.Documento", on_delete=models.PROTECT)
+    documento = models.OneToOneField(
+        "documentos.Documento", on_delete=models.PROTECT, null=True, blank=True
+    )
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     sustituido = models.BooleanField(default=False, editable=False)
@@ -338,5 +340,54 @@ class ComprobanteExterno(models.Model):
                 f"{self.identificacion}. Emisor: {self.cuit_emisor}. "
                 f"Emisión: {self.fecha_emision:%d/%m/%Y}. Importe: {self.importe:.2f} ARS. "
                 f"Origen: {self.origen_mostrado}. {self.motivo_correccion}"
+            ),
+        )
+
+
+class HechoCorreo(models.Model):
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise IntegrityError("El hecho de correo es inmutable.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise IntegrityError("El hecho de correo es inmutable.")
+
+
+class EnvioComprobante(HechoCorreo):
+    comprobante = models.ForeignKey(
+        ComprobanteExterno, on_delete=models.PROTECT, related_name="envios"
+    )
+    destinatario = models.EmailField()
+    fecha_envio = models.DateField()
+
+    def como_historial(self):
+        return EventoHistorialDTO(
+            evento_id=self.pk, tramite_ref=f"facturacion:{self.comprobante.solicitud_id}",
+            tipo_evento="envio_informado", actor_id=str(self.actor_id),
+            fecha_hora=self.fecha_registro, estado_resultante="ENVIO_INFORMADO",
+            motivo_o_detalle=(f"{self.comprobante.identificacion}. Envío informado: "
+                              f"{self.fecha_envio:%d/%m/%Y} a {self.destinatario}."),
+        )
+
+
+class ConfirmacionRecepcion(HechoCorreo):
+    envio = models.OneToOneField(
+        EnvioComprobante, on_delete=models.PROTECT, related_name="confirmacion"
+    )
+
+    def como_historial(self):
+        return EventoHistorialDTO(
+            evento_id=self.pk, tramite_ref=f"facturacion:{self.envio.comprobante.solicitud_id}",
+            tipo_evento="recepcion_confirmada", actor_id=str(self.actor_id),
+            fecha_hora=self.fecha_registro, estado_resultante="RECEPCION_CONFIRMADA",
+            motivo_o_detalle=(
+                f"El solicitante confirmó recibir {self.envio.comprobante.identificacion}."
             ),
         )

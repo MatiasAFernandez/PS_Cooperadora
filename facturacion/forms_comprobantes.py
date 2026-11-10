@@ -6,6 +6,7 @@ from django import forms
 
 from documentos.models import Documento
 
+from .envios import EnvioForm
 from .models import ComprobanteExterno
 from .validation import validar_cuit
 
@@ -15,7 +16,11 @@ DATOS_COMPROBANTE = (
 )
 
 
-class ComprobanteExternoForm(forms.Form):
+class ComprobanteExternoForm(EnvioForm):
+    field_order = (
+        "tipo", *DATOS_COMPROBANTE, "archivo_pdf", "aceptar_respaldo",
+        "enviado", "destinatario", "fecha_envio",
+    )
     tipo = forms.ChoiceField(choices=[("", "Seleccioná…"), *ComprobanteExterno.Tipo.choices])
     cuit_emisor = forms.CharField(
         label="CUIT de quien emite el comprobante",
@@ -47,7 +52,11 @@ class ComprobanteExternoForm(forms.Form):
         decimal_places=2,
         min_value=Decimal("0.01"),
     )
-    archivo_pdf = forms.FileField(label="PDF del comprobante")
+    archivo_pdf = forms.FileField(
+        label="PDF del comprobante (opcional para Xubio)", required=False,
+        help_text="Si ya está en Xubio, registrá sus datos sin volver a cargar el PDF. "
+        "Para Otro origen, el archivo es obligatorio.",
+    )
 
     procedencia = forms.ChoiceField(
         label="Origen",
@@ -81,6 +90,10 @@ class ComprobanteExternoForm(forms.Form):
             self.add_error("origen_aclaracion", "Indicá el sistema o procedencia del comprobante.")
         if origen == "EXTERNO_XUBIO":
             datos["origen_aclaracion"] = ""
+        if origen == "EXTERNO_OTRO" and not datos.get("archivo_pdf") and not getattr(
+            self, "conserva_archivo", False
+        ):
+            self.add_error("archivo_pdf", "Para Otro origen, adjuntá el PDF del comprobante.")
         return datos
 
 
@@ -97,12 +110,15 @@ class ModificarComprobanteForm(ComprobanteExternoForm):
     field_order = ("tipo", *DATOS_COMPROBANTE, "nuevo", "archivo_pdf", "motivo")
 
     def __init__(self, *args, comprobante, revision, puede_corregir, puede_adjuntar, opciones=None):
+        self.conserva_archivo = comprobante.documento_id is not None
         super().__init__(
             *args,
             initial={
                 campo: getattr(comprobante, campo) for campo in ("tipo", *DATOS_COMPROBANTE)
             } | {"revision": revision},
         )
+        for campo in ("enviado", "destinatario", "fecha_envio"):
+            del self.fields[campo]
         self.fields["tipo"].disabled = True
         for campo in DATOS_COMPROBANTE:
             self.fields[campo].disabled = not puede_corregir

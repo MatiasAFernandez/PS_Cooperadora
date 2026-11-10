@@ -1,5 +1,20 @@
 # Revisión documental — perfil de demo #24
 
+## Actualización local — 10/11/2026
+
+El registro de facturas/notas Xubio admite PDF opcional con la migración 0023.
+Una referencia sin archivo no exige revisión documental ni bloquea por esa ausencia
+el cierre/anulación. Un PDF aportado conserva sus controles. Otro origen, cobros
+y gastos mantienen sus requisitos. Esta actualización sustituye las menciones
+anteriores a PDF obligatorio para Xubio; la API sigue fuera del alcance. El envío declarado y el acuse voluntario
+del titular se incorporan mediante 0024, sin requisitos nuevos de cierre. Ver [SPEC-018](../specs/018-matias-registro-externo-simplificado.md).
+
+
+La dispensa de archivo de Xubio está descrita en el
+[contrato propuesto de referencias](referencias-xubio.md), sin implementación.
+No crea revisiones ficticias ni modifica este servicio: las versiones con archivo
+real conservan sus reglas; cobros y gastos no reciben esa dispensa.
+
 > Las vistas de la demo incorporan la consulta de pendientes de todos los tipos autorizados y origen externo alternativo aprobado el 25/10/2026. Los códigos documentales históricos se conservan; las etiquetas de facturas/notas ya no presuponen Xubio. Ver [SPEC-012](../specs/012-mejoras-demo-consultas.md).
 
 Perfil preparado el 18/10/2026. Matías pidió avanzar con #24 y eligió incorporar

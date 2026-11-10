@@ -1,8 +1,23 @@
 # SPEC-005 — Registro de facturas y notas emitidas externamente
 
+## Actualización local — 10/11/2026
+
+El registro de facturas/notas Xubio admite PDF opcional con la migración 0023.
+Una referencia sin archivo no exige revisión documental ni bloquea por esa ausencia
+el cierre/anulación. Un PDF aportado conserva sus controles. Otro origen, cobros
+y gastos mantienen sus requisitos. Esta actualización sustituye las menciones
+anteriores a PDF obligatorio para Xubio; la API sigue fuera del alcance. El envío declarado y el acuse voluntario
+del titular se incorporan mediante 0024, sin requisitos nuevos de cierre. Ver [SPEC-018](../specs/018-matias-registro-externo-simplificado.md).
+
+
 ## Validación y alcance posterior al 29/10/2026
 
 La [demo](../evidence/demo-2026-10-29.md) solicita evitar el archivo duplicado de Xubio y conservar referencias y trazabilidad de envío. [SPEC-018](018-matias-registro-externo-simplificado.md)/#76 define el cambio por validar/implementar junto con revisión y cierre de SPEC-007. Hasta integrarlo, PDF obligatorio y sus garantías describen el código demostrado. #84 investiga exportación disponible sin asumir JSON ni autorizar API.
+
+La [preparación documental de Xubio](../guides/preparacion-xubio.md) del 10/11/2026
+registra los encabezados CSV realmente disponibles y el mapeo candidato de la API.
+El [contrato de referencias sin archivo](../contracts/referencias-xubio.md) es una
+propuesta para #76, sin implementación ni cambio del requisito vigente de PDF.
 
 > Ampliación aprobada por Matías el 25/10/2026: Xubio predeterminado y Otro con aclaración para los tres tipos; etiquetas documentales neutrales y códigos históricos conservados. Ver [SPEC-012](012-mejoras-demo-consultas.md).
 

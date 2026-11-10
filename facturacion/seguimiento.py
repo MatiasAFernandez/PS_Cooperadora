@@ -103,7 +103,7 @@ def sucesores_respaldo_cobro(actor, anterior):
 def sucesores_respaldo_comprobante(actor, anterior):
     return sucesores_respaldo(actor, anterior).filter(formato="application/pdf").exclude(
         pk__in=ActualizacionRespaldo.objects.values("nuevo_id")
-    ).exclude(pk__in=ComprobanteExterno.todos.values("documento_id"))
+    ).exclude(pk__in=ComprobanteExterno.todos.filter(documento_id__isnull=False).values("documento_id"))
 
 
 def respaldos_solo_rectificados(cobros):
@@ -148,6 +148,8 @@ def diagnostico(solicitud):
     documentos, faltas_documentales = [], []
     for objeto in [*comprobantes, *(c for c in cobros if c.resultado == "CONFIRMADO")]:
         documento = respaldo_actual(objeto)
+        if documento is None and objeto in comprobantes and objeto.procedencia == "EXTERNO_XUBIO":
+            continue
         documentos.append(documento)
         if not version_aceptada(documento):
             etiqueta = (
@@ -297,6 +299,8 @@ def actualizar_respaldo(
         if clase == "cobro" and objeto.resultado == "RECTIFICADO":
             raise ValidationError("Para reutilizar el cobro rectificado, corregí sus datos.")
         anterior = respaldo_actual(objeto)
+        if anterior is None:
+            raise ValidationError("Aportá el primer PDF desde Modificar comprobante externo.")
         bloquear_serie(anterior)
         if bool(nuevo_id) == bool(archivo):
             raise ValidationError("Elegí una versión existente o un nuevo archivo, sólo uno.")

@@ -1,10 +1,24 @@
 # SPEC-018 — Registro externo simplificado de facturación
 
-- Estado: para validar detalles; cambio solicitado, sin implementar.
+- Estado: referencias sin PDF, envío declarado y recepción opcional implementados; validación institucional separada.
 - Issue: [#76](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/76).
 - Responsable principal: Matías Alejandro Fernández.
 - Rol del compañero: Franco Damián Sánchez revisa contratos compartidos y mantiene gastos/pagos.
 - Validador: Cooperadora para operación; equipo/Sistemas para interfaces según el tramo.
+
+## Preparación documental del 10/11/2026
+
+La preparación inicial se limitó a documentación y contratos. El
+[contrato de referencias](../contracts/referencias-xubio.md) precisa un perfil técnico
+para registrar referencias Xubio sin PDF, distinguir emisión/registro/envío y
+adaptar pendientes, correcciones y resolución sin dispensar respaldos de cobros
+o gastos. El encargo posterior autoriza implementar el registro con PDF opcional para Xubio.
+La [guía para Sistemas](../guides/preparacion-xubio.md) registra fuentes CSV/API,
+mapeos, límites y puntos de extensión. La conexión API queda fuera del proyecto;
+la solución manual no depende de ella. La migración 0023 y los servicios admiten referencias sin PDF y dispensan sólo
+esa ausencia al resolver. Los archivos aportados conservan revisión; Otro origen,
+cobros y gastos conservan sus requisitos. El envío puede declararse en el alta o en el detalle; el solicitante confirma
+recepción de forma voluntaria, sin condicionar el cierre.
 
 ## Problema y valor
 
@@ -29,7 +43,7 @@ Emisión fiscal, integración automática con Xubio, borrado de respaldos histó
 
 ## Reglas de negocio
 
-La demo confirma el problema de la duplicación. La implementación vigente sigue exigiendo PDF de factura/notas y revisión al cierre hasta integrar este cambio. Los datos monetarios, unicidad, historial y autorización no se debilitan por omitir bytes. No extender la omisión a los comprobantes de cobro ni a gastos.
+La demo confirma el problema de la duplicación. La implementación local admite factura/notas Xubio sin PDF; cuando hay archivo, mantiene su revisión al cierre. Los datos monetarios, unicidad, historial y autorización no se debilitan por omitir bytes. No extender la omisión a los comprobantes de cobro ni a gastos.
 
 ## Criterios de aceptación
 
@@ -50,9 +64,24 @@ Facturación: Matías; contratos documentales y de cierre SPEC-003/005/006/007/0
 
 Regresión de registro y cierre con/sin archivo; cobros pendientes; duplicados; permisos por objeto; migración preservando vínculos/versiones y atomicidad en PostgreSQL. La entrega debe enlazar SHA, revisión y resultados realmente ejecutados; esta especificación no acredita nuevas pruebas ni implementación.
 
+## Acuerdo operativo del 10/11/2026
+
+El usuario aceptó declarar el envío con destinatario precargado y fecha editable,
+en el mismo registro, y una confirmación voluntaria del solicitante. No se exige
+API, acuse automático, adjuntos nuevos, recordatorios ni aprobación adicional.
+La fecha corresponde al envío declarado; actor y momento de registro se fijan en
+servidor. Una corrección/nuevo envío agrega otro hecho; su acuse no se hereda.
+Sólo el titular visible puede confirmar recepción, incluso después del cierre:
+es una excepción acotada de comunicación, sin modificar resolución ni finanzas.
+La declaración de envío sigue restringida a trámites abiertos y comprobantes vigentes.
+
 ## Preguntas abiertas
 
-Datos mínimos definitivos; fecha y destinatario de envío; archivo opcional o sin carga en Xubio; tratamiento del origen Otro; cardinalidad de facturas y notas y reglas de anulación no confirmadas por la demo.
+Validación institucional del perfil técnico de datos mínimos y del origen Otro.
+El acuerdo de esta entrega confirma archivo opcional en Xubio, primer adjunto
+posterior y envío/recepción voluntarios sin bloqueo de cierre. La propuesta conserva
+cardinalidad, unicidad y reglas financieras actuales sin atribuirles validación
+institucional. Cualquier cambio requiere acuerdo propio antes de implementar.
 
 ## Decisiones
 
