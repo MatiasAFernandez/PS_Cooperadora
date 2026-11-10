@@ -1,5 +1,12 @@
 # SPEC-003 — Documentos protegidos de los trámites
 
+Actualización local del 10/11/2026: SPEC-021 incorpora ANEXO_SOLICITUD como
+adjunto protegido de formularios en ambos circuitos, con procedencia SOLICITANTE.
+Reutiliza política de formato/tamaño, almacenamiento y autorización por trámite.
+No satisface presupuesto/factura de C01 ni acredita cobros o pagos. Se preservan
+las garantías previas; la nueva migración adapta únicamente la clasificación SQL.
+
+
 ## Validación y alcance posterior al 29/10/2026
 
 La [demo](../evidence/demo-2026-10-29.md) confirma conservar documentos y correcciones. #81 precisa el cambio solicitado de 10 MiB a un máximo cercano a 2 MB, sin aplicar todavía un número no acordado. PDF/JPEG/PNG, control en servidor y acceso protegido siguen vigentes. #76/[SPEC-018](018-matias-registro-externo-simplificado.md) plantea dispensar duplicación de archivos de Xubio sólo en facturación; no elimina revisión de aportes ajenos ni garantías de gastos.

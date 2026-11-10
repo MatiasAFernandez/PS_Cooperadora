@@ -47,6 +47,10 @@ alcance del proyecto. Incluye el contrato propuesto de referencias sin duplicar
 PDF. El registro manual de Xubio admite PDF opcional desde la migración 0023;
 la conexión API continúa fuera del alcance.
 
+La [guía de administración](docs/guides/administracion-formularios-reportes.md)
+describe la cuenta administradora local, los formularios configurables con campos
+esenciales protegidos y las pestañas de Reporte/Configuración por circuito.
+
 ## Puesta en marcha local en Windows
 
 Requisitos: Python 3.11 y Docker Desktop iniciado con el motor de contenedores

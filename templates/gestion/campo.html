@@ -1,0 +1,24 @@
+{% extends "gestion/base.html" %}
+{% block title %}Editar formulario — Cooperadora{% endblock %}
+{% block gestion_content %}
+<h1>{% if clave %}Editar campo{% else %}Agregar campo o sección{% endif %}</h1>
+{% include "gestion/tabs_configuracion.html" %}
+<section class="gestion-card"><form method="post">{% csrf_token %}{{ form.non_field_errors }}
+{% for campo in form %}{% if campo.is_hidden %}{{ campo }}{% else %}<div class="form-group">{{ campo.label_tag }}{{ campo }}{% if campo.help_text %}<p class="gestion-help">{{ campo.help_text }}</p>{% endif %}{{ campo.errors }}</div>{% endif %}{% endfor %}
+<div class="gestion-actions"><button class="btn" type="submit">Guardar configuración</button><a class="btn btn-secondary" href="{% url 'gestion:configuracion' circuito %}">Volver</a></div></form></section>
+<script>
+(() => {
+    const tipo = document.getElementById('id_tipo');
+    const opciones = document.getElementById('id_opciones');
+    const requerido = document.getElementById('id_requerido');
+    function actualizar() {
+        const lista = ['seleccion', 'multiple', 'radio'].includes(tipo.value)
+            || (tipo.value === 'base' && {{ form.opciones_visibles|yesno:"true,false" }});
+        opciones.closest('.form-group').hidden = !lista;
+        requerido.closest('.form-group').hidden = tipo.value === 'seccion';
+    }
+    tipo.addEventListener('change', actualizar);
+    actualizar();
+})();
+</script>
+{% endblock %}

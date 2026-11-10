@@ -7,7 +7,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import OuterRef, Q, Subquery
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
@@ -296,13 +296,13 @@ def _puede_adjuntar_respaldo(actor: Any) -> bool:
     )
 
 
-def _carga_respaldo_multiple(request: HttpRequest) -> bool:
+def _carga_respaldo_multiple(request: HttpRequest, adicionales=()) -> bool:
     """El alta acepta a lo sumo un archivo en el campo acordado."""
     if not request.FILES:
         return False
     return (
-        set(request.FILES.keys()) != {"respaldo_archivo"}
-        or len(request.FILES.getlist("respaldo_archivo")) != 1
+        not set(request.FILES).issubset({"respaldo_archivo", *adicionales})
+        or any(len(request.FILES.getlist(k)) != 1 for k in request.FILES)
     )
 
 
@@ -400,7 +400,7 @@ class SolicitudGastoCreateView(View):
         else:
             solicitud_post["centro_costo"] = ""
 
-        form = SolicitudGastoForm(solicitud_post)
+        form = SolicitudGastoForm(solicitud_post, request.FILES)
 
         tiene_datos_bancarios = any(
             (request.POST.get(c) or "").strip()
@@ -427,7 +427,7 @@ class SolicitudGastoCreateView(View):
         respaldo_form.is_valid()
         error_carga = (
             "Adjuntá un solo archivo de respaldo."
-            if _carga_respaldo_multiple(request)
+            if _carga_respaldo_multiple(request, form.campos_adicionales)
             else ""
         )
         if error_carga:
@@ -481,7 +481,7 @@ class SolicitudGastoCreateView(View):
                 )
 
         try:
-            if archivo is None:
+            if archivo is None and not request.FILES:
                 solicitud = crear_solicitud_gasto(
                     actor=actor,
                     concepto=form.cleaned_data["concepto"],
@@ -492,6 +492,7 @@ class SolicitudGastoCreateView(View):
                     ),
                     centro_costo=form.cleaned_data.get("centro_costo"),
                     datos_transferencia=datos_form.datos_transferencia,
+                    datos_formulario=solicitud_post, archivos_formulario=request.FILES,
                 )
             else:
                 # El tipo se deriva de la modalidad ya validada, nunca del POST.
@@ -511,15 +512,23 @@ class SolicitudGastoCreateView(View):
                         ),
                         centro_costo=form.cleaned_data.get("centro_costo"),
                         datos_transferencia=datos_form.datos_transferencia,
-                    )
-                    incorporar(
-                        actor=actor,
-                        referencia=f"gastos:{solicitud.pk}",
-                        archivo=archivo,
-                        tipo=tipo_respaldo,
-                        procedencia=Documento.Procedencia.SOLICITANTE,
+                        datos_formulario=solicitud_post, archivos_formulario=request.FILES,
                         _escrituras=escrituras,
                     )
+                    if archivo is not None:
+                        incorporar(
+                            actor=actor,
+                            referencia=f"gastos:{solicitud.pk}",
+                            archivo=archivo,
+                            tipo=tipo_respaldo,
+                            procedencia=Documento.Procedencia.SOLICITANTE,
+                            _escrituras=escrituras,
+                        )
+        except ValidationError as exc:
+            form.add_error(None, " ".join(exc.messages))
+            return render(request, "gastos/solicitud_form.html",
+                          self._contexto(actor, form, datos_form, respaldo_form, resumen_deuda),
+                          status=400)
         except DeudaDocumentalBloqueoError as exc:
             form.add_error(None, str(exc))
             return render(
@@ -2255,6 +2264,18 @@ def _puede_administrar_catalogos(actor: Any) -> bool:
 CentroCostoEdicionForm = forms.modelform_factory(CentroCosto, fields=["nombre"])
 
 
+def contexto_catalogos(actor):
+    centros = CentroCosto.objects.all().order_by("nombre")
+    centro_form = CentroCostoForm()
+    atp_form = ParametrosATPForm(
+        initial={
+            "base_imponible_atp": obtener_base_imponible_atp(),
+            "alicuota_atp": obtener_alicuota_atp(),
+        }
+    )
+    return dict(actor=actor, centros_costo=centros, centro_form=centro_form, atp_form=atp_form)
+
+
 class GestionCatalogosView(View):
     """Administración de catálogos (centros de costo) y parámetros de Cooperadora."""
 
@@ -2269,24 +2290,7 @@ class GestionCatalogosView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        centros = CentroCosto.objects.all().order_by("nombre")
-        centro_form = CentroCostoForm()
-        atp_form = ParametrosATPForm(
-            initial={
-                "base_imponible_atp": obtener_base_imponible_atp(),
-                "alicuota_atp": obtener_alicuota_atp(),
-            }
-        )
-        return render(
-            request,
-            "gastos/gestion_catalogos.html",
-            {
-                "actor": self.actor,
-                "centros_costo": centros,
-                "centro_form": centro_form,
-                "atp_form": atp_form,
-            },
-        )
+        return render(request, "gastos/gestion_catalogos.html", contexto_catalogos(self.actor))
 
     def post(self, request: HttpRequest) -> HttpResponse:
         action = request.POST.get("action", "").strip()

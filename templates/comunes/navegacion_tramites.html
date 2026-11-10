@@ -27,15 +27,15 @@
             {% endif %}
         </ul>
         {% endif %}
-        {% if "gastos.consultar_todas" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
+        {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps or "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
         <h3 class="app-nav-section">Gestión</h3>
         <ul>
-            {% if "gastos.consultar_todas" in caps %}
-                <li><a href="{% url 'gastos:reporte_cuatrimestral' %}"{% if ns == "gastos" and name == "reporte_cuatrimestral" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 20h18M6 20v-7M12 20V5M18 20v-10"/></svg><span class="app-nl">Reporte cuatrimestral</span></a></li>
-            {% endif %}
-            {% if "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
-                <li><a href="{% url 'gastos:gestion_catalogos' %}"{% if ns == "gastos" and name == "gestion_catalogos" or ns == "gastos" and name == "centro_costo_toggle" or ns == "gastos" and "catalogos" in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg><span class="app-nl">Catálogos y parámetros</span></a></li>
-            {% endif %}
+        {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}
+        <li><a href="{% if 'gastos.consultar_todas' in caps %}{% url 'gestion:reporte_gastos' %}{% else %}{% url 'gestion:reporte_facturacion' %}{% endif %}"{% if ns == 'gestion' and name == 'reporte_gastos' or ns == 'gestion' and name == 'reporte_facturacion' or ns == 'gastos' and name == 'reporte_cuatrimestral' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M6 20v-7M12 20V5M18 20v-10"/></svg><span class="app-nl">Reporte</span></a></li>
+        {% endif %}
+        {% if "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
+        <li><a href="{% if 'gestion.configurar' in caps %}{% url 'gestion:configuracion' 'GASTO' %}{% else %}{% url 'gastos:gestion_catalogos' %}{% endif %}"{% if ns == 'gestion' and name == 'configuracion' or ns == 'gestion' and name == 'campo' or ns == 'gestion' and name == 'campo_nuevo' or ns == 'gastos' and 'catalogos' in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg><span class="app-nl">Configuración</span></a></li>
+        {% endif %}
         </ul>
         {% endif %}
         <h3 class="app-nav-section">General</h3>

@@ -5,9 +5,11 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'gastos/css/gestion_catalogos.css' %}">
+
 {% endblock %}
 
 {% block content %}
+{% include "gestion/tabs_configuracion.html" with circuito="GASTO" %}
 <div class="catalog-admin">
     <header class="catalog-heading">
         <div>
@@ -21,155 +23,8 @@
         <p class="catalog-message" role="status">{{ message }}</p>
     {% endfor %}
 
-    <section class="catalog-card" aria-labelledby="catalog-centros">
-        <header class="catalog-heading">
-            <div>
-                <h2 id="catalog-centros">Centros de costo</h2>
-                <p>Administrá las áreas disponibles al presentar un gasto.</p>
-            </div>
-        </header>
+    {% include "gastos/_catalogos_contenido.html" %}
 
-        <details class="catalog-add"{% if centro_form.errors %} open{% endif %}>
-            <summary class="btn">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg>
-                Nuevo centro
-            </summary>
-            <form class="catalog-box" method="post" action="{% url 'gastos:gestion_catalogos' %}">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="crear_centro">
-                {{ centro_form.non_field_errors }}
-                <div class="catalog-fields">
-                    <div>
-                        <label for="{{ centro_form.codigo.id_for_label }}">Código</label>
-                        {{ centro_form.codigo }}
-                        {{ centro_form.codigo.errors }}
-                    </div>
-                    <div>
-                        <label for="{{ centro_form.nombre.id_for_label }}">Nombre descriptivo</label>
-                        {{ centro_form.nombre }}
-                        {{ centro_form.nombre.errors }}
-                    </div>
-                </div>
-                <label class="catalog-check" for="{{ centro_form.activo.id_for_label }}">
-                    {{ centro_form.activo }} Disponible para nuevas solicitudes
-                </label>
-                {{ centro_form.activo.errors }}
-                <button type="submit" class="btn">Crear centro</button>
-            </form>
-        </details>
-
-        {% if centros_costo %}
-            <div class="catalog-tools" data-catalog-tools hidden>
-                <div class="catalog-search">
-                    <label for="catalog-search">Buscar por código o nombre</label>
-                    <input type="search" id="catalog-search" autocomplete="off" placeholder="Ej. Extensión">
-                </div>
-                <div>
-                    <label for="catalog-status">Estado</label>
-                    <select id="catalog-status">
-                        <option value="">Todos</option>
-                        <option value="activo">Activos</option>
-                        <option value="inactivo">Inactivos</option>
-                    </select>
-                </div>
-            </div>
-            <p class="catalog-filter-empty" data-catalog-empty role="status" hidden>No hay centros que coincidan con la búsqueda.</p>
-            <table class="catalog-table" aria-labelledby="catalog-centros">
-                <thead>
-                    <tr>
-                        <th scope="col">Código</th>
-                        <th scope="col">Nombre descriptivo</th>
-                        <th scope="col">Estado</th>
-                        <th scope="col">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for centro in centros_costo %}
-                        <tr data-catalog-row data-status="{% if centro.activo %}activo{% else %}inactivo{% endif %}">
-                            <td class="catalog-code"><code data-catalog-code>{{ centro.codigo }}</code></td>
-                            <td class="catalog-name"><strong data-catalog-name>{{ centro.nombre }}</strong></td>
-                            <td class="catalog-state">
-                                {% if centro.activo %}
-                                    <span class="catalog-chip catalog-chip-active">Activo</span>
-                                {% else %}
-                                    <span class="catalog-chip">Inactivo</span>
-                                {% endif %}
-                            </td>
-                            <td class="catalog-actions">
-                                <details class="catalog-action"{% if centro_editado_id == centro.pk %} open{% endif %}>
-                                    <summary class="btn btn-secondary" aria-label="Editar {{ centro.nombre }}">Editar</summary>
-                                    <form class="catalog-box" method="post" action="{% url 'gastos:gestion_catalogos' %}">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="editar_centro">
-                                        <input type="hidden" name="centro_id" value="{{ centro.pk }}">
-                                        <label for="catalog-name-{{ centro.pk }}">Nombre descriptivo</label>
-                                        <input type="text" id="catalog-name-{{ centro.pk }}" name="nombre" value="{% if centro_editado_id == centro.pk %}{{ centro_edicion_form.nombre.value|default_if_none:'' }}{% else %}{{ centro.nombre }}{% endif %}" maxlength="150" required{% if centro_editado_id == centro.pk %} aria-invalid="true" aria-describedby="catalog-error-{{ centro.pk }}"{% endif %}>
-                                        {% if centro_editado_id == centro.pk %}
-                                            <div id="catalog-error-{{ centro.pk }}" role="alert">
-                                                {{ centro_edicion_form.nombre.errors }}
-                                                {{ centro_edicion_form.non_field_errors }}
-                                            </div>
-                                        {% endif %}
-                                        <button type="submit" class="btn">Guardar nombre</button>
-                                    </form>
-                                </details>
-                                {% if centro.activo %}
-                                    <details class="catalog-action">
-                                        <summary class="btn btn-secondary" aria-label="Desactivar {{ centro.nombre }}">Desactivar</summary>
-                                        <form class="catalog-box" method="post" action="{% url 'gastos:centro_costo_toggle' pk=centro.pk %}">
-                                            {% csrf_token %}
-                                            <p>El centro dejará de estar disponible en nuevas solicitudes. Sus trámites anteriores se conservan.</p>
-                                            <button type="submit" class="btn catalog-confirm">Confirmar baja</button>
-                                        </form>
-                                    </details>
-                                {% else %}
-                                    <form method="post" action="{% url 'gastos:centro_costo_toggle' pk=centro.pk %}">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-secondary" aria-label="Reactivar {{ centro.nombre }}">Reactivar</button>
-                                    </form>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p class="catalog-filter-empty">Todavía no hay centros de costo registrados.</p>
-        {% endif %}
-    </section>
-
-    <section class="catalog-card" aria-labelledby="catalog-atp">
-        <header class="catalog-heading">
-            <div>
-                <h2 id="catalog-atp">Parámetros de Retención ATP</h2>
-                <p>Los cambios se aplican a nuevos registros de pago. Los pagos anteriores conservan sus valores.</p>
-            </div>
-        </header>
-        <form method="post" action="{% url 'gastos:gestion_catalogos' %}">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="actualizar_atp">
-            {{ atp_form.non_field_errors }}
-            <div class="catalog-fields">
-                <div>
-                    <label for="{{ atp_form.base_imponible_atp.id_for_label }}">{{ atp_form.base_imponible_atp.label }}</label>
-                    {{ atp_form.base_imponible_atp }}
-                    {% if atp_form.base_imponible_atp.help_text %}
-                        <small id="{{ atp_form.base_imponible_atp.auto_id }}_helptext">{{ atp_form.base_imponible_atp.help_text }}</small>
-                    {% endif %}
-                    {{ atp_form.base_imponible_atp.errors }}
-                </div>
-                <div>
-                    <label for="{{ atp_form.alicuota_atp.id_for_label }}">Alícuota de referencia</label>
-                    {{ atp_form.alicuota_atp }}
-                    {% if atp_form.alicuota_atp.help_text %}
-                        <small id="{{ atp_form.alicuota_atp.auto_id }}_helptext">{{ atp_form.alicuota_atp.help_text }}</small>
-                    {% endif %}
-                    {{ atp_form.alicuota_atp.errors }}
-                </div>
-            </div>
-            <button type="submit" class="btn catalog-atp-save">Guardar parámetros ATP</button>
-        </form>
-    </section>
 </div>
 <script src="{% static 'gastos/js/gestion_catalogos.js' %}" defer></script>
 {% endblock %}

@@ -23,6 +23,7 @@ from gastos.datos_transferencia import (
     validar_datos_transferencia,
 )
 from gastos.models import CentroCosto, EstadoSolicitud, SolicitudGasto, TipoFlujoGasto
+from gestion.formularios import FormularioConfigurableMixin
 
 
 class FiltroEstadoGastoForm(FiltroFechaForm):
@@ -109,7 +110,7 @@ class MontoMonetarioField(forms.DecimalField):
         return super().to_python(value)
 
 
-class SolicitudGastoForm(forms.ModelForm):
+class SolicitudGastoForm(FormularioConfigurableMixin, forms.ModelForm):
     """Formulario para la presentación de una necesidad de gasto."""
 
     tipo_flujo = forms.ChoiceField(
@@ -136,6 +137,10 @@ class SolicitudGastoForm(forms.ModelForm):
             "tipo_flujo",
             "centro_costo",
         ]
+        labels = {
+            "concepto": "Concepto / justificación", "monto_estimado": "Importe estimado · ARS",
+        }
+        help_texts = {"unidad_requirente": "Área o unidad que solicita el gasto."}
         field_classes = {"monto_estimado": MontoMonetarioField}
         widgets = {
             "concepto": forms.TextInput(
@@ -162,6 +167,7 @@ class SolicitudGastoForm(forms.ModelForm):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["centro_costo"].queryset = CentroCosto.objects.filter(activo=True)
+        self.configurar("GASTO")
 
     def clean_tipo_flujo(self) -> str:
         flujo = self.cleaned_data.get("tipo_flujo")
@@ -190,7 +196,7 @@ class SolicitudGastoForm(forms.ModelForm):
         return monto
 
 
-class RespaldoSolicitudForm(forms.Form):
+class RespaldoSolicitudForm(FormularioConfigurableMixin, forms.Form):
     """Adjunto opcional del alta; la vista aplica la política del archivo."""
 
     respaldo_archivo = forms.FileField(
@@ -202,7 +208,12 @@ class RespaldoSolicitudForm(forms.Form):
     )
 
 
-class DatosTransferenciaForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.configurar("GASTO", solo_base=True)
+
+
+class DatosTransferenciaForm(FormularioConfigurableMixin, forms.Form):
     """Bloque opcional y completo de datos operativos para una transferencia.
 
     El formulario no crea filas por sí mismo: la vista entrega el resultado al
@@ -261,6 +272,7 @@ class DatosTransferenciaForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.centro_costo_default = centro_costo_default
         self.datos_transferencia: dict[str, str] | None = None
+        self.configurar("GASTO", solo_base=True, solo_textos=True)
 
     def clean_cbu_alias(self) -> str:
         cbu_alias = self.cleaned_data.get("cbu_alias", "").strip()

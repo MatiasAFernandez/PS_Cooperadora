@@ -24,6 +24,7 @@ from .policy import ArchivoInvalido, ArchivoValidado, validar_archivo
 
 TIPOS_POR_CIRCUITO = {
     Circuito.GASTO: {
+        Documento.Tipo.ANEXO_SOLICITUD: {Documento.Procedencia.SOLICITANTE},
         Documento.Tipo.PRESUPUESTO_PROFORMA: {Documento.Procedencia.SOLICITANTE},
         Documento.Tipo.FACTURA_PROVEEDOR: {
             Documento.Procedencia.SOLICITANTE,
@@ -37,6 +38,7 @@ TIPOS_POR_CIRCUITO = {
         Documento.Tipo.CONSTANCIA_RETENCION_ATP: {Documento.Procedencia.EXTERNO_ATP},
     },
     Circuito.FACTURACION: {
+        Documento.Tipo.ANEXO_SOLICITUD: {Documento.Procedencia.SOLICITANTE},
         Documento.Tipo.FACTURA_EMITIDA_XUBIO: {
             Documento.Procedencia.EXTERNO_XUBIO,
             Documento.Procedencia.EXTERNO_OTRO,
@@ -100,6 +102,7 @@ def _validar_clasificacion(actor: Actor, circuito: str, tipo: str, procedencia: 
         if procedencia == Documento.Procedencia.SOLICITANTE:
             raise PermissionDenied("El personal no puede declarar procedencia del solicitante.")
     elif procedencia != Documento.Procedencia.SOLICITANTE or tipo not in {
+        Documento.Tipo.ANEXO_SOLICITUD,
         Documento.Tipo.PRESUPUESTO_PROFORMA,
         Documento.Tipo.FACTURA_PROVEEDOR,
         Documento.Tipo.TICKET_NO_FISCAL,

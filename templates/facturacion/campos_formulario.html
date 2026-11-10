@@ -1,7 +1,8 @@
 {{ form.non_field_errors }}
-{% for field in form.hidden_fields %}{{ field.errors }}{{ field }}{% endfor %}
+{% for field in form.hidden_fields %}{% if field.name != "configuracion_revision" %}{% if not form.campos_adicionales or field.name not in form.campos_adicionales %}{{ field.errors }}{{ field }}{% endif %}{% endif %}{% endfor %}
 <div class="fac-form-fields">
 {% for field in form.visible_fields %}
+{% if not form.campos_adicionales or field.name not in form.campos_adicionales %}
 {% if field.name == "retirar_comprobante" %}
     {% if solicitud.documento_comprobante_inicial_id %}
         {% include "facturacion/respaldo_inicial.html" %}
@@ -22,5 +23,7 @@
     {% if field.field.widget.input_type == "file" %}{{ field.errors }}{% endif %}
 </div>
 {% endif %}
+{% endif %}
 {% endfor %}
 </div>
+{% if form.campos_adicionales != None %}{% include "gestion/campos_adicionales.html" %}{% endif %}

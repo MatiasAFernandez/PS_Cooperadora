@@ -1,0 +1,138 @@
+.gestion-wrap {
+  max-width:1140px;
+  margin:auto;
+}
+.gestion-heading,.gestion-actions {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:1rem;
+  flex-wrap:wrap;
+}
+.gestion-heading h1 {
+  margin:.2rem 0;
+}
+.gestion-eyebrow {
+  font-size:.8rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--ref-blue);
+}
+.gestion-card {
+  background:white;
+  border:1px solid var(--ref-border,#e2e8f0);
+  border-radius:12px;
+  padding:1.4rem;
+  margin:1rem 0;
+  box-shadow:0 2px 5px #0f172a04;
+}
+.gestion-tabs {
+  display:flex;
+  gap:.5rem;
+  border-bottom:1px solid #cbd5e1;
+  margin-bottom:1.4rem;
+}
+.gestion-tabs a {
+  padding:.8rem 1.1rem;
+  min-height:44px;
+  box-sizing:border-box;
+  border-bottom:3px solid transparent;
+  color:var(--ref-blue);
+  font-weight:600;
+}
+.gestion-tabs a[aria-current=page] {
+  border-bottom-color:var(--ref-blue);
+  background:#eff6ff;
+}
+.gestion-field {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:1rem;
+  padding:1rem 0;
+  border-top:1px solid #e2e8f0;
+}
+.gestion-field h3 {
+  font-size:1rem;
+  margin:0;
+}
+.gestion-field p,.gestion-help {
+  font-size:.85rem;
+  color:#475569;
+}
+.gestion-kpis {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem;
+}
+.gestion-kpis .gestion-card {
+  margin:0;
+}
+.gestion-kpis h2 {
+  font-size:.9rem;
+  color:#475569;
+}
+.gestion-kpis strong {
+  font-size:1.65rem;
+  color:var(--ref-blue);
+}
+.gestion-filters {
+  display:flex;
+  gap:1rem;
+  align-items:end;
+  flex-wrap:wrap;
+}
+.gestion-table {
+  overflow:auto;
+}
+.gestion-table th,.gestion-table td {
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.gestion-card summary {
+  cursor:pointer;
+  font-weight:600;
+  min-height:44px;
+}
+.gestion-card input:disabled,.gestion-card select:disabled {
+  background:#f1f5f9;
+  color:#475569;
+}
+.gestion-field .sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+}
+@media(max-width:700px) {
+  .gestion-kpis {
+    grid-template-columns:1fr;
+  }
+  .gestion-card {
+    padding:1rem;
+  }
+  .gestion-heading,.gestion-field {
+    align-items:flex-start;
+  }
+  .gestion-filters>div {
+    width:100%;
+  }
+  .gestion-tabs a {
+    flex:1;
+    text-align:center;
+    padding:.7rem;
+  }
+  .gestion-table {
+    font-size:.8rem;
+  }
+}
+@media print {
+  .gestion-filters,.gestion-tabs,.gestion-heading button {
+    display:none;
+  }
+  .gestion-card {
+    break-inside:avoid;
+    box-shadow:none;
+  }
+}
