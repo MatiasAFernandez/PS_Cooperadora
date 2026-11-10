@@ -1,13 +1,67 @@
-{% extends "gestion/base.html" %}
+{% extends "base.html" %}
+{% load static %}
 {% block title %}Reporte de facturación — Cooperadora{% endblock %}
-{% block gestion_content %}
-<header class="gestion-heading"><div><p class="gestion-eyebrow">Gestión</p><h1>Reporte de facturación</h1><p>Solicitudes, facturación neta e ingresos confirmados · ARS</p></div><button class="btn btn-secondary" onclick="window.print()">Imprimir</button></header>
+{% block titulo_modulo %}PS Cooperadora — Gestión{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">{% endblock %}
+{% block content %}
 {% include "gestion/tabs_reportes.html" with reporte_circuito="FACTURACION" %}
-<form class="gestion-card gestion-filters" method="get"><div><label for="anio">Año de presentación</label><input id="anio" type="number" name="anio" min="2000" max="2100" value="{{ anio }}" required></div><div><label for="cuatrimestre">Período</label><select id="cuatrimestre" name="cuatrimestre"><option value="">Año completo</option><option value="1"{% if cuatrimestre == 1 %} selected{% endif %}>Enero–abril</option><option value="2"{% if cuatrimestre == 2 %} selected{% endif %}>Mayo–agosto</option><option value="3"{% if cuatrimestre == 3 %} selected{% endif %}>Septiembre–diciembre</option></select></div><div><label for="orden">Ordenar grupos por</label><select id="orden" name="orden"><option value="cantidad"{% if orden == "cantidad" %} selected{% endif %}>Cantidad de solicitudes</option><option value="solicitado"{% if orden == "solicitado" %} selected{% endif %}>Importe solicitado</option><option value="neto"{% if orden == "neto" %} selected{% endif %}>Facturado neto</option></select></div><button class="btn">Aplicar filtros</button></form>
+<div class="rep-wrap">
+  <header class="top">
+    <div>
+      <h1 class="rep-title">Reporte de facturación</h1>
+      <p class="lead">Solicitudes, facturación neta e ingresos confirmados · ARS</p>
+    </div>
+    <div class="top-acts">
+      <button type="button" class="btn sec" onclick="window.print()">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Imprimir A4
+      </button>
+    </div>
+  </header>
+  <form class="card control-bar" method="get" action="{% url 'gestion:reporte_facturacion' %}" aria-label="Filtros del reporte" data-filtros-reporte>
+    {% if cuatrimestre %}<input type="hidden" name="cuatrimestre" value="{{ cuatrimestre }}">{% endif %}
+    {% if trimestre %}<input type="hidden" name="trimestre" value="{{ trimestre }}">{% endif %}
+    <div class="control-group">
+      <div class="fld">
+        <label for="anio">Año de presentación</label>
+        <select id="anio" name="anio">
+          {% for a in anios %}<option value="{{ a }}"{% if a == anio %} selected{% endif %}>{{ a }}</option>{% empty %}<option value="{{ anio }}">{{ anio }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="fld">
+        <span class="fld-lbl" id="lblCuatrimestres">Período · Cuatrimestres</span>
+        <div class="period-pills rep-cuatrimestres" role="group" aria-labelledby="lblCuatrimestres">
+          <a href="?anio={{ anio }}&amp;orden={{ orden|default:'cantidad' }}" class="pill"{% if not cuatrimestre and not trimestre %} aria-current="page"{% endif %}>Año completo</a>
+          {% for c in cuatrimestres %}<a href="?anio={{ anio }}&amp;cuatrimestre={{ c }}&amp;orden={{ orden }}" class="pill"{% if cuatrimestre == c %} aria-current="page"{% endif %}>{{ c }}° Cuatr.</a>{% endfor %}
+        </div>
+      </div>
+      <div class="fld">
+        <span class="fld-lbl" id="lblTrimestres">Trimestres</span>
+        <div class="period-pills rep-trimestres" role="group" aria-labelledby="lblTrimestres">
+          {% for t in trimestres %}<a href="?anio={{ anio }}&amp;trimestre={{ t }}&amp;orden={{ orden }}" class="pill"{% if trimestre == t %} aria-current="page"{% endif %}>{{ t }}° Trim.</a>{% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="control-group rep-billing-order">
+      <div class="fld">
+        <label for="orden">Ordenar grupos por</label>
+        <select id="orden" name="orden">
+          <option value="cantidad"{% if orden == "cantidad" %} selected{% endif %}>Cantidad de solicitudes</option>
+          <option value="solicitado"{% if orden == "solicitado" %} selected{% endif %}>Importe solicitado</option>
+          <option value="neto"{% if orden == "neto" %} selected{% endif %}>Facturado neto</option>
+        </select>
+      </div>
+      <a href="{% url 'gestion:reporte_facturacion' %}" class="btn ghost">Limpiar filtros</a>
+      <noscript><button type="submit" class="btn">Actualizar reporte</button></noscript>
+    </div>
+    {% if not error %}<div class="control-meta"><span>Período consultado: <b>{% if cuatrimestre %}{{ cuatrimestre }}° cuatrimestre{% elif trimestre %}{{ trimestre }}° trimestre{% else %}Año completo{% endif %} {{ anio }} ({{ reporte.inicio|date:"d/m/Y" }} al {{ reporte.fin|date:"d/m/Y" }})</b> · Fecha de presentación de las solicitudes</span></div>{% endif %}
+  </form>
 {% if error %}<p role="alert" class="alert-error">{{ error }}</p>{% else %}
 <div class="gestion-kpis"><article class="gestion-card"><h2>Solicitudes</h2><strong>{{ reporte.cantidad }}</strong></article><article class="gestion-card"><h2>Solicitado</h2><strong>$ {{ reporte.solicitado|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Facturado neto</h2><strong>$ {{ reporte.neto|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Cobrado confirmado</h2><strong>$ {{ reporte.confirmado|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Solicitud promedio</h2><strong>$ {{ reporte.promedio_solicitud|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Factura promedio</h2><strong>$ {{ reporte.promedio_factura|floatformat:2 }}</strong><p>{{ reporte.facturas }} factura{{ reporte.facturas|pluralize }} vigente{{ reporte.facturas|pluralize }}</p></article></div>
 <details class="gestion-card"><summary>Cómo se calculan estos resultados</summary><p>Se agrupan las solicitudes por fecha local de presentación, excluyendo borradores y {{ reporte.anuladas }} anuladas del período. Para esa población se muestran importes vigentes al consultar: las facturas y notas pueden haberse registrado después del período. Neto = facturas + débitos − créditos; sólo cobros confirmados vigentes cuentan como ingreso. No es un flujo de caja por fecha de cobro.</p><p>Promedio de solicitud = solicitado / solicitudes. Promedio de factura = importe de facturas vigentes / cantidad de facturas; las notas no son facturas adicionales. Redondeo a dos decimales. Correo compartido es una agrupación operativa: no identifica una única persona ni cambia la titularidad.</p></details>
 {% include "gestion/tabla_reporte.html" with titulo="Evolución por cuatrimestre" filas=reporte.periodos %}
 {% include "gestion/tabla_reporte.html" with titulo="Grupos o centros con más solicitudes" filas=reporte.centros %}
 {% include "gestion/tabla_reporte.html" with titulo="Correos solicitantes con más solicitudes" filas=reporte.correos %}
-{% endif %}{% endblock %}
+{% endif %}
+</div>
+<script src="{% static 'gestion/filtros_reporte.js' %}" defer></script>
+{% endblock %}

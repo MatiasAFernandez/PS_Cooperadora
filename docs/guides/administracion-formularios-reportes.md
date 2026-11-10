@@ -47,12 +47,20 @@ su historial; sus archivos conservan descarga autorizada por trámite.
 ## Reportes
 
 Gestión → Reporte ofrece Gastos y Facturación. Gastos conserva el reporte
-directivo existente. Facturación permite elegir año, cuatrimestre y orden de los
+directivo existente. Facturación permite elegir año, cuatrimestre o trimestre y orden de los
 grupos. La explicación de población y fórmulas está disponible en la pantalla.
 
 Facturado neto y cobrado confirmado son medidas distintas. El período identifica
 la fecha de presentación de las solicitudes, no la fecha de cada movimiento.
 No representa contabilidad, flujo de caja ni proyección de períodos futuros.
+
+Las pestañas aparecen antes del título. En Facturación, elegir año, orden o un
+botón de año completo/cuatrimestre/trimestre actualiza el reporte automáticamente.
+El resumen indica las fechas incluidas por presentación local. Cambiar el período
+conserva año y orden. La evolución sigue agrupada por cuatrimestre dentro del
+período consultado. En Gastos también se aplican las selecciones automáticamente.
+Limpiar filtros vuelve al año actual y los criterios iniciales; sin JavaScript,
+usar Actualizar reporte.
 
 ## Verificación y límites
 
@@ -86,3 +94,14 @@ siguen por separado.
 - La PR vinculada a #77 y #30 identifica la versión publicada y su estado de
   integración. La revisión de interfaces por el compañero y la validación
   institucional se mantienen separadas de estas pruebas técnicas.
+
+### Verificación de los filtros de Reporte
+
+Ajuste sobre la versión 76567e8, en `codex/30-filtros-reporte-facturacion`:
+41 pruebas focalizadas de gestión y reporte de gastos aprobadas. Tras el ajuste
+final de distribución, las 9 pruebas de períodos y presentación volvieron a pasar;
+están incluidas en las 41 anteriores. Ruff, Django check y diff sin errores.
+Revisión con cuenta sintética en PostgreSQL aislado, a 1366×900 y 390×844:
+pestañas antes del título, selección automática de año/orden/modalidad, cambio
+entre trimestre/cuatrimestre conservando año/orden y limpieza a los valores
+iniciales. Sin desplazamiento horizontal en móvil. No requiere migraciones.

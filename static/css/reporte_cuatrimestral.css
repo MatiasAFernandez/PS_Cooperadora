@@ -341,6 +341,10 @@ h1.rep-title:focus {
   gap: 8px;
 }
 
+.rep-billing-order {
+  margin-top: 12px;
+}
+
 .kpi-pend-count {
   color: var(--err);
   font-size: 15px;
@@ -997,6 +1001,12 @@ table.dense tfoot tr {
   }
   .period-pills .pill:first-child {
     grid-column: 1 / -1;
+  }
+  .rep-cuatrimestres {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .rep-trimestres .pill:first-child {
+    grid-column: auto;
   }
   .top-acts {
     width: 100%;
