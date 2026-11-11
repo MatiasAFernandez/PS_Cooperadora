@@ -7,8 +7,13 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from facturacion.workflow import emitir_token, presentar_solicitud_facturacion
+from facturacion.workflow import (
+    emitir_token,
+    observar_solicitud_facturacion,
+    presentar_solicitud_facturacion,
+)
 from gestion.reportes import reporte_facturacion
+from tests.facturacion.test_cierre import cobro, factura
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -39,9 +44,62 @@ def test_periodos_separan_limites_locales_y_conservan_centavos(escenario, datos)
         assert reporte_facturacion(2026, cuatrimestre)["cantidad"] == cantidad
     anual = reporte_facturacion(2026)
     assert anual["cantidad"] == 5
+    assert [fila["cantidad"] for fila in anual["periodos"]] == [3, 1, 1]
+    segundo = reporte_facturacion(2026, trimestre=2)
+    assert [fila["cantidad"] for fila in segundo["periodos"]] == [2, 1, 0]
     assert anual["inicio"] == date(2026, 1, 1)
     assert anual["fin"] == date(2026, 12, 31)
     assert reporte_facturacion(2024, trimestre=1)["fin"] == date(2024, 3, 31)
+
+
+def test_graficos_y_seguimiento_cuadran_con_los_tramites(escenario, datos):
+    def presentar():
+        actor = escenario.actores["a"]
+        return presentar_solicitud_facturacion(
+            actor=actor, datos=datos, token_presentacion=emitir_token(actor)
+        )
+
+    parcial, excedente, nota, sin_factura, observada = [presentar() for _ in range(5)]
+    factura(escenario, parcial, numero=1)
+    factura(escenario, excedente, numero=2, importe="60.10")
+    factura(escenario, nota, numero=3, importe="10.00")
+    factura(escenario, nota, tipo="NOTA_CREDITO", numero=4, importe="15.00")
+    cobro(escenario, parcial, importe="40.10", operacion="SINTETICO-PARCIAL")
+    cobro(escenario, parcial, importe="20.00", operacion="SINTETICO-PENDIENTE", confirmar=False)
+    cobro(escenario, excedente, importe="65.10", operacion="SINTETICO-EXCEDENTE")
+    cobro(escenario, nota, importe="1.00", operacion="SINTETICO-NETO-NEGATIVO")
+    observar_solicitud_facturacion(
+        actor=escenario.actores["o"], numero_publico=observada.pk,
+        motivo="Observación sintética", version_esperada=observada.version_concurrencia,
+    )
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["l"])
+    url = reverse("gestion:reporte_facturacion")
+    anio = timezone.localdate(sin_factura.fecha_presentacion).year
+    respuesta = cliente.get(url, {"anio": anio, "orden": "neto"})
+    assert respuesta.status_code == 200
+    reporte = respuesta.context["reporte"]
+    assert reporte["facturas"] == 3
+    assert reporte["neto"] == Decimal("155.35")
+    assert reporte["confirmado"] == Decimal("106.20")
+    assert reporte["promedio_factura"] == Decimal("56.78")
+    assert reporte["mediana_factura"] == Decimal("60.10")
+    assert reporte["saldo_por_confirmar"] == Decimal("60.15")
+    assert reporte["tramites_con_saldo"] == 1
+    assert reporte["excedente_confirmado"] == Decimal("6.00")
+    assert reporte["tramites_con_excedente"] == 2
+    assert [fila["cantidad"] for fila in reporte["pendientes_operador"]] == [1, 1]
+    assert reporte["pendientes_solicitante"][0]["cantidad"] == 1
+    assert reporte["pendientes_solicitante"][0]["dias"] == 0
+    assert sum(fila["facturas"] for fila in reporte["periodos"]) == 3
+    assert sum(fila["confirmado"] for fila in reporte["periodos"]) == Decimal("106.20")
+    assert reporte["ranking_centros"]["filas"][0]["valor"] == Decimal("155.35")
+    html = respuesta.content.decode()
+    assert 'id="evolucion"' in html and 'id="demanda"' in html and 'id="seguimiento"' in html
+    assert f"periodo=anio&amp;anio={anio}&amp;estado=PRESENTADA" in html
+    assert "Ver cifras por período" in html
+    cliente.force_login(escenario.usuarios["a"])
+    assert cliente.get(url, {"anio": anio}).status_code == 403
 
 
 def test_reporte_presenta_pestanas_filtros_y_limpieza(escenario):

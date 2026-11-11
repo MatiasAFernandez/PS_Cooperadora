@@ -2,7 +2,10 @@
 {% load static %}
 {% block title %}Reporte de facturación — Cooperadora{% endblock %}
 {% block titulo_modulo %}PS Cooperadora — Gestión{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">
+  <link rel="stylesheet" href="{% static 'gestion/reporte_facturacion.css' %}">
+{% endblock %}
 {% block content %}
 {% include "gestion/tabs_reportes.html" with reporte_circuito="FACTURACION" %}
 <div class="rep-wrap">
@@ -18,6 +21,7 @@
     </div>
   </header>
   <form class="card control-bar" method="get" action="{% url 'gestion:reporte_facturacion' %}" aria-label="Filtros del reporte" data-filtros-reporte>
+    <input type="hidden" name="orden" value="{{ orden|default:'cantidad' }}">
     {% if cuatrimestre %}<input type="hidden" name="cuatrimestre" value="{{ cuatrimestre }}">{% endif %}
     {% if trimestre %}<input type="hidden" name="trimestre" value="{{ trimestre }}">{% endif %}
     <div class="control-group">
@@ -41,26 +45,181 @@
         </div>
       </div>
     </div>
-    <div class="control-group rep-billing-order">
+    <div class="rep-filter-actions fac-acciones">
+      <a href="{% url 'gestion:reporte_facturacion' %}" class="btn ghost">Limpiar filtros</a>
+      <noscript><button type="submit" class="btn">Actualizar reporte</button></noscript>
+    </div>
+    {% if not error %}<div class="control-meta"><span>Período consultado: <b>{% if cuatrimestre %}{{ cuatrimestre }}° cuatrimestre{% elif trimestre %}{{ trimestre }}° trimestre{% else %}Año completo{% endif %} {{ anio }} ({{ reporte.inicio|date:"d/m/Y" }} al {{ reporte.fin|date:"d/m/Y" }})</b> · Fecha de presentación de las solicitudes</span></div>{% endif %}
+  </form>
+{% if error %}
+  <p role="alert" class="alert-error">{{ error }}</p>
+{% else %}
+  <nav class="fac-indice" aria-label="Secciones del reporte">
+    <a class="btn ghost" href="#evolucion">Evolución</a>
+    <a class="btn ghost" href="#demanda">Demanda por grupo</a>
+    <a class="btn ghost" href="#seguimiento">Seguimiento</a>
+  </nav>
+  <section class="fac-seccion" id="evolucion" aria-labelledby="titulo-evolucion">
+    <h2 id="titulo-evolucion">Evolución del período</h2>
+    <p class="lead">Cada barra corresponde a solicitudes presentadas en ese tramo y sus facturas y cobros vinculados al día de hoy.</p>
+    <div class="fac-indicadores">
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Solicitudes</h3>
+        <strong class="kpi-num font-tabular">{{ reporte.cantidad|floatformat:"0g" }}</strong>
+      </article>
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Importe solicitado</h3>
+        <strong class="kpi-num font-tabular">$ {{ reporte.solicitado|floatformat:"2g" }}</strong>
+      </article>
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Facturado neto</h3>
+        <strong class="kpi-num font-tabular">$ {{ reporte.neto|floatformat:"2g" }}</strong>
+      </article>
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Cobrado confirmado</h3>
+        <strong class="kpi-num font-tabular">$ {{ reporte.confirmado|floatformat:"2g" }}</strong>
+      </article>
+    </div>
+    {% if reporte.cantidad %}
+      <div class="fac-graficos">
+        {% include "gestion/grafico_periodos.html" with titulo="Volumen de trámites y facturas" grafico=reporte.volumen %}
+        {% include "gestion/grafico_periodos.html" with titulo="Importes vinculados · ARS" grafico=reporte.importes moneda=True %}
+      </div>
+      <details class="card chart-card fac-detalle">
+        <summary>Ver cifras por período</summary>
+        <div class="gestion-table">
+          <table class="dense mob-cards">
+            <thead><tr><th scope="col">Período</th><th scope="col">Solicitudes</th><th scope="col">Facturas</th><th scope="col">Solicitado · ARS</th><th scope="col">Facturado neto · ARS</th><th scope="col">Cobrado confirmado · ARS</th></tr></thead>
+            <tbody>
+              {% for fila in reporte.periodos %}
+                <tr>
+                  <th scope="row">{{ fila.nombre }}</th>
+                  <td data-label="Solicitudes"><span>{{ fila.cantidad }}</span></td>
+                  <td data-label="Facturas"><span>{{ fila.facturas }}</span></td>
+                  <td data-label="Solicitado · ARS"><span>{{ fila.solicitado|floatformat:"2g" }}</span></td>
+                  <td data-label="Facturado neto · ARS"><span>{{ fila.neto|floatformat:"2g" }}</span></td>
+                  <td data-label="Cobrado confirmado · ARS"><span>{{ fila.confirmado|floatformat:"2g" }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    {% else %}
+      <p class="card chart-card" role="status">No hay solicitudes para el período seleccionado.</p>
+    {% endif %}
+    <div class="fac-promedios">
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Solicitud promedio</h3>
+        <strong class="kpi-num font-tabular">{% if reporte.cantidad %}$ {{ reporte.promedio_solicitud|floatformat:"2g" }}{% else %}—{% endif %}</strong>
+      </article>
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Factura promedio</h3>
+        <strong class="kpi-num font-tabular">{% if reporte.facturas %}$ {{ reporte.promedio_factura|floatformat:"2g" }}{% else %}—{% endif %}</strong>
+        <p class="kpi-sub">{{ reporte.facturas }} factura{{ reporte.facturas|pluralize }} vigente{{ reporte.facturas|pluralize }}</p>
+      </article>
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Mediana de factura</h3>
+        <strong class="kpi-num font-tabular">{% if reporte.facturas %}$ {{ reporte.mediana_factura|floatformat:"2g" }}{% else %}—{% endif %}</strong>
+        <p class="kpi-sub">Valor central de los importes de factura.</p>
+      </article>
+    </div>
+  </section>
+  <section class="fac-seccion" id="demanda" aria-labelledby="titulo-demanda">
+    <h2 id="titulo-demanda">Demanda por grupo</h2>
+    <form class="fac-orden" method="get" action="{% url 'gestion:reporte_facturacion' %}#demanda" data-filtros-reporte>
+      <input type="hidden" name="anio" value="{{ anio }}">
+      {% if cuatrimestre %}<input type="hidden" name="cuatrimestre" value="{{ cuatrimestre }}">{% endif %}
+      {% if trimestre %}<input type="hidden" name="trimestre" value="{{ trimestre }}">{% endif %}
       <div class="fld">
-        <label for="orden">Ordenar grupos por</label>
+        <label for="orden">Ordenar rankings por</label>
         <select id="orden" name="orden">
           <option value="cantidad"{% if orden == "cantidad" %} selected{% endif %}>Cantidad de solicitudes</option>
           <option value="solicitado"{% if orden == "solicitado" %} selected{% endif %}>Importe solicitado</option>
           <option value="neto"{% if orden == "neto" %} selected{% endif %}>Facturado neto</option>
         </select>
       </div>
-      <a href="{% url 'gestion:reporte_facturacion' %}" class="btn ghost">Limpiar filtros</a>
-      <noscript><button type="submit" class="btn">Actualizar reporte</button></noscript>
+      <noscript><button type="submit" class="btn">Actualizar ranking</button></noscript>
+    </form>
+    {% include "gestion/ranking_reporte.html" with titulo="Grupos o centros" ranking=reporte.ranking_centros filas=reporte.centros %}
+    <details class="card chart-card fac-detalle">
+      <summary>Demanda por correo solicitante</summary>
+      <p class="chart-q">Un mismo correo puede representar a varias personas del grupo o área.</p>
+      {% include "gestion/ranking_reporte.html" with ranking=reporte.ranking_correos filas=reporte.correos secundario=True %}
+    </details>
+  </section>
+  <section class="fac-seccion" id="seguimiento" aria-labelledby="titulo-seguimiento">
+    <h2 id="titulo-seguimiento">Seguimiento operativo</h2>
+    <p class="lead">Pendientes al día de hoy de las solicitudes abiertas del período seleccionado.</p>
+    <div class="fac-graficos">
+      {% include "gestion/pendientes_reporte.html" with titulo="Acciones de Cooperadora" filas=reporte.pendientes_operador %}
+      {% include "gestion/pendientes_reporte.html" with titulo="Acciones del solicitante" filas=reporte.pendientes_solicitante %}
     </div>
-    {% if not error %}<div class="control-meta"><span>Período consultado: <b>{% if cuatrimestre %}{{ cuatrimestre }}° cuatrimestre{% elif trimestre %}{{ trimestre }}° trimestre{% else %}Año completo{% endif %} {{ anio }} ({{ reporte.inicio|date:"d/m/Y" }} al {{ reporte.fin|date:"d/m/Y" }})</b> · Fecha de presentación de las solicitudes</span></div>{% endif %}
-  </form>
-{% if error %}<p role="alert" class="alert-error">{{ error }}</p>{% else %}
-<div class="gestion-kpis"><article class="gestion-card"><h2>Solicitudes</h2><strong>{{ reporte.cantidad }}</strong></article><article class="gestion-card"><h2>Solicitado</h2><strong>$ {{ reporte.solicitado|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Facturado neto</h2><strong>$ {{ reporte.neto|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Cobrado confirmado</h2><strong>$ {{ reporte.confirmado|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Solicitud promedio</h2><strong>$ {{ reporte.promedio_solicitud|floatformat:2 }}</strong></article><article class="gestion-card"><h2>Factura promedio</h2><strong>$ {{ reporte.promedio_factura|floatformat:2 }}</strong><p>{{ reporte.facturas }} factura{{ reporte.facturas|pluralize }} vigente{{ reporte.facturas|pluralize }}</p></article></div>
-<details class="gestion-card"><summary>Cómo se calculan estos resultados</summary><p>Se agrupan las solicitudes por fecha local de presentación, excluyendo borradores y {{ reporte.anuladas }} anuladas del período. Para esa población se muestran importes vigentes al consultar: las facturas y notas pueden haberse registrado después del período. Neto = facturas + débitos − créditos; sólo cobros confirmados vigentes cuentan como ingreso. No es un flujo de caja por fecha de cobro.</p><p>Promedio de solicitud = solicitado / solicitudes. Promedio de factura = importe de facturas vigentes / cantidad de facturas; las notas no son facturas adicionales. Redondeo a dos decimales. Correo compartido es una agrupación operativa: no identifica una única persona ni cambia la titularidad.</p></details>
-{% include "gestion/tabla_reporte.html" with titulo="Evolución por cuatrimestre" filas=reporte.periodos %}
-{% include "gestion/tabla_reporte.html" with titulo="Grupos o centros con más solicitudes" filas=reporte.centros %}
-{% include "gestion/tabla_reporte.html" with titulo="Correos solicitantes con más solicitudes" filas=reporte.correos %}
+    <div class="fac-graficos">
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Saldo por confirmar · ARS</h3>
+        <strong class="kpi-num font-tabular">$ {{ reporte.saldo_por_confirmar|floatformat:"2g" }}</strong>
+        <p class="kpi-sub">En {{ reporte.tramites_con_saldo }} trámite{{ reporte.tramites_con_saldo|pluralize }} con factura.</p>
+      </article>
+      <article class="card kpi">
+        <h3 class="kpi-lbl">Excedente confirmado · ARS</h3>
+        <strong class="kpi-num font-tabular">$ {{ reporte.excedente_confirmado|floatformat:"2g" }}</strong>
+        <p class="kpi-sub">En {{ reporte.tramites_con_excedente }} trámite{{ reporte.tramites_con_excedente|pluralize }} con factura.</p>
+      </article>
+    </div>
+  </section>
+  <details class="card chart-card fac-detalle fac-formulas">
+    <summary>Cómo se calculan los resultados</summary>
+    <p>El período se determina por la fecha de presentación de la solicitud. Las facturas, notas y cobros se agrupan con la solicitud vinculada. El año completo se desglosa por cuatrimestre y los cortes por trimestre o cuatrimestre se desglosan por mes.</p>
+
+    <h3>Evolución del período</h3>
+    <dl>
+      <dt>Solicitudes</dt>
+      <dd>Cantidad de solicitudes del período consultado.</dd>
+      <dt>Facturas vinculadas</dt>
+      <dd>Cantidad de facturas vigentes vinculadas a esas solicitudes.</dd>
+      <dt>Importe solicitado</dt>
+      <dd>Suma de los importes solicitados.</dd>
+      <dt>Facturado neto</dt>
+      <dd>Suma de facturas vigentes + suma de notas de débito vigentes − suma de notas de crédito vigentes.</dd>
+      <dt>Cobrado confirmado</dt>
+      <dd>Suma de los importes de cobros vigentes con confirmación activa.</dd>
+      <dt>Solicitud promedio</dt>
+      <dd>Importe solicitado ÷ cantidad de solicitudes.</dd>
+      <dt>Factura promedio</dt>
+      <dd>Suma de los importes de las facturas vigentes ÷ cantidad de facturas vigentes.</dd>
+      <dt>Mediana de factura</dt>
+      <dd>Importe central al ordenar las facturas vigentes por importe. Si hay dos valores centrales, se calcula su promedio.</dd>
+    </dl>
+    <p>Los importes se muestran en ARS. Los promedios y la mediana se redondean a dos decimales y se muestran con un guion cuando no hay casos para calcularlos.</p>
+
+    <h3>Demanda por grupo</h3>
+    <dl>
+      <dt>Cantidad por grupo, centro o correo</dt>
+      <dd>Cantidad de solicitudes de cada agrupación dentro del período.</dd>
+      <dt>Importe solicitado y facturado neto por agrupación</dt>
+      <dd>Suma de cada importe para las solicitudes de esa agrupación, con las mismas fórmulas de Evolución.</dd>
+      <dt>Ranking</dt>
+      <dd>Hasta cinco agrupaciones, ordenadas de mayor a menor por el indicador seleccionado. La tabla muestra todas las agrupaciones.</dd>
+    </dl>
+
+    <h3>Seguimiento operativo</h3>
+    <p>Los indicadores muestran los pendientes actuales de los trámites abiertos del período. Un trámite puede contribuir a más de una acción.</p>
+    <dl>
+      <dt>Solicitudes por facturar</dt>
+      <dd>Cantidad de solicitudes en estado Presentada sin factura vigente.</dd>
+      <dt>Cobros por verificar</dt>
+      <dd>Cantidad de cobros vigentes pendientes de verificación.</dd>
+      <dt>Observaciones por subsanar</dt>
+      <dd>Cantidad de solicitudes en estado Observada.</dd>
+      <dt>Antigüedad del pendiente más antiguo</dt>
+      <dd>Fecha de hoy − fecha más antigua de la acción pendiente. Se usa la fecha de presentación, de registro del cobro o de la última observación, según la acción.</dd>
+      <dt>Saldo por confirmar</dt>
+      <dd>Por trámite abierto con factura: máximo entre cero y (facturado neto − cobrado confirmado). Se suman esos saldos y se cuentan los trámites con saldo positivo.</dd>
+      <dt>Excedente confirmado</dt>
+      <dd>Por trámite abierto con factura: máximo entre cero y (cobrado confirmado − el mayor entre facturado neto y cero). Se suman esos excedentes y se cuentan los trámites con excedente positivo.</dd>
+    </dl>
+  </details>
 {% endif %}
 </div>
 <script src="{% static 'gestion/filtros_reporte.js' %}" defer></script>

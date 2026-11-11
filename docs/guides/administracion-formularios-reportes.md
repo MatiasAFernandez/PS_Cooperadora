@@ -57,8 +57,13 @@ No representa contabilidad, flujo de caja ni proyección de períodos futuros.
 Las pestañas aparecen antes del título. En Facturación, elegir año, orden o un
 botón de año completo/cuatrimestre/trimestre actualiza el reporte automáticamente.
 El resumen indica las fechas incluidas por presentación local. Cambiar el período
-conserva año y orden. La evolución sigue agrupada por cuatrimestre dentro del
-período consultado. En Gastos también se aplican las selecciones automáticamente.
+conserva año y orden. Evolución separa cantidades e importes y muestra
+cuatrimestres para el año completo o meses para cortes más cortos. Las cifras
+exactas están en Ver cifras por período. Demanda por grupo muestra el ranking y
+las tablas completas por centro o correo. Seguimiento operativo muestra las
+acciones pendientes por responsable, su antigüedad y los saldos por confirmar
+y excedentes de trámites abiertos con factura. En Gastos también se aplican
+las selecciones automáticamente.
 Limpiar filtros vuelve al año actual y los criterios iniciales; sin JavaScript,
 usar Actualizar reporte.
 
