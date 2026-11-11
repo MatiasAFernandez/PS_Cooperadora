@@ -1,0 +1,35 @@
+{% load l10n %}
+<article class="card chart-card">
+  <header class="chart-head"><h3>{{ titulo }}</h3></header>
+  <ul class="legend fac-leyenda">
+    {% for clave, etiqueta, color in grafico.series %}
+      <li class="leg-item"><span class="swatch fac-color-{{ color }}" aria-hidden="true"></span>{{ etiqueta }}</li>
+    {% endfor %}
+  </ul>
+  {% if grafico.maximo or grafico.minimo %}
+  <div class="fac-area-grafico" aria-hidden="true">
+    <div class="fac-escala font-tabular">
+      <span>{% if moneda %}{{ grafico.maximo|floatformat:"2g" }}{% else %}{{ grafico.maximo|floatformat:"0g" }}{% endif %}</span>
+      <span>{% if moneda %}{{ grafico.minimo|floatformat:"2g" }}{% else %}{{ grafico.minimo|floatformat:"0g" }}{% endif %}</span>
+    </div>
+    <div class="fac-plot" style="--cero: {{ grafico.cero|unlocalize }}%">
+    {% for grupo in grafico.grupos %}
+      <div class="fac-periodo">
+        <div class="fac-columnas">
+          {% for barra in grupo.barras %}
+            <div class="fac-columna">
+              <span class="fac-barra fac-color-{{ barra.color }}"
+                    style="--inicio: {{ barra.inicio|unlocalize }}%; --largo: {{ barra.largo|unlocalize }}%"
+                    title="{{ grupo.nombre }} · {{ barra.etiqueta }}: {% if moneda %}$ {{ barra.valor|floatformat:'2g' }}{% else %}{{ barra.valor|floatformat:'0g' }}{% endif %}"></span>
+            </div>
+          {% endfor %}
+        </div>
+        <b>{{ grupo.nombre }}</b>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+  {% else %}
+    <p class="chart-q">Sin valores para graficar en este período.</p>
+  {% endif %}
+</article>

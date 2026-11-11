@@ -50,7 +50,7 @@ requiere capacidad administrativa, también mediante POST directo.
 ## Reporte de facturación: diccionario técnico
 
 Población: solicitudes operativas presentadas en el año, cuatrimestre o trimestre local
-elegido; se excluyen borradores y anuladas y se informa la cantidad de anuladas.
+elegido; se excluyen borradores y anuladas del cálculo.
 Se analizan los importes vigentes al consultar de esa población; no se presenta
 como movimiento de caja por fecha de cobro.
 
@@ -62,11 +62,27 @@ como movimiento de caja por fecha de cobro.
 | Cobrado confirmado | Cobros vigentes con resultado CONFIRMADO; pendientes/rechazados/rectificados no cuentan. |
 | Solicitud promedio | Solicitado / cantidad de solicitudes. |
 | Factura promedio | Suma de facturas vigentes / cantidad de facturas, sin contar notas como nuevas facturas. |
+| Mediana de factura | Importe central de las facturas vigentes ordenadas. Si hay dos importes centrales, su promedio. |
+| Saldo por confirmar | En cada trámite abierto con factura, la parte positiva de neto menos confirmado. Sumar los saldos de cada trámite. |
+| Excedente confirmado | En cada trámite abierto con factura, la parte confirmada por encima del mayor entre el neto y cero. Sumar los excedentes de cada trámite. |
 
-ARS, decimales exactos y promedios redondeados a dos decimales con ROUND_HALF_UP.
-Sin población, totales y promedios son cero. Se muestran cuatrimestres, centros
-o grupos y correos solicitantes; se puede ordenar grupos por cantidad o importes.
+ARS, decimales exactos y promedios y mediana redondeados a dos decimales con
+ROUND_HALF_UP. Sin población, los totales son cero. Los promedios y la mediana
+sin casos se muestran con un guion. La evolución separa volumen e importes.
+El año completo usa cuatrimestres y un corte trimestral o cuatrimestral usa
+meses, incluidos los tramos sin actividad. El ranking muestra hasta cinco
+centros o grupos y permite desplegar la tabla completa. El ranking por correo
+se consulta en un bloque secundario. Ambos se ordenan por cantidad de
+solicitudes, importe solicitado o facturado neto.
 Los correos compartidos no fusionan personas ni alteran titularidad.
+
+Seguimiento muestra el estado actual de los trámites abiertos de la población
+filtrada. Se cuentan solicitudes presentadas sin factura, cobros vigentes
+pendientes de verificación y observaciones pendientes de subsanar. La
+antigüedad muestra los días desde la presentación, registro del cobro o última
+observación del caso más antiguo de cada acción. Se omite si falta el evento
+necesario para medirla. Un trámite puede requerir más de una acción. Se enlaza
+al listado cuando sus filtros existentes reproducen el mismo año y estado.
 
 El reporte de gastos reutiliza el productor y los controles existentes. No se
 consolidan saldos de ambos circuitos ni se importan históricos o proyecta inflación
@@ -86,8 +102,8 @@ botones de año completo, tres cuatrimestres (enero–abril, mayo–agosto,
 septiembre–diciembre) y cuatro trimestres (enero–marzo, abril–junio,
 julio–septiembre, octubre–diciembre) para el año seleccionado. Se elige un único
 período; cambiarlo conserva el año y el orden de grupos. Los parámetros de trimestre
-y cuatrimestre simultáneos se rechazan. La tabla de evolución conserva su
-agrupación por cuatrimestre dentro de la población filtrada.
+y cuatrimestre simultáneos se rechazan. Las secciones Evolución, Demanda por
+grupo y Seguimiento separan las escalas, las unidades y las acciones.
 En ambos reportes, las selecciones aplican los filtros automáticamente mediante
 GET. Limpiar filtros vuelve al año actual y los valores iniciales del circuito.
 Sin JavaScript, se ofrece Actualizar reporte como alternativa.

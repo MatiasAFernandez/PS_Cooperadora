@@ -341,10 +341,6 @@ h1.rep-title:focus {
   gap: 8px;
 }
 
-.rep-billing-order {
-  margin-top: 12px;
-}
-
 .kpi-pend-count {
   color: var(--err);
   font-size: 15px;
