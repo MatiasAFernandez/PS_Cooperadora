@@ -19,6 +19,26 @@ Guía técnica para configuración y verificación reproducible del adaptador de
 - **URL pública base**: definir `LOCAL_PUBLIC_BASE_URL` con la URL canónica del host (ej. `http://127.0.0.1:8000`, sin subrutas ni barra final), requerida para la construcción de enlaces en correos.
 - **Servicio de correo**: utiliza `EMAIL_BACKEND`, `DEFAULT_FROM_EMAIL`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` y `EMAIL_USE_TLS`. Configurar las credenciales fuera de Git. Las pruebas usan el backend en memoria (`django.core.mail.backends.locmem.EmailBackend`), que no entrega correos reales. El envío real requiere SMTP configurado y verificado.
 
+### 2.1 Correo local con Mailpit (desarrollo)
+
+Levantar únicamente el servicio de correo, sin iniciar la base de datos:
+
+```powershell
+docker compose --profile correo up -d --no-deps mailpit
+```
+
+Copiar el bloque comentado de correo local de `.env.example` al archivo `.env` local y descomentar esas variables para habilitar la identidad local, el backend SMTP y el remitente. Reiniciar Django para cargar la configuración. `LOCAL_PUBLIC_BASE_URL` debe coincidir con el puerto donde se sirve la aplicación (por defecto, `http://127.0.0.1:8000`). La bandeja de lectura queda en <http://127.0.0.1:8026>.
+
+El circuito se usa sólo con cuentas sintéticas locales para registro, verificación y recuperación. La aprobación administrativa sigue siendo un paso independiente, y la captura del SMTP local no acredita entrega externa alguna.
+
+Al terminar, detener el servicio sin bajar el entorno ni borrar volúmenes (no usar `down`):
+
+```powershell
+docker compose --profile correo stop mailpit
+```
+
+Fuente de la imagen y del comando: [Mailpit — Docker](https://mailpit.axllent.org/docs/install/docker/).
+
 ## 3. Base de datos y migraciones
 
 Aplicar la migración inicial del componente sobre una base de datos local seleccionada conscientemente para desarrollo o pruebas:
