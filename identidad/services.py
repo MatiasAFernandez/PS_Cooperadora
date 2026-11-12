@@ -90,10 +90,17 @@ def resolve_actor(request: HttpRequest) -> Actor | None:
     if not user.is_authenticated or not user.is_active:
         return None
 
+    # Reutilizar en la misma petición el usuario ya verificado evita una segunda
+    # consulta cuando la plantilla accede a request.user (base y navegación).
+    request.user = user
+
     # Import diferido de CuentaLocal para evitar dependencias circulares
     from identidad.models import CuentaLocal
 
-    cuenta = CuentaLocal.objects.filter(user_id=user.pk).first()
+    # El descriptor reverso cachea la cuenta (o su ausencia) en este usuario.
+    # Así request.user.cuenta_local en las plantillas no repite la consulta,
+    # mientras cada petición vuelve a comprobar el estado en la base.
+    cuenta = getattr(user, "cuenta_local", None)
 
     group_names = user.groups.values_list("name", flat=True)
 

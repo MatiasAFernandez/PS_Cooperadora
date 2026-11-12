@@ -245,7 +245,10 @@ def test_total_atencion_no_agrega_consultas_por_fila(
     client = Client()
     client.force_login(operador)
 
-    with django_assert_num_queries(6):
+    # 6 consultas del listado + 1 consulta fija de CuentaLocal para resolver la
+    # identidad en esta petición (el contrato exige comprobar la base cada vez,
+    # sin caché entre peticiones). El usuario y su cuenta se reutilizan al renderizar.
+    with django_assert_num_queries(7):
         response = client.get(reverse("gastos:lista"))
     assert response.context["total_atencion"] == 12
     assert len(response.context["solicitudes"]) == 12
@@ -430,7 +433,10 @@ def test_solicitud_list_queries_optimizadas_sin_n_mas_1(
     client = Client()
     client.force_login(user)
 
-    with django_assert_num_queries(5):
+    # 5 consultas del listado + 1 consulta fija de CuentaLocal para resolver la
+    # identidad en esta petición (el contrato exige comprobar la base cada vez,
+    # sin caché entre peticiones). El usuario y su cuenta se reutilizan al renderizar.
+    with django_assert_num_queries(6):
         response = client.get(reverse("gastos:lista"))
         assert response.status_code == 200
         assert len(response.context["solicitudes"]) == 10
