@@ -49,7 +49,7 @@ class FacturacionView(View):
     def dispatch(self, request, *args, **kwargs):
         self.actor = resolve_actor(request)
         if self.actor is None:
-            if settings.DEMO_IDENTITY_ENABLED:
+            if settings.DEMO_IDENTITY_ENABLED or getattr(settings, "LOCAL_IDENTITY_ENABLED", False):
                 return redirect_to_login(request.get_full_path())
             raise PermissionDenied
         try:

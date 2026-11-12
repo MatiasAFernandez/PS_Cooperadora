@@ -27,9 +27,12 @@
             {% endif %}
         </ul>
         {% endif %}
-        {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps or "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
+        {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps or "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps or "identidad.administrar_cuentas" in caps %}
         <h3 class="app-nav-section">Gestión</h3>
         <ul>
+        {% if "identidad.administrar_cuentas" in caps %}
+        <li><a href="{% url 'cuentas:altas' %}"{% if ns == 'cuentas' and name == 'altas' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg><span class="app-nl">Solicitudes de cuenta</span></a></li>
+        {% endif %}
         {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}
         <li><a href="{% if 'gastos.consultar_todas' in caps %}{% url 'gestion:reporte_gastos' %}{% else %}{% url 'gestion:reporte_facturacion' %}{% endif %}"{% if ns == 'gestion' and name == 'reporte_gastos' or ns == 'gestion' and name == 'reporte_facturacion' or ns == 'gastos' and name == 'reporte_cuatrimestral' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M6 20v-7M12 20V5M18 20v-10"/></svg><span class="app-nl">Reporte</span></a></li>
         {% endif %}
@@ -40,7 +43,8 @@
         {% endif %}
         <h3 class="app-nav-section">General</h3>
         <ul>
-            <li><a href="{% url 'identidad:inicio' %}"{% if ns == "identidad" and name == "inicio" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/></svg><span class="app-nl">Inicio</span></a></li>
+            <li><a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}"{% if ns == "identidad" and name == "inicio" or ns == "cuentas" and name == "inicio" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/></svg><span class="app-nl">Inicio</span></a></li>
+            {% if request.user.cuenta_local %}<li><a href="{% url 'cuentas:cambiar_clave' %}"{% if ns == 'cuentas' and name == 'cambiar_clave' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15v3M6 10V7a6 6 0 0 1 12 0v3M5 10h14v12H5z"/></svg><span class="app-nl">Cambiar contraseña</span></a></li>{% endif %}
         </ul>
     </nav>
 </aside>

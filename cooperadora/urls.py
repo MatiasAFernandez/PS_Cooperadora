@@ -10,4 +10,5 @@ urlpatterns = [
     path("gastos/", include("gastos.urls")),
     path("documentos/", include("documentos.urls")),
     path("demo/", include("identidad.urls")),
+    path("cuentas/", include("identidad.urls_local")),
 ]
