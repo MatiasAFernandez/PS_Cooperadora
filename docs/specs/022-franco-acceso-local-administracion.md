@@ -1,6 +1,6 @@
 # SPEC-022 — Acceso local permanente y gestión administrativa
 
-- Estado: primer incremento implementado en rama de tarea; revisión compartida y validación institucional pendientes. Ver controles y límites en la [guía de acceso local](../guides/acceso-local.md).
+- Estado: primer incremento integrado en `main` mediante [PR #111](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/111); revisión compartida y validación institucional pendientes. Ver controles y límites en la [guía de acceso local](../guides/acceso-local.md).
 - Issue: [#109](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/109) (relacionadas: [#79](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/79), [#77](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/77), [#78](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/78))
 - Responsable principal: Franco Damián Sánchez (alcance administrativo y revisión del consumidor Gastos)
 - Rol del compañero: Matías Alejandro Fernández (conserva componente identidad)
@@ -58,6 +58,6 @@ Sigue la [Guía visual](../visual-guide/README.md) y formularios operativos actu
 
 ## Plan de incrementos y dependencias
 
-- **Núcleo de persistencia y verificación**: publicado en la rama de tarea en `b42cd8a` (modelo `CuentaLocal`, migración `0001_initial`, lógica en `identidad.cuentas` y limitación de tasa).
-- **Capa HTTP y UI local**: implementada en rama `feat/109-acceso-local` (`urls_local`, `views_local`, `forms_local`, `tokens_local` y plantillas de `/cuentas/`), pendiente de revisión compartida. Procedimiento y alcance de las comprobaciones en la [guía de acceso local](../guides/acceso-local.md).
+- **Núcleo de persistencia y verificación**: integrado con el primer incremento (modelo `CuentaLocal`, migración `0001_initial`, lógica en `identidad.cuentas` y limitación de tasa).
+- **Capa HTTP y UI local**: integrada con el primer incremento (`urls_local`, `views_local`, `forms_local`, `tokens_local` y plantillas de `/cuentas/`), pendiente de revisión compartida. Procedimiento y alcance de las comprobaciones en la [guía de acceso local](../guides/acceso-local.md).
 - **Límites pendientes**: configuración SMTP de producción, suspensión interactiva en interfaz web y ABM general de usuarios.
