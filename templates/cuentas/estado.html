@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}{{ title }} — Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-container">
+    <div class="cuentas-card">
+        <div class="cuentas-header">
+            <p class="cuentas-eyebrow">Acceso a Cooperadora</p>
+            <h1 class="cuentas-title">{{ title }}</h1>
+        </div>
+
+        {% if cuenta %}
+            {# Situación real de la cuenta propia autenticada #}
+            {% if not cuenta.user.is_active %}
+                <div class="cuentas-status cuentas-status--error" role="status">
+                    <p><strong>Cuenta inactiva</strong></p>
+                    <p>La cuenta se encuentra actualmente desactivada o suspendida.</p>
+                </div>
+            {% elif cuenta.estado == "RECHAZADA" %}
+                <div class="cuentas-status cuentas-status--error" role="status">
+                    <p><strong>Solicitud rechazada</strong></p>
+                    {% if cuenta.motivo %}
+                    <p>Motivo informado: {{ cuenta.motivo }}</p>
+                    {% endif %}
+                </div>
+            {% elif not cuenta.email_verificado_en %}
+                <div class="cuentas-status cuentas-status--pending" role="status">
+                    <p><strong>Verificá tu correo</strong></p>
+                    <p>Tu cuenta requiere que confirmes el enlace enviado a tu casilla antes de ser evaluada.</p>
+                </div>
+            {% elif cuenta.estado == "PENDIENTE" %}
+                <div class="cuentas-status cuentas-status--pending" role="status">
+                    <p><strong>Pendiente de aprobación</strong></p>
+                    <p>Tu correo ha sido verificado. La solicitud está a la espera de la resolución administrativa.</p>
+                </div>
+            {% elif cuenta.estado == "APROBADA" %}
+                <div class="cuentas-status cuentas-status--success" role="status">
+                    <p><strong>Cuenta habilitada</strong></p>
+                    <p>Tu cuenta se encuentra activa y habilitada para operar en el sistema.</p>
+                </div>
+            {% endif %}
+
+            <div class="cuentas-data-list" aria-label="Detalle de la cuenta">
+                <div class="cuentas-data-row">
+                    <span class="cuentas-data-label">Nombre completo</span>
+                    <span class="cuentas-data-value">{{ cuenta.nombre_completo }}</span>
+                </div>
+                <div class="cuentas-data-row">
+                    <span class="cuentas-data-label">Correo electrónico</span>
+                    <span class="cuentas-data-value">{{ cuenta.email }}</span>
+                </div>
+                {% if cuenta.area_habitual %}
+                <div class="cuentas-data-row">
+                    <span class="cuentas-data-label">Área habitual</span>
+                    <span class="cuentas-data-value">{{ cuenta.area_habitual }}</span>
+                </div>
+                {% endif %}
+                {% if cuenta.cuit_cuil %}
+                <div class="cuentas-data-row">
+                    <span class="cuentas-data-label">CUIT / CUIL</span>
+                    <span class="cuentas-data-value">{{ cuenta.cuit_cuil }}</span>
+                </div>
+                {% endif %}
+                {% if cuenta.legajo %}
+                <div class="cuentas-data-row">
+                    <span class="cuentas-data-label">Legajo</span>
+                    <span class="cuentas-data-value">{{ cuenta.legajo }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="cuentas-actions">
+                {% if cuenta.estado == "APROBADA" and cuenta.user.is_active %}
+                <a href="{% url 'cuentas:inicio' %}" class="btn btn-primary">Ir al inicio</a>
+                {% endif %}
+
+                {% if not cuenta.email_verificado_en %}
+                <a href="{% url 'cuentas:reenviar' %}" class="btn btn-primary">Reenviar correo de verificación</a>
+                {% endif %}
+
+                <a href="{% url 'cuentas:cambiar_clave' %}" class="btn btn-secondary">Cambiar contraseña</a>
+
+                {% if not actor %}
+                <form method="post" action="{% url 'cuentas:logout' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary">Cerrar sesión</button>
+                </form>
+                {% endif %}
+            </div>
+
+        {% else %}
+            {# Confirmaciones públicas para usuarios anónimos o en proceso de verificación/recuperación #}
+            <div class="cuentas-status{% if modo == 'error' %} cuentas-status--error{% elif modo == 'reset_completo' or modo == 'clave_cambiada' or modo == 'verificado' %} cuentas-status--success{% else %} cuentas-status--pending{% endif %}" role="status">
+                <p>{{ mensaje }}</p>
+            </div>
+
+            <div class="cuentas-actions">
+                {% if modo == 'error' %}
+                <a href="{% url 'cuentas:recuperar' %}" class="btn btn-primary">Solicitar nuevo enlace</a>
+                <a href="{% url 'cuentas:login' %}" class="btn btn-secondary">Iniciar sesión</a>
+                {% elif modo == 'recibido' %}
+                <a href="{% url 'cuentas:reenviar' %}" class="btn btn-primary">Reenviar enlace</a>
+                <a href="{% url 'cuentas:login' %}" class="btn btn-secondary">Iniciar sesión</a>
+                {% elif modo == 'recuperar_enviado' %}
+                <a href="{% url 'cuentas:login' %}" class="btn btn-secondary">Volver a inicio de sesión</a>
+                {% else %}
+                <a href="{% url 'cuentas:login' %}" class="btn btn-primary">Iniciar sesión</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

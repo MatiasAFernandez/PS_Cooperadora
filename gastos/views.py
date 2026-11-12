@@ -110,15 +110,15 @@ def _enforce_actor(request: HttpRequest) -> Any:
     """Verifica la presencia de un actor activo.
 
     Si no hay actor:
-    - Con demo habilitada: redirige al acceso de demo.
-    - Con demo deshabilitada: deniega con 403 Forbidden sin ofrecer login.
+    - Con un adaptador habilitado: redirige al acceso configurado.
+    - Sin adaptadores habilitados: deniega con 403 Forbidden sin ofrecer login.
     """
     actor = resolve_actor(request)
     if actor is not None:
         return actor
 
     demo_enabled = getattr(settings, "DEMO_IDENTITY_ENABLED", False)
-    if demo_enabled:
+    if demo_enabled or getattr(settings, "LOCAL_IDENTITY_ENABLED", False):
         return redirect_to_login(request.get_full_path())
 
     raise PermissionDenied("El acceso a trámites no está habilitado.")

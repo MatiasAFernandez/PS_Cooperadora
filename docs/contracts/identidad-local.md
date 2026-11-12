@@ -1,6 +1,6 @@
-# Propuesta de contrato — Adaptador de identidad local permanente
+# Contrato — Adaptador de identidad local permanente
 
-- Estado: PROPUESTA (pendiente de revisión de interfaz y reparto con Matías; no acordado ni validado institucionalmente)
+- Estado: primer incremento implementado en rama de tarea; revisión compartida y validación institucional pendientes. Ver controles y límites en la [guía de acceso local](../guides/acceso-local.md).
 - Contexto: Issue [#109](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/109); complementa [identidad-demo-i1.md](identidad-demo-i1.md); relacionado con [SPEC-016](../specs/016-matias-preparacion-identidad-institucional.md) e Issue [#79](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/79).
 - Responsables: Matías Alejandro Fernández (componente identidad), Franco Damián Sánchez (propuesta administrativa y consumidor Gastos).
 
@@ -8,7 +8,7 @@
 
 Define la interfaz pública y garantías del adaptador de identidad local permanente para usuarios sin integración institucional, enlazando con [SPEC-022](../specs/022-franco-acceso-local-administracion.md).
 
-- **Coexistencia de adaptadores**: el modo demo y sus usuarios conservan su contrato vigente (`DEMO_IDENTITY_ENABLED`), sin universalizarles verificación de correo ni aprobación administrativa. El adaptador local requiere habilitación explícita en servidor (`LOCAL_IDENTITY_ENABLED`) y cuenta incorporada expresamente; no autoriza a cualquier usuario de Django ni aplica a otros orígenes.
+- **Coexistencia e independencia de adaptadores**: el modo demo y sus usuarios conservan su contrato vigente (`DEMO_IDENTITY_ENABLED`). El adaptador local requiere activación explícita en servidor (`LOCAL_IDENTITY_ENABLED`). Si un usuario posee `CuentaLocal`, su resolución se rige exclusivamente por el adaptador local y no existe fallback a demo; una cuenta local pendiente o rechazada no adquiere capacidades de demo. A su vez, usuarios de demo no pueden adquirir capacidades `local_*` ni `identidad.*`.
 - **Origen controlado**: ningún consumidor ni cliente selecciona el origen de autenticación mediante parámetros POST, query strings o cabeceras HTTP.
 - **Aislamiento institucional**: una integración futura ([SPEC-016](../specs/016-matias-preparacion-identidad-institucional.md)) no otorgará contraseñas locales ni asociará cuentas automáticamente por correo. No se inventan endpoints ni proveedores de Sistemas.
 
@@ -22,13 +22,15 @@ Se preservan estrictamente las firmas vigentes de `identidad/services.py`:
 
 ## 3. Modelo de estados y resolución
 
-- **Estados del sujeto local**: `REGISTRADO_PENDIENTE_EMAIL`, `EMAIL_VERIFICADO_PENDIENTE_APROBACION`, `ACTIVO`, `RECHAZADO`, `SUSPENDIDO`.
-- **Condición local de resolución**: requiere origen local habilitado y cuenta incorporada expresamente. `resolve_actor` genera un `Actor` operativo únicamente si la cuenta local está autenticada, activa (`user.is_active=True`), con correo verificado y estado administrativo `ACTIVO`. En estados previos, en consulta de estado, o ante rechazo/suspensión devuelve `None` frente a trámites. Las condiciones de demo permanecen bajo su contrato propio.
-- **Perfil inicial de solicitante**: las capacidades se conceden únicamente DESPUÉS de verificar correo y obtener aprobación administrativa, nunca por el mero registro. El perfil habilitado cubre solicitante de ambos circuitos con capacidades existentes: `gastos.presentar`, `gastos.consultar_propias`, `facturacion.presentar`, `facturacion.consultar_propias`, `facturacion.corregir` y `facturacion.informar_cobro`. Verificar correo y aprobar no inventa facultades documentales ni internas; las capacidades documentales se rigen por el contrato vigente y la composición final del perfil se revisará con Matías antes de implementar, sin adoptar los demo groups como modelo productivo definitivo.
+- **Estados del sujeto local**: en `CuentaLocal` rigen `PENDIENTE` (con verificación de buzón separada), `APROBADA` y `RECHAZADA`. La suspensión de cuenta se aplica mediante `user.is_active=False`.
+- **Condición local de resolución**: requiere `LOCAL_IDENTITY_ENABLED=True` y cuenta local vinculada. `resolve_actor` genera un `Actor` operativo únicamente si el usuario está autenticado, activo (`user.is_active=True`), con correo verificado (`email_verificado_en is not None`) y estado administrativo `APROBADA`. Las cuentas pendientes o rechazadas tienen sesión limitada a consulta de estado; una cuenta inactiva no puede autenticarse. En todos esos casos no hay `Actor` operativo.
+- **Perfil de solicitante local (`local_solicitante`)**: se concede únicamente tras verificación de correo y aprobación administrativa. Agrupa capacidades de presentación y consulta propia en ambos circuitos (`gastos.presentar`, `gastos.consultar_propias`, `facturacion.presentar`, `facturacion.consultar_propias`, `facturacion.corregir`, `facturacion.informar_cobro`) y gestión documental propia (`documentos.incorporar`, `documentos.consultar_metadatos`, `documentos.ver_metadatos`, `documentos.recuperar_contenido`, `documentos.descargar`), manteniendo activos los guards de objeto en cada módulo.
+- **Administración local (`local_administracion`)**: concede `identidad.administrar_cuentas` para evaluar altas pendientes en `/cuentas/administracion/altas/`. No confiere facultades de superusuario ni permisos de staff.
 
 ## 4. Seguridad, tokens y aislamiento de correos
 
-- **Tokens temporales**: enlaces de un solo uso con propósito unívoco (`verificacion_email`, `recuperacion_clave`), vinculados a la identidad y al correo. Quedan invalidados tras su uso, cambio de contraseña o cambio de estado.
-- **Parámetros técnicos**: duración (TTL) y límites de tasa (rate limiting) para peticiones y reenvíos son parámetros técnicos pendientes del plan, no reglas institucionales.
+- **Tokens temporales**: enlaces de verificación firmados con salt específico y expiración (`LOCAL_VERIFICATION_TIMEOUT`). Restablecimiento de contraseña basado en Django estándar con generador extendido `TokenRecuperacionLocal` en `tokens_local.py` (vinculado a hash de contraseña, nonce, estado, correo y actividad).
+- **Revocación e invalidación**: la rotación de nonce por cambio de actividad del usuario se ejecuta mediante señal `pre_save` sobre `User.save()`; no garantiza revocación ante escrituras directas por SQL o actualizaciones bulk.
+- **Límite de tasa**: control de intentos por IP y por destinatario mediante modelo `LimiteAcceso` sin dependencias externas.
 - **Respuestas neutras y fallos observables**: mensajes públicos homogéneos contra enumeración de usuarios. Los fallos del servicio de correo son observables en backend sin fingir entregas exitosas, admitiendo reintento.
-- **Aislamiento de correos y unicidad**: propuesta de correo personal único sólo para nuevas identidades locales, sin imponer unicidad retroactiva a `auth.User.email` ni migrar cuentas existentes; pendiente revisar con Matías convivencia y colisiones antes de implementar. Prohibido reasignar trámites por correo compartido.
+- **Aislamiento de correos y unicidad**: unicidad case-insensitive obligatoria solo en `CuentaLocal` (`UniqueConstraint(Lower("email"))`), sin modificar la unicidad ni estructura de `auth.User.email` legado. Se previenen colisiones al registrar. Prohibido reasignar trámites por correo compartido.

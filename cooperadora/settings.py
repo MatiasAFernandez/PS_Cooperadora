@@ -34,6 +34,9 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-development-key")
 DEBUG = env_bool("DJANGO_DEBUG", default=True)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 DEMO_IDENTITY_ENABLED = env_bool("DEMO_IDENTITY_ENABLED", default=False)
+LOCAL_IDENTITY_ENABLED = env_bool("LOCAL_IDENTITY_ENABLED", default=False)
+LOCAL_PUBLIC_BASE_URL = os.getenv("LOCAL_PUBLIC_BASE_URL", "http://127.0.0.1:8000" if DEBUG else "")
+LOCAL_VERIFICATION_TIMEOUT = int(os.getenv("LOCAL_VERIFICATION_TIMEOUT", "86400"))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -111,14 +114,21 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Archivos de #19: directorio privado, sin URL estática.
 DOCUMENT_STORAGE_ROOT = Path(os.getenv("DOCUMENT_STORAGE_ROOT", BASE_DIR / "private_documents"))
-DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES = int(
-    os.getenv("DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES", "10485760")
-)
+DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES = int(os.getenv("DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES", "10485760"))
 
 # Integración gastos/documentos: ruta punteada opcional al proveedor real de
 # `gastos.contracts.DocumentVerificationPort`. No se importa ni se instancia
 # aquí; gastos la resuelve en tiempo de uso y falla cerrado (503) cuando falta.
 GASTOS_PAYMENT_DOCUMENT_PROVIDER = env_optional_str("GASTOS_PAYMENT_DOCUMENT_PROVIDER")
 
-LOGIN_URL = "identidad:login"
-LOGIN_REDIRECT_URL = "identidad:inicio"
+LOGIN_URL = "cuentas:login" if LOCAL_IDENTITY_ENABLED else "identidad:login"
+LOGIN_REDIRECT_URL = "cuentas:inicio" if LOCAL_IDENTITY_ENABLED else "identidad:inicio"
+
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "cooperadora@example.invalid")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = 10

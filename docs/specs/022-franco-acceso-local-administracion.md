@@ -1,6 +1,6 @@
 # SPEC-022 — Acceso local permanente y gestión administrativa
 
-- Estado: PROPUESTA (pendiente de revisión de interfaz y reparto con Matías; no acordado ni validado institucionalmente)
+- Estado: primer incremento implementado en rama de tarea; revisión compartida y validación institucional pendientes. Ver controles y límites en la [guía de acceso local](../guides/acceso-local.md).
 - Issue: [#109](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/109) (relacionadas: [#79](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/79), [#77](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/77), [#78](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/78))
 - Responsable principal: Franco Damián Sánchez (alcance administrativo y revisión del consumidor Gastos)
 - Rol del compañero: Matías Alejandro Fernández (conserva componente identidad)
@@ -13,29 +13,33 @@ Brindar acceso local permanente y autónomo para usuarios sin integración insti
 ## Alcance
 
 ### Incluye
-- Registro público: nombre, correo y contraseña obligatorios; área habitual, CUIT/CUIL y legajo opcionales.
-- Verificación de buzón por enlace temporal de un solo uso con reenvío limitado.
-- Aprobación, rechazo y suspensión de cuentas exclusivamente por administración.
-- Autenticación estándar (login/salida) sobre Django 5.2.
-- Recuperación de contraseña por enlace de un solo uso y cambio voluntario exigiendo contraseña actual.
-- Propuesta de correo personal único sólo para NUEVAS identidades locales.
+- Registro público: nombre completo, correo y contraseña obligatorios; área habitual, CUIT/CUIL y legajo opcionales.
+- Verificación de buzón por enlace temporal firmado de un solo uso con reenvío limitado (`LimiteAcceso`).
+- Aprobación y rechazo administrativo de cuentas pendientes con motivo obligatorio en caso de rechazo (`identidad.administrar_cuentas`).
+- Autenticación estándar (login/salida) por correo local sobre Django y consulta de estado propia (`/cuentas/estado/`).
+- Recuperación de contraseña por enlace de un solo uso (`TokenRecuperacionLocal`) y cambio voluntario exigiendo contraseña actual.
+- Perfil `local_solicitante` con capacidades operativas propias en Gastos y Facturación y gestión documental propia (`documentos.incorporar`, `documentos.consultar_metadatos`, `documentos.ver_metadatos`, `documentos.recuperar_contenido`, `documentos.descargar`), con guards de objeto vigentes.
+- Revocación de sesión e invalidación de enlaces ante cambio de actividad (`is_active`) mediante señal `pre_save` sobre `User.save()`.
+- Correo personal único para nuevas identidades locales (`CuentaLocal` con `UniqueConstraint(Lower("email"))`).
 
 ### No incluye
-- Proveedor o endpoint institucional de Sistemas (mantenido bajo [SPEC-016](016-matias-preparacion-identidad-institucional.md) e Issue [#79](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/79)).
-- No decide como hecho email-as-login, plazos institucionales ni proveedor SMTP.
-- Unicidad retroactiva sobre `auth.User.email` ni migración obligatoria de cuentas existentes.
-- Prohíbe autoasignación de facultades internas (revisión, decisión, pago, administración) y cualquier concesión operativa previa a la habilitación formal, sin restringir las acciones del solicitante una vez habilitado.
+- Suspensión interactiva por interfaz web (se gestiona mediante `user.is_active=False`; la bandeja actual evalúa únicamente solicitudes pendientes).
+- ABM general de usuarios ni editor de cambio de correo.
+- Proveedor o endpoint institucional de Sistemas ni SSO (mantenido bajo [SPEC-016](016-matias-preparacion-identidad-institucional.md) e Issue [#79](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/79)).
+- Unicidad retroactiva sobre `auth.User.email` ni migración obligatoria de cuentas legadas (la unicidad rige sobre `CuentaLocal`, previniendo colisiones).
+- No garantiza invalidación de enlaces ante escrituras directas por SQL o actualizaciones bulk sin ejecución de `User.save()`.
+- Prohíbe autoasignación de facultades internas y concesión operativa previa a la habilitación formal.
 - Avisos generales de trámites ni dispensas ([#78](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/78)).
-- Editor de cambio de correo (requerirá verificar nuevo destino antes de recuperaciones).
-- Criptografía propietaria ni colas genéricas; reutiliza utilidades estándar de Django 5.2.
+- Configuración SMTP de producción ni proveedor definitivo; URL base canónica vía `LOCAL_PUBLIC_BASE_URL`.
 
 ## Recorrido y reglas de negocio
 
-1. **Flujo de estados**: `registro` -> `verificar buzón` -> `pendiente de aprobación` -> `activo` (o `rechazado` / `suspendido`).
-2. **Verificación y acceso**: verificar el buzón acredita control de la casilla, no pertenencia institucional ni acceso operativo. Una sesión para consultar el estado no entrega `Actor` operativo.
-3. **Acceso efectivo**: tras verificación de correo y aprobación administrativa formal, la cuenta activa resuelve el perfil solicitante para ambos circuitos según [identidad-local.md](../contracts/identidad-local.md), sin otorgar facultades internas ni alterar las condiciones de cuentas demo.
-4. **Credenciales**: recuperar o cambiar contraseña no aprueba cuentas, no verifica correo ni levanta suspensiones.
-5. **Diferenciación de correos**: el correo personal de acceso/recuperación es independiente del correo de área (agrupación de contacto) y del destinatario de comprobantes. La titularidad histórica (`user.pk`) se preserva sin mezclar personas por correo.
+1. **Flujo de estados**: en `CuentaLocal` rigen `PENDIENTE`, `APROBADA` y `RECHAZADA`. La suspensión operativa se rige mediante `user.is_active=False`.
+2. **Verificación y acceso**: verificar el buzón acredita control de la casilla, no pertenencia institucional ni acceso operativo. Cuentas no aprobadas o sin verificar acceden únicamente a consulta de estado (`/cuentas/estado/`) sin entrega de `Actor` operativo ni fallback a demo.
+3. **Acceso efectivo**: tras verificación de correo y aprobación administrativa formal, la cuenta activa resuelve el perfil `local_solicitante` para ambos circuitos según [identidad-local.md](../contracts/identidad-local.md), sin otorgar facultades internas ni alterar las condiciones de cuentas demo.
+4. **Administración**: la bandeja administrativa (`/cuentas/administracion/altas/`) exige la capacidad `identidad.administrar_cuentas` (sin facultades implícitas por staff o superusuario), requiere motivo obligatorio en rechazos y prohíbe autodecisión.
+5. **Credenciales**: recuperar o cambiar contraseña no aprueba cuentas, no verifica correo ni levanta suspensiones.
+6. **Diferenciación de correos**: el correo personal de acceso/recuperación es independiente del correo de área (agrupación de contacto) y del destinatario de comprobantes. La titularidad histórica (`user.pk`) se preserva sin mezclar personas por correo.
 
 ## Criterios de aceptación
 
@@ -54,8 +58,6 @@ Sigue la [Guía visual](../visual-guide/README.md) y formularios operativos actu
 
 ## Plan de incrementos y dependencias
 
-- **Inc. 1**: Formalización de interfaz y revisión de convivencia con Matías ([identidad-local.md](../contracts/identidad-local.md)).
-- **Inc. 2**: Persistencia de estados locales y flujo de verificación de correo (backend simulado en desarrollo/test).
-- **Inc. 3**: Vistas de login, salida, recuperación y cambio de clave.
-- **Inc. 4**: Bandeja administrativa de aprobación/rechazo/suspensión ([#77](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/77)).
-- **Límites**: Parámetros de TTL, límites de tasa y configuración SMTP final quedan sujetos al plan de despliegue.
+- **Núcleo de persistencia y verificación**: publicado en la rama de tarea en `b42cd8a` (modelo `CuentaLocal`, migración `0001_initial`, lógica en `identidad.cuentas` y limitación de tasa).
+- **Capa HTTP y UI local**: implementada en rama `feat/109-acceso-local` (`urls_local`, `views_local`, `forms_local`, `tokens_local` y plantillas de `/cuentas/`), pendiente de revisión compartida. Procedimiento y alcance de las comprobaciones en la [guía de acceso local](../guides/acceso-local.md).
+- **Límites pendientes**: configuración SMTP de producción, suspensión interactiva en interfaz web y ABM general de usuarios.

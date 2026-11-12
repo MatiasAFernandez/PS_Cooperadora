@@ -163,7 +163,7 @@
                 <span class="brand-sub">Cooperadora</span>
             </span>
             {% else %}
-            <a href="{% url 'identidad:inicio' %}" class="app-brand" title="Inicio de Cooperadora">
+            <a href="{% if acceso_local or request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" title="Inicio de Cooperadora">
                 <span class="brand-badge">UTN</span>
                 <span class="brand-title">FRRe</span>
                 <span class="brand-divider">|</span>
@@ -173,8 +173,8 @@
             <h2 class="visually-hidden-module-title">{% block titulo_modulo %}PS Cooperadora — Circuito de Gastos{% endblock %}</h2>
             {% if actor %}
             <span class="app-spacer"></span>
-            <span class="app-session">Sesión demo</span>
-            <form method="post" action="{% url 'identidad:logout' %}" class="app-logout-form">
+            <span class="app-session">{% if request.user.cuenta_local %}Sesión activa{% else %}Sesión demo{% endif %}</span>
+            <form method="post" action="{% if request.user.cuenta_local %}{% url 'cuentas:logout' %}{% else %}{% url 'identidad:logout' %}{% endif %}" class="app-logout-form">
                 {% csrf_token %}
                 <button class="app-logout" type="submit">
                     <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
