@@ -1,6 +1,6 @@
 # Contrato — Adaptador de identidad local permanente
 
-- Estado: primer incremento implementado en rama de tarea; revisión compartida y validación institucional pendientes. Ver controles y límites en la [guía de acceso local](../guides/acceso-local.md).
+- Estado: primer incremento integrado en `main` mediante [PR #111](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/111); revisión compartida y validación institucional pendientes. Ver controles y límites en la [guía de acceso local](../guides/acceso-local.md).
 - Contexto: Issue [#109](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/109); complementa [identidad-demo-i1.md](identidad-demo-i1.md); relacionado con [SPEC-016](../specs/016-matias-preparacion-identidad-institucional.md) e Issue [#79](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/79).
 - Responsables: Matías Alejandro Fernández (componente identidad), Franco Damián Sánchez (propuesta administrativa y consumidor Gastos).
 
