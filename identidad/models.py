@@ -88,3 +88,31 @@ class CambioDatosCuentaLocal(models.Model):
 
     def __str__(self) -> str:
         return f"CambioDatosCuentaLocal(cuenta={self.cuenta_id}, fecha={self.fecha})"
+
+
+class CambioActividadCuentaLocal(models.Model):
+    """Registro de desactivaciones y reactivaciones administrativas de una cuenta local."""
+
+    cuenta = models.ForeignKey(
+        CuentaLocal,
+        on_delete=models.PROTECT,
+        related_name="cambios_actividad",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="cambios_actividad_realizados",
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+    motivo = models.TextField(max_length=2000)
+    actividad_anterior = models.BooleanField()
+    actividad_nueva = models.BooleanField()
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+
+    def __str__(self) -> str:
+        return (
+            f"CambioActividadCuentaLocal(cuenta={self.cuenta_id}, "
+            f"{self.actividad_anterior}->{self.actividad_nueva}, fecha={self.fecha})"
+        )
