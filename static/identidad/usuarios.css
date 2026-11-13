@@ -1,0 +1,422 @@
+/* Módulos del padrón y la ficha de usuarios locales (SPEC-023). */
+
+.usuarios-page {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.usuarios-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.usuarios-head-texto {
+    min-width: 0;
+}
+
+.usuarios-head-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.usuarios-head-acciones .btn {
+    min-height: 44px;
+}
+
+.usuarios-filtros {
+    background: #ffffff;
+    border: 1px solid var(--ref-border, #e2e8f0);
+    border-radius: var(--radius-lg, 8px);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+    margin-bottom: 1rem;
+}
+
+.usuarios-filtros-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    align-items: start;
+}
+
+.usuarios-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.usuarios-field label {
+    display: block;
+    margin: 0;
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 700;
+    color: #475569;
+}
+
+.usuarios-field input,
+.usuarios-field select {
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.usuarios-field input[aria-invalid="true"],
+.usuarios-field select[aria-invalid="true"] {
+    border-color: var(--color-error-border, #fecdd3);
+}
+
+.usuarios-error {
+    margin: 0;
+    color: var(--color-error, #9f1239);
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.usuarios-filtros-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1rem;
+}
+
+.usuarios-filtros-acciones .btn {
+    min-height: 44px;
+}
+
+.usuarios-aviso {
+    margin-bottom: 1rem;
+}
+
+.usuarios-resumen {
+    margin: 0 0 0.75rem;
+    color: #475569;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 600;
+}
+
+.usuarios-lista {
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.usuarios-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.35fr) auto;
+    align-items: center;
+    gap: 1rem 1.25rem;
+    min-width: 0;
+    padding: 1rem 1.15rem;
+    background: #ffffff;
+    border: 1px solid var(--ref-border, #e2e8f0);
+    border-radius: var(--radius-lg, 8px);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+    overflow-wrap: anywhere;
+}
+
+.usuarios-identidad,
+.usuarios-estado,
+.usuarios-accion {
+    min-width: 0;
+}
+
+.usuarios-nombre {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.usuarios-email {
+    margin: 0.15rem 0 0;
+    color: #475569;
+    font-size: var(--text-sm, 0.875rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.usuarios-area {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.4rem;
+    margin: 0.55rem 0 0;
+    color: #334155;
+    font-size: var(--text-sm, 0.875rem);
+    overflow-wrap: anywhere;
+}
+
+.usuarios-meta-label {
+    display: block;
+    margin: 0;
+    color: #64748b;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+    text-transform: uppercase;
+}
+
+.usuarios-area .usuarios-meta-label {
+    flex: 0 0 auto;
+}
+
+.usuarios-estados {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.usuarios-estado {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+}
+
+.usuarios-accion {
+    justify-self: end;
+}
+
+.usuarios-accion .btn {
+    min-height: 44px;
+    gap: 0.3rem;
+}
+
+.usuarios-paginacion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.usuarios-paginacion-resumen {
+    margin: 0;
+    color: #475569;
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.usuarios-paginacion-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.usuarios-paginacion-acciones .btn {
+    min-height: 44px;
+}
+
+.usuarios-vacio {
+    text-align: center;
+}
+
+.usuarios-vacio-titulo {
+    margin: 0 0 0.35rem;
+    color: var(--ref-blue, #084298);
+    font-size: 1.15rem;
+}
+
+.usuarios-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 44px;
+    margin-bottom: 0.75rem;
+    color: var(--ref-blue, #084298);
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.usuarios-volver:hover {
+    color: var(--ref-deep-blue, #090979);
+    text-decoration: underline;
+}
+
+.usuarios-ficha-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+}
+
+.usuarios-ficha-card,
+.usuarios-estado-card {
+    min-width: 0;
+}
+
+.usuarios-ficha-principal {
+    min-width: 0;
+}
+
+.usuarios-ficha-titulo {
+    margin: 0 0 0.85rem;
+    color: var(--ref-blue, #084298);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.usuarios-ficha-seccion {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--ref-border, #e2e8f0);
+}
+
+.usuarios-datos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 1.25rem;
+    margin: 0;
+}
+
+.usuarios-dato {
+    min-width: 0;
+}
+
+.usuarios-dato dt {
+    margin: 0 0 0.2rem;
+    color: #64748b;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.usuarios-dato dd {
+    margin: 0;
+    color: #0f172a;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.usuarios-dato--ancho {
+    grid-column: 1 / -1;
+}
+
+.usuarios-motivo {
+    white-space: pre-line;
+}
+
+.usuarios-estado-lista {
+    display: grid;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.usuarios-estado-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--ref-border, #e2e8f0);
+}
+
+.usuarios-estado-item:last-child {
+    border-bottom: 0;
+}
+
+.usuarios-estado-item .usuarios-meta-label {
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+    .usuarios-filtros-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .usuarios-field--busqueda {
+        grid-column: 1 / -1;
+    }
+
+    .usuarios-fila {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .usuarios-estados {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+
+    .usuarios-ficha-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .usuarios-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .usuarios-head-acciones,
+    .usuarios-head-acciones .btn,
+    .usuarios-filtros-acciones,
+    .usuarios-filtros-acciones .btn,
+    .usuarios-accion,
+    .usuarios-accion .btn,
+    .usuarios-paginacion-acciones,
+    .usuarios-paginacion-acciones .btn {
+        width: 100%;
+    }
+
+    .usuarios-filtros {
+        padding: 1rem;
+    }
+
+    .usuarios-filtros-grid,
+    .usuarios-datos {
+        grid-template-columns: 1fr;
+    }
+
+    .usuarios-field--busqueda,
+    .usuarios-dato--ancho {
+        grid-column: auto;
+    }
+
+    .usuarios-fila {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+
+    .usuarios-estados {
+        grid-column: auto;
+        grid-row: auto;
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+
+    .usuarios-estado {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .usuarios-paginacion {
+        align-items: stretch;
+    }
+
+    .usuarios-paginacion-acciones {
+        flex-direction: column;
+    }
+}

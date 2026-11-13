@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from identidad import views_local
+from identidad import views_local, views_usuarios
 
 app_name = "cuentas"
 
@@ -17,6 +17,16 @@ urlpatterns = [
     path("reenviar/", views_local.ReenviarView.as_view(), name="reenviar"),
     path("estado/", views_local.EstadoView.as_view(), name="estado"),
     path("administracion/altas/", views_local.AltasView.as_view(), name="altas"),
+    path(
+        "administracion/usuarios/",
+        views_usuarios.UsuariosView.as_view(),
+        name="usuarios",
+    ),
+    path(
+        "administracion/usuarios/<int:pk>/",
+        views_usuarios.UsuarioDetalleView.as_view(),
+        name="usuario_detalle",
+    ),
     path("recuperar/", views_local.LocalPasswordResetView.as_view(), name="recuperar"),
     path(
         "recuperar/enviado/",

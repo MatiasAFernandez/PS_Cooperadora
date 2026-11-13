@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Usuarios locales — Cooperadora{% endblock %}
+
+{% block title %}Usuarios locales — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+<link rel="stylesheet" href="{% static 'identidad/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide usuarios-page">
+    <header class="usuarios-head">
+        <div class="usuarios-head-texto">
+            <p class="cuentas-eyebrow">Administración</p>
+            <h1 class="cuentas-title">Usuarios locales</h1>
+            <p class="cuentas-intro">Consultá las cuentas locales registradas y el estado de cada acceso.</p>
+        </div>
+        <div class="usuarios-head-acciones">
+            <a class="btn btn-secondary" href="{% url 'cuentas:altas' %}">
+                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg>
+                Solicitudes de cuenta
+            </a>
+        </div>
+    </header>
+
+    <form class="usuarios-filtros" method="get" action="{% url 'cuentas:usuarios' %}">
+        <div class="usuarios-filtros-grid">
+            <div class="usuarios-field usuarios-field--busqueda">
+                <label for="id_q">Buscar por nombre, correo o área</label>
+                <input type="search" id="id_q" name="q" value="{{ form.q.value|default:'' }}" maxlength="{{ form.q.field.max_length }}" placeholder="Ej.: Administración o ana@ejemplo.edu.ar"{% if form.q.errors %} aria-invalid="true" aria-describedby="id_q_error"{% endif %}>
+                {% if form.q.errors %}<p class="usuarios-error" id="id_q_error" role="alert">{{ form.q.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="usuarios-field">
+                <label for="id_estado">Aprobación</label>
+                <select id="id_estado" name="estado"{% if form.estado.errors %} aria-invalid="true" aria-describedby="id_estado_error"{% endif %}>
+                    {% for valor, etiqueta in form.estado.field.choices %}
+                    <option value="{{ valor }}"{% if form.estado.value == valor %} selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.estado.errors %}<p class="usuarios-error" id="id_estado_error" role="alert">{{ form.estado.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="usuarios-field">
+                <label for="id_verificado">Correo verificado</label>
+                <select id="id_verificado" name="verificado"{% if form.verificado.errors %} aria-invalid="true" aria-describedby="id_verificado_error"{% endif %}>
+                    {% for valor, etiqueta in form.verificado.field.choices %}
+                    <option value="{{ valor }}"{% if form.verificado.value == valor %} selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.verificado.errors %}<p class="usuarios-error" id="id_verificado_error" role="alert">{{ form.verificado.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="usuarios-field">
+                <label for="id_actividad">Actividad</label>
+                <select id="id_actividad" name="actividad"{% if form.actividad.errors %} aria-invalid="true" aria-describedby="id_actividad_error"{% endif %}>
+                    {% for valor, etiqueta in form.actividad.field.choices %}
+                    <option value="{{ valor }}"{% if form.actividad.value == valor %} selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.actividad.errors %}<p class="usuarios-error" id="id_actividad_error" role="alert">{{ form.actividad.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="usuarios-filtros-acciones">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuarios' %}">Limpiar</a>
+        </div>
+    </form>
+
+    {% if form.errors %}
+    <div class="cuentas-status cuentas-status--error usuarios-aviso" role="alert">
+        <p>Revisá los filtros marcados para consultar las cuentas.</p>
+    </div>
+    {% else %}
+    <p class="usuarios-resumen" aria-live="polite">
+        {{ total }} cuenta{{ total|pluralize:",s" }} local{{ total|pluralize:",es" }}{% if filtros_query %} con los filtros aplicados{% else %} en total{% endif %}
+    </p>
+
+    {% if cuentas %}
+    <ul class="usuarios-lista" aria-label="Cuentas locales">
+        {% for cuenta_item in cuentas %}
+        <li class="usuarios-fila">
+            <div class="usuarios-identidad">
+                <h2 class="usuarios-nombre">{{ cuenta_item.nombre_completo }}</h2>
+                <p class="usuarios-email">{{ cuenta_item.email }}</p>
+                <p class="usuarios-area"><span class="usuarios-meta-label">Área habitual</span>{{ cuenta_item.area_habitual|default:"Sin informar" }}</p>
+            </div>
+
+            <div class="usuarios-estados" aria-label="Estados de la cuenta">
+                <div class="usuarios-estado">
+                    <span class="usuarios-meta-label">Aprobación</span>
+                    <span class="badge {% if cuenta_item.estado == 'APROBADA' %}badge-success{% elif cuenta_item.estado == 'PENDIENTE' %}badge-warning{% else %}badge-error{% endif %}">{{ cuenta_item.get_estado_display|upper }}</span>
+                </div>
+                <div class="usuarios-estado">
+                    <span class="usuarios-meta-label">Correo</span>
+                    {% if cuenta_item.email_verificado_en %}
+                    <span class="badge badge-success">Verificado</span>
+                    {% else %}
+                    <span class="badge badge-warning">Sin verificar</span>
+                    {% endif %}
+                </div>
+                <div class="usuarios-estado">
+                    <span class="usuarios-meta-label">Actividad</span>
+                    {% if cuenta_item.user.is_active %}
+                    <span class="badge badge-success">Activa</span>
+                    {% else %}
+                    <span class="badge badge-neutral">Inactiva</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="usuarios-accion">
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_detalle' cuenta_item.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                    Ver ficha
+                    <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 18l6-6-6-6"/></svg>
+                </a>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% if cuentas.paginator.num_pages > 1 %}
+    <nav class="usuarios-paginacion" aria-label="Paginación de usuarios locales">
+        <p class="usuarios-paginacion-resumen">Página {{ cuentas.number }} de {{ cuentas.paginator.num_pages }}</p>
+        <div class="usuarios-paginacion-acciones">
+            {% if cuentas.has_previous %}
+            <a class="btn btn-secondary" rel="prev" href="{% url 'cuentas:usuarios' %}?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ cuentas.previous_page_number }}">Anterior</a>
+            {% endif %}
+            {% if cuentas.has_next %}
+            <a class="btn btn-secondary" rel="next" href="{% url 'cuentas:usuarios' %}?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ cuentas.next_page_number }}">Siguiente</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <section class="cuentas-card usuarios-vacio" aria-labelledby="usuarios-vacio-titulo" role="status">
+        <h2 class="usuarios-vacio-titulo" id="usuarios-vacio-titulo">No hay cuentas para mostrar</h2>
+        <p class="cuentas-intro">{% if filtros_query %}No se encontraron cuentas locales que coincidan con la búsqueda y los filtros. Probá con otros criterios.{% else %}Todavía no hay cuentas locales registradas.{% endif %}</p>
+    </section>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
