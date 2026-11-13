@@ -155,7 +155,9 @@ class VerificarView(LocalOnlyMixin, View):
             },
         )
         add_never_cache_headers(response)
-        response["Referrer-Policy"] = "no-referrer"
+        # same-origin conserva el Referer interno que exige la validación CSRF
+        # y evita enviar la URL con token a otros orígenes.
+        response["Referrer-Policy"] = "same-origin"
         return response
 
     def post(self, request: HttpRequest) -> HttpResponse:

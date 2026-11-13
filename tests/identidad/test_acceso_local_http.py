@@ -156,7 +156,7 @@ def test_1_registro_http_exitoso_y_duplicados_neutros(client: Client) -> None:
 
 
 @pytest.mark.django_db
-def test_2_verificar_correo_flujo_tokens_y_seguridad(client: Client) -> None:
+def test_2_verificar_correo_flujo_tokens_y_seguridad() -> None:
     """GET no consume token; POST verifica casilla sin aprobar y rechaza replays."""
     cuenta = registrar_cuenta(
         nombre="Verif User",
@@ -177,16 +177,51 @@ def test_2_verificar_correo_flujo_tokens_y_seguridad(client: Client) -> None:
     assert "token" in params
     token = params["token"][0]
 
-    # GET prepara formulario sin consumir token
-    resp_get = client.get(reverse("cuentas:verificar"), {"token": token})
+    csrf_client = Client(enforce_csrf_checks=True)
+
+    # GET prepara formulario sin consumir token. La política same-origin
+    # conserva el referente interno para CSRF sin filtrarlo a otros orígenes.
+    resp_get = csrf_client.get(reverse("cuentas:verificar"), {"token": token})
     assert resp_get.status_code == 200
+    assert resp_get.headers["Referrer-Policy"] == "same-origin"
+    assert "no-store" in resp_get.headers["Cache-Control"]
+    contenido_form = resp_get.content.decode()
     # No exponer token visible como texto plano en el cuerpo
-    assert f">{token}<" not in resp_get.content.decode()
+    assert f">{token}<" not in contenido_form
+
+    match_csrf = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', contenido_form)
+    assert match_csrf is not None
+    csrf_form_token = match_csrf.group(1)
+
     cuenta.refresh_from_db()
     assert cuenta.email_verificado_en is None
 
-    # POST consume token y verifica
-    resp_post = client.post(reverse("cuentas:verificar"), {"token": token})
+    # POST cross-origin con CSRF válido: 403 y token de verificación intacto
+    resp_cross = csrf_client.post(
+        reverse("cuentas:verificar"),
+        {"token": token, "csrfmiddlewaretoken": csrf_form_token},
+        HTTP_ORIGIN="https://origen.example.invalid",
+    )
+    assert resp_cross.status_code == 403
+    cuenta.refresh_from_db()
+    assert cuenta.email_verificado_en is None
+
+    # POST sin token CSRF: 403 y token de verificación intacto
+    resp_sin_csrf = csrf_client.post(
+        reverse("cuentas:verificar"),
+        {"token": token},
+        HTTP_ORIGIN="http://testserver",
+    )
+    assert resp_sin_csrf.status_code == 403
+    cuenta.refresh_from_db()
+    assert cuenta.email_verificado_en is None
+
+    # POST same-origin con CSRF válido consume el token y verifica sin aprobar
+    resp_post = csrf_client.post(
+        reverse("cuentas:verificar"),
+        {"token": token, "csrfmiddlewaretoken": csrf_form_token},
+        HTTP_ORIGIN="http://testserver",
+    )
     assert resp_post.status_code == 302
     assert resp_post.url == f"{reverse('cuentas:estado')}?modo=verificado"
 
@@ -194,12 +229,20 @@ def test_2_verificar_correo_flujo_tokens_y_seguridad(client: Client) -> None:
     assert cuenta.email_verificado_en is not None
     assert cuenta.estado == CuentaLocal.Estado.PENDIENTE
 
-    # Replay genera 400
-    resp_replay = client.post(reverse("cuentas:verificar"), {"token": token})
+    # Replay genera 400 aun con CSRF válido
+    resp_replay = csrf_client.post(
+        reverse("cuentas:verificar"),
+        {"token": token, "csrfmiddlewaretoken": csrf_form_token},
+        HTTP_ORIGIN="http://testserver",
+    )
     assert resp_replay.status_code == 400
 
     # Token inválido genera 400
-    resp_inv = client.post(reverse("cuentas:verificar"), {"token": "firma-corrupta"})
+    resp_inv = csrf_client.post(
+        reverse("cuentas:verificar"),
+        {"token": "firma-corrupta", "csrfmiddlewaretoken": csrf_form_token},
+        HTTP_ORIGIN="http://testserver",
+    )
     assert resp_inv.status_code == 400
 
 
