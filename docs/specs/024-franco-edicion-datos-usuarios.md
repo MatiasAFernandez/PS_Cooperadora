@@ -1,6 +1,6 @@
 # SPEC-024 — Edición administrativa de datos básicos locales
 
-- Estado: alcance autorizado; implementación, revisión y prueba visual pendientes.
+- Estado: núcleo y recorrido HTTP implementados en rama de tarea; revisión y prueba visual pendientes.
 - Issue: [#117](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/117).
 - Responsable del alcance administrativo: Franco Damián Sánchez. Matías Alejandro Fernández conserva responsabilidad sobre identidad; su conformidad no se presume.
 - Extiende la ficha de [SPEC-023](023-franco-consulta-usuarios-locales.md), sin cambiar el contrato de Actor.

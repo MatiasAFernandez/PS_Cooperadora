@@ -1,6 +1,6 @@
 # SPEC-023 — Consulta administrativa de usuarios locales
 
-- Estado: primer hito implementado en rama de tarea; validación visual y revisión compartida pendientes.
+- Estado: primer hito integrado mediante PR #116 y verificado en navegador; revisión compartida y validación institucional separadas.
 - Issue: [#115](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/115).
 - Responsable del alcance administrativo: Franco Damián Sánchez. Matías Alejandro Fernández conserva responsabilidad sobre identidad; este documento no atribuye su conformidad.
 - Complementa [SPEC-022](022-franco-acceso-local-administracion.md) y el [contrato de identidad local](../contracts/identidad-local.md).
