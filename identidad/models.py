@@ -141,3 +141,34 @@ class CambioPerfilesCuentaLocal(models.Model):
 
     def __str__(self) -> str:
         return f"CambioPerfilesCuentaLocal(cuenta={self.cuenta_id}, fecha={self.fecha})"
+
+
+class InvitacionCuentaLocal(models.Model):
+    """Metadatos y estado de envío de invitación administrativa para una cuenta local."""
+
+    class EstadoEnvio(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        ENVIADA = "ENVIADA", "Enviada"
+        ERROR = "ERROR", "Error"
+
+    cuenta = models.OneToOneField(
+        CuentaLocal,
+        on_delete=models.PROTECT,
+        related_name="invitacion_administrativa",
+    )
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="invitaciones_cuentas_creadas",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    aceptada_en = models.DateTimeField(null=True, blank=True)
+    ultimo_intento_en = models.DateTimeField(null=True, blank=True)
+    estado_envio = models.CharField(
+        max_length=20,
+        choices=EstadoEnvio.choices,
+        default=EstadoEnvio.PENDIENTE,
+    )
+
+    def __str__(self) -> str:
+        return f"InvitacionCuentaLocal(cuenta={self.cuenta_id}, estado={self.estado_envio})"
