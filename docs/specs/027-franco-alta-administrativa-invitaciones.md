@@ -1,6 +1,6 @@
 # SPEC-027 — Alta administrativa mediante invitación
 
-- Estado: alcance autorizado; implementación y verificaciones pendientes.
+- Estado: núcleo y recorrido HTTP implementados en rama de tarea; revisión y prueba visual pendientes.
 - Issue: [#123](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/123).
 - Franco Damián Sánchez define alcance administrativo; Matías Alejandro Fernández conserva identidad. Su revisión no se presume.
 - Complementa SPEC-022 y la gestión local de SPEC-023 a SPEC-026.

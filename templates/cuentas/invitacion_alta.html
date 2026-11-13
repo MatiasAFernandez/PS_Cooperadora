@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Nueva cuenta por invitación — Cooperadora{% endblock %}
+
+{% block title %}Nueva cuenta por invitación — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+<link rel="stylesheet" href="{% static 'identidad/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide usuarios-page">
+    <a class="usuarios-volver" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
+        Volver al listado
+    </a>
+
+    <header class="usuarios-head">
+        <div class="usuarios-head-texto">
+            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
+            <h1 class="cuentas-title">Nueva cuenta por invitación</h1>
+            <p class="cuentas-intro">Creá una cuenta local pendiente y enviá un enlace para que la persona defina su contraseña.</p>
+        </div>
+    </header>
+
+    <section class="cuentas-card usuarios-ficha-card" aria-labelledby="invitacion-alta-titulo">
+        <h2 class="usuarios-ficha-titulo" id="invitacion-alta-titulo">Datos de la cuenta</h2>
+
+        {% if form.non_field_errors %}
+        <div class="cuentas-error-summary" role="alert">
+            {% for err in form.non_field_errors %}
+            <p>{{ err }}</p>
+            {% endfor %}
+        </div>
+        {% elif form.errors %}
+        <div class="cuentas-error-summary" role="alert">
+            <p>Revisá los campos marcados antes de crear la cuenta.</p>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'cuentas:usuario_nuevo' %}{% if listado_query %}?{{ listado_query }}{% endif %}" novalidate>
+            {% csrf_token %}
+
+            <div class="usuarios-editar-grid">
+                <div class="usuarios-field">
+                    <label for="{{ form.nombre.id_for_label }}">Nombre completo</label>
+                    <input
+                        type="text"
+                        id="{{ form.nombre.id_for_label }}"
+                        name="{{ form.nombre.html_name }}"
+                        value="{{ form.nombre.value|default:'' }}"
+                        maxlength="150"
+                        autocomplete="name"
+                        required
+                        {% if form.nombre.errors %}aria-invalid="true" aria-describedby="{{ form.nombre.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.nombre.errors %}
+                    <p class="usuarios-error" id="{{ form.nombre.id_for_label }}_error" role="alert">{{ form.nombre.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.email.id_for_label }}">Correo electrónico</label>
+                    <input
+                        type="email"
+                        id="{{ form.email.id_for_label }}"
+                        name="{{ form.email.html_name }}"
+                        value="{{ form.email.value|default:'' }}"
+                        maxlength="254"
+                        autocomplete="email"
+                        required
+                        {% if form.email.errors %}aria-invalid="true" aria-describedby="{{ form.email.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.email.errors %}
+                    <p class="usuarios-error" id="{{ form.email.id_for_label }}_error" role="alert">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.area_habitual.id_for_label }}">Área habitual (opcional)</label>
+                    <input
+                        type="text"
+                        id="{{ form.area_habitual.id_for_label }}"
+                        name="{{ form.area_habitual.html_name }}"
+                        value="{{ form.area_habitual.value|default:'' }}"
+                        maxlength="150"
+                        {% if form.area_habitual.errors %}aria-invalid="true" aria-describedby="{{ form.area_habitual.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.area_habitual.errors %}
+                    <p class="usuarios-error" id="{{ form.area_habitual.id_for_label }}_error" role="alert">{{ form.area_habitual.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.cuit_cuil.id_for_label }}">CUIT / CUIL (opcional)</label>
+                    <input
+                        type="text"
+                        id="{{ form.cuit_cuil.id_for_label }}"
+                        name="{{ form.cuit_cuil.html_name }}"
+                        value="{{ form.cuit_cuil.value|default:'' }}"
+                        maxlength="20"
+                        {% if form.cuit_cuil.errors %}aria-invalid="true" aria-describedby="{{ form.cuit_cuil.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.cuit_cuil.errors %}
+                    <p class="usuarios-error" id="{{ form.cuit_cuil.id_for_label }}_error" role="alert">{{ form.cuit_cuil.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.legajo.id_for_label }}">Legajo (opcional)</label>
+                    <input
+                        type="text"
+                        id="{{ form.legajo.id_for_label }}"
+                        name="{{ form.legajo.html_name }}"
+                        value="{{ form.legajo.value|default:'' }}"
+                        maxlength="50"
+                        {% if form.legajo.errors %}aria-invalid="true" aria-describedby="{{ form.legajo.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.legajo.errors %}
+                    <p class="usuarios-error" id="{{ form.legajo.id_for_label }}_error" role="alert">{{ form.legajo.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cuentas-actions usuarios-editar-acciones">
+                <button type="submit" class="btn btn-primary">Crear y enviar invitación</button>
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

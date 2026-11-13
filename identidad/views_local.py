@@ -228,16 +228,33 @@ class ReenviarView(LocalOnlyMixin, FormView):
 
     def form_valid(self, form: ReenvioForm) -> HttpResponse:
         email_norm = normalizar_correo(form.cleaned_data["email"])
-        cuenta = CuentaLocal.objects.filter(
-            email__iexact=email_norm,
-            estado=CuentaLocal.Estado.PENDIENTE,
-            email_verificado_en__isnull=True,
-            user__is_active=True,
-        ).first()
+        cuenta = (
+            CuentaLocal.objects.select_related("user", "invitacion_administrativa")
+            .filter(
+                email__iexact=email_norm,
+                estado=CuentaLocal.Estado.PENDIENTE,
+                email_verificado_en__isnull=True,
+                user__is_active=True,
+            )
+            .first()
+        )
 
         if cuenta is not None:
             base_url = getattr(settings, "LOCAL_PUBLIC_BASE_URL", "")
-            enviar_verificacion(cuenta, base_url=base_url)
+            invitacion = getattr(cuenta, "invitacion_administrativa", None)
+            if (
+                invitacion is not None
+                and invitacion.aceptada_en is None
+                and not cuenta.user.has_usable_password()
+            ):
+                from identidad.invitaciones import enviar_invitacion
+
+                try:
+                    enviar_invitacion(cuenta, base_url=base_url)
+                except ValidationError:
+                    pass
+            else:
+                enviar_verificacion(cuenta, base_url=base_url)
 
         return redirect(self.get_success_url())
 

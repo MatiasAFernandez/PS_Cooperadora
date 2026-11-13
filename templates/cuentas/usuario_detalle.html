@@ -55,7 +55,7 @@
     {% endif %}
 
     {% for message in messages %}
-    <div class="cuentas-status" role="status">{{ message }}</div>
+    <div class="cuentas-status{% if 'error' in message.tags %} cuentas-status--error{% elif 'warning' in message.tags %} cuentas-status--pending{% elif 'success' in message.tags %} cuentas-status--success{% endif %}" role="status">{{ message }}</div>
     {% endfor %}
 
     <div class="usuarios-ficha-grid">
@@ -97,6 +97,53 @@
                             <dd class="usuarios-motivo">{{ cuenta.motivo|default:"Sin informar" }}</dd>
                         </div>
                     </dl>
+                </section>
+
+                <section class="usuarios-ficha-seccion" aria-labelledby="invitacion-cuenta">
+                    <h2 class="usuarios-ficha-titulo" id="invitacion-cuenta">Origen e invitación</h2>
+                    <dl class="usuarios-datos">
+                        <div class="usuarios-dato">
+                            <dt>Origen de la cuenta</dt>
+                            <dd>{% if invitacion %}Alta administrativa por invitación{% else %}Registro público{% endif %}</dd>
+                        </div>
+                        {% if invitacion %}
+                        <div class="usuarios-dato">
+                            <dt>Invitación creada por</dt>
+                            <dd>{{ invitacion.creada_por.get_full_name|default:invitacion.creada_por.username }}</dd>
+                        </div>
+                        <div class="usuarios-dato">
+                            <dt>Fecha de creación</dt>
+                            <dd>{{ invitacion.creada_en|date:"d/m/Y H:i" }}</dd>
+                        </div>
+                        <div class="usuarios-dato">
+                            <dt>Último envío</dt>
+                            <dd>
+                                {% if invitacion.estado_envio == "ENVIADA" %}
+                                <span class="badge badge-success">Enviada</span>
+                                <span class="usuarios-invitacion-nota">Aceptada por el servidor de correo (no confirma entrega externa).</span>
+                                {% elif invitacion.estado_envio == "ERROR" %}
+                                <span class="badge badge-error">Error al enviar</span>
+                                {% else %}
+                                <span class="badge badge-warning">Pendiente de envío</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="usuarios-dato">
+                            <dt>Último intento</dt>
+                            <dd>{{ invitacion.ultimo_intento_en|date:"d/m/Y H:i"|default:"Sin intentos registrados" }}</dd>
+                        </div>
+                        <div class="usuarios-dato">
+                            <dt>Aceptación</dt>
+                            <dd>{{ invitacion.aceptada_en|date:"d/m/Y H:i"|default:"Pendiente de aceptación" }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                    {% if puede_reenviar_invitacion %}
+                    <form method="post" action="{% url 'cuentas:usuario_reenviar_invitacion' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}" class="usuarios-invitacion-accion">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary">Reenviar invitación</button>
+                    </form>
+                    {% endif %}
                 </section>
             </section>
 
