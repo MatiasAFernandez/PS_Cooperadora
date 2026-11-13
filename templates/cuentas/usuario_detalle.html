@@ -23,12 +23,19 @@
             <p class="cuentas-intro usuarios-email">{{ cuenta.email }}</p>
         </div>
         <div class="usuarios-head-acciones">
+            <a class="btn btn-primary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                Editar datos
+            </a>
             <a class="btn btn-secondary" href="{% url 'cuentas:altas' %}">
                 <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg>
                 Solicitudes de cuenta
             </a>
         </div>
     </header>
+
+    {% for message in messages %}
+    <div class="cuentas-status" role="status">{{ message }}</div>
+    {% endfor %}
 
     <div class="usuarios-ficha-grid">
         <div class="usuarios-ficha-principal">
@@ -70,6 +77,50 @@
                         </div>
                     </dl>
                 </section>
+            </section>
+
+            <section class="cuentas-card usuarios-ficha-card usuarios-historial-card" aria-labelledby="historial-cambios">
+                <h2 class="usuarios-ficha-titulo" id="historial-cambios">Historial de cambios</h2>
+                {% if historial_items %}
+                <ul class="usuarios-historial-lista">
+                    {% for item in historial_items %}
+                    <li class="usuarios-historial-item">
+                        <div class="usuarios-historial-meta">
+                            <span class="usuarios-historial-fecha">{{ item.fecha|date:"d/m/Y H:i" }}</span>
+                            <span class="usuarios-historial-autor">{{ item.autor }}</span>
+                        </div>
+                        <ul class="usuarios-historial-cambios">
+                            {% for cambio in item.cambios %}
+                            <li>
+                                <strong>{{ cambio.etiqueta }}:</strong>
+                                <span>{{ cambio.anterior|default:"Sin informar" }}</span>
+                                <span aria-hidden="true">→</span>
+                                <span>{{ cambio.nuevo|default:"Sin informar" }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                {% if historial_page.has_other_pages %}
+                <nav class="usuarios-paginacion" aria-label="Paginación del historial de cambios">
+                    <p class="usuarios-paginacion-resumen">
+                        Página {{ historial_page.number }} de {{ historial_page.paginator.num_pages }}
+                    </p>
+                    <div class="usuarios-paginacion-acciones">
+                        {% if historial_page.has_previous %}
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}">Anterior</a>
+                        {% endif %}
+                        {% if historial_page.has_next %}
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}">Siguiente</a>
+                        {% endif %}
+                    </div>
+                </nav>
+                {% endif %}
+                {% else %}
+                <p class="usuarios-sin-cambios">Sin cambios registrados.</p>
+                {% endif %}
             </section>
         </div>
 

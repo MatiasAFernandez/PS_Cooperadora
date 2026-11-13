@@ -27,6 +27,11 @@ urlpatterns = [
         views_usuarios.UsuarioDetalleView.as_view(),
         name="usuario_detalle",
     ),
+    path(
+        "administracion/usuarios/<int:pk>/editar/",
+        views_usuarios.UsuarioEditarView.as_view(),
+        name="usuario_editar",
+    ),
     path("recuperar/", views_local.LocalPasswordResetView.as_view(), name="recuperar"),
     path(
         "recuperar/enviado/",

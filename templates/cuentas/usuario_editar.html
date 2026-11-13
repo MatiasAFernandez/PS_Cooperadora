@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Editar datos de usuario local — Cooperadora{% endblock %}
+
+{% block title %}Editar datos — {{ cuenta.nombre_completo }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+<link rel="stylesheet" href="{% static 'identidad/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide usuarios-page">
+    <a class="usuarios-volver" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
+        Volver a la ficha
+    </a>
+
+    <header class="usuarios-head">
+        <div class="usuarios-head-texto">
+            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
+            <h1 class="cuentas-title">Editar datos</h1>
+            <p class="cuentas-intro">{{ cuenta.nombre_completo }}</p>
+        </div>
+    </header>
+
+    <section class="cuentas-card usuarios-ficha-card" aria-labelledby="editar-datos-titulo">
+        <h2 class="usuarios-ficha-titulo" id="editar-datos-titulo">Datos básicos de la cuenta</h2>
+
+        <dl class="usuarios-datos usuarios-editar-consulta">
+            <div class="usuarios-dato usuarios-dato--ancho">
+                <dt>Correo electrónico (solo consulta)</dt>
+                <dd class="usuarios-email">{{ cuenta.email }}</dd>
+            </div>
+        </dl>
+
+        {% if form.non_field_errors %}
+        <div class="cuentas-error-summary" role="alert">
+            {% for err in form.non_field_errors %}
+            <p>{{ err }}</p>
+            {% endfor %}
+            {% if mostrar_recarga %}
+            <p class="usuarios-recarga-wrap">
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Recargar formulario</a>
+            </p>
+            {% endif %}
+        </div>
+        {% elif form.errors %}
+        <div class="cuentas-error-summary" role="alert">
+            <p>Revisá los campos marcados antes de guardar.</p>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}" novalidate>
+            {% csrf_token %}
+            {{ form.referencia }}
+
+            <div class="usuarios-editar-grid">
+                <div class="usuarios-field usuarios-dato--ancho">
+                    <label for="{{ form.nombre_completo.id_for_label }}">Nombre completo</label>
+                    <input
+                        type="text"
+                        id="{{ form.nombre_completo.id_for_label }}"
+                        name="{{ form.nombre_completo.html_name }}"
+                        value="{{ form.nombre_completo.value|default:'' }}"
+                        maxlength="150"
+                        required
+                        {% if form.nombre_completo.errors %}aria-invalid="true" aria-describedby="{{ form.nombre_completo.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.nombre_completo.errors %}
+                    <p class="usuarios-error" id="{{ form.nombre_completo.id_for_label }}_error" role="alert">{{ form.nombre_completo.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.area_habitual.id_for_label }}">Área habitual (opcional)</label>
+                    <input
+                        type="text"
+                        id="{{ form.area_habitual.id_for_label }}"
+                        name="{{ form.area_habitual.html_name }}"
+                        value="{{ form.area_habitual.value|default:'' }}"
+                        maxlength="150"
+                        {% if form.area_habitual.errors %}aria-invalid="true" aria-describedby="{{ form.area_habitual.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.area_habitual.errors %}
+                    <p class="usuarios-error" id="{{ form.area_habitual.id_for_label }}_error" role="alert">{{ form.area_habitual.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.cuit_cuil.id_for_label }}">CUIT / CUIL (opcional)</label>
+                    <input
+                        type="text"
+                        id="{{ form.cuit_cuil.id_for_label }}"
+                        name="{{ form.cuit_cuil.html_name }}"
+                        value="{{ form.cuit_cuil.value|default:'' }}"
+                        maxlength="20"
+                        {% if form.cuit_cuil.errors %}aria-invalid="true" aria-describedby="{{ form.cuit_cuil.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.cuit_cuil.errors %}
+                    <p class="usuarios-error" id="{{ form.cuit_cuil.id_for_label }}_error" role="alert">{{ form.cuit_cuil.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="usuarios-field">
+                    <label for="{{ form.legajo.id_for_label }}">Legajo (opcional)</label>
+                    <input
+                        type="text"
+                        id="{{ form.legajo.id_for_label }}"
+                        name="{{ form.legajo.html_name }}"
+                        value="{{ form.legajo.value|default:'' }}"
+                        maxlength="50"
+                        {% if form.legajo.errors %}aria-invalid="true" aria-describedby="{{ form.legajo.id_for_label }}_error"{% endif %}
+                    >
+                    {% if form.legajo.errors %}
+                    <p class="usuarios-error" id="{{ form.legajo.id_for_label }}_error" role="alert">{{ form.legajo.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cuentas-actions usuarios-editar-acciones">
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

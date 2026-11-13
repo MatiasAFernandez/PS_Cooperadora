@@ -1,23 +1,35 @@
-"""Consulta administrativa de cuentas locales (SPEC-023)."""
+"""Consulta y edición administrativa de cuentas locales (SPEC-023 / SPEC-024)."""
 
 import urllib.parse
 from typing import Any, cast
 
 from django import forms
-from django.core.exceptions import PermissionDenied
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 from django.views.generic import View
 
-from identidad.models import CuentaLocal
+from identidad.datos_usuarios import editar_datos_cuenta
+from identidad.forms_usuarios import EdicionDatosCuentaForm
+from identidad.models import CambioDatosCuentaLocal, CuentaLocal
 from identidad.services import Actor, has_capability, resolve_actor
 from identidad.views_local import LocalOnlyMixin
 
 CAPACIDAD_ADMINISTRAR = "identidad.administrar_cuentas"
 TAMANIO_PAGINA = 25
+TAMANIO_HISTORIAL = 10
+
+ETIQUETAS_CAMPOS: dict[str, str] = {
+    "nombre_completo": "Nombre completo",
+    "area_habitual": "Área habitual",
+    "cuit_cuil": "CUIT / CUIL",
+    "legajo": "Legajo",
+}
 
 
 class FiltrosUsuariosForm(forms.Form):
@@ -147,6 +159,48 @@ class UsuariosView(LocalOnlyMixin, View):
         return response
 
 
+def _extraer_listado_query(request: HttpRequest) -> str:
+    """Reusar los filtros y la página normalizados del listado para enlaces de retorno."""
+    form = FiltrosUsuariosForm(request.GET)
+    datos = form.cleaned_data if form.is_valid() else {}
+    pagina_solicitada = request.GET.get("page", "")
+    pagina = (
+        int(pagina_solicitada)
+        if pagina_solicitada.isdigit() and int(pagina_solicitada) > 0
+        else None
+    )
+    return _query_normalizado(datos, pagina)
+
+
+def _serializar_historial(eventos: Any) -> list[dict[str, Any]]:
+    """Convertir eventos de cambio en filas simples con etiquetas humanas."""
+    filas: list[dict[str, Any]] = []
+    for evento in eventos:
+        cambios_fila: list[dict[str, str]] = []
+        if isinstance(evento.cambios, dict):
+            for campo, etiqueta in ETIQUETAS_CAMPOS.items():
+                detalle = evento.cambios.get(campo)
+                if isinstance(detalle, dict):
+                    cambios_fila.append(
+                        {
+                            "etiqueta": etiqueta,
+                            "anterior": str(detalle.get("anterior") or ""),
+                            "nuevo": str(detalle.get("nuevo") or ""),
+                        }
+                    )
+        autor_nombre = ""
+        if evento.autor:
+            autor_nombre = evento.autor.get_full_name() or evento.autor.username
+        filas.append(
+            {
+                "fecha": evento.fecha,
+                "autor": autor_nombre or "Sin informar",
+                "cambios": cambios_fila,
+            }
+        )
+    return filas
+
+
 class UsuarioDetalleView(LocalOnlyMixin, View):
     """Ficha de consulta de una cuenta local, sin admitir destinos externos."""
 
@@ -154,18 +208,17 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         actor = _autorizar(request)
-
-        form = FiltrosUsuariosForm(request.GET)
-        datos = form.cleaned_data if form.is_valid() else {}
-        pagina_solicitada = request.GET.get("page", "")
-        pagina = (
-            int(pagina_solicitada)
-            if pagina_solicitada.isdigit() and int(pagina_solicitada) > 0
-            else None
-        )
-        listado_query = _query_normalizado(datos, pagina)
+        listado_query = _extraer_listado_query(request)
 
         cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        eventos_qs = (
+            CambioDatosCuentaLocal.objects.filter(cuenta=cuenta)
+            .select_related("autor")
+            .order_by("-fecha", "-pk")
+        )
+        historial_page = Paginator(eventos_qs, TAMANIO_HISTORIAL).get_page(
+            request.GET.get("historia_page")
+        )
         response = render(
             request,
             "cuentas/usuario_detalle.html",
@@ -174,7 +227,107 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
                 "acceso_local": True,
                 "cuenta": cuenta,
                 "listado_query": listado_query,
+                "historial_page": historial_page,
+                "historial_items": _serializar_historial(historial_page),
             },
         )
+        add_never_cache_headers(response)
+        return response
+
+
+class UsuarioEditarView(LocalOnlyMixin, View):
+    """Edición administrativa de datos básicos de una cuenta local (SPEC-024)."""
+
+    http_method_names = ["get", "post"]
+
+    def _render_formulario(
+        self,
+        request: HttpRequest,
+        *,
+        actor: Actor,
+        cuenta: CuentaLocal,
+        form: EdicionDatosCuentaForm,
+        listado_query: str,
+        status: int = 200,
+        mostrar_recarga: bool = False,
+    ) -> HttpResponse:
+        response = render(
+            request,
+            "cuentas/usuario_editar.html",
+            {
+                "actor": actor,
+                "acceso_local": True,
+                "cuenta": cuenta,
+                "form": form,
+                "listado_query": listado_query,
+                "mostrar_recarga": mostrar_recarga,
+            },
+            status=status,
+        )
+        add_never_cache_headers(response)
+        return response
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        actor = _autorizar(request)
+        cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        listado_query = _extraer_listado_query(request)
+        form = EdicionDatosCuentaForm(instance=cuenta)
+        return self._render_formulario(
+            request,
+            actor=actor,
+            cuenta=cuenta,
+            form=form,
+            listado_query=listado_query,
+        )
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        actor = _autorizar(request)
+        cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        listado_query = _extraer_listado_query(request)
+        form = EdicionDatosCuentaForm(request.POST, instance=cuenta)
+
+        if not form.is_valid():
+            return self._render_formulario(
+                request,
+                actor=actor,
+                cuenta=cuenta,
+                form=form,
+                listado_query=listado_query,
+                status=400,
+            )
+
+        try:
+            cuenta_actualizada, evento = editar_datos_cuenta(
+                actor,
+                cuenta.pk,
+                form.cleaned_data,
+                form.cleaned_data["referencia"],
+            )
+        except ValidationError as exc:
+            for mensaje in exc.messages:
+                form.add_error(None, mensaje)
+            es_conflicto = any(
+                "cambiaron desde que abrió el formulario" in mensaje
+                for mensaje in exc.messages
+            )
+            return self._render_formulario(
+                request,
+                actor=actor,
+                cuenta=cuenta,
+                form=form,
+                listado_query=listado_query,
+                status=409 if es_conflicto else 400,
+                mostrar_recarga=True,
+            )
+
+        if evento is not None:
+            messages.success(request, "Se guardaron los cambios en los datos de la cuenta.")
+        else:
+            messages.info(request, "Sin cambios.")
+
+        destino = reverse("cuentas:usuario_detalle", args=[cuenta_actualizada.pk])
+        if listado_query:
+            destino = f"{destino}?{listado_query}"
+        response = redirect(destino)
         add_never_cache_headers(response)
         return response
