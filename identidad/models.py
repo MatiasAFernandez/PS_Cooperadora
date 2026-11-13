@@ -65,3 +65,26 @@ class LimiteAcceso(models.Model):
 
     def __str__(self) -> str:
         return f"LimiteAcceso({self.clave[:8]}...: {self.intentos})"
+
+
+class CambioDatosCuentaLocal(models.Model):
+    """Registro de cambios administrativos sobre datos básicos de una cuenta local."""
+
+    cuenta = models.ForeignKey(
+        CuentaLocal,
+        on_delete=models.PROTECT,
+        related_name="cambios_datos",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="cambios_datos_realizados",
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+    cambios = models.JSONField()
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+
+    def __str__(self) -> str:
+        return f"CambioDatosCuentaLocal(cuenta={self.cuenta_id}, fecha={self.fecha})"
