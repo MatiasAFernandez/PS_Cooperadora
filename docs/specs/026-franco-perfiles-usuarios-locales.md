@@ -1,6 +1,6 @@
 # SPEC-026 — Asignación administrativa de perfiles locales
 
-- Estado: alcance autorizado; implementación y verificaciones pendientes.
+- Estado: núcleo y recorrido HTTP implementados en rama de tarea; revisión y prueba visual pendientes.
 - Issue: [#121](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/121).
 - Franco Damián Sánchez define alcance administrativo; Matías Alejandro Fernández conserva identidad. Su revisión no se presume.
 - Extiende SPEC-023/024/025. No cambia las capacidades ni la firma de Actor.

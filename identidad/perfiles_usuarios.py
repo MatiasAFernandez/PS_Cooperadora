@@ -50,7 +50,7 @@ PERFILES_CATALOGO: tuple[PerfilCatalogo, ...] = (
     PerfilCatalogo(
         clave="configuracion_formularios",
         nombre="Configuración de formularios",
-        descripcion="Configuración mediante gestion.configurar.",
+        descripcion="Configuración de formularios.",
         grupo="demo_administracion",
     ),
     PerfilCatalogo(

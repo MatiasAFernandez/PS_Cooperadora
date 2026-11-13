@@ -26,6 +26,11 @@
             <a class="btn btn-primary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
                 Editar datos
             </a>
+            {% if not es_cuenta_propia %}
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_perfiles' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                Gestionar perfiles
+            </a>
+            {% endif %}
             {% if not cuenta.user.is_active %}
             <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
                 Reactivar cuenta
@@ -42,8 +47,11 @@
         </div>
     </header>
 
-    {% if cuenta.user.is_active and es_cuenta_propia %}
-    <p class="usuarios-aviso-propia" role="note">No podés desactivar tu propia cuenta.</p>
+    {% if es_cuenta_propia %}
+    <div class="usuarios-aviso-propia" role="note">
+        {% if cuenta.user.is_active %}<span>No podés desactivar tu propia cuenta.</span> {% endif %}
+        <span>Otro administrador debe cambiar tus perfiles.</span>
+    </div>
     {% endif %}
 
     {% for message in messages %}
@@ -123,10 +131,10 @@
                     </p>
                     <div class="usuarios-paginacion-acciones">
                         {% if historial_page.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}">Anterior</a>
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Anterior</a>
                         {% endif %}
                         {% if historial_page.has_next %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}">Siguiente</a>
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Siguiente</a>
                         {% endif %}
                     </div>
                 </nav>
@@ -163,16 +171,59 @@
                     </p>
                     <div class="usuarios-paginacion-acciones">
                         {% if actividad_page.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.previous_page_number }}">Anterior</a>
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.previous_page_number }}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Anterior</a>
                         {% endif %}
                         {% if actividad_page.has_next %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.next_page_number }}">Siguiente</a>
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.next_page_number }}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Siguiente</a>
                         {% endif %}
                     </div>
                 </nav>
                 {% endif %}
                 {% else %}
                 <p class="usuarios-sin-cambios">Sin cambios de actividad registrados.</p>
+                {% endif %}
+            </section>
+
+            <section class="cuentas-card usuarios-ficha-card usuarios-historial-card" aria-labelledby="historial-perfiles">
+                <h2 class="usuarios-ficha-titulo" id="historial-perfiles">Historial de perfiles</h2>
+                {% if perfiles_historial_items %}
+                <ul class="usuarios-historial-lista">
+                    {% for item in perfiles_historial_items %}
+                    <li class="usuarios-historial-item">
+                        <div class="usuarios-historial-meta">
+                            <span class="usuarios-historial-fecha">{{ item.fecha|date:"d/m/Y H:i" }}</span>
+                            <span class="usuarios-historial-autor">{{ item.autor }}</span>
+                        </div>
+                        <p class="usuarios-actividad-cambio">
+                            <strong>Anteriores:</strong>
+                            <span>{% if item.anteriores %}{{ item.anteriores|join:", " }}{% else %}Ninguno{% endif %}</span>
+                        </p>
+                        <p class="usuarios-actividad-cambio">
+                            <strong>Nuevas:</strong>
+                            <span>{% if item.nuevos %}{{ item.nuevos|join:", " }}{% else %}Ninguno{% endif %}</span>
+                        </p>
+                        <p class="usuarios-motivo usuarios-actividad-motivo"><strong>Motivo:</strong> {{ item.motivo }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                {% if perfiles_page.has_other_pages %}
+                <nav class="usuarios-paginacion" aria-label="Paginación del historial de perfiles">
+                    <p class="usuarios-paginacion-resumen">
+                        Página {{ perfiles_page.number }} de {{ perfiles_page.paginator.num_pages }}
+                    </p>
+                    <div class="usuarios-paginacion-acciones">
+                        {% if perfiles_page.has_previous %}
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}{% if actividad_page.number > 1 %}actividad_page={{ actividad_page.number }}&amp;{% endif %}perfiles_page={{ perfiles_page.previous_page_number }}">Anterior</a>
+                        {% endif %}
+                        {% if perfiles_page.has_next %}
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}{% if actividad_page.number > 1 %}actividad_page={{ actividad_page.number }}&amp;{% endif %}perfiles_page={{ perfiles_page.next_page_number }}">Siguiente</a>
+                        {% endif %}
+                    </div>
+                </nav>
+                {% endif %}
+                {% else %}
+                <p class="usuarios-sin-cambios">Sin cambios de perfiles registrados.</p>
                 {% endif %}
             </section>
         </div>
@@ -201,6 +252,24 @@
                     {% endif %}
                 </li>
             </ul>
+
+            <section class="usuarios-ficha-seccion" aria-labelledby="perfiles-cuenta">
+                <h3 class="usuarios-ficha-titulo" id="perfiles-cuenta">Perfiles asignados</h3>
+                {% if perfiles_actuales %}
+                <ul class="usuarios-perfiles-lista">
+                    {% for nombre in perfiles_actuales %}
+                    <li>{{ nombre }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="usuarios-sin-cambios">
+                    {% if tiene_grupos_conservados %}Sin perfiles del catálogo asignados.{% else %}Sin perfiles asignados.{% endif %}
+                </p>
+                {% endif %}
+                {% if tiene_grupos_conservados %}
+                <p class="usuarios-perfiles-aviso" role="note">Se conservan otros permisos que esta pantalla no modifica.</p>
+                {% endif %}
+            </section>
         </aside>
     </div>
 </div>
