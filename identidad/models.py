@@ -116,3 +116,28 @@ class CambioActividadCuentaLocal(models.Model):
             f"CambioActividadCuentaLocal(cuenta={self.cuenta_id}, "
             f"{self.actividad_anterior}->{self.actividad_nueva}, fecha={self.fecha})"
         )
+
+
+class CambioPerfilesCuentaLocal(models.Model):
+    """Registro de cambios administrativos sobre perfiles gestionados de una cuenta local."""
+
+    cuenta = models.ForeignKey(
+        CuentaLocal,
+        on_delete=models.PROTECT,
+        related_name="cambios_perfiles",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="cambios_perfiles_realizados",
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+    motivo = models.TextField(max_length=2000)
+    perfiles_anteriores = models.JSONField()
+    perfiles_nuevos = models.JSONField()
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+
+    def __str__(self) -> str:
+        return f"CambioPerfilesCuentaLocal(cuenta={self.cuenta_id}, fecha={self.fecha})"

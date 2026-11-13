@@ -16,11 +16,22 @@ from django.views.generic import View
 
 from identidad.actividad_usuarios import cambiar_actividad_cuenta
 from identidad.datos_usuarios import editar_datos_cuenta
-from identidad.forms_usuarios import ActividadCuentaForm, EdicionDatosCuentaForm
+from identidad.forms_usuarios import (
+    ActividadCuentaForm,
+    EdicionDatosCuentaForm,
+    PerfilesCuentaForm,
+)
 from identidad.models import (
     CambioActividadCuentaLocal,
     CambioDatosCuentaLocal,
+    CambioPerfilesCuentaLocal,
     CuentaLocal,
+)
+from identidad.perfiles_usuarios import (
+    PERFILES_POR_CLAVE,
+    cambiar_perfiles_cuenta,
+    grupos_ajenos_usuario,
+    perfiles_gestionados_usuario,
 )
 from identidad.services import Actor, has_capability, resolve_actor
 from identidad.views_local import LocalOnlyMixin
@@ -35,6 +46,35 @@ ETIQUETAS_CAMPOS: dict[str, str] = {
     "cuit_cuil": "CUIT / CUIL",
     "legajo": "Legajo",
 }
+
+GRUPOS_PERFILES_UI: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Acceso y administración",
+        ("solicitante", "administracion_cuentas", "configuracion_formularios"),
+    ),
+    (
+        "Gastos y pagos",
+        ("operacion_gastos", "registro_pagos", "lectura_gastos"),
+    ),
+    (
+        "Facturación y cobros",
+        (
+            "operacion_facturacion",
+            "lectura_facturacion",
+            "verificacion_cobros",
+            "cierre_facturacion",
+        ),
+    ),
+    (
+        "Documentación",
+        (
+            "aporte_documental",
+            "revision_documental",
+            "consulta_documental",
+            "descarga_documental",
+        ),
+    ),
+)
 
 
 class FiltrosUsuariosForm(forms.Form):
@@ -206,6 +246,35 @@ def _serializar_historial(eventos: Any) -> list[dict[str, Any]]:
     return filas
 
 
+def _nombres_perfiles(claves: Any) -> list[str]:
+    """Mapear claves del catálogo de perfiles a nombres legibles."""
+    if not isinstance(claves, list):
+        return []
+    return [
+        PERFILES_POR_CLAVE[clave].nombre if clave in PERFILES_POR_CLAVE else str(clave)
+        for clave in claves
+    ]
+
+
+def _serializar_historial_perfiles(eventos: Any) -> list[dict[str, Any]]:
+    """Convertir eventos de cambio de perfiles en filas con etiquetas legibles."""
+    filas: list[dict[str, Any]] = []
+    for evento in eventos:
+        autor_nombre = ""
+        if evento.autor:
+            autor_nombre = evento.autor.get_full_name() or evento.autor.username
+        filas.append(
+            {
+                "fecha": evento.fecha,
+                "autor": autor_nombre or "Sin informar",
+                "motivo": evento.motivo,
+                "anteriores": _nombres_perfiles(evento.perfiles_anteriores),
+                "nuevos": _nombres_perfiles(evento.perfiles_nuevos),
+            }
+        )
+    return filas
+
+
 class UsuarioDetalleView(LocalOnlyMixin, View):
     """Ficha de consulta de una cuenta local, sin admitir destinos externos."""
 
@@ -232,6 +301,16 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
         actividad_page = Paginator(actividad_qs, TAMANIO_HISTORIAL).get_page(
             request.GET.get("actividad_page")
         )
+        perfiles_qs = (
+            CambioPerfilesCuentaLocal.objects.filter(cuenta=cuenta)
+            .select_related("autor")
+            .order_by("-fecha", "-pk")
+        )
+        perfiles_page = Paginator(perfiles_qs, TAMANIO_HISTORIAL).get_page(
+            request.GET.get("perfiles_page")
+        )
+        perfiles_actuales = _nombres_perfiles(perfiles_gestionados_usuario(cuenta.user))
+        tiene_grupos_conservados = bool(grupos_ajenos_usuario(cuenta.user))
         response = render(
             request,
             "cuentas/usuario_detalle.html",
@@ -244,6 +323,10 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
                 "historial_page": historial_page,
                 "historial_items": _serializar_historial(historial_page),
                 "actividad_page": actividad_page,
+                "perfiles_actuales": perfiles_actuales,
+                "tiene_grupos_conservados": tiene_grupos_conservados,
+                "perfiles_page": perfiles_page,
+                "perfiles_historial_items": _serializar_historial_perfiles(perfiles_page),
             },
         )
         add_never_cache_headers(response)
@@ -322,8 +405,7 @@ class UsuarioEditarView(LocalOnlyMixin, View):
             for mensaje in exc.messages:
                 form.add_error(None, mensaje)
             es_conflicto = any(
-                "cambiaron desde que abrió el formulario" in mensaje
-                for mensaje in exc.messages
+                "cambiaron desde que abrió el formulario" in mensaje for mensaje in exc.messages
             )
             return self._render_formulario(
                 request,
@@ -437,8 +519,7 @@ class UsuarioActividadView(LocalOnlyMixin, View):
             for mensaje in exc.messages:
                 form.add_error(None, mensaje)
             es_conflicto = any(
-                "cambió desde que abrió la confirmación" in mensaje
-                for mensaje in exc.messages
+                "cambió desde que abrió la confirmación" in mensaje for mensaje in exc.messages
             )
             return self._render_formulario(
                 request,
@@ -455,6 +536,129 @@ class UsuarioActividadView(LocalOnlyMixin, View):
                 messages.success(request, "Cuenta marcada como Activa.")
             else:
                 messages.success(request, "Cuenta marcada como Desactivada.")
+        else:
+            messages.info(request, "Sin cambios.")
+
+        destino = reverse("cuentas:usuario_detalle", args=[cuenta_actualizada.pk])
+        if listado_query:
+            destino = f"{destino}?{listado_query}"
+        response = redirect(destino)
+        add_never_cache_headers(response)
+        return response
+
+
+class UsuarioPerfilesView(LocalOnlyMixin, View):
+    """Consulta y asignación administrativa de perfiles del catálogo fijo (SPEC-026)."""
+
+    http_method_names = ["get", "post"]
+
+    def _grupos_opciones(self, form: PerfilesCuentaForm) -> list[dict[str, Any]]:
+        valor = form["perfiles"].value()
+        seleccionados = set(valor) if isinstance(valor, (list, tuple, set, frozenset)) else set()
+        return [
+            {
+                "titulo": titulo,
+                "opciones": [
+                    {
+                        "clave": PERFILES_POR_CLAVE[clave].clave,
+                        "nombre": PERFILES_POR_CLAVE[clave].nombre,
+                        "descripcion": PERFILES_POR_CLAVE[clave].descripcion,
+                        "checked": clave in seleccionados,
+                    }
+                    for clave in claves
+                ],
+            }
+            for titulo, claves in GRUPOS_PERFILES_UI
+        ]
+
+    def _render_formulario(
+        self,
+        request: HttpRequest,
+        *,
+        actor: Actor,
+        cuenta: CuentaLocal,
+        form: PerfilesCuentaForm,
+        listado_query: str,
+        status: int = 200,
+        mostrar_recarga: bool = False,
+    ) -> HttpResponse:
+        perfiles_actuales = _nombres_perfiles(perfiles_gestionados_usuario(cuenta.user))
+        tiene_grupos_conservados = bool(grupos_ajenos_usuario(cuenta.user))
+        response = render(
+            request,
+            "cuentas/usuario_perfiles.html",
+            {
+                "actor": actor,
+                "acceso_local": True,
+                "cuenta": cuenta,
+                "form": form,
+                "grupos_opciones": self._grupos_opciones(form),
+                "perfiles_actuales": perfiles_actuales,
+                "tiene_grupos_conservados": tiene_grupos_conservados,
+                "es_cuenta_propia": cuenta.user_id == actor.subject_id,
+                "listado_query": listado_query,
+                "mostrar_recarga": mostrar_recarga,
+            },
+            status=status,
+        )
+        add_never_cache_headers(response)
+        return response
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        actor = _autorizar(request)
+        cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        listado_query = _extraer_listado_query(request)
+        form = PerfilesCuentaForm(cuenta=cuenta)
+        return self._render_formulario(
+            request,
+            actor=actor,
+            cuenta=cuenta,
+            form=form,
+            listado_query=listado_query,
+        )
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        actor = _autorizar(request)
+        cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        listado_query = _extraer_listado_query(request)
+        form = PerfilesCuentaForm(request.POST)
+
+        if not form.is_valid():
+            return self._render_formulario(
+                request,
+                actor=actor,
+                cuenta=cuenta,
+                form=form,
+                listado_query=listado_query,
+                status=400,
+            )
+
+        try:
+            cuenta_actualizada, evento = cambiar_perfiles_cuenta(
+                actor,
+                cuenta.pk,
+                form.cleaned_data["perfiles"],
+                form.cleaned_data["motivo"],
+                form.cleaned_data["referencia"],
+            )
+        except ValidationError as exc:
+            for mensaje in exc.messages:
+                form.add_error(None, mensaje)
+            es_conflicto = any(
+                "cambiaron desde que abrió el formulario" in mensaje for mensaje in exc.messages
+            )
+            return self._render_formulario(
+                request,
+                actor=actor,
+                cuenta=cuenta,
+                form=form,
+                listado_query=listado_query,
+                status=409 if es_conflicto else 400,
+                mostrar_recarga=es_conflicto,
+            )
+
+        if evento is not None:
+            messages.success(request, "Se guardaron los cambios en los perfiles de la cuenta.")
         else:
             messages.info(request, "Sin cambios.")
 

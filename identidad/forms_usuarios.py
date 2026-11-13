@@ -6,6 +6,11 @@ from django import forms
 
 from identidad.datos_usuarios import CAMPOS_EDITABLES, generar_referencia_edicion
 from identidad.models import CuentaLocal
+from identidad.perfiles_usuarios import (
+    PERFILES_CATALOGO,
+    generar_referencia_perfiles,
+    perfiles_gestionados_usuario,
+)
 
 
 class EdicionDatosCuentaForm(forms.ModelForm):
@@ -79,3 +84,35 @@ class ActividadCuentaForm(forms.Form):
         max_length=2000,
         widget=forms.Textarea(attrs={"rows": 4, "maxlength": 2000}),
     )
+
+
+OPCIONES_PERFILES_CATALOGO = tuple((p.clave, p.nombre) for p in PERFILES_CATALOGO)
+
+
+class PerfilesCuentaForm(forms.Form):
+    """Formulario de asignación administrativa de perfiles del catálogo fijo (SPEC-026)."""
+
+    perfiles = forms.MultipleChoiceField(
+        label="Perfiles",
+        required=False,
+        choices=OPCIONES_PERFILES_CATALOGO,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    motivo = forms.CharField(
+        label="Motivo",
+        required=True,
+        strip=True,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 4, "maxlength": 2000}),
+    )
+    referencia = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=True,
+    )
+
+    def __init__(self, *args: Any, cuenta: CuentaLocal | None = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # Sólo inicializa selección y referencia en GET; en POST conserva lo enviado.
+        if not self.is_bound and cuenta is not None:
+            self.fields["perfiles"].initial = perfiles_gestionados_usuario(cuenta.user)
+            self.fields["referencia"].initial = generar_referencia_perfiles(cuenta)

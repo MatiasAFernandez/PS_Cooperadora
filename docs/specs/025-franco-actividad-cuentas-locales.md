@@ -1,6 +1,6 @@
 # SPEC-025 — Desactivación y reactivación de cuentas locales
 
-- Estado: núcleo y recorrido HTTP implementados en rama de tarea; revisión y prueba visual pendientes.
+- Estado: integrado mediante PR #120 y verificado en el alcance de QA; revisión compartida y validación institucional separadas.
 - Issue: [#119](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/119).
 - Franco Damián Sánchez define el alcance administrativo; Matías Alejandro Fernández conserva identidad. No se presume revisión compartida.
 - Extiende la ficha de SPEC-023/024 y las garantías de revocación de SPEC-022.
