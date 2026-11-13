@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Ficha de usuario local — Cooperadora{% endblock %}
+
+{% block title %}{{ cuenta.nombre_completo }} — Usuarios locales — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+<link rel="stylesheet" href="{% static 'identidad/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide usuarios-page">
+    <a class="usuarios-volver" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
+        Volver al listado
+    </a>
+
+    <header class="usuarios-head">
+        <div class="usuarios-head-texto">
+            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
+            <h1 class="cuentas-title">{{ cuenta.nombre_completo }}</h1>
+            <p class="cuentas-intro usuarios-email">{{ cuenta.email }}</p>
+        </div>
+        <div class="usuarios-head-acciones">
+            <a class="btn btn-secondary" href="{% url 'cuentas:altas' %}">
+                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg>
+                Solicitudes de cuenta
+            </a>
+        </div>
+    </header>
+
+    <div class="usuarios-ficha-grid">
+        <div class="usuarios-ficha-principal">
+            <section class="cuentas-card usuarios-ficha-card" aria-labelledby="datos-cuenta">
+                <h2 class="usuarios-ficha-titulo" id="datos-cuenta">Datos de la cuenta</h2>
+                <dl class="usuarios-datos">
+                    <div class="usuarios-dato">
+                        <dt>Área habitual</dt>
+                        <dd>{{ cuenta.area_habitual|default:"Sin informar" }}</dd>
+                    </div>
+                    <div class="usuarios-dato">
+                        <dt>CUIT / CUIL</dt>
+                        <dd>{{ cuenta.cuit_cuil|default:"Sin informar" }}</dd>
+                    </div>
+                    <div class="usuarios-dato">
+                        <dt>Legajo</dt>
+                        <dd>{{ cuenta.legajo|default:"Sin informar" }}</dd>
+                    </div>
+                    <div class="usuarios-dato">
+                        <dt>Fecha de alta</dt>
+                        <dd>{{ cuenta.creada_en|date:"d/m/Y H:i"|default:"Sin informar" }}</dd>
+                    </div>
+                </dl>
+
+                <section class="usuarios-ficha-seccion" aria-labelledby="decision-cuenta">
+                    <h2 class="usuarios-ficha-titulo" id="decision-cuenta">Decisión administrativa</h2>
+                    <dl class="usuarios-datos">
+                        <div class="usuarios-dato">
+                            <dt>Fecha de decisión</dt>
+                            <dd>{{ cuenta.decidida_en|date:"d/m/Y H:i"|default:"Sin informar" }}</dd>
+                        </div>
+                        <div class="usuarios-dato">
+                            <dt>Decidida por</dt>
+                            <dd>{% if cuenta.decidida_por %}{{ cuenta.decidida_por.get_full_name|default:cuenta.decidida_por.username }}{% else %}Sin informar{% endif %}</dd>
+                        </div>
+                        <div class="usuarios-dato usuarios-dato--ancho">
+                            <dt>Motivo</dt>
+                            <dd class="usuarios-motivo">{{ cuenta.motivo|default:"Sin informar" }}</dd>
+                        </div>
+                    </dl>
+                </section>
+            </section>
+        </div>
+
+        <aside class="cuentas-card usuarios-estado-card" aria-labelledby="estado-cuenta">
+            <h2 class="usuarios-ficha-titulo" id="estado-cuenta">Estado de la cuenta</h2>
+            <ul class="usuarios-estado-lista">
+                <li class="usuarios-estado-item">
+                    <span class="usuarios-meta-label">Aprobación</span>
+                    <span class="badge {% if cuenta.estado == 'APROBADA' %}badge-success{% elif cuenta.estado == 'PENDIENTE' %}badge-warning{% else %}badge-error{% endif %}">{{ cuenta.get_estado_display|upper }}</span>
+                </li>
+                <li class="usuarios-estado-item">
+                    <span class="usuarios-meta-label">Correo</span>
+                    {% if cuenta.email_verificado_en %}
+                    <span class="badge badge-success">Verificado</span>
+                    {% else %}
+                    <span class="badge badge-warning">Sin verificar</span>
+                    {% endif %}
+                </li>
+                <li class="usuarios-estado-item">
+                    <span class="usuarios-meta-label">Actividad</span>
+                    {% if cuenta.user.is_active %}
+                    <span class="badge badge-success">Activa</span>
+                    {% else %}
+                    <span class="badge badge-neutral">Inactiva</span>
+                    {% endif %}
+                </li>
+            </ul>
+        </aside>
+    </div>
+</div>
+{% endblock %}
