@@ -26,12 +26,25 @@
             <a class="btn btn-primary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
                 Editar datos
             </a>
+            {% if not cuenta.user.is_active %}
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                Reactivar cuenta
+            </a>
+            {% elif not es_cuenta_propia %}
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                Desactivar cuenta
+            </a>
+            {% endif %}
             <a class="btn btn-secondary" href="{% url 'cuentas:altas' %}">
                 <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg>
                 Solicitudes de cuenta
             </a>
         </div>
     </header>
+
+    {% if cuenta.user.is_active and es_cuenta_propia %}
+    <p class="usuarios-aviso-propia" role="note">No podés desactivar tu propia cuenta.</p>
+    {% endif %}
 
     {% for message in messages %}
     <div class="cuentas-status" role="status">{{ message }}</div>
@@ -110,16 +123,56 @@
                     </p>
                     <div class="usuarios-paginacion-acciones">
                         {% if historial_page.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}">Anterior</a>
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}">Anterior</a>
                         {% endif %}
                         {% if historial_page.has_next %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}">Siguiente</a>
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}">Siguiente</a>
                         {% endif %}
                     </div>
                 </nav>
                 {% endif %}
                 {% else %}
                 <p class="usuarios-sin-cambios">Sin cambios registrados.</p>
+                {% endif %}
+            </section>
+
+            <section class="cuentas-card usuarios-ficha-card usuarios-historial-card" aria-labelledby="historial-acceso">
+                <h2 class="usuarios-ficha-titulo" id="historial-acceso">Historial de acceso</h2>
+                {% if actividad_page.object_list %}
+                <ul class="usuarios-historial-lista">
+                    {% for item in actividad_page %}
+                    <li class="usuarios-historial-item">
+                        <div class="usuarios-historial-meta">
+                            <span class="usuarios-historial-fecha">{{ item.fecha|date:"d/m/Y H:i" }}</span>
+                            <span class="usuarios-historial-autor">{% if item.autor %}{{ item.autor.get_full_name|default:item.autor.username }}{% else %}Sin informar{% endif %}</span>
+                        </div>
+                        <p class="usuarios-actividad-cambio">
+                            <span>{% if item.actividad_anterior %}Activa{% else %}Inactiva{% endif %}</span>
+                            <span aria-hidden="true">→</span>
+                            <strong>{% if item.actividad_nueva %}Activa{% else %}Inactiva{% endif %}</strong>
+                        </p>
+                        <p class="usuarios-motivo usuarios-actividad-motivo">{{ item.motivo }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                {% if actividad_page.has_other_pages %}
+                <nav class="usuarios-paginacion" aria-label="Paginación del historial de acceso">
+                    <p class="usuarios-paginacion-resumen">
+                        Página {{ actividad_page.number }} de {{ actividad_page.paginator.num_pages }}
+                    </p>
+                    <div class="usuarios-paginacion-acciones">
+                        {% if actividad_page.has_previous %}
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.previous_page_number }}">Anterior</a>
+                        {% endif %}
+                        {% if actividad_page.has_next %}
+                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.next_page_number }}">Siguiente</a>
+                        {% endif %}
+                    </div>
+                </nav>
+                {% endif %}
+                {% else %}
+                <p class="usuarios-sin-cambios">Sin cambios de actividad registrados.</p>
                 {% endif %}
             </section>
         </div>

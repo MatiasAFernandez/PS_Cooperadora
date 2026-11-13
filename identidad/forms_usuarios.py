@@ -41,3 +41,41 @@ class EdicionDatosCuentaForm(forms.ModelForm):
         # en POST se conserva la referencia enviada originalmente.
         if not self.is_bound and self.instance and self.instance.pk:
             self.fields["referencia"].initial = generar_referencia_edicion(self.instance)
+
+
+OPCIONES_BOOLEANAS = (("true", "true"), ("false", "false"))
+
+
+def _coerce_bool(valor: str) -> bool:
+    """Convierte valores explícitos 'true'/'false' en booleanos."""
+    if valor == "true":
+        return True
+    if valor == "false":
+        return False
+    raise forms.ValidationError("Valor booleano inválido.")
+
+
+class ActividadCuentaForm(forms.Form):
+    """Formulario de confirmación para desactivar o reactivar una cuenta local (SPEC-025)."""
+
+    activar = forms.TypedChoiceField(
+        choices=OPCIONES_BOOLEANAS,
+        coerce=_coerce_bool,
+        empty_value=None,
+        required=True,
+        widget=forms.HiddenInput(),
+    )
+    actividad_esperada = forms.TypedChoiceField(
+        choices=OPCIONES_BOOLEANAS,
+        coerce=_coerce_bool,
+        empty_value=None,
+        required=True,
+        widget=forms.HiddenInput(),
+    )
+    motivo = forms.CharField(
+        label="Motivo",
+        required=True,
+        strip=True,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 4, "maxlength": 2000}),
+    )

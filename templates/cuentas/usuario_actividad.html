@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %} — Cooperadora{% endblock %}
+
+{% block title %}{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %} — {{ cuenta.nombre_completo }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+<link rel="stylesheet" href="{% static 'identidad/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide usuarios-page">
+    <a class="usuarios-volver" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
+        Volver a la ficha
+    </a>
+
+    <header class="usuarios-head">
+        <div class="usuarios-head-texto">
+            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
+            <h1 class="cuentas-title">{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %}</h1>
+            <p class="cuentas-intro">{{ cuenta.nombre_completo }}</p>
+        </div>
+    </header>
+
+    <section class="cuentas-card usuarios-ficha-card" aria-labelledby="actividad-confirmacion-titulo">
+        <h2 class="usuarios-ficha-titulo" id="actividad-confirmacion-titulo">Confirmación de cambio de actividad</h2>
+
+        <dl class="usuarios-datos usuarios-editar-consulta">
+            <div class="usuarios-dato">
+                <dt>Nombre completo</dt>
+                <dd>{{ cuenta.nombre_completo }}</dd>
+            </div>
+            <div class="usuarios-dato">
+                <dt>Correo electrónico</dt>
+                <dd class="usuarios-email">{{ cuenta.email }}</dd>
+            </div>
+            <div class="usuarios-dato">
+                <dt>Actividad actual</dt>
+                <dd>
+                    {% if cuenta.user.is_active %}
+                    <span class="badge badge-success">Activa</span>
+                    {% else %}
+                    <span class="badge badge-neutral">Inactiva</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div class="usuarios-dato">
+                <dt>Aprobación y correo</dt>
+                <dd>
+                    {{ cuenta.get_estado_display }} ·
+                    {% if cuenta.email_verificado_en %}Verificado{% else %}Sin verificar{% endif %}
+                </dd>
+            </div>
+        </dl>
+
+        {% if accion_activar %}
+        <div class="cuentas-status" role="note">
+            <p>
+                <strong>Efecto:</strong> habilitará el acceso de la cuenta (<code>User.is_active</code>).
+                Reactivar no cambia la aprobación ni la verificación de correo; la persona deberá iniciar sesión nuevamente.
+            </p>
+        </div>
+        {% else %}
+        <div class="cuentas-status cuentas-status--pending" role="note">
+            <p>
+                <strong>Efecto:</strong> desactivar cierra los accesos anteriores (sesiones y enlaces previos) e impide iniciar sesión,
+                pero conserva los trámites y el historial de la cuenta.
+            </p>
+        </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+        <div class="cuentas-error-summary" role="alert">
+            {% for err in form.non_field_errors %}
+            <p>{{ err }}</p>
+            {% endfor %}
+            {% if mostrar_recarga %}
+            <p class="usuarios-recarga-wrap">
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Recargar confirmación</a>
+            </p>
+            {% endif %}
+        </div>
+        {% elif form.errors %}
+        <div class="cuentas-error-summary" role="alert">
+            <p>Revisá los campos marcados antes de confirmar.</p>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}" novalidate>
+            {% csrf_token %}
+            {{ form.activar }}
+            {{ form.actividad_esperada }}
+
+            <div class="usuarios-field">
+                <label for="{{ form.motivo.id_for_label }}">Motivo</label>
+                <textarea
+                    id="{{ form.motivo.id_for_label }}"
+                    name="{{ form.motivo.html_name }}"
+                    rows="4"
+                    maxlength="2000"
+                    required
+                    {% if form.motivo.errors %}aria-invalid="true" aria-describedby="{{ form.motivo.id_for_label }}_error"{% endif %}
+                >{{ form.motivo.value|default:'' }}</textarea>
+                {% if form.motivo.errors %}
+                <p class="usuarios-error" id="{{ form.motivo.id_for_label }}_error" role="alert">{{ form.motivo.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="cuentas-actions usuarios-editar-acciones">
+                {% if accion_activar %}
+                <button type="submit" class="btn btn-primary">Reactivar cuenta</button>
+                {% else %}
+                <button type="submit" class="btn btn-danger">Desactivar cuenta</button>
+                {% endif %}
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
