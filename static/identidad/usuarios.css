@@ -511,8 +511,62 @@
 
 .usuarios-page input:focus-visible,
 .usuarios-page select:focus-visible,
+.usuarios-page textarea:focus-visible,
 .usuarios-page .btn:focus-visible,
 .usuarios-volver:focus-visible {
     outline: 2px solid var(--ref-blue, #084298);
     outline-offset: 2px;
+}
+
+.usuarios-field textarea {
+    width: 100%;
+    min-height: 96px;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--ref-border, #cbd5e1);
+    border-radius: var(--radius-md, 8px);
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.usuarios-field textarea[aria-invalid="true"] {
+    border-color: var(--color-error-border, #fecdd3);
+}
+
+.usuarios-aviso-propia {
+    margin: -0.75rem 0 1rem;
+    padding: 0.65rem 0.9rem;
+    background-color: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-md, 8px);
+    color: #92400e;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+}
+
+.usuarios-actividad-cambio {
+    margin: 0 0 0.25rem;
+    font-size: var(--text-sm, 0.875rem);
+    color: #0f172a;
+}
+
+.usuarios-actividad-motivo {
+    margin: 0;
+    font-size: var(--text-sm, 0.875rem);
+    color: #334155;
+    overflow-wrap: anywhere;
+}
+
+.btn-danger {
+    background-color: #9f1239;
+    border: 1px solid #9f1239;
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: #881337;
+    border-color: #881337;
+    color: #ffffff;
 }

@@ -14,9 +14,14 @@ from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 from django.views.generic import View
 
+from identidad.actividad_usuarios import cambiar_actividad_cuenta
 from identidad.datos_usuarios import editar_datos_cuenta
-from identidad.forms_usuarios import EdicionDatosCuentaForm
-from identidad.models import CambioDatosCuentaLocal, CuentaLocal
+from identidad.forms_usuarios import ActividadCuentaForm, EdicionDatosCuentaForm
+from identidad.models import (
+    CambioActividadCuentaLocal,
+    CambioDatosCuentaLocal,
+    CuentaLocal,
+)
 from identidad.services import Actor, has_capability, resolve_actor
 from identidad.views_local import LocalOnlyMixin
 
@@ -219,6 +224,14 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
         historial_page = Paginator(eventos_qs, TAMANIO_HISTORIAL).get_page(
             request.GET.get("historia_page")
         )
+        actividad_qs = (
+            CambioActividadCuentaLocal.objects.filter(cuenta=cuenta)
+            .select_related("autor")
+            .order_by("-fecha", "-pk")
+        )
+        actividad_page = Paginator(actividad_qs, TAMANIO_HISTORIAL).get_page(
+            request.GET.get("actividad_page")
+        )
         response = render(
             request,
             "cuentas/usuario_detalle.html",
@@ -227,8 +240,10 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
                 "acceso_local": True,
                 "cuenta": cuenta,
                 "listado_query": listado_query,
+                "es_cuenta_propia": cuenta.user_id == actor.subject_id,
                 "historial_page": historial_page,
                 "historial_items": _serializar_historial(historial_page),
+                "actividad_page": actividad_page,
             },
         )
         add_never_cache_headers(response)
@@ -322,6 +337,124 @@ class UsuarioEditarView(LocalOnlyMixin, View):
 
         if evento is not None:
             messages.success(request, "Se guardaron los cambios en los datos de la cuenta.")
+        else:
+            messages.info(request, "Sin cambios.")
+
+        destino = reverse("cuentas:usuario_detalle", args=[cuenta_actualizada.pk])
+        if listado_query:
+            destino = f"{destino}?{listado_query}"
+        response = redirect(destino)
+        add_never_cache_headers(response)
+        return response
+
+
+class UsuarioActividadView(LocalOnlyMixin, View):
+    """Confirmación y ejecución de desactivación o reactivación local (SPEC-025)."""
+
+    http_method_names = ["get", "post"]
+
+    def _accion_activar(self, form: ActividadCuentaForm, cuenta: CuentaLocal) -> bool:
+        valor = form["activar"].value()
+        if valor == "true":
+            return True
+        if valor == "false":
+            return False
+        return not bool(cuenta.user.is_active)
+
+    def _render_formulario(
+        self,
+        request: HttpRequest,
+        *,
+        actor: Actor,
+        cuenta: CuentaLocal,
+        form: ActividadCuentaForm,
+        listado_query: str,
+        status: int = 200,
+        mostrar_recarga: bool = False,
+    ) -> HttpResponse:
+        response = render(
+            request,
+            "cuentas/usuario_actividad.html",
+            {
+                "actor": actor,
+                "acceso_local": True,
+                "cuenta": cuenta,
+                "form": form,
+                "listado_query": listado_query,
+                "accion_activar": self._accion_activar(form, cuenta),
+                "es_cuenta_propia": cuenta.user_id == actor.subject_id,
+                "mostrar_recarga": mostrar_recarga,
+            },
+            status=status,
+        )
+        add_never_cache_headers(response)
+        return response
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        actor = _autorizar(request)
+        cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        listado_query = _extraer_listado_query(request)
+        actividad_actual = bool(cuenta.user.is_active)
+        form = ActividadCuentaForm(
+            initial={
+                "activar": "false" if actividad_actual else "true",
+                "actividad_esperada": "true" if actividad_actual else "false",
+            }
+        )
+        return self._render_formulario(
+            request,
+            actor=actor,
+            cuenta=cuenta,
+            form=form,
+            listado_query=listado_query,
+        )
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        actor = _autorizar(request)
+        cuenta = get_object_or_404(_cuentas_base(), pk=pk)
+        listado_query = _extraer_listado_query(request)
+        form = ActividadCuentaForm(request.POST)
+
+        if not form.is_valid():
+            return self._render_formulario(
+                request,
+                actor=actor,
+                cuenta=cuenta,
+                form=form,
+                listado_query=listado_query,
+                status=400,
+            )
+
+        try:
+            cuenta_actualizada, evento = cambiar_actividad_cuenta(
+                actor,
+                cuenta.pk,
+                form.cleaned_data["activar"],
+                form.cleaned_data["motivo"],
+                form.cleaned_data["actividad_esperada"],
+            )
+        except ValidationError as exc:
+            for mensaje in exc.messages:
+                form.add_error(None, mensaje)
+            es_conflicto = any(
+                "cambió desde que abrió la confirmación" in mensaje
+                for mensaje in exc.messages
+            )
+            return self._render_formulario(
+                request,
+                actor=actor,
+                cuenta=cuenta,
+                form=form,
+                listado_query=listado_query,
+                status=409 if es_conflicto else 400,
+                mostrar_recarga=es_conflicto,
+            )
+
+        if evento is not None:
+            if evento.actividad_nueva:
+                messages.success(request, "Cuenta marcada como Activa.")
+            else:
+                messages.success(request, "Cuenta marcada como Desactivada.")
         else:
             messages.info(request, "Sin cambios.")
 
