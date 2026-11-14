@@ -133,3 +133,9 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 10
+
+AVISOS_EMAIL_ENABLED = env_bool("AVISOS_EMAIL_ENABLED", default=False)
+AVISOS_PUBLIC_BASE_URL = os.getenv(
+    "AVISOS_PUBLIC_BASE_URL",
+    "http://127.0.0.1:8000" if DEBUG else "",
+)
