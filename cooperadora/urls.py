@@ -8,6 +8,7 @@ urlpatterns = [
     path("facturacion/", include("facturacion.urls")),
     path("admin/", admin.site.urls),
     path("gastos/", include("gastos.urls")),
+    path("avisos/", include("avisos.urls")),
     path("documentos/", include("documentos.urls")),
     path("demo/", include("identidad.urls")),
     path("cuentas/", include("identidad.urls_local")),

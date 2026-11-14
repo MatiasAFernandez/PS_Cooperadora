@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Avisos — Cooperadora{% endblock %}
+
+{% block title %}Avisos — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'avisos/avisos.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="avisos-page">
+    <header class="avisos-head">
+        <div class="avisos-head-texto">
+            <h1 class="avisos-title">Avisos</h1>
+            <p class="avisos-intro">Avisos de nuevas solicitudes de gasto para tu revisión.</p>
+        </div>
+        <div class="avisos-head-acciones">
+            <a class="btn btn-secondary" href="{% url 'gastos:lista' %}">
+                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>
+                Ir al listado de gastos
+            </a>
+        </div>
+    </header>
+
+    {% if messages %}
+    <div class="avisos-mensajes">
+        {% for message in messages %}
+        <div class="avisos-status{% if 'success' in message.tags %} avisos-status--success{% endif %}" role="status">
+            <p>{{ message }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <nav class="avisos-filtros" aria-label="Filtrar avisos">
+        <a class="avisos-tab{% if not estado_invalido and estado == 'todos' %} is-active{% endif %}"
+           href="{% url 'avisos:lista' %}?estado=todos"
+           {% if not estado_invalido and estado == 'todos' %}aria-current="page"{% endif %}>
+            Todos
+        </a>
+        <a class="avisos-tab{% if not estado_invalido and estado == 'no_leidos' %} is-active{% endif %}"
+           href="{% url 'avisos:lista' %}?estado=no_leidos"
+           {% if not estado_invalido and estado == 'no_leidos' %}aria-current="page"{% endif %}>
+            No leídos
+        </a>
+    </nav>
+
+    {% if estado_invalido %}
+    <section class="avisos-status avisos-status--error" role="alert" aria-labelledby="avisos-error-titulo">
+        <h2 class="avisos-vacio-titulo" id="avisos-error-titulo">Filtro no válido</h2>
+        <p>El estado indicado no es válido. Elegí «Todos» o «No leídos» para ver tus avisos.</p>
+        <div class="avisos-vacio-acciones">
+            <a class="btn btn-primary" href="{% url 'avisos:lista' %}?estado=todos">Ver todos los avisos</a>
+        </div>
+    </section>
+    {% else %}
+    <p class="avisos-resumen" aria-live="polite">
+        {{ total }} aviso{{ total|pluralize:",s" }}{% if estado == 'no_leidos' %} sin leer{% else %} en total{% endif %}
+    </p>
+
+    {% if avisos %}
+    <ul class="avisos-lista" aria-label="Listado de avisos">
+        {% for aviso in avisos %}
+        <li class="avisos-fila{% if not aviso.leida_en %} avisos-fila--no-leido{% endif %}">
+            <div class="avisos-info">
+                <div class="avisos-fila-cabecera">
+                    <h2 class="avisos-evento">Nueva solicitud de gasto #{{ aviso.solicitud_id }}</h2>
+                    {% if aviso.leida_en %}
+                    <span class="badge badge-neutral">Leído</span>
+                    {% else %}
+                    <span class="badge badge-info">No leído</span>
+                    {% endif %}
+                </div>
+                <p class="avisos-fecha">
+                    Recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
+                </p>
+            </div>
+
+            <div class="avisos-acciones">
+                <a class="btn btn-secondary" href="{{ aviso.get_absolute_url }}">
+                    Ver solicitud
+                    <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 18l6-6-6-6"/></svg>
+                </a>
+                {% if not aviso.leida_en %}
+                <form method="post" action="{% url 'avisos:leer' aviso.pk %}" class="avisos-leer-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="{{ estado }}">
+                    <input type="hidden" name="page" value="{{ page_obj.number }}">
+                    <button type="submit" class="btn btn-primary">Marcar como leído</button>
+                </form>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="avisos-paginacion" aria-label="Paginación de avisos">
+        <p class="avisos-paginacion-resumen">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</p>
+        <div class="avisos-paginacion-acciones">
+            {% if page_obj.has_previous %}
+            <a class="btn btn-secondary" rel="prev" href="{% url 'avisos:lista' %}?estado={{ estado }}&amp;page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <a class="btn btn-secondary" rel="next" href="{% url 'avisos:lista' %}?estado={{ estado }}&amp;page={{ page_obj.next_page_number }}">Siguiente</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <section class="card avisos-vacio" aria-labelledby="avisos-vacio-titulo" role="status">
+        {% if estado == 'no_leidos' %}
+        <h2 class="avisos-vacio-titulo" id="avisos-vacio-titulo">No tenés avisos sin leer</h2>
+        <p class="avisos-vacio-texto">Todos los avisos de nuevas solicitudes de gasto ya fueron marcados como leídos.</p>
+        {% else %}
+        <h2 class="avisos-vacio-titulo" id="avisos-vacio-titulo">No tenés avisos registrados</h2>
+        <p class="avisos-vacio-texto">Cuando se presente una nueva solicitud de gasto, aparecerá acá para su seguimiento.</p>
+        {% endif %}
+        <div class="avisos-vacio-acciones">
+            {% if estado == 'no_leidos' %}
+            <a class="btn btn-secondary" href="{% url 'avisos:lista' %}?estado=todos">Ver todos</a>
+            {% endif %}
+            <a class="btn btn-secondary" href="{% url 'gastos:lista' %}">Ir al listado de gastos</a>
+        </div>
+    </section>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

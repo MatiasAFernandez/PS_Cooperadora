@@ -522,6 +522,10 @@ def crear_solicitud_gasto(
             **datos_validos,
         )
     guardar_respuesta(actor=actor, tramite=base, form=formulario, escrituras=_escrituras)
+
+    from avisos.services import programar_aviso_nueva_solicitud
+
+    programar_aviso_nueva_solicitud(solicitud.pk)
     return solicitud
 
 

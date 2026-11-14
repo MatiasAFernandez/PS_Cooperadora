@@ -211,6 +211,7 @@
     });
     </script>
     {% if actor %}<script src="{% static 'js/navegacion.js' %}" defer></script>{% endif %}
+    {% if actor and "gastos.consultar_todas" in actor.capabilities and "gastos.decidir" in actor.capabilities %}<script src="{% static 'avisos/contador.js' %}" defer></script>{% endif %}
     <script src="{% static 'js/adjuntar_archivos.js' %}" defer></script>
 </body>
 </html>
