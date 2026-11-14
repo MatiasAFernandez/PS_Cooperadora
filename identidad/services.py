@@ -1,6 +1,8 @@
 """Contrato interno de identidad y capacidades para los circuitos de la aplicación."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user
@@ -74,6 +76,82 @@ class Actor:
     email_registrado: str | None = None
 
 
+def actor_para_usuario(
+    user: Any,
+    *,
+    group_names: Iterable[str] | None = None,
+) -> Actor | None:
+    """Construir Actor para un usuario activo según adaptadores y reglas vigentes."""
+    local_enabled = getattr(settings, "LOCAL_IDENTITY_ENABLED", False)
+    demo_enabled = getattr(settings, "DEMO_IDENTITY_ENABLED", False)
+    if not local_enabled and not demo_enabled:
+        return None
+
+    if (
+        user is None
+        or not getattr(user, "is_authenticated", False)
+        or not getattr(user, "is_active", False)
+    ):
+        return None
+
+    # Import diferido de CuentaLocal para evitar dependencias circulares
+    from identidad.models import CuentaLocal
+
+    # El descriptor reverso cachea la cuenta (o su ausencia) en este usuario.
+    # Así request.user.cuenta_local en las plantillas no repite la consulta,
+    # mientras cada petición vuelve a comprobar el estado en la base.
+    cuenta = getattr(user, "cuenta_local", None)
+
+    resolved_group_names = (
+        user.groups.values_list("name", flat=True) if group_names is None else group_names
+    )
+
+    if cuenta is not None:
+        # Si el usuario tiene CuentaLocal, SOLO LOCAL_IDENTITY_ENABLED y estado
+        # APROBADA con correo verificado autorizan al Actor. Sin fallback a demo.
+        if not local_enabled:
+            return None
+        if cuenta.email_verificado_en is None:
+            return None
+        if cuenta.estado != CuentaLocal.Estado.APROBADA:
+            return None
+
+        capabilities = frozenset().union(
+            *(
+                GROUP_CAPABILITIES[name]
+                for name in resolved_group_names
+                if name in GROUP_CAPABILITIES
+            )
+        )
+        return Actor(
+            subject_id=user.pk,
+            capabilities=capabilities,
+            email_registrado=cuenta.email.strip() or None,
+        )
+
+    # Si NO tiene CuentaLocal, únicamente DEMO_IDENTITY_ENABLED autoriza como antes
+    if not demo_enabled:
+        return None
+
+    # demo legado NO puede obtener local_* capabilities aunque se le agregue
+    # el grupo local_administracion
+    capabilities = frozenset().union(
+        *(
+            GROUP_CAPABILITIES[name]
+            for name in resolved_group_names
+            if name in GROUP_CAPABILITIES and not name.startswith("local_")
+        )
+    )
+    capabilities = frozenset(
+        c for c in capabilities if not c.startswith("identidad.") and not c.startswith("local_")
+    )
+    return Actor(
+        subject_id=user.pk,
+        capabilities=capabilities,
+        email_registrado=user.email.strip() or None,
+    )
+
+
 def resolve_actor(request: HttpRequest) -> Actor | None:
     """Resolver una sesión Django válida según adaptadores habilitados."""
     if not hasattr(request, "session"):
@@ -93,57 +171,7 @@ def resolve_actor(request: HttpRequest) -> Actor | None:
     # Reutilizar en la misma petición el usuario ya verificado evita una segunda
     # consulta cuando la plantilla accede a request.user (base y navegación).
     request.user = user
-
-    # Import diferido de CuentaLocal para evitar dependencias circulares
-    from identidad.models import CuentaLocal
-
-    # El descriptor reverso cachea la cuenta (o su ausencia) en este usuario.
-    # Así request.user.cuenta_local en las plantillas no repite la consulta,
-    # mientras cada petición vuelve a comprobar el estado en la base.
-    cuenta = getattr(user, "cuenta_local", None)
-
-    group_names = user.groups.values_list("name", flat=True)
-
-    if cuenta is not None:
-        # Si el usuario tiene CuentaLocal, SOLO LOCAL_IDENTITY_ENABLED y estado
-        # APROBADA con correo verificado autorizan al Actor. Sin fallback a demo.
-        if not local_enabled:
-            return None
-        if cuenta.email_verificado_en is None:
-            return None
-        if cuenta.estado != CuentaLocal.Estado.APROBADA:
-            return None
-
-        capabilities = frozenset().union(
-            *(GROUP_CAPABILITIES[name] for name in group_names if name in GROUP_CAPABILITIES)
-        )
-        return Actor(
-            subject_id=user.pk,
-            capabilities=capabilities,
-            email_registrado=cuenta.email.strip() or None,
-        )
-
-    # Si NO tiene CuentaLocal, únicamente DEMO_IDENTITY_ENABLED autoriza como antes
-    if not demo_enabled:
-        return None
-
-    # demo legado NO puede obtener local_* capabilities aunque se le agregue
-    # el grupo local_administracion
-    capabilities = frozenset().union(
-        *(
-            GROUP_CAPABILITIES[name]
-            for name in group_names
-            if name in GROUP_CAPABILITIES and not name.startswith("local_")
-        )
-    )
-    capabilities = frozenset(
-        c for c in capabilities if not c.startswith("identidad.") and not c.startswith("local_")
-    )
-    return Actor(
-        subject_id=user.pk,
-        capabilities=capabilities,
-        email_registrado=user.email.strip() or None,
-    )
+    return actor_para_usuario(user)
 
 
 def has_capability(actor: Actor | None, code: str) -> bool:
