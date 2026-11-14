@@ -1,6 +1,7 @@
 # SPEC-028 — Avisos web de nuevas solicitudes de Gastos
 
-Fecha: 14/11/2026. Responsable del evento y destinatarios de Gastos: Franco.
+Fecha: 14/11/2026. Responsable del evento y destinatarios de Gastos:
+Franco Damián Sánchez. Validación operativa institucional pendiente.
 Seguimiento: [Issue #125](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/125).
 Referencia: [SPEC-015](015-matias-avisos-pendientes.md). Este incremento propone
 una base mínima compartible, sin modificar Facturación ni definir sus eventos.
