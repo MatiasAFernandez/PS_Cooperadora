@@ -108,7 +108,12 @@ def _autorizar(request: HttpRequest) -> Actor:
 
 def _cuentas_base() -> QuerySet[CuentaLocal]:
     """Cuentas con las relaciones que usan el listado y la ficha."""
-    return CuentaLocal.objects.select_related("user", "decidida_por")
+    return CuentaLocal.objects.select_related(
+        "user",
+        "decidida_por",
+        "invitacion_administrativa",
+        "invitacion_administrativa__creada_por",
+    )
 
 
 def _filtrar(cuentas: QuerySet[CuentaLocal], datos: dict[str, Any]) -> QuerySet[CuentaLocal]:
@@ -311,6 +316,14 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
         )
         perfiles_actuales = _nombres_perfiles(perfiles_gestionados_usuario(cuenta.user))
         tiene_grupos_conservados = bool(grupos_ajenos_usuario(cuenta.user))
+        invitacion = getattr(cuenta, "invitacion_administrativa", None)
+        puede_reenviar_invitacion = bool(
+            invitacion is not None
+            and invitacion.aceptada_en is None
+            and cuenta.user.is_active
+            and cuenta.estado != CuentaLocal.Estado.RECHAZADA
+            and not cuenta.user.has_usable_password()
+        )
         response = render(
             request,
             "cuentas/usuario_detalle.html",
@@ -320,6 +333,8 @@ class UsuarioDetalleView(LocalOnlyMixin, View):
                 "cuenta": cuenta,
                 "listado_query": listado_query,
                 "es_cuenta_propia": cuenta.user_id == actor.subject_id,
+                "invitacion": invitacion,
+                "puede_reenviar_invitacion": puede_reenviar_invitacion,
                 "historial_page": historial_page,
                 "historial_items": _serializar_historial(historial_page),
                 "actividad_page": actividad_page,

@@ -97,7 +97,7 @@
 
         {% else %}
             {# Confirmaciones públicas para usuarios anónimos o en proceso de verificación/recuperación #}
-            <div class="cuentas-status{% if modo == 'error' %} cuentas-status--error{% elif modo == 'reset_completo' or modo == 'clave_cambiada' or modo == 'verificado' %} cuentas-status--success{% else %} cuentas-status--pending{% endif %}" role="status">
+            <div class="cuentas-status{% if modo == 'error' %} cuentas-status--error{% elif modo == 'reset_completo' or modo == 'clave_cambiada' or modo == 'verificado' or modo == 'invitacion_completa' %} cuentas-status--success{% else %} cuentas-status--pending{% endif %}" role="status">
                 <p>{{ mensaje }}</p>
             </div>
 

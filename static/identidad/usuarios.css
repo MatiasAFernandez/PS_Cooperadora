@@ -677,3 +677,18 @@
         grid-template-columns: 1fr;
     }
 }
+
+.usuarios-invitacion-nota {
+    display: block;
+    margin-top: 0.25rem;
+    color: #475569;
+    font-size: var(--text-xs, 0.75rem);
+}
+
+.usuarios-invitacion-accion {
+    margin-top: 1rem;
+}
+
+.usuarios-invitacion-accion .btn {
+    min-height: 44px;
+}

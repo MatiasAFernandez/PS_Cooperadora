@@ -18,6 +18,10 @@
             <p class="cuentas-intro">Consultá las cuentas locales registradas y el estado de cada acceso.</p>
         </div>
         <div class="usuarios-head-acciones">
+            <a class="btn btn-primary" href="{% url 'cuentas:usuario_nuevo' %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg>
+                Nueva cuenta
+            </a>
             <a class="btn btn-secondary" href="{% url 'cuentas:altas' %}">
                 <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg>
                 Solicitudes de cuenta

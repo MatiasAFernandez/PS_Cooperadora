@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from identidad import views_local, views_usuarios
+from identidad import views_invitaciones, views_local, views_usuarios
 
 app_name = "cuentas"
 
@@ -15,6 +15,14 @@ urlpatterns = [
     path("registro/recibido/", views_local.RecibidoView.as_view(), name="recibido"),
     path("verificar/", views_local.VerificarView.as_view(), name="verificar"),
     path("reenviar/", views_local.ReenviarView.as_view(), name="reenviar"),
+    path(
+        "invitacion/", views_invitaciones.AceptarInvitacionView.as_view(), name="aceptar_invitacion"
+    ),
+    path(
+        "invitacion/completa/",
+        views_invitaciones.InvitacionCompletaView.as_view(),
+        name="invitacion_completa",
+    ),
     path("estado/", views_local.EstadoView.as_view(), name="estado"),
     path("administracion/altas/", views_local.AltasView.as_view(), name="altas"),
     path(
@@ -23,9 +31,19 @@ urlpatterns = [
         name="usuarios",
     ),
     path(
+        "administracion/usuarios/nueva/",
+        views_invitaciones.UsuarioNuevoView.as_view(),
+        name="usuario_nuevo",
+    ),
+    path(
         "administracion/usuarios/<int:pk>/",
         views_usuarios.UsuarioDetalleView.as_view(),
         name="usuario_detalle",
+    ),
+    path(
+        "administracion/usuarios/<int:pk>/invitacion/",
+        views_invitaciones.UsuarioReenviarInvitacionView.as_view(),
+        name="usuario_reenviar_invitacion",
     ),
     path(
         "administracion/usuarios/<int:pk>/editar/",

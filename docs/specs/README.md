@@ -70,7 +70,8 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [023](023-franco-consulta-usuarios-locales.md) | Consulta administrativa de usuarios locales | SPEC-022; #115 (integrado por #116) |
 | [024](024-franco-edicion-datos-usuarios.md) | Edición administrativa de datos básicos locales | SPEC-023; #117 (integrado por #118) |
 | [025](025-franco-actividad-cuentas-locales.md) | Desactivación y reactivación de cuentas locales | SPEC-022/023/024; #119 (integrado por #120) |
-| [026](026-franco-perfiles-usuarios-locales.md) | Asignación administrativa de perfiles locales | SPEC-023/024/025; #121 (implementado en rama) |
+| [026](026-franco-perfiles-usuarios-locales.md) | Asignación administrativa de perfiles locales | SPEC-023/024/025; #121 (integrado por #122) |
+| [027](027-franco-alta-administrativa-invitaciones.md) | Alta administrativa mediante invitación | SPEC-022/023–026; #123 (implementado en rama) |
 
 La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) aporta necesidades,
 confirmaciones parciales y preguntas abiertas. SPEC-014–018 son cambios
