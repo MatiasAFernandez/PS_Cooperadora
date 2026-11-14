@@ -939,7 +939,7 @@ def registrar_pago_externo(
                 referencia_atp=valid_ref_atp,
             ),
         )
-        EventoPagoExterno.objects.create(
+        evento = EventoPagoExterno.objects.create(
             pago=pago,
             tipo_evento="pago_externo_registrado",
             actor_id=actor.subject_id,
@@ -960,6 +960,9 @@ def registrar_pago_externo(
             constancia_sha256=doc_atp.sha256 if doc_atp else "",
             es_legado=False,
         )
+        from avisos.services import programar_aviso_pago_externo
+
+        programar_aviso_pago_externo(evento.pk)
         return pago
 
 

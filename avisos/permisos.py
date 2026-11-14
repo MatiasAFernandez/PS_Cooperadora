@@ -8,17 +8,19 @@ from functools import reduce
 from django.db.models import Exists, OuterRef, Q, QuerySet
 
 from avisos.models import Aviso, TipoAviso
-from gastos.models import DecisionGasto, SolicitudGasto
+from gastos.models import DecisionGasto, EventoPagoExterno, SolicitudGasto
 from gastos.queries import visible_expenses
 from identidad.services import Actor, has_capability
 
 CAPACIDAD_CONSULTAR_PROPIAS = "gastos.consultar_propias"
 CAPACIDAD_CONSULTAR_TODAS = "gastos.consultar_todas"
 CAPACIDAD_DECIDIR = "gastos.decidir"
+TIPO_EVENTO_PAGO_REGISTRADO = "pago_externo_registrado"
 
 TIPOS_AVISO_ADMITIDOS: tuple[str, ...] = (
     TipoAviso.NUEVA_SOLICITUD_GASTO,
     TipoAviso.DECISION_SOLICITUD_GASTO,
+    TipoAviso.PAGO_EXTERNO_REGISTRADO,
 )
 
 
@@ -38,6 +40,7 @@ def evaluar_autorizacion_aviso(
     destinatario_id: int,
     solicitud: SolicitudGasto,
     decision: DecisionGasto | None = None,
+    evento_pago: EventoPagoExterno | None = None,
 ) -> tuple[bool, str]:
     """Evalúa la matriz de autorización para recibir o emitir un aviso por tipo."""
     if tipo == TipoAviso.NUEVA_SOLICITUD_GASTO:
@@ -57,6 +60,21 @@ def evaluar_autorizacion_aviso(
             return False, "decision_inexistente"
         if decision.solicitud_id != solicitud.pk:
             return False, "decision_inconsistente"
+        if actor is None or actor.subject_id != destinatario_id:
+            return False, "sin_permisos"
+        if solicitud.solicitante_id != destinatario_id:
+            return False, "no_titular"
+        if not visible_expenses(actor).filter(pk=solicitud.pk).exists():
+            return False, "sin_permisos"
+        return True, ""
+
+    if tipo == TipoAviso.PAGO_EXTERNO_REGISTRADO:
+        if evento_pago is None:
+            return False, "evento_pago_inexistente"
+        if evento_pago.tipo_evento != TIPO_EVENTO_PAGO_REGISTRADO:
+            return False, "evento_pago_tipo_invalido"
+        if evento_pago.pago_id is None or evento_pago.pago.solicitud_id != solicitud.pk:
+            return False, "evento_pago_inconsistente"
         if actor is None or actor.subject_id != destinatario_id:
             return False, "sin_permisos"
         if solicitud.solicitante_id != destinatario_id:
@@ -85,7 +103,11 @@ def avisos_autorizados_queryset(actor: Actor | None) -> QuerySet[Aviso]:
             )
         )
         filtros_tipo.append(
-            Q(tipo=TipoAviso.NUEVA_SOLICITUD_GASTO, decision_id__isnull=True)
+            Q(
+                tipo=TipoAviso.NUEVA_SOLICITUD_GASTO,
+                decision_id__isnull=True,
+                evento_pago_id__isnull=True,
+            )
             & ~autor_es_titular
         )
 
@@ -100,8 +122,29 @@ def avisos_autorizados_queryset(actor: Actor | None) -> QuerySet[Aviso]:
             )
         )
         filtros_tipo.append(
-            Q(tipo=TipoAviso.DECISION_SOLICITUD_GASTO, decision_id__isnull=False)
+            Q(
+                tipo=TipoAviso.DECISION_SOLICITUD_GASTO,
+                decision_id__isnull=False,
+                evento_pago_id__isnull=True,
+            )
             & decision_valida
+        )
+        evento_pago_valido = Exists(
+            EventoPagoExterno.objects.filter(
+                pk=OuterRef("evento_pago_id"),
+                tipo_evento=TIPO_EVENTO_PAGO_REGISTRADO,
+                pago__solicitud_id=OuterRef("solicitud_id"),
+                pago__solicitud__solicitante_id=actor.subject_id,
+                pago__solicitud_id__in=visibles_ids,
+            )
+        )
+        filtros_tipo.append(
+            Q(
+                tipo=TipoAviso.PAGO_EXTERNO_REGISTRADO,
+                decision_id__isnull=True,
+                evento_pago_id__isnull=False,
+            )
+            & evento_pago_valido
         )
 
     if not filtros_tipo:

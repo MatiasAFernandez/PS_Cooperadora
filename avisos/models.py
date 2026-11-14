@@ -11,6 +11,7 @@ class TipoAviso(models.TextChoices):
 
     NUEVA_SOLICITUD_GASTO = "nueva_solicitud_gasto", "Nueva solicitud de gasto"
     DECISION_SOLICITUD_GASTO = "decision_solicitud_gasto", "Decisión sobre solicitud de gasto"
+    PAGO_EXTERNO_REGISTRADO = "pago_externo_registrado", "Pago externo registrado"
 
 
 class Aviso(models.Model):
@@ -28,6 +29,7 @@ class Aviso(models.Model):
     )
     solicitud_id = models.PositiveBigIntegerField()
     decision_id = models.PositiveBigIntegerField(null=True, blank=True)
+    evento_pago_id = models.PositiveBigIntegerField(null=True, blank=True)
     creada_en = models.DateTimeField(auto_now_add=True)
     leida_en = models.DateTimeField(null=True, blank=True)
 
@@ -36,7 +38,7 @@ class Aviso(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["destinatario", "tipo", "solicitud_id"],
-                condition=Q(decision_id__isnull=True),
+                condition=Q(decision_id__isnull=True, evento_pago_id__isnull=True),
                 name="unique_aviso_destinatario_tipo_solicitud",
             ),
             models.UniqueConstraint(
@@ -44,24 +46,37 @@ class Aviso(models.Model):
                 condition=Q(decision_id__isnull=False),
                 name="unique_aviso_destinatario_tipo_decision",
             ),
+            models.UniqueConstraint(
+                fields=["destinatario", "tipo", "evento_pago_id"],
+                condition=Q(evento_pago_id__isnull=False),
+                name="unique_aviso_destinatario_tipo_evento_pago",
+            ),
             models.CheckConstraint(
                 condition=(
                     Q(
                         tipo=TipoAviso.NUEVA_SOLICITUD_GASTO,
                         decision_id__isnull=True,
+                        evento_pago_id__isnull=True,
                     )
                     | Q(
                         tipo=TipoAviso.DECISION_SOLICITUD_GASTO,
                         decision_id__isnull=False,
+                        evento_pago_id__isnull=True,
+                    )
+                    | Q(
+                        tipo=TipoAviso.PAGO_EXTERNO_REGISTRADO,
+                        decision_id__isnull=True,
+                        evento_pago_id__isnull=False,
                     )
                     | ~Q(
                         tipo__in=[
                             TipoAviso.NUEVA_SOLICITUD_GASTO,
                             TipoAviso.DECISION_SOLICITUD_GASTO,
+                            TipoAviso.PAGO_EXTERNO_REGISTRADO,
                         ]
                     )
                 ),
-                name="check_aviso_tipo_decision_coherente",
+                name="check_aviso_tipo_fuente_coherente",
             ),
         ]
         indexes = [
@@ -80,6 +95,11 @@ class Aviso(models.Model):
             return (
                 f"Aviso #{self.pk} ({self.tipo}) -> "
                 f"solicitud #{self.solicitud_id} decisión #{self.decision_id}"
+            )
+        if self.evento_pago_id is not None:
+            return (
+                f"Aviso #{self.pk} ({self.tipo}) -> "
+                f"solicitud #{self.solicitud_id} evento_pago #{self.evento_pago_id}"
             )
         return f"Aviso #{self.pk} ({self.tipo}) -> solicitud #{self.solicitud_id}"
 

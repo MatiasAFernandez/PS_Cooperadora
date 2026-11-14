@@ -144,6 +144,7 @@ class Command(BaseCommand):
                 f"  intencion={intencion.pk} aviso={intencion.aviso_id} "
                 f"tipo={intencion.aviso.tipo} "
                 f"decision={intencion.aviso.decision_id or '-'} "
+                f"evento_pago={intencion.aviso.evento_pago_id or '-'} "
                 f"destinatario={intencion.aviso.destinatario_id} "
                 f"estado={intencion.estado} intentos={intencion.intentos} "
                 f"codigo={intencion.codigo_resultado or '-'}"

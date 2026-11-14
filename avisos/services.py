@@ -8,7 +8,7 @@ from django.db import transaction
 
 from avisos.models import Aviso, EstadoIntencionCorreo, IntencionCorreo, TipoAviso
 from avisos.permisos import evaluar_autorizacion_aviso
-from gastos.models import DecisionGasto, SolicitudGasto
+from gastos.models import DecisionGasto, EventoPagoExterno, SolicitudGasto
 from identidad.services import actor_para_usuario
 
 logger = logging.getLogger(__name__)
@@ -184,6 +184,91 @@ def programar_aviso_decision_gasto(decision_id: int) -> None:
             logger.error(
                 "No se pudo ejecutar el envío de correo para decision_id=%s",
                 decision_id,
+            )
+
+    transaction.on_commit(_ejecutar)
+
+
+def generar_aviso_pago_externo(
+    evento_pago_id: int,
+    *,
+    preparar_correo: bool = False,
+) -> int:
+    """Genera un aviso persistente e idempotente para un evento de pago externo."""
+    try:
+        evento = EventoPagoExterno.objects.select_related("pago__solicitud").get(
+            pk=evento_pago_id
+        )
+    except EventoPagoExterno.DoesNotExist as exc:
+        raise EventoPagoExterno.DoesNotExist(
+            f"No existe el evento de pago externo #{evento_pago_id}."
+        ) from exc
+
+    solicitud = evento.pago.solicitud
+    titular = (
+        User.objects.filter(pk=solicitud.solicitante_id)
+        .select_related("cuenta_local")
+        .prefetch_related("groups")
+        .first()
+    )
+    if titular is None:
+        return 0
+
+    group_names = [group.name for group in titular.groups.all()]
+    actor = actor_para_usuario(titular, group_names=group_names)
+    autorizado, _ = evaluar_autorizacion_aviso(
+        tipo=TipoAviso.PAGO_EXTERNO_REGISTRADO,
+        actor=actor,
+        destinatario_id=titular.pk,
+        solicitud=solicitud,
+        evento_pago=evento,
+    )
+    if not autorizado:
+        return 0
+
+    habilitar_correo = preparar_correo and bool(
+        getattr(settings, "AVISOS_EMAIL_ENABLED", False)
+    )
+    with transaction.atomic():
+        aviso, creado = Aviso.objects.get_or_create(
+            destinatario=titular,
+            tipo=TipoAviso.PAGO_EXTERNO_REGISTRADO,
+            evento_pago_id=evento.pk,
+            defaults={"solicitud_id": solicitud.pk},
+        )
+        if creado and habilitar_correo:
+            IntencionCorreo.objects.create(
+                aviso=aviso,
+                estado=EstadoIntencionCorreo.PENDIENTE,
+            )
+        return int(creado)
+
+
+def programar_aviso_pago_externo(evento_pago_id: int) -> None:
+    """Programa la generación del aviso de pago externo tras confirmar la transacción."""
+
+    def _ejecutar() -> None:
+        try:
+            with transaction.atomic():
+                generar_aviso_pago_externo(evento_pago_id, preparar_correo=True)
+        except Exception:
+            logger.error(
+                "No se pudo generar el aviso de pago externo para evento_pago_id=%s",
+                evento_pago_id,
+            )
+            return
+
+        if not getattr(settings, "AVISOS_EMAIL_ENABLED", False):
+            return
+
+        try:
+            from avisos.correo import enviar_correos_pago_externo
+
+            enviar_correos_pago_externo(evento_pago_id)
+        except Exception:
+            logger.error(
+                "No se pudo ejecutar el envío de correo para evento_pago_id=%s",
+                evento_pago_id,
             )
 
     transaction.on_commit(_ejecutar)

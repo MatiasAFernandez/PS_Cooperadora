@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from avisos.models import Aviso, EstadoIntencionCorreo, IntencionCorreo, TipoAviso
 from avisos.permisos import TIPOS_AVISO_ADMITIDOS, evaluar_autorizacion_aviso
-from gastos.models import DecisionGasto, SolicitudGasto
+from gastos.models import DecisionGasto, EventoPagoExterno, SolicitudGasto
 from identidad.services import actor_para_usuario
 
 logger = logging.getLogger(__name__)
@@ -199,6 +199,7 @@ def _construir_mensaje(
     destinatario_email: str,
     aviso: Aviso | None = None,
     decision: DecisionGasto | None = None,
+    evento_pago: EventoPagoExterno | None = None,
 ) -> EmailMultiAlternatives:
     if aviso is not None and aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO:
         if decision is None or decision.solicitud_id != solicitud.pk:
@@ -215,6 +216,40 @@ def _construir_mensaje(
         }
         cuerpo_texto = render_to_string("avisos/email/decision_solicitud.txt", contexto)
         cuerpo_html = render_to_string("avisos/email/decision_solicitud.html", contexto)
+        mensaje = EmailMultiAlternatives(
+            subject=asunto,
+            body=cuerpo_texto,
+            from_email=remitente,
+            to=[destinatario_email],
+        )
+        mensaje.attach_alternative(cuerpo_html, "text/html")
+        return mensaje
+
+    if aviso is not None and aviso.tipo == TipoAviso.PAGO_EXTERNO_REGISTRADO:
+        if (
+            evento_pago is None
+            or evento_pago.pago_id is None
+            or evento_pago.pago.solicitud_id != solicitud.pk
+        ):
+            raise ValueError(
+                "Evento de pago inconsistente para construir mensaje de aviso."
+            )
+        fecha_local = timezone.localtime(evento_pago.fecha_hora)
+        fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")
+        asunto = (
+            f"[PS_Cooperadora] Registro de pago externo de solicitud de gasto #{solicitud.pk}"
+        )
+        contexto = {
+            "numero": solicitud.pk,
+            "fecha_registro": fecha_texto,
+            "enlace": enlace,
+        }
+        cuerpo_texto = render_to_string(
+            "avisos/email/pago_externo_registrado.txt", contexto
+        )
+        cuerpo_html = render_to_string(
+            "avisos/email/pago_externo_registrado.html", contexto
+        )
         mensaje = EmailMultiAlternatives(
             subject=asunto,
             body=cuerpo_texto,
@@ -321,7 +356,20 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
             )
 
         decision: DecisionGasto | None = None
+        evento_pago: EventoPagoExterno | None = None
         if aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO:
+            if aviso.evento_pago_id is not None:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "aviso_inconsistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="aviso_inconsistente",
+                )
             if aviso.decision_id is None:
                 _marcar_resultado_seguro(
                     intencion_id,
@@ -359,7 +407,61 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
                     ejecutado=True,
                     codigo="decision_inconsistente",
                 )
-        elif aviso.decision_id is not None:
+        elif aviso.tipo == TipoAviso.PAGO_EXTERNO_REGISTRADO:
+            if aviso.decision_id is not None:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "aviso_inconsistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="aviso_inconsistente",
+                )
+            if aviso.evento_pago_id is None:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "evento_pago_inexistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="evento_pago_inexistente",
+                )
+            evento_pago = (
+                EventoPagoExterno.objects.select_related("pago")
+                .filter(pk=aviso.evento_pago_id)
+                .first()
+            )
+            if evento_pago is None:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "evento_pago_inexistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="evento_pago_inexistente",
+                )
+            if evento_pago.pago_id is None or evento_pago.pago.solicitud_id != solicitud.pk:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "evento_pago_inconsistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="evento_pago_inconsistente",
+                )
+        elif aviso.decision_id is not None or aviso.evento_pago_id is not None:
             _marcar_resultado_seguro(
                 intencion_id,
                 EstadoIntencionCorreo.OMITIDO,
@@ -399,6 +501,7 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
             destinatario_id=user.pk,
             solicitud=solicitud,
             decision=decision,
+            evento_pago=evento_pago,
         )
         if not autorizado:
             _marcar_resultado_seguro(
@@ -460,6 +563,7 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
                 destinatario_email=email_destinatario,
                 aviso=aviso,
                 decision=decision,
+                evento_pago=evento_pago,
             )
             mail_conn = get_connection(fail_silently=False)
         except Exception:
@@ -636,6 +740,21 @@ def enviar_correos_decision_gasto(
         {
             "aviso__decision_id": decision_id,
             "aviso__tipo": TipoAviso.DECISION_SOLICITUD_GASTO,
+        },
+        incluir_fallidos=incluir_fallidos,
+    )
+
+
+def enviar_correos_pago_externo(
+    evento_pago_id: int,
+    *,
+    incluir_fallidos: bool = False,
+) -> list[ResultadoEnvio]:
+    """Envía de forma independiente las intenciones de un evento de pago externo."""
+    return _enviar_intenciones_filtradas(
+        {
+            "aviso__evento_pago_id": evento_pago_id,
+            "aviso__tipo": TipoAviso.PAGO_EXTERNO_REGISTRADO,
         },
         incluir_fallidos=incluir_fallidos,
     )
