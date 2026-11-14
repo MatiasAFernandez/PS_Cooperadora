@@ -12,10 +12,11 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage, get_connection
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.validators import URLValidator, validate_email
 from django.db import connection
 from django.db.models import F
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from avisos.models import EstadoIntencionCorreo, IntencionCorreo, TipoAviso
@@ -195,21 +196,25 @@ def _construir_mensaje(
     enlace: str,
     remitente: str,
     destinatario_email: str,
-) -> EmailMessage:
+) -> EmailMultiAlternatives:
     fecha_local = timezone.localtime(solicitud.fecha_creacion)
     fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")
     asunto = f"[PS_Cooperadora] Nueva solicitud de gasto #{solicitud.pk}"
-    cuerpo = (
-        f"Se registró una nueva solicitud de gasto #{solicitud.pk}.\n"
-        f"Fecha de presentación: {fecha_texto}\n"
-        f"Ver solicitud: {enlace}\n"
-    )
-    return EmailMessage(
+    contexto = {
+        "numero": solicitud.pk,
+        "fecha_presentacion": fecha_texto,
+        "enlace_servidor": enlace,
+    }
+    cuerpo_texto = render_to_string("avisos/email/nueva_solicitud.txt", contexto)
+    cuerpo_html = render_to_string("avisos/email/nueva_solicitud.html", contexto)
+    mensaje = EmailMultiAlternatives(
         subject=asunto,
-        body=cuerpo,
+        body=cuerpo_texto,
         from_email=remitente,
         to=[destinatario_email],
     )
+    mensaje.attach_alternative(cuerpo_html, "text/html")
+    return mensaje
 
 
 def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:

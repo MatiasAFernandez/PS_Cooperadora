@@ -53,9 +53,10 @@ esenciales protegidos y las pestañas de Reporte/Configuración por circuito.
 
 ## Puesta en marcha local en Windows
 
-La [guía de avisos web de Gastos](docs/guides/avisos-web-gastos.md) describe
-destinatarios, bandeja, lectura y reintento de avisos de solicitudes nuevas.
-Este incremento no envía correos ni reemplaza los pendientes operativos.
+La [guía de avisos de Gastos](docs/guides/avisos-web-gastos.md) describe
+destinatarios, bandeja, lectura y recuperación de avisos web y por correo de
+solicitudes nuevas. El correo requiere activación explícita y no reemplaza los
+pendientes operativos.
 
 Requisitos: Python 3.11 y Docker Desktop iniciado con el motor de contenedores
 Linux disponible. Ejecutar desde la raíz de este repositorio. Crear el entorno
