@@ -238,13 +238,17 @@ def decide_expense(
     solicitud.version += 1
     solicitud.save(update_fields=["estado", "version"])
 
-    DecisionGasto.objects.create(
+    decision = DecisionGasto.objects.create(
         solicitud=solicitud,
         autor_id=actor.subject_id,
         motivo=valid_motivo,
         estado_anterior=estado_anterior,
         estado_resultante=nuevo_estado,
     )
+
+    from avisos.services import programar_aviso_decision_gasto
+
+    programar_aviso_decision_gasto(decision.pk)
 
     return solicitud
 

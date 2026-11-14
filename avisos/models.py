@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
 
 
@@ -9,6 +10,7 @@ class TipoAviso(models.TextChoices):
     """Tipos de aviso web soportados."""
 
     NUEVA_SOLICITUD_GASTO = "nueva_solicitud_gasto", "Nueva solicitud de gasto"
+    DECISION_SOLICITUD_GASTO = "decision_solicitud_gasto", "Decisión sobre solicitud de gasto"
 
 
 class Aviso(models.Model):
@@ -25,6 +27,7 @@ class Aviso(models.Model):
         default=TipoAviso.NUEVA_SOLICITUD_GASTO,
     )
     solicitud_id = models.PositiveBigIntegerField()
+    decision_id = models.PositiveBigIntegerField(null=True, blank=True)
     creada_en = models.DateTimeField(auto_now_add=True)
     leida_en = models.DateTimeField(null=True, blank=True)
 
@@ -33,7 +36,32 @@ class Aviso(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["destinatario", "tipo", "solicitud_id"],
+                condition=Q(decision_id__isnull=True),
                 name="unique_aviso_destinatario_tipo_solicitud",
+            ),
+            models.UniqueConstraint(
+                fields=["destinatario", "tipo", "decision_id"],
+                condition=Q(decision_id__isnull=False),
+                name="unique_aviso_destinatario_tipo_decision",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        tipo=TipoAviso.NUEVA_SOLICITUD_GASTO,
+                        decision_id__isnull=True,
+                    )
+                    | Q(
+                        tipo=TipoAviso.DECISION_SOLICITUD_GASTO,
+                        decision_id__isnull=False,
+                    )
+                    | ~Q(
+                        tipo__in=[
+                            TipoAviso.NUEVA_SOLICITUD_GASTO,
+                            TipoAviso.DECISION_SOLICITUD_GASTO,
+                        ]
+                    )
+                ),
+                name="check_aviso_tipo_decision_coherente",
             ),
         ]
         indexes = [
@@ -48,6 +76,11 @@ class Aviso(models.Model):
         return reverse("gastos:detalle", kwargs={"pk": self.solicitud_id})
 
     def __str__(self) -> str:
+        if self.decision_id is not None:
+            return (
+                f"Aviso #{self.pk} ({self.tipo}) -> "
+                f"solicitud #{self.solicitud_id} decisión #{self.decision_id}"
+            )
         return f"Aviso #{self.pk} ({self.tipo}) -> solicitud #{self.solicitud_id}"
 
 

@@ -93,11 +93,6 @@ def test_autorizacion_y_exclusiones_en_lista_contador_y_marcado():
             estado_local=CuentaLocal.Estado.PENDIENTE,
         ),
         _crear_usuario(
-            "solo_lectura",
-            grupos=["demo_lectura"],
-            con_cuenta_local=True,
-        ),
-        _crear_usuario(
             "local_admin",
             grupos=["local_administracion"],
             con_cuenta_local=True,
@@ -124,6 +119,26 @@ def test_autorizacion_y_exclusiones_en_lista_contador_y_marcado():
 
         resp_leer = client.post(reverse("avisos:leer", kwargs={"pk": aviso.pk}))
         assert resp_leer.status_code == 403
+
+    # Lector con consulta_todas accede a bandeja vacía (200), sin avisos operativos
+    solo_lectura = _crear_usuario(
+        "solo_lectura",
+        grupos=["demo_lectura"],
+        con_cuenta_local=True,
+    )
+    client_lectura = Client()
+    client_lectura.force_login(solo_lectura)
+
+    resp_lectura_lista = client_lectura.get(reverse("avisos:lista"))
+    assert resp_lectura_lista.status_code == 200
+    assert "Nueva solicitud de gasto #501" not in resp_lectura_lista.content.decode("utf-8")
+
+    resp_lectura_contador = client_lectura.get(reverse("avisos:contador"))
+    assert resp_lectura_contador.status_code == 200
+    assert resp_lectura_contador.json() == {"no_leidos": 0}
+
+    resp_lectura_leer = client_lectura.post(reverse("avisos:leer", kwargs={"pk": aviso.pk}))
+    assert resp_lectura_leer.status_code == 404
 
     aviso.refresh_from_db()
     assert aviso.leida_en is None
@@ -336,6 +351,22 @@ def test_navegacion_y_script_condicional_en_plantillas():
     resp_sol = client_sol.get(reverse("gastos:lista"))
     assert resp_sol.status_code == 200
     html_sol = resp_sol.content.decode("utf-8")
-    assert reverse("avisos:lista") not in html_sol
-    assert "data-avisos-contador-url" not in html_sol
-    assert "avisos/contador.js" not in html_sol
+    assert reverse("avisos:lista") in html_sol
+    assert f'data-avisos-contador-url="{reverse("avisos:contador")}"' in html_sol
+    assert "avisos/contador.js" in html_sol
+
+    resp_sol_avisos = client_sol.get(reverse("avisos:lista"))
+    assert resp_sol_avisos.status_code == 200
+    assert "Nueva solicitud de gasto #901" not in resp_sol_avisos.content.decode("utf-8")
+
+    admin_cuentas = _crear_usuario(
+        "admin_nav", grupos=["local_administracion"], con_cuenta_local=True
+    )
+    client_admin = Client()
+    client_admin.force_login(admin_cuentas)
+    resp_admin = client_admin.get(reverse("cuentas:inicio"))
+    assert resp_admin.status_code == 200
+    html_admin = resp_admin.content.decode("utf-8")
+    assert reverse("avisos:lista") not in html_admin
+    assert "data-avisos-contador-url" not in html_admin
+    assert "avisos/contador.js" not in html_admin

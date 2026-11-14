@@ -1,7 +1,8 @@
 # SPEC-029 — Correo de nueva solicitud de Gastos
 
 Fecha: 14/11/2026. Responsable principal: Franco Damián Sánchez (Gastos).
-Estado: implementado en rama; CI y QA de correo pendientes.
+Comportamiento integrado por [#129](https://github.com/MatiasAFernandez/PS_Cooperadora/pull/129).
+Estado de seguimiento y verificación: Issue/PR vinculadas; no representa activación productiva.
 Guía operativa: [Avisos web y por correo de nuevas solicitudes de Gastos](../guides/avisos-web-gastos.md).
 Seguimiento: [#127](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/127).
 Base: [SPEC-028](028-franco-avisos-web-gastos.md), integrada por #126.
