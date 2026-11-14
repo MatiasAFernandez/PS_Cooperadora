@@ -17,8 +17,12 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from avisos.models import Aviso, TipoAviso
-from avisos.permisos import avisos_autorizados_queryset, puede_acceder_bandeja_avisos
-from gastos.models import DecisionGasto
+from avisos.permisos import (
+    TIPO_EVENTO_PAGO_REGISTRADO,
+    avisos_autorizados_queryset,
+    puede_acceder_bandeja_avisos,
+)
+from gastos.models import DecisionGasto, EventoPagoExterno
 from identidad.services import Actor, resolve_actor
 
 ESTADOS_VALIDOS = ("todos", "no_leidos")
@@ -91,10 +95,27 @@ def lista(request: HttpRequest) -> HttpResponse:
         if decision_ids
         else {}
     )
+    evento_pago_ids = [
+        aviso.evento_pago_id
+        for aviso in page_obj.object_list
+        if aviso.tipo == TipoAviso.PAGO_EXTERNO_REGISTRADO
+        and aviso.evento_pago_id is not None
+    ]
+    eventos_pago_por_id = (
+        {
+            evento["pk"]: evento
+            for evento in EventoPagoExterno.objects.filter(pk__in=evento_pago_ids).values(
+                "pk", "pago__solicitud_id", "fecha_hora", "tipo_evento"
+            )
+        }
+        if evento_pago_ids
+        else {}
+    )
 
     items_pagina: list[dict[str, object]] = []
     for aviso in page_obj.object_list:
         es_decision = aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO
+        es_pago = aviso.tipo == TipoAviso.PAGO_EXTERNO_REGISTRADO
         resultado_evento = ""
         fecha_evento = None
         if es_decision and aviso.decision_id is not None:
@@ -102,10 +123,19 @@ def lista(request: HttpRequest) -> HttpResponse:
             if decision is not None and decision.solicitud_id == aviso.solicitud_id:
                 resultado_evento = decision.get_estado_resultante_display()
                 fecha_evento = decision.fecha
+        elif es_pago and aviso.evento_pago_id is not None:
+            evento_pago = eventos_pago_por_id.get(aviso.evento_pago_id)
+            if (
+                evento_pago is not None
+                and evento_pago["tipo_evento"] == TIPO_EVENTO_PAGO_REGISTRADO
+                and evento_pago["pago__solicitud_id"] == aviso.solicitud_id
+            ):
+                fecha_evento = evento_pago["fecha_hora"]
         items_pagina.append(
             {
                 "aviso": aviso,
                 "es_decision": es_decision,
+                "es_pago": es_pago,
                 "resultado_evento": resultado_evento,
                 "fecha_evento": fecha_evento,
             }

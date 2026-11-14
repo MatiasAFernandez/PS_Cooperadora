@@ -68,6 +68,8 @@
                 <div class="avisos-fila-cabecera">
                     {% if item.es_decision %}
                     <h2 class="avisos-evento">Decisión registrada: {{ item.resultado_evento }} (solicitud #{{ aviso.solicitud_id }})</h2>
+                    {% elif item.es_pago %}
+                    <h2 class="avisos-evento">Pago externo registrado (solicitud #{{ aviso.solicitud_id }})</h2>
                     {% else %}
                     <h2 class="avisos-evento">Nueva solicitud de gasto #{{ aviso.solicitud_id }}</h2>
                     {% endif %}
@@ -80,6 +82,13 @@
                 {% if item.es_decision and item.fecha_evento %}
                 <p class="avisos-fecha">
                     El <time datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró la decisión {{ item.resultado_evento }} sobre la solicitud #{{ aviso.solicitud_id }}.
+                </p>
+                <p class="avisos-fecha">
+                    Aviso recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
+                </p>
+                {% elif item.es_pago and item.fecha_evento %}
+                <p class="avisos-fecha">
+                    El <time datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró un pago externo para la solicitud #{{ aviso.solicitud_id }}.
                 </p>
                 <p class="avisos-fecha">
                     Aviso recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>

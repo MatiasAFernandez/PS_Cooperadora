@@ -1,0 +1,10 @@
+UTN FRRe - Cooperadora | PS_Cooperadora
+
+Pago externo registrado (solicitud #{{ numero }})
+
+El {{ fecha_registro }} se registró un pago externo para la solicitud #{{ numero }}.
+
+Número de solicitud: #{{ numero }}
+Fecha de registro: {{ fecha_registro }}
+
+Ver solicitud: {{ enlace }}

@@ -239,16 +239,25 @@ def _construir_mensaje(
         asunto = (
             f"[PS_Cooperadora] Registro de pago externo de solicitud de gasto #{solicitud.pk}"
         )
-        cuerpo_texto = (
-            f"El {fecha_texto} se registró un pago externo para la solicitud #{solicitud.pk}.\n\n"
-            f"Ver solicitud: {enlace}\n"
+        contexto = {
+            "numero": solicitud.pk,
+            "fecha_registro": fecha_texto,
+            "enlace": enlace,
+        }
+        cuerpo_texto = render_to_string(
+            "avisos/email/pago_externo_registrado.txt", contexto
         )
-        return EmailMultiAlternatives(
+        cuerpo_html = render_to_string(
+            "avisos/email/pago_externo_registrado.html", contexto
+        )
+        mensaje = EmailMultiAlternatives(
             subject=asunto,
             body=cuerpo_texto,
             from_email=remitente,
             to=[destinatario_email],
         )
+        mensaje.attach_alternative(cuerpo_html, "text/html")
+        return mensaje
 
     fecha_local = timezone.localtime(solicitud.fecha_creacion)
     fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")

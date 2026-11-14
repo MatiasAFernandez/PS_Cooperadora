@@ -1,7 +1,7 @@
 # SPEC-031 — Avisos del registro inicial de pago externo
 
 Fecha: 14/11/2026. Responsable: Franco Damián Sánchez (Gastos/pagos).
-Estado: especificación para revisión previa a implementación.
+Estado: implementada en rama de tarea (backend y presentación/plantillas/guía); integración y pruebas verificadas se registran en la Issue/PR correspondiente.
 Seguimiento: [#132](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/132).
 Base: [SPEC-028](028-franco-avisos-web-gastos.md),
 [SPEC-029](029-franco-correo-nueva-solicitud-gastos.md) y
