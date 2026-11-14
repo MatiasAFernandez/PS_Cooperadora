@@ -1,8 +1,7 @@
 # SPEC-030 — Avisos de decisiones de Gastos al solicitante
 
 Fecha: 14/11/2026. Responsable: Franco Damián Sánchez (Gastos).
-Estado: especificación para revisión previa a implementación.
-Seguimiento: [#130](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/130).
+Estado: especificación vigente; seguimiento en [#130](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/130) y su PR asociada.
 Base: [SPEC-028](028-franco-avisos-web-gastos.md) y
 [SPEC-029](029-franco-correo-nueva-solicitud-gastos.md).
 No modifica identidad, Facturación ni las reglas institucionales pendientes.

@@ -164,8 +164,10 @@ def test_decide_expense_genera_aviso_y_correo_por_resultado(
     AVISOS_PUBLIC_BASE_URL="http://127.0.0.1:8000",
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
 )
-def test_secuencia_postergar_y_aceptar_genera_dos_avisos_e_idempotencia_no_reinicia_leido(
+@pytest.mark.parametrize("accion_final", ["aceptar", "rechazar"])
+def test_secuencia_postergar_y_decidir_genera_dos_avisos_e_idempotencia_no_reinicia_leido(
     django_capture_on_commit_callbacks,
+    accion_final,
 ):
     solicitante = _crear_usuario(
         "sol_seq",
@@ -193,12 +195,17 @@ def test_secuencia_postergar_y_aceptar_genera_dos_avisos_e_idempotencia_no_reini
         decide_expense(
             actor=_actor_de(operadora),
             solicitud_id=solicitud.pk,
-            action="aceptar",
+            action=accion_final,
             expected_version=1,
-            motivo="",
+            motivo="Decisión final sintética",
         )
     decision_2 = DecisionGasto.objects.filter(solicitud=solicitud).order_by("pk").last()
     assert decision_1.pk != decision_2.pk
+    solicitud.refresh_from_db()
+    assert solicitud.estado == {
+        "aceptar": EstadoSolicitud.ACEPTADA,
+        "rechazar": EstadoSolicitud.RECHAZADA,
+    }[accion_final]
 
     avisos = list(
         Aviso.objects.filter(
@@ -221,6 +228,7 @@ def test_secuencia_postergar_y_aceptar_genera_dos_avisos_e_idempotencia_no_reini
     )
     assert "Postergada" in msg_postergada.body
     assert "Aceptada" not in msg_postergada.body
+    assert "Rechazada" not in msg_postergada.body
 
     # Idempotencia: repetir mismo evento no duplica aviso ni correo ni reinicia leida_en
     leida_ts = timezone.now() - timedelta(minutes=5)

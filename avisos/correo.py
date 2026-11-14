@@ -207,17 +207,22 @@ def _construir_mensaje(
         fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")
         estado_resultante = decision.get_estado_resultante_display()
         asunto = f"[PS_Cooperadora] Decisión sobre solicitud de gasto #{solicitud.pk}"
-        cuerpo_texto = (
-            f"El {fecha_texto} se registró la decisión {estado_resultante} "
-            f"sobre la solicitud de gasto #{solicitud.pk}.\n\n"
-            f"Ver solicitud: {enlace}\n"
-        )
-        return EmailMultiAlternatives(
+        contexto = {
+            "numero": solicitud.pk,
+            "resultado_evento": estado_resultante,
+            "fecha_evento": fecha_texto,
+            "enlace": enlace,
+        }
+        cuerpo_texto = render_to_string("avisos/email/decision_solicitud.txt", contexto)
+        cuerpo_html = render_to_string("avisos/email/decision_solicitud.html", contexto)
+        mensaje = EmailMultiAlternatives(
             subject=asunto,
             body=cuerpo_texto,
             from_email=remitente,
             to=[destinatario_email],
         )
+        mensaje.attach_alternative(cuerpo_html, "text/html")
+        return mensaje
 
     fecha_local = timezone.localtime(solicitud.fecha_creacion)
     fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")

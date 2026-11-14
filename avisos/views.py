@@ -17,32 +17,25 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from avisos.models import Aviso, TipoAviso
-from identidad.services import Actor, has_capability, resolve_actor
+from avisos.permisos import avisos_autorizados_queryset, puede_acceder_bandeja_avisos
+from gastos.models import DecisionGasto
+from identidad.services import Actor, resolve_actor
 
-CAPACIDAD_CONSULTAR_TODAS = "gastos.consultar_todas"
-CAPACIDAD_DECIDIR = "gastos.decidir"
-TIPOS_ADMITIDOS = (TipoAviso.NUEVA_SOLICITUD_GASTO,)
 ESTADOS_VALIDOS = ("todos", "no_leidos")
 POR_PAGINA = 25
 
 
 def _autorizar(request: HttpRequest) -> Actor:
-    """Resolver el actor actual y exigir ambas capacidades de Gastos sin bypass."""
+    """Resolver el actor actual y exigir al menos una capacidad de consulta de Gastos."""
     actor = resolve_actor(request)
-    if not (
-        has_capability(actor, CAPACIDAD_CONSULTAR_TODAS)
-        and has_capability(actor, CAPACIDAD_DECIDIR)
-    ):
+    if not puede_acceder_bandeja_avisos(actor):
         raise PermissionDenied("No posee permisos para consultar avisos de gastos.")
     return cast(Actor, actor)
 
 
 def _avisos_del_actor(actor: Actor) -> QuerySet[Aviso]:
-    """Devolver avisos del actor autenticado para tipos admitidos, ordenados."""
-    return Aviso.objects.filter(
-        destinatario_id=actor.subject_id,
-        tipo__in=TIPOS_ADMITIDOS,
-    ).order_by("-creada_en", "-pk")
+    """Devolver avisos del actor autenticado según la matriz compartida por tipo."""
+    return avisos_autorizados_queryset(actor)
 
 
 def _parse_page_number(raw: str | None) -> int | None:
@@ -86,6 +79,38 @@ def lista(request: HttpRequest) -> HttpResponse:
     paginator = Paginator(qs, POR_PAGINA)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    decision_ids = [
+        aviso.decision_id
+        for aviso in page_obj.object_list
+        if aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO and aviso.decision_id is not None
+    ]
+    decisiones_por_id = (
+        DecisionGasto.objects.only("id", "solicitud_id", "estado_resultante", "fecha").in_bulk(
+            decision_ids
+        )
+        if decision_ids
+        else {}
+    )
+
+    items_pagina: list[dict[str, object]] = []
+    for aviso in page_obj.object_list:
+        es_decision = aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO
+        resultado_evento = ""
+        fecha_evento = None
+        if es_decision and aviso.decision_id is not None:
+            decision = decisiones_por_id.get(aviso.decision_id)
+            if decision is not None and decision.solicitud_id == aviso.solicitud_id:
+                resultado_evento = decision.get_estado_resultante_display()
+                fecha_evento = decision.fecha
+        items_pagina.append(
+            {
+                "aviso": aviso,
+                "es_decision": es_decision,
+                "resultado_evento": resultado_evento,
+                "fecha_evento": fecha_evento,
+            }
+        )
+
     return render(
         request,
         "avisos/lista.html",
@@ -93,7 +118,7 @@ def lista(request: HttpRequest) -> HttpResponse:
             "actor": actor,
             "estado": estado,
             "estado_invalido": False,
-            "avisos": page_obj,
+            "avisos": items_pagina,
             "page_obj": page_obj,
             "total": paginator.count,
         },
@@ -117,12 +142,11 @@ def leer(request: HttpRequest, pk: int) -> HttpResponse:
     aviso = get_object_or_404(_avisos_del_actor(actor), pk=pk)
 
     ahora = timezone.now()
-    actualizados = Aviso.objects.filter(
-        pk=aviso.pk,
-        destinatario_id=actor.subject_id,
-        tipo__in=TIPOS_ADMITIDOS,
-        leida_en__isnull=True,
-    ).update(leida_en=ahora)
+    actualizados = (
+        _avisos_del_actor(actor)
+        .filter(pk=aviso.pk, leida_en__isnull=True)
+        .update(leida_en=ahora)
+    )
 
     if actualizados:
         messages.success(

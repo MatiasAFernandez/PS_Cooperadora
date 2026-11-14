@@ -13,7 +13,7 @@
     <header class="avisos-head">
         <div class="avisos-head-texto">
             <h1 class="avisos-title">Avisos</h1>
-            <p class="avisos-intro">Avisos de nuevas solicitudes de gasto para tu revisión.</p>
+            <p class="avisos-intro">Avisos de trámites de Gastos según tus permisos vigentes.</p>
         </div>
         <div class="avisos-head-acciones">
             <a class="btn btn-secondary" href="{% url 'gastos:lista' %}">
@@ -61,20 +61,34 @@
 
     {% if avisos %}
     <ul class="avisos-lista" aria-label="Listado de avisos">
-        {% for aviso in avisos %}
+        {% for item in avisos %}
+        {% with aviso=item.aviso %}
         <li class="avisos-fila{% if not aviso.leida_en %} avisos-fila--no-leido{% endif %}">
             <div class="avisos-info">
                 <div class="avisos-fila-cabecera">
+                    {% if item.es_decision %}
+                    <h2 class="avisos-evento">Decisión registrada: {{ item.resultado_evento }} (solicitud #{{ aviso.solicitud_id }})</h2>
+                    {% else %}
                     <h2 class="avisos-evento">Nueva solicitud de gasto #{{ aviso.solicitud_id }}</h2>
+                    {% endif %}
                     {% if aviso.leida_en %}
                     <span class="badge badge-neutral">Leído</span>
                     {% else %}
                     <span class="badge badge-info">No leído</span>
                     {% endif %}
                 </div>
+                {% if item.es_decision and item.fecha_evento %}
+                <p class="avisos-fecha">
+                    El <time datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró la decisión {{ item.resultado_evento }} sobre la solicitud #{{ aviso.solicitud_id }}.
+                </p>
+                <p class="avisos-fecha">
+                    Aviso recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
+                </p>
+                {% else %}
                 <p class="avisos-fecha">
                     Recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
                 </p>
+                {% endif %}
             </div>
 
             <div class="avisos-acciones">
@@ -92,6 +106,7 @@
                 {% endif %}
             </div>
         </li>
+        {% endwith %}
         {% endfor %}
     </ul>
 
@@ -113,10 +128,10 @@
     <section class="card avisos-vacio" aria-labelledby="avisos-vacio-titulo" role="status">
         {% if estado == 'no_leidos' %}
         <h2 class="avisos-vacio-titulo" id="avisos-vacio-titulo">No tenés avisos sin leer</h2>
-        <p class="avisos-vacio-texto">Todos los avisos de nuevas solicitudes de gasto ya fueron marcados como leídos.</p>
+        <p class="avisos-vacio-texto">Todos tus avisos de Gastos ya fueron marcados como leídos.</p>
         {% else %}
         <h2 class="avisos-vacio-titulo" id="avisos-vacio-titulo">No tenés avisos registrados</h2>
-        <p class="avisos-vacio-texto">Cuando se presente una nueva solicitud de gasto, aparecerá acá para su seguimiento.</p>
+        <p class="avisos-vacio-texto">Cuando tengas novedades habilitadas sobre solicitudes de gasto, aparecerán acá para su seguimiento.</p>
         {% endif %}
         <div class="avisos-vacio-acciones">
             {% if estado == 'no_leidos' %}
