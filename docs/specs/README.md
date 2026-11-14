@@ -73,6 +73,7 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [026](026-franco-perfiles-usuarios-locales.md) | Asignación administrativa de perfiles locales | SPEC-023/024/025; #121 (integrado por #122) |
 | [027](027-franco-alta-administrativa-invitaciones.md) | Alta administrativa mediante invitación | SPEC-022/023–026; #123 (integrado por #124) |
 | [028](028-franco-avisos-web-gastos.md) | Avisos web de nuevas solicitudes de Gastos | SPEC-015; #125 |
+| [029](029-franco-correo-nueva-solicitud-gastos.md) | Correo de nueva solicitud de Gastos, estado y reintento | SPEC-028; #127; evolución pendiente en #128 |
 
 La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) aporta necesidades,
 confirmaciones parciales y preguntas abiertas. SPEC-014–018 son cambios
