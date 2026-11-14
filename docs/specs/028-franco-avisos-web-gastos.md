@@ -57,9 +57,12 @@ se registra en la PR, separado de las pruebas automatizadas.
 
 ## Continuidad y límites
 
-El siguiente incremento incorpora correo para este mismo evento, con Mailpit y
-fallos observables. Otros eventos de Gastos, Facturación y cuentas requieren su
+El siguiente incremento se define en [SPEC-029](029-franco-correo-nueva-solicitud-gastos.md):
+correo para este mismo evento, con Mailpit y fallos observables. Otros eventos de
+Gastos, Facturación y cuentas requieren su
 matriz de destinatarios y aceptación específica. Se difieren recordatorios
 programados, preferencias avanzadas, adjuntos por correo y envío productivo:
 aportan valor, pero no son necesarios para comprobar este recorrido acotado y
 requieren decisiones adicionales de operación/configuración.
+El seguimiento de esos aplazamientos se conserva en
+[#128](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/128).

@@ -49,3 +49,48 @@ class Aviso(models.Model):
 
     def __str__(self) -> str:
         return f"Aviso #{self.pk} ({self.tipo}) -> solicitud #{self.solicitud_id}"
+
+
+class EstadoIntencionCorreo(models.TextChoices):
+    """Estados operativos de una intención de envío de correo."""
+
+    PENDIENTE = "pendiente", "Pendiente"
+    EN_PROCESO = "en_proceso", "En proceso"
+    ACEPTADO = "aceptado", "Aceptado por el servidor"
+    FALLIDO = "fallido", "Fallido"
+    OMITIDO = "omitido", "Omitido"
+    INCIERTO = "incierto", "Incierto"
+
+
+class IntencionCorreo(models.Model):
+    """Intención de envío de correo electrónico vinculada uno a uno a un aviso web."""
+
+    aviso = models.OneToOneField(
+        Aviso,
+        on_delete=models.CASCADE,
+        related_name="intencion_correo",
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoIntencionCorreo.choices,
+        default=EstadoIntencionCorreo.PENDIENTE,
+    )
+    intentos = models.PositiveIntegerField(default=0)
+    creada_en = models.DateTimeField(auto_now_add=True)
+    actualizada_en = models.DateTimeField(auto_now=True)
+    ultimo_intento_en = models.DateTimeField(null=True, blank=True)
+    aceptado_en = models.DateTimeField(null=True, blank=True)
+    direccion_ultimo_intento = models.EmailField(max_length=254, blank=True, default="")
+    codigo_resultado = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["pk"]
+        indexes = [
+            models.Index(
+                fields=["estado"],
+                name="idx_intencion_correo_estado",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"IntencionCorreo #{self.pk} (aviso #{self.aviso_id}, {self.estado})"
