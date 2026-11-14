@@ -1,0 +1,25 @@
+{% load l10n %}
+<article{% if not secundario %} class="card chart-card"{% endif %}>
+  {% if titulo %}<header class="chart-head"><h3>{{ titulo }}</h3></header>{% endif %}
+  {% if ranking.filas %}
+    <ol class="fac-ranking" style="--cero: {{ ranking.cero|unlocalize }}%">
+      {% for fila in ranking.filas %}
+        <li class="hbar-row">
+          <div class="hbar-head">
+            <span class="hbar-label">{{ fila.nombre }}</span>
+            <strong class="font-tabular">{% if orden == "cantidad" %}{{ fila.valor|floatformat:"0g" }}{% else %}$ {{ fila.valor|floatformat:"2g" }}{% endif %}</strong>
+          </div>
+          <div class="hbar-track fac-pista" aria-hidden="true">
+            <span class="hbar-fill fac-color-azul" style="--inicio: {{ fila.inicio|unlocalize }}%; --largo: {{ fila.largo|unlocalize }}%"></span>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+    <details class="fac-detalle">
+      <summary>Ver tabla completa</summary>
+      {% include "gestion/tabla_reporte.html" with filas=filas %}
+    </details>
+  {% else %}
+    <p class="chart-q">Sin actividad en el período seleccionado.</p>
+  {% endif %}
+</article>

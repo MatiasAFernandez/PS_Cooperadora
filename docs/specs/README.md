@@ -66,6 +66,15 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [019](019-matias-correccion-cobros.md) | Corrección trazable de cobros propios pendientes/rechazados | Evolución RF-002; #87 |
 | [020](020-franco-doble-flujo-atp-ux.md) | Doble flujo de gastos, retención ATP parametrizada, alertas preventivas y panel operativo compacto | Incremento I3; #89–#95 |
 | [021](021-matias-administracion-formularios-reportes.md) | Administración de formularios y reportes por circuito | #77/#30; pedido del 10/11/2026 |
+| [022](022-franco-acceso-local-administracion.md) | Acceso local permanente, registro verificado y gestión de credenciales | #109; primer incremento integrado (#111), revisión compartida pendiente |
+| [023](023-franco-consulta-usuarios-locales.md) | Consulta administrativa de usuarios locales | SPEC-022; #115 (integrado por #116) |
+| [024](024-franco-edicion-datos-usuarios.md) | Edición administrativa de datos básicos locales | SPEC-023; #117 (integrado por #118) |
+| [025](025-franco-actividad-cuentas-locales.md) | Desactivación y reactivación de cuentas locales | SPEC-022/023/024; #119 (integrado por #120) |
+| [026](026-franco-perfiles-usuarios-locales.md) | Asignación administrativa de perfiles locales | SPEC-023/024/025; #121 (integrado por #122) |
+| [027](027-franco-alta-administrativa-invitaciones.md) | Alta administrativa mediante invitación | SPEC-022/023–026; #123 (integrado por #124) |
+| [028](028-franco-avisos-web-gastos.md) | Avisos web de nuevas solicitudes de Gastos | SPEC-015; #125 |
+| [029](029-franco-correo-nueva-solicitud-gastos.md) | Correo de nueva solicitud de Gastos, estado y reintento | SPEC-028; #127; evolución pendiente en #128 |
+| [030](030-franco-avisos-decision-gastos.md) | Avisos web y correo de decisiones de Gastos al solicitante | SPEC-028/029; #130 |
 
 La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) aporta necesidades,
 confirmaciones parciales y preguntas abiertas. SPEC-014–018 son cambios

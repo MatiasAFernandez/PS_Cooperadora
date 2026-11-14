@@ -1,0 +1,8 @@
+UTN FRRe - Cooperadora | PS_Cooperadora
+
+Nueva solicitud de gasto #{{ numero }}
+
+Número de solicitud: #{{ numero }}
+Fecha de presentación: {{ fecha_presentacion }}
+
+Ver solicitud: {{ enlace_servidor }}

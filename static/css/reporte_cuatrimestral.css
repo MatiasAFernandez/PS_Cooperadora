@@ -998,6 +998,12 @@ table.dense tfoot tr {
   .period-pills .pill:first-child {
     grid-column: 1 / -1;
   }
+  .rep-cuatrimestres {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .rep-trimestres .pill:first-child {
+    grid-column: auto;
+  }
   .top-acts {
     width: 100%;
   }

@@ -1,0 +1,21 @@
+<article class="card chart-card">
+  <header class="chart-head"><h3>{{ titulo }}</h3></header>
+  {% for fila in filas %}
+    <div class="hbar-row">
+      <div class="hbar-head">
+        {% if fila.estado and fila.cantidad and not trimestre and not cuatrimestre %}
+          <a class="link-inline" href="{% url 'facturacion:lista' %}?periodo=anio&amp;anio={{ anio }}&amp;estado={{ fila.estado }}">{{ fila.nombre }}</a>
+        {% else %}
+          <span class="hbar-label">{{ fila.nombre }}</span>
+        {% endif %}
+        <strong class="font-tabular">{{ fila.cantidad|floatformat:"0g" }}</strong>
+      </div>
+      <div class="hbar-track fac-pista" aria-hidden="true">
+        <span class="hbar-fill fac-color-{{ fila.color }}" style="--largo: {{ fila.largo }}%"></span>
+      </div>
+      {% if fila.dias is not None %}
+        <p class="chart-q">El más antiguo lleva {{ fila.dias }} día{{ fila.dias|pluralize }}.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</article>

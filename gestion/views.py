@@ -94,13 +94,22 @@ class ReporteFacturacionView(FacturacionView):
             )
             if cuatrimestre is not None and cuatrimestre not in {1, 2, 3}:
                 raise ValueError
+            trimestre = int(request.GET["trimestre"]) if request.GET.get("trimestre") else None
+            if trimestre is not None and trimestre not in {1, 2, 3, 4}:
+                raise ValueError
+            if cuatrimestre and trimestre:
+                raise ValueError
         except (ValueError, TypeError):
             return render(
                 request,
                 "gestion/reporte_facturacion.html",
                 dict(
                     actor=self.actor,
-                    error="Revisá el año (2000–2100) y el cuatrimestre.",
+                    anio=timezone.localdate().year,
+                    error=(
+                        "Revisá el año (2000–2100), el orden y elegí un solo trimestre "
+                        "o cuatrimestre."
+                    ),
                 ),
                 status=400,
             )
@@ -111,7 +120,11 @@ class ReporteFacturacionView(FacturacionView):
                 actor=self.actor,
                 anio=anio,
                 cuatrimestre=cuatrimestre,
-                reporte=reporte_facturacion(anio, cuatrimestre, orden),
+                trimestre=trimestre,
+                cuatrimestres=range(1, 4),
+                trimestres=range(1, 5),
+                anios=range(max(anio, timezone.localdate().year), 1999, -1),
+                reporte=reporte_facturacion(anio, cuatrimestre, orden, trimestre=trimestre),
                 orden=orden,
             ),
         )

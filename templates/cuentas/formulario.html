@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}{{ title }} — Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-container">
+    <div class="cuentas-card">
+        <div class="cuentas-header">
+            <p class="cuentas-eyebrow">Acceso a Cooperadora</p>
+            <h1 class="cuentas-title">{{ title }}</h1>
+            {% if introduccion %}
+            <p class="cuentas-intro">{{ introduccion }}</p>
+            {% endif %}
+        </div>
+
+        {% if form and form.errors %}
+        <div id="cuentas-errores" class="cuentas-error-summary" role="alert" tabindex="-1">
+            <p><strong>Revisá los datos indicados.</strong></p>
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if form %}
+        <form method="post" action="" novalidate>
+            {% csrf_token %}
+
+            {% for hidden in form.hidden_fields %}
+            {{ hidden }}
+            {% endfor %}
+
+            {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            {% for field in form.visible_fields %}
+            <div class="cuentas-field">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                    {% if not field.field.required %}
+                    <span class="cuentas-optional">(Opcional)</span>
+                    {% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                <small class="cuentas-help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <div class="cuentas-field-error" id="{{ field.auto_id }}_error">{{ field.errors.0 }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="cuentas-actions">
+                <button type="submit" class="btn btn-primary">{{ submit_label|default:"Guardar" }}</button>
+                {% if request.resolver_match.url_name != 'login' %}<a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'cuentas:login' %}{% endif %}" class="btn btn-secondary">Cancelar</a>{% endif %}
+            </div>
+        </form>
+        {% else %}
+        <div class="cuentas-status cuentas-status--error" role="alert">
+            <p>El enlace de recuperación es inválido o ha vencido.</p>
+        </div>
+        <div class="cuentas-actions">
+            <a href="{% url 'cuentas:recuperar' %}" class="btn btn-primary">Solicitar nuevo enlace</a>
+            <a href="{% url 'cuentas:login' %}" class="btn btn-secondary">Volver al ingreso</a>
+        </div>
+        {% endif %}
+
+        <div class="cuentas-footer">
+            {% if request.resolver_match.url_name == 'login' %}
+            <a href="{% url 'cuentas:registro' %}">Solicitar cuenta</a>
+            <a href="{% url 'cuentas:recuperar' %}">Olvidé mi contraseña</a>
+            {% elif request.resolver_match.url_name == 'registro' %}
+            <a href="{% url 'cuentas:login' %}">Ya tengo cuenta</a>
+            <a href="{% url 'cuentas:reenviar' %}">Reenviar correo de verificación</a>
+            {% elif request.resolver_match.url_name == 'cambiar_clave' %}
+            <a href="{% url 'cuentas:inicio' %}">Volver al inicio</a>
+            {% elif request.resolver_match.url_name == 'recuperar' or request.resolver_match.url_name == 'reenviar' %}
+            <a href="{% url 'cuentas:login' %}">Volver a inicio de sesión</a>
+            {% else %}
+            <a href="{% url 'cuentas:login' %}">Ya tengo cuenta</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if form and form.errors %}
+<script>
+(function(){
+    var el = document.getElementById('cuentas-errores');
+    if (el) {
+        el.scrollIntoView({behavior: 'smooth', block: 'center'});
+        el.focus();
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

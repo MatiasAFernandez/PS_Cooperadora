@@ -1,0 +1,9 @@
+Hola,
+
+Recibimos una solicitud para restablecer la contraseña de tu cuenta en PS Cooperadora.
+
+Para ingresar una nueva contraseña, accedé al siguiente enlace:
+
+{{ protocol }}://{{ domain }}{% url 'cuentas:reset_confirm' uidb64=uid token=token %}
+
+Si no solicitaste este cambio, podés ignorar este mensaje; tu contraseña actual no será modificada.

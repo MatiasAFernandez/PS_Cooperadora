@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Inicio — Cooperadora{% endblock %}
+
+{% block title %}Inicio — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide">
+    <div class="cuentas-header" style="margin-bottom: 2rem;">
+        <p class="cuentas-eyebrow">Acceso a Cooperadora</p>
+        <h1 class="cuentas-title">Inicio</h1>
+        <p class="cuentas-intro">Hola, {{ cuenta.nombre_completo }}. Seleccioná el módulo al que deseás acceder.</p>
+    </div>
+
+    <div class="cuentas-grid">
+        {% if "gastos.consultar_propias" in actor.capabilities or "gastos.consultar_todas" in actor.capabilities %}
+        <div class="cuentas-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h2 style="font-size: 1.15rem; color: var(--ref-blue, #084298); margin-top: 0; margin-bottom: 0.5rem;">Mis solicitudes de gasto</h2>
+                <p class="cuentas-intro" style="margin-bottom: 1.5rem;">Consultá tus solicitudes presentadas y realizá nuevos pedidos de compra o reintegro.</p>
+            </div>
+            <div>
+                <a href="{% url 'gastos:lista' %}" class="btn btn-primary" style="width: 100%;">Ir a Gastos</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if "facturacion.consultar_propias" in actor.capabilities or "facturacion.consultar_todas" in actor.capabilities %}
+        <div class="cuentas-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h2 style="font-size: 1.15rem; color: var(--ref-blue, #084298); margin-top: 0; margin-bottom: 0.5rem;">Mis solicitudes de facturación</h2>
+                <p class="cuentas-intro" style="margin-bottom: 1.5rem;">Consultá trámites de facturación, emisión de comprobantes e informes de cobro.</p>
+            </div>
+            <div>
+                <a href="{% url 'facturacion:lista' %}" class="btn btn-primary" style="width: 100%;">Ir a Facturación</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if "identidad.administrar_cuentas" in actor.capabilities %}
+        <div class="cuentas-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h2 style="font-size: 1.15rem; color: var(--ref-blue, #084298); margin-top: 0; margin-bottom: 0.5rem;">Solicitudes de cuenta</h2>
+                <p class="cuentas-intro" style="margin-bottom: 1.5rem;">Bandeja administrativa para evaluar y decidir solicitudes de alta de cuentas locales.</p>
+            </div>
+            <div>
+                <a href="{% url 'cuentas:altas' %}" class="btn btn-primary" style="width: 100%;">Gestionar altas</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="cuentas-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h2 style="font-size: 1.15rem; color: var(--ref-blue, #084298); margin-top: 0; margin-bottom: 0.5rem;">Mi cuenta</h2>
+                <p class="cuentas-intro" style="margin-bottom: 1.5rem;">Gestioná la seguridad y modificá tu contraseña de acceso.</p>
+            </div>
+            <div>
+                <a href="{% url 'cuentas:cambiar_clave' %}" class="btn btn-secondary" style="width: 100%;">Cambiar contraseña</a>
+            </div>
+        </div>
+    </div>
+
+    {% if not "gastos.consultar_propias" in actor.capabilities and not "gastos.consultar_todas" in actor.capabilities and not "facturacion.consultar_propias" in actor.capabilities and not "facturacion.consultar_todas" in actor.capabilities and not "identidad.administrar_cuentas" in actor.capabilities %}
+    <div class="cuentas-status" style="margin-top: 2rem;">
+        <p>Tu cuenta se encuentra habilitada pero no posee circuitos operativos asignados en este momento.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

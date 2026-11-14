@@ -1,0 +1,267 @@
+/* Componentes visuales y layout para el acceso de cuentas locales */
+
+.cuentas-container {
+    max-width: 560px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.cuentas-card {
+    background-color: #ffffff;
+    border: 1px solid var(--ref-border, #e2e8f0);
+    border-top: 4px solid var(--ref-blue, #084298);
+    border-radius: var(--radius-lg, 12px);
+    padding: 28px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-wide {
+    max-width: 100%;
+}
+
+.cuentas-header {
+    margin-bottom: 1.5rem;
+}
+
+.cuentas-eyebrow {
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ref-blue, #084298);
+    margin: 0 0 0.35rem 0;
+}
+
+.cuentas-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ref-blue, #084298);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.25;
+}
+
+.cuentas-intro {
+    font-size: var(--text-sm, 0.875rem);
+    color: #475569;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cuentas-field {
+    margin-bottom: 16px;
+}
+
+.cuentas-field label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    font-size: var(--text-sm, 0.875rem);
+    color: var(--ref-heading, #37423b);
+}
+
+.cuentas-field .form-control,
+.cuentas-field input,
+.cuentas-field select,
+.cuentas-field textarea {
+    min-height: 44px;
+    box-sizing: border-box;
+    font-size: var(--text-sm, 0.875rem);
+    padding: 0.55rem 0.85rem;
+}
+
+.cuentas-help {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: var(--text-xs, 0.75rem);
+    color: #64748b;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-optional {
+    font-weight: 400;
+    color: #64748b;
+    font-size: var(--text-xs, 0.75rem);
+    margin-left: 0.35rem;
+}
+
+.cuentas-error-summary {
+    color: #9f1239;
+    background-color: #fff1f2;
+    border: 1px solid #fecdd3;
+    padding: 0.85rem 1.15rem;
+    border-radius: var(--radius-md, 8px);
+    margin-bottom: 1.25rem;
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-error-summary p {
+    margin: 0 0 0.35rem 0;
+}
+
+.cuentas-error-summary p:last-child {
+    margin-bottom: 0;
+}
+
+.cuentas-field-error {
+    color: #9f1239;
+    font-size: var(--text-xs, 0.75rem);
+    margin-top: 0.3rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+.cuentas-actions .btn {
+    min-height: 44px;
+    padding: 0.65rem 1.25rem;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cuentas-footer {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--ref-border, #e2e8f0);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.cuentas-footer a {
+    color: var(--ref-blue, #084298);
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.cuentas-footer a:hover {
+    color: var(--ref-deep-blue, #090979);
+}
+
+.cuentas-status {
+    padding: 16px;
+    border-radius: 8px;
+    background-color: #f0f7ff;
+    border: 1px solid #bae6fd;
+    color: #0369a1;
+    margin-bottom: 1.5rem;
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-status p {
+    margin: 0 0 0.35rem 0;
+}
+
+.cuentas-status p:last-child {
+    margin-bottom: 0;
+}
+
+.cuentas-status--error {
+    background-color: #fff1f2;
+    border-color: #fecdd3;
+    color: #9f1239;
+}
+
+.cuentas-status--pending {
+    background-color: #fef3c7;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+.cuentas-status--success {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+.cuentas-data-list {
+    margin: 1.25rem 0;
+    border: 1px solid var(--ref-border, #e2e8f0);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cuentas-data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--ref-border, #e2e8f0);
+    font-size: var(--text-sm, 0.875rem);
+    gap: 1rem;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-data-row:last-child {
+    border-bottom: none;
+}
+
+.cuentas-data-label {
+    font-weight: 600;
+    color: #475569;
+    flex-shrink: 0;
+}
+
+.cuentas-data-value {
+    color: #0f172a;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.cuentas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 16px;
+}
+
+.cuentas-list {
+    display: grid;
+    gap: 16px;
+}
+
+@media (max-width: 576px) {
+    .cuentas-container {
+        margin: 1rem auto;
+        padding: 0 0.75rem;
+    }
+
+    .cuentas-card {
+        padding: 20px;
+    }
+
+    .cuentas-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cuentas-actions .btn,
+    .cuentas-actions button[type="submit"] {
+        width: 100%;
+    }
+
+    .cuentas-data-row {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .cuentas-data-value {
+        text-align: left;
+    }
+}

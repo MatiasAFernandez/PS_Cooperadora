@@ -1,0 +1,11 @@
+UTN FRRe - Cooperadora | PS_Cooperadora
+
+Decisión sobre solicitud de gasto #{{ numero }}
+
+El {{ fecha_evento }} se registró la decisión {{ resultado_evento }} sobre la solicitud de gasto #{{ numero }}.
+
+Número de solicitud: #{{ numero }}
+Decisión registrada: {{ resultado_evento }}
+Fecha de la decisión: {{ fecha_evento }}
+
+Ver solicitud: {{ enlace }}

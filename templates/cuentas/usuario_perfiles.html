@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo_modulo %}Gestionar perfiles — Cooperadora{% endblock %}
+
+{% block title %}Gestionar perfiles — {{ cuenta.nombre_completo }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
+<link rel="stylesheet" href="{% static 'identidad/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cuentas-wide usuarios-page">
+    <a class="usuarios-volver" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
+        Volver a la ficha
+    </a>
+
+    <header class="usuarios-head">
+        <div class="usuarios-head-texto">
+            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
+            <h1 class="cuentas-title">Gestionar perfiles</h1>
+            <p class="cuentas-intro">{{ cuenta.nombre_completo }}</p>
+        </div>
+    </header>
+
+    <section class="cuentas-card usuarios-ficha-card" aria-labelledby="gestionar-perfiles-titulo">
+        <h2 class="usuarios-ficha-titulo" id="gestionar-perfiles-titulo">Cuenta y estado actual</h2>
+
+        <dl class="usuarios-datos usuarios-editar-consulta">
+            <div class="usuarios-dato">
+                <dt>Nombre completo</dt>
+                <dd>{{ cuenta.nombre_completo }}</dd>
+            </div>
+            <div class="usuarios-dato">
+                <dt>Correo electrónico</dt>
+                <dd class="usuarios-email">{{ cuenta.email }}</dd>
+            </div>
+            <div class="usuarios-dato">
+                <dt>Aprobación y correo</dt>
+                <dd>
+                    {{ cuenta.get_estado_display }} ·
+                    {% if cuenta.email_verificado_en %}Verificado{% else %}Sin verificar{% endif %}
+                </dd>
+            </div>
+            <div class="usuarios-dato">
+                <dt>Actividad</dt>
+                <dd>
+                    {% if cuenta.user.is_active %}
+                    <span class="badge badge-success">Activa</span>
+                    {% else %}
+                    <span class="badge badge-neutral">Inactiva</span>
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
+
+        <div class="cuentas-status" role="note">
+            <p>Asignar o quitar perfiles no aprueba, verifica ni activa la cuenta.</p>
+        </div>
+
+        {% if tiene_grupos_conservados %}
+        <div class="cuentas-status cuentas-status--pending" role="note">
+            <p>Se conservan otros permisos que esta pantalla no modifica.</p>
+        </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+        <div class="cuentas-error-summary" role="alert">
+            {% for err in form.non_field_errors %}
+            <p>{{ err }}</p>
+            {% endfor %}
+            {% if mostrar_recarga %}
+            <p class="usuarios-recarga-wrap">
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_perfiles' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Recargar formulario</a>
+            </p>
+            {% endif %}
+        </div>
+        {% elif form.errors %}
+        <div class="cuentas-error-summary" role="alert">
+            <p>Revisá los campos marcados antes de guardar.</p>
+        </div>
+        {% endif %}
+
+        {% if es_cuenta_propia %}
+        <p class="usuarios-aviso-propia" role="note">Otro administrador debe cambiar tus perfiles.</p>
+
+        <div class="usuarios-ficha-seccion">
+            <h3 class="usuarios-perfiles-grupo-titulo">Perfiles actuales</h3>
+            {% if perfiles_actuales %}
+            <ul class="usuarios-perfiles-lista">
+                {% for nombre in perfiles_actuales %}
+                <li>{{ nombre }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="usuarios-sin-cambios">
+                {% if tiene_grupos_conservados %}Sin perfiles del catálogo asignados.{% else %}Sin perfiles asignados.{% endif %}
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="cuentas-actions usuarios-editar-acciones">
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Volver a la ficha</a>
+        </div>
+        {% else %}
+        <form method="post" action="{% url 'cuentas:usuario_perfiles' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}" novalidate>
+            {% csrf_token %}
+            {{ form.referencia }}
+
+            <div class="usuarios-perfiles-grupos">
+                {% for grupo in grupos_opciones %}
+                <fieldset class="usuarios-perfiles-grupo">
+                    <legend class="usuarios-perfiles-grupo-titulo">{{ grupo.titulo }}</legend>
+                    <div class="usuarios-perfiles-grid">
+                        {% for opcion in grupo.opciones %}
+                        <label class="usuarios-perfil-opcion" for="id_perfiles_{{ opcion.clave }}">
+                            <input
+                                type="checkbox"
+                                id="id_perfiles_{{ opcion.clave }}"
+                                name="{{ form.perfiles.html_name }}"
+                                value="{{ opcion.clave }}"
+                                {% if opcion.checked %}checked{% endif %}
+                            >
+                            <span class="usuarios-perfil-texto">
+                                <span class="usuarios-perfil-nombre">{{ opcion.nombre }}</span>
+                                <span class="usuarios-perfil-desc">{{ opcion.descripcion }}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                {% endfor %}
+            </div>
+
+            {% if form.perfiles.errors %}
+            <p class="usuarios-error" role="alert">{{ form.perfiles.errors.0 }}</p>
+            {% endif %}
+
+            <div class="usuarios-field usuarios-perfiles-motivo">
+                <label for="{{ form.motivo.id_for_label }}">Motivo</label>
+                <textarea
+                    id="{{ form.motivo.id_for_label }}"
+                    name="{{ form.motivo.html_name }}"
+                    rows="4"
+                    maxlength="2000"
+                    required
+                    {% if form.motivo.errors %}aria-invalid="true" aria-describedby="{{ form.motivo.id_for_label }}_error"{% endif %}
+                >{{ form.motivo.value|default:'' }}</textarea>
+                {% if form.motivo.errors %}
+                <p class="usuarios-error" id="{{ form.motivo.id_for_label }}_error" role="alert">{{ form.motivo.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="cuentas-actions usuarios-editar-acciones">
+                <button type="submit" class="btn btn-primary">Guardar perfiles</button>
+                <a class="btn btn-secondary" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Cancelar</a>
+            </div>
+        </form>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
