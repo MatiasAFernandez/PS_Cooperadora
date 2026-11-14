@@ -8,9 +8,10 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from avisos.correo import (
     ConciliacionError,
     conciliar_intencion_correo,
-    enviar_correos_nueva_solicitud,
+    enviar_correos_solicitud,
 )
-from avisos.models import IntencionCorreo, TipoAviso
+from avisos.models import IntencionCorreo
+from avisos.permisos import TIPOS_AVISO_ADMITIDOS
 from gastos.models import SolicitudGasto
 
 
@@ -104,7 +105,7 @@ class Command(BaseCommand):
                 raise CommandError(
                     "El canal de correo de avisos está deshabilitado (AVISOS_EMAIL_ENABLED=False)."
                 )
-            resultados = enviar_correos_nueva_solicitud(
+            resultados = enviar_correos_solicitud(
                 solicitud_id,
                 incluir_fallidos=True,
             )
@@ -124,7 +125,7 @@ class Command(BaseCommand):
         intenciones = list(
             IntencionCorreo.objects.filter(
                 aviso__solicitud_id=solicitud_id,
-                aviso__tipo=TipoAviso.NUEVA_SOLICITUD_GASTO,
+                aviso__tipo__in=TIPOS_AVISO_ADMITIDOS,
             )
             .select_related("aviso")
             .order_by("pk")
@@ -141,6 +142,8 @@ class Command(BaseCommand):
         for intencion in intenciones:
             self.stdout.write(
                 f"  intencion={intencion.pk} aviso={intencion.aviso_id} "
+                f"tipo={intencion.aviso.tipo} "
+                f"decision={intencion.aviso.decision_id or '-'} "
                 f"destinatario={intencion.aviso.destinatario_id} "
                 f"estado={intencion.estado} intentos={intencion.intentos} "
                 f"codigo={intencion.codigo_resultado or '-'}"

@@ -19,9 +19,10 @@ from django.db.models import F
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from avisos.models import EstadoIntencionCorreo, IntencionCorreo, TipoAviso
-from gastos.models import SolicitudGasto
-from identidad.services import actor_para_usuario, has_capability
+from avisos.models import Aviso, EstadoIntencionCorreo, IntencionCorreo, TipoAviso
+from avisos.permisos import TIPOS_AVISO_ADMITIDOS, evaluar_autorizacion_aviso
+from gastos.models import DecisionGasto, SolicitudGasto
+from identidad.services import actor_para_usuario
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -196,7 +197,28 @@ def _construir_mensaje(
     enlace: str,
     remitente: str,
     destinatario_email: str,
+    aviso: Aviso | None = None,
+    decision: DecisionGasto | None = None,
 ) -> EmailMultiAlternatives:
+    if aviso is not None and aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO:
+        if decision is None or decision.solicitud_id != solicitud.pk:
+            raise ValueError("Decisión inconsistente para construir mensaje de aviso.")
+        fecha_local = timezone.localtime(decision.fecha)
+        fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")
+        estado_resultante = decision.get_estado_resultante_display()
+        asunto = f"[PS_Cooperadora] Decisión sobre solicitud de gasto #{solicitud.pk}"
+        cuerpo_texto = (
+            f"El {fecha_texto} se registró la decisión {estado_resultante} "
+            f"sobre la solicitud de gasto #{solicitud.pk}.\n\n"
+            f"Ver solicitud: {enlace}\n"
+        )
+        return EmailMultiAlternatives(
+            subject=asunto,
+            body=cuerpo_texto,
+            from_email=remitente,
+            to=[destinatario_email],
+        )
+
     fecha_local = timezone.localtime(solicitud.fecha_creacion)
     fecha_texto = fecha_local.strftime("%d/%m/%Y %H:%M")
     asunto = f"[PS_Cooperadora] Nueva solicitud de gasto #{solicitud.pk}"
@@ -266,6 +288,19 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
 
         intencion = IntencionCorreo.objects.select_related("aviso").get(pk=intencion_id)
         aviso = intencion.aviso
+        if aviso.tipo not in TIPOS_AVISO_ADMITIDOS:
+            _marcar_resultado_seguro(
+                intencion_id,
+                EstadoIntencionCorreo.OMITIDO,
+                "tipo_desconocido",
+            )
+            return ResultadoEnvio(
+                intencion_id=intencion_id,
+                estado=EstadoIntencionCorreo.OMITIDO,
+                ejecutado=True,
+                codigo="tipo_desconocido",
+            )
+
         solicitud = SolicitudGasto.objects.filter(pk=aviso.solicitud_id).first()
         if solicitud is None:
             _marcar_resultado_seguro(
@@ -278,6 +313,58 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
                 estado=EstadoIntencionCorreo.OMITIDO,
                 ejecutado=True,
                 codigo="solicitud_inexistente",
+            )
+
+        decision: DecisionGasto | None = None
+        if aviso.tipo == TipoAviso.DECISION_SOLICITUD_GASTO:
+            if aviso.decision_id is None:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "decision_inexistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="decision_inexistente",
+                )
+            decision = DecisionGasto.objects.filter(pk=aviso.decision_id).first()
+            if decision is None:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "decision_inexistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="decision_inexistente",
+                )
+            if decision.solicitud_id != solicitud.pk:
+                _marcar_resultado_seguro(
+                    intencion_id,
+                    EstadoIntencionCorreo.OMITIDO,
+                    "decision_inconsistente",
+                )
+                return ResultadoEnvio(
+                    intencion_id=intencion_id,
+                    estado=EstadoIntencionCorreo.OMITIDO,
+                    ejecutado=True,
+                    codigo="decision_inconsistente",
+                )
+        elif aviso.decision_id is not None:
+            _marcar_resultado_seguro(
+                intencion_id,
+                EstadoIntencionCorreo.OMITIDO,
+                "aviso_inconsistente",
+            )
+            return ResultadoEnvio(
+                intencion_id=intencion_id,
+                estado=EstadoIntencionCorreo.OMITIDO,
+                ejecutado=True,
+                codigo="aviso_inconsistente",
             )
 
         user = (
@@ -299,36 +386,26 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
                 codigo="usuario_inexistente",
             )
 
-        if user.pk == solicitud.solicitante_id:
-            _marcar_resultado_seguro(
-                intencion_id,
-                EstadoIntencionCorreo.OMITIDO,
-                "autor_excluido",
-            )
-            return ResultadoEnvio(
-                intencion_id=intencion_id,
-                estado=EstadoIntencionCorreo.OMITIDO,
-                ejecutado=True,
-                codigo="autor_excluido",
-            )
-
         group_names = [group.name for group in user.groups.all()]
         actor = actor_para_usuario(user, group_names=group_names)
-        if (
-            actor is None
-            or not has_capability(actor, "gastos.consultar_todas")
-            or not has_capability(actor, "gastos.decidir")
-        ):
+        autorizado, codigo_auth = evaluar_autorizacion_aviso(
+            tipo=aviso.tipo,
+            actor=actor,
+            destinatario_id=user.pk,
+            solicitud=solicitud,
+            decision=decision,
+        )
+        if not autorizado:
             _marcar_resultado_seguro(
                 intencion_id,
                 EstadoIntencionCorreo.OMITIDO,
-                "sin_permisos",
+                codigo_auth,
             )
             return ResultadoEnvio(
                 intencion_id=intencion_id,
                 estado=EstadoIntencionCorreo.OMITIDO,
                 ejecutado=True,
-                codigo="sin_permisos",
+                codigo=codigo_auth,
             )
 
         email_destinatario = (actor.email_registrado or "").strip()
@@ -376,6 +453,8 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
                 enlace=enlace,
                 remitente=remitente,
                 destinatario_email=email_destinatario,
+                aviso=aviso,
+                decision=decision,
             )
             mail_conn = get_connection(fail_silently=False)
         except Exception:
@@ -493,12 +572,12 @@ def procesar_intencion_correo(intencion_id: int) -> ResultadoEnvio:
                     )
 
 
-def enviar_correos_nueva_solicitud(
-    solicitud_id: int,
+def _enviar_intenciones_filtradas(
+    filtros: dict,
     *,
     incluir_fallidos: bool = False,
 ) -> list[ResultadoEnvio]:
-    """Envía de forma independiente las intenciones elegibles de una solicitud."""
+    """Envía de forma independiente las intenciones elegibles para un filtro dado."""
     if not getattr(settings, "AVISOS_EMAIL_ENABLED", False):
         return []
 
@@ -508,9 +587,8 @@ def enviar_correos_nueva_solicitud(
 
     intencion_ids = list(
         IntencionCorreo.objects.filter(
-            aviso__solicitud_id=solicitud_id,
-            aviso__tipo=TipoAviso.NUEVA_SOLICITUD_GASTO,
             estado__in=estados,
+            **filtros,
         )
         .order_by("pk")
         .values_list("pk", flat=True)
@@ -522,11 +600,55 @@ def enviar_correos_nueva_solicitud(
             resultados.append(procesar_intencion_correo(intencion_id))
         except Exception:
             logger.error(
-                "Error inesperado procesando intencion_id=%s solicitud_id=%s",
+                "Error inesperado procesando intencion_id=%s",
                 intencion_id,
-                solicitud_id,
             )
     return resultados
+
+
+def enviar_correos_nueva_solicitud(
+    solicitud_id: int,
+    *,
+    incluir_fallidos: bool = False,
+) -> list[ResultadoEnvio]:
+    """Envía de forma independiente las intenciones de nueva solicitud."""
+    return _enviar_intenciones_filtradas(
+        {
+            "aviso__solicitud_id": solicitud_id,
+            "aviso__tipo": TipoAviso.NUEVA_SOLICITUD_GASTO,
+        },
+        incluir_fallidos=incluir_fallidos,
+    )
+
+
+def enviar_correos_decision_gasto(
+    decision_id: int,
+    *,
+    incluir_fallidos: bool = False,
+) -> list[ResultadoEnvio]:
+    """Envía de forma independiente las intenciones de una decisión de gasto."""
+    return _enviar_intenciones_filtradas(
+        {
+            "aviso__decision_id": decision_id,
+            "aviso__tipo": TipoAviso.DECISION_SOLICITUD_GASTO,
+        },
+        incluir_fallidos=incluir_fallidos,
+    )
+
+
+def enviar_correos_solicitud(
+    solicitud_id: int,
+    *,
+    incluir_fallidos: bool = False,
+) -> list[ResultadoEnvio]:
+    """Envía de forma independiente las intenciones admitidas de una solicitud."""
+    return _enviar_intenciones_filtradas(
+        {
+            "aviso__solicitud_id": solicitud_id,
+            "aviso__tipo__in": TIPOS_AVISO_ADMITIDOS,
+        },
+        incluir_fallidos=incluir_fallidos,
+    )
 
 
 def conciliar_intencion_correo(
@@ -554,7 +676,7 @@ def conciliar_intencion_correo(
             intencion = IntencionCorreo.objects.select_related("aviso").get(
                 pk=intencion_id,
                 aviso__solicitud_id=solicitud_id,
-                aviso__tipo=TipoAviso.NUEVA_SOLICITUD_GASTO,
+                aviso__tipo__in=TIPOS_AVISO_ADMITIDOS,
             )
         except IntencionCorreo.DoesNotExist as exc:
             raise ConciliacionError(
