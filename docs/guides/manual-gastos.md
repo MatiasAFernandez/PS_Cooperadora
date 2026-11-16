@@ -114,7 +114,7 @@ Las **compras directas** ya pagadas que aún no cuentan con una **factura de pro
 
 ## 10. Cierre explícito del gasto
 
-El cierre administrativo marca que el trámite pagado cuenta con toda su documentación obligatoria verificada y aceptada. El cierre se registra por separado del estado de decisión (**Aceptada** / **Pagada**) y muestra la etiqueta **Cerrada** en la cabecera, en la sección **Cierre administrativo** del detalle y junto a **Pagada** en la bandeja y el panel de vista rápida. *(Nota: el cierre explícito corresponde al incremento F-E08, pendiente de integración en `main` tras acuerdo de interfaz compartida en PR #137).*
+El cierre administrativo marca que el trámite pagado cuenta con toda su documentación obligatoria verificada y aceptada. El cierre se registra por separado del estado de decisión (**Aceptada** / **Pagada**) y muestra la etiqueta **Cerrada** en la cabecera, en la sección **Cierre administrativo** del detalle y junto a **Pagada** en la bandeja y el panel de vista rápida.
 
 ### Requisitos para habilitar el cierre
 
