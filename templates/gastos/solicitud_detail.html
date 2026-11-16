@@ -135,8 +135,10 @@
                                     <div class="sd-row-actions">
                                         {% if item.tipo_accion == "revision" and item.documento_id and detalle_puede_revisar %}
                                             <a class="sd-btn sd-btn-secondary" href="{% url 'documentos:revision' item.documento_id %}">Revisar</a>
-                                        {% elif item.tipo_accion == "pago" and puede_registrar_pago %}
+                                        {% elif item.tipo_accion == "pago" and puede_registrar_pago and pago_provider_configurado and not pago_sin_respaldo_confirmado %}
                                             <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago</a>
+                                        {% elif item.tipo_accion == "pago" %}
+                                            <a class="sd-btn sd-btn-secondary" href="#pago-externo">Ver sección</a>
                                         {% elif item.tipo_accion == "atp" and puede_incorporar_atp %}
                                             <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:pago_atp' pk=solicitud.pk %}">Incorporar constancia ATP</a>
                                         {% elif item.tipo_accion == "rectificar_pago" and puede_rectificar_pago %}
