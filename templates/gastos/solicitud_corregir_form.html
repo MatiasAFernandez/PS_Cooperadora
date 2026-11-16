@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Corregir Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_form.css' %}">
+<script src="{% static 'gastos/js/solicitud_importe.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="solicitud-detalle nueva-solicitud">
+    <p class="ns-breadcrumb"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a></p>
+
+    <header class="ns-head">
+        <h1>Corregir solicitud #{{ solicitud.pk }}</h1>
+        <p class="sd-small">Actualizá los datos observados y reenviá la solicitud para una nueva evaluación.</p>
+    </header>
+
+    {% if ultima_observacion %}
+    <section class="sd-alert sd-alert-warning" aria-labelledby="obs-motivo-heading">
+        <h2 id="obs-motivo-heading" class="sd-h2">Observación vigente</h2>
+        <p class="sd-small">{{ ultima_observacion.fecha|date:"d/m/Y H:i" }}</p>
+        <p><strong>Motivo:</strong> {{ ultima_observacion.motivo }}</p>
+    </section>
+    {% endif %}
+
+    {% if error_subsanacion %}
+    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
+        <strong>No se pudo completar el reenvío:</strong> {{ error_subsanacion }}
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <section class="sd-card" aria-labelledby="datos-fijos-heading">
+        <h2 id="datos-fijos-heading" class="sd-h2">Datos inmutables del trámite</h2>
+        <dl class="sd-dl sd-dl-flat">
+            <dt>Número</dt><dd>#{{ solicitud.pk }}</dd>
+            <dt>Modalidad</dt><dd>{{ solicitud.get_tipo_flujo_display }}</dd>
+            <dt>Unidad requirente</dt><dd>{{ solicitud.unidad_requirente }}</dd>
+            <dt>Estado actual</dt><dd>{{ solicitud.get_estado_display }}</dd>
+        </dl>
+        <p class="sd-small">
+            Si necesitás corregir datos bancarios o archivos respaldatorios, hacelo desde
+            <a href="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}">Datos de transferencia</a>
+            o <a href="{% url 'gastos:documentos' pk=solicitud.pk %}">Documentos del trámite</a>.
+        </p>
+    </section>
+
+    <section class="ns-section" aria-labelledby="form-corregir-heading">
+        <h2 id="form-corregir-heading" class="sd-h2">Datos a corregir</h2>
+        <form method="post" action="{% url 'gastos:corregir' pk=solicitud.pk %}" novalidate>
+            {% csrf_token %}
+            {{ form.version }}
+
+            <div class="ns-grid-primary">
+                <div class="ns-field">
+                    <div class="ns-label-row">
+                        <label for="{{ form.concepto.id_for_label }}">
+                            {{ form.concepto.label }} <span class="ns-required" aria-hidden="true">*</span>
+                        </label>
+                    </div>
+                    {{ form.concepto }}
+                    {% if form.concepto.errors %}
+                        <div class="ns-field-error" role="alert">{{ form.concepto.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="ns-field">
+                    <div class="ns-label-row">
+                        <label for="{{ form.monto_estimado.id_for_label }}">
+                            {{ form.monto_estimado.label }} <span class="ns-required" aria-hidden="true">*</span>
+                        </label>
+                    </div>
+                    {{ form.monto_estimado }}
+                    {% if form.monto_estimado.errors %}
+                        <div class="ns-field-error" role="alert">{{ form.monto_estimado.errors }}</div>
+                    {% endif %}
+                    <div class="ns-field-error" id="monto-inline-error" role="alert" hidden>
+                        <p>Ingresá un monto válido mayor a cero (por ejemplo, 1250,50).</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ns-field">
+                <div class="ns-label-row">
+                    <label for="{{ form.centro_costo.id_for_label }}">{{ form.centro_costo.label }}</label>
+                </div>
+                {{ form.centro_costo }}
+                {% if form.centro_costo.errors %}
+                    <div class="ns-field-error" role="alert">{{ form.centro_costo.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="sd-actions">
+                <button type="submit" class="sd-btn sd-btn-primary">Guardar y reenviar</button>
+                <a href="{% url 'gastos:detalle' pk=solicitud.pk %}" class="sd-btn sd-btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+<script>
+(function () {
+  const input = document.getElementById("id_monto_estimado");
+  const errorBox = document.getElementById("monto-inline-error");
+  if (!input || !errorBox) return;
+
+  function esMontoValido(raw) {
+    const s = raw.trim();
+    if (!s) return false;
+    let numero = null;
+    if (/^\d+(?:[.,]\d{1,2})?$/.test(s)) {
+      numero = Number(s.replace(",", "."));
+    } else if (/^\d{1,3}(?:\.\d{3})*,\d{1,2}$/.test(s)) {
+      numero = Number(s.replace(/\./g, "").replace(",", "."));
+    } else if (/^\d{1,3}(?:,\d{3})*\.\d{1,2}$/.test(s)) {
+      numero = Number(s.replace(/,/g, ""));
+    }
+    return numero !== null && Number.isFinite(numero) && numero > 0 && numero < 1e10;
+  }
+
+  input.addEventListener("blur", function () {
+    const valido = esMontoValido(input.value);
+    errorBox.hidden = valido;
+    if (valido) {
+      input.removeAttribute("aria-invalid");
+    } else {
+      input.setAttribute("aria-invalid", "true");
+    }
+  });
+
+  input.addEventListener("input", function () {
+    if (!errorBox.hidden && esMontoValido(input.value)) {
+      errorBox.hidden = true;
+      input.removeAttribute("aria-invalid");
+    }
+  });
+})();
+</script>
+{% endblock %}

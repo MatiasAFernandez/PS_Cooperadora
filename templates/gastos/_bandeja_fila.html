@@ -20,7 +20,7 @@
                 <p class="bandeja-meta">Solicitud #{{ s.pk }}</p>
                 <h2 id="resumen-titulo-{{ s.pk }}">{{ s.concepto }}</h2>
                 <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
-                {% if s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
+                {% if s.motivo_bandeja and s.estado == "observada" or s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
                     <p><strong>Motivo</strong> {{ s.motivo_bandeja }}</p>
                 {% endif %}
                 <dl>

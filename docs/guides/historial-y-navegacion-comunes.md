@@ -42,6 +42,11 @@ circuito siguen siendo independientes.
   servidor. Un enlace o una capacidad de navegación no sustituye las
   comprobaciones por objeto; observar y corregir siguen dependiendo de su
   permiso y de las condiciones del trámite.
+- #134 incorpora el evento `subsanacion_gasto` («Subsanación de solicitud»)
+  desde `SubsanacionGasto` al historial de gastos. El recorrido sigue el ciclo:
+  operador observa (`observada`) → titular corrige y reenvía (`presentada`) →
+  operador reevalúa; ver detalle en
+  [spec 032](../specs/032-franco-observacion-subsanacion.md).
 
 ## Navegación
 

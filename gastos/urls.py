@@ -6,6 +6,7 @@ from gastos.views import (
     CentroCostoToggleActivoView,
     GestionCatalogosView,
     ReporteCuatrimestralGastosView,
+    SolicitudGastoCorregirView,
     SolicitudGastoCreateView,
     SolicitudGastoDatosTransferenciaView,
     SolicitudGastoDecidirView,
@@ -47,6 +48,7 @@ urlpatterns = [
         name="datos-transferencia",
     ),
     path("<int:pk>/", SolicitudGastoDetailView.as_view(), name="detalle"),
+    path("<int:pk>/corregir/", SolicitudGastoCorregirView.as_view(), name="corregir"),
     path(
         "<int:pk>/documentos/",
         SolicitudGastoDocumentosView.as_view(),

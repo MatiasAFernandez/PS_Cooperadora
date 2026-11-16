@@ -76,6 +76,7 @@ la interfaz institucional. Pruebas técnicas y devolución funcional son evidenc
 | [029](029-franco-correo-nueva-solicitud-gastos.md) | Correo de nueva solicitud de Gastos, estado y reintento | SPEC-028; #127; evolución pendiente en #128 |
 | [030](030-franco-avisos-decision-gastos.md) | Avisos web y correo de decisiones de Gastos al solicitante | SPEC-028/029; #130 |
 | [031](031-franco-avisos-pago-registrado.md) | Avisos del registro inicial de pago externo de Gastos | SPEC-028/029/030; #132 |
+| [032](032-franco-observacion-subsanacion.md) | Observación y subsanación de solicitudes de gasto | RF-003, F-E06, #134 |
 
 La [demo del 29/10/2026](../evidence/demo-2026-10-29.md) aporta necesidades,
 confirmaciones parciales y preguntas abiertas. SPEC-014–018 son cambios

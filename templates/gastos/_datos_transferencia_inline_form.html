@@ -12,7 +12,7 @@
     <div class="sd-form-grid">
         {% for field in detalle_datos_transferencia_form %}
             {% if field.name == "centro_costo" %}
-                <input type="hidden" name="centro_costo" value="{% firstof field.value solicitud.centro_costo.nombre '' %}">
+                <input type="hidden" name="centro_costo" value="{% firstof solicitud.centro_costo.nombre field.value '' %}">
                 {{ field.errors }}
             {% elif field.is_hidden %}
                 {{ field }}

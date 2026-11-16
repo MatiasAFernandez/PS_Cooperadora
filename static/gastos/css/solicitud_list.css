@@ -95,7 +95,7 @@ a.bandeja-concepto:focus-visible { outline: 3px solid #60a5fa; outline-offset: 2
 }
 .bandeja-chip-aceptada, .bandeja-chip-pagada { color: #166534; background: #ecfdf5; border-color: #bbf7d0; }
 .bandeja-chip-rechazada { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
-.bandeja-chip-postergada, .bandeja-chip-pend { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.bandeja-chip-observada, .bandeja-chip-postergada, .bandeja-chip-pend { color: #92400e; background: #fffbeb; border-color: #fde68a; }
 .bandeja-chip-pend { background: #fff; border-style: dashed; }
 .bandeja-chip-pend-err { color: #991b1b; border-color: #fecaca; }
 .bandeja-pendiente { display: block; margin-top: .25rem; color: var(--color-warning); font-weight: 600; }

@@ -46,6 +46,7 @@ from gastos.document_provider import cargar_proveedor_documental
 from gastos.forms import (
     CentroCostoForm,
     ConstanciaATPForm,
+    CorregirSolicitudGastoForm,
     DatosTransferenciaForm,
     DecisionGastoForm,
     DocumentoGastoForm,
@@ -62,7 +63,9 @@ from gastos.models import (
     EstadoSolicitud,
     EventoPagoExterno,
     PagoExterno,
+    SolicitudGasto,
     TipoFlujoGasto,
+    formatear_importe_es_ar,
 )
 from gastos.payments import (
     PaymentConflictError,
@@ -95,13 +98,16 @@ from gastos.services import (
     ExpenseNotFoundError,
     ExpensePermissionDeniedError,
     InvalidDecisionInputError,
+    InvalidSubsanacionInputError,
     InvalidTransitionError,
     actualizar_parametros_atp,
     can_decide_expense,
+    corregir_solicitud_gasto,
     crear_solicitud_gasto,
     decide_expense,
     obtener_alicuota_atp,
     obtener_base_imponible_atp,
+    puede_corregir_solicitud,
     verificar_deuda_documental_solicitante,
 )
 
@@ -634,6 +640,10 @@ class SolicitudGastoListView(View):
             atencion |= sin_pago | sin_atp
         if puede_presentar:
             condiciones_pendiente["deuda"] = Q(pk__in=deuda_ids)
+            condiciones_pendiente["subsanacion"] = Q(
+                estado=EstadoSolicitud.OBSERVADA,
+                solicitante_id=actor.subject_id,
+            )
 
         cualquier_pendiente = Q(pk__in=[])
         for condicion in condiciones_pendiente.values():
@@ -661,6 +671,7 @@ class SolicitudGastoListView(View):
             (clave, etiqueta)
             for clave, etiqueta in (
                 ("decision", "Pendiente de decisión"),
+                ("subsanacion", "Observada para corregir"),
                 ("pago", "Sin pago registrado"),
                 ("atp", "Constancia ATP pendiente"),
                 ("deuda", "Falta factura definitiva"),
@@ -705,6 +716,10 @@ class SolicitudGastoListView(View):
             if s.pk in deuda_ids:
                 s.pendiente_bandeja = "Falta factura definitiva"
                 s.ancla_bandeja = "#seguimiento-factura"
+            elif s.estado == EstadoSolicitud.OBSERVADA and s.solicitante_id == actor.subject_id:
+                s.pendiente_bandeja = "Observada para corregir"
+                s.accion_bandeja = "Corregir solicitud" if puede_presentar else "Ver detalle"
+                s.ancla_bandeja = "#observacion-solicitud"
             elif puede_decidir and s.solicitante_id != actor.subject_id and s.estado in (
                 EstadoSolicitud.PRESENTADA, EstadoSolicitud.POSTERGADA,
             ):
@@ -842,6 +857,10 @@ def _solicitud_detail_context(
     proyeccion_documental = proyectar_documentos(actor, solicitud)
     if proyeccion_documental is not None:
         cronologia.extend(proyeccion_documental.eventos)
+    subsanaciones = solicitud.subsanaciones.select_related(
+        "centro_costo_anterior", "centro_costo_nuevo"
+    ).order_by("fecha", "id")
+    cronologia.extend(subsanacion.como_historial() for subsanacion in subsanaciones)
     cronologia.sort(
         key=lambda evento: (
             evento.fecha_hora is None,
@@ -852,7 +871,7 @@ def _solicitud_detail_context(
 
     acciones_decision = {
         act
-        for act in ("aceptar", "postergar", "rechazar")
+        for act in ("aceptar", "observar", "postergar", "rechazar")
         if can_decide_expense(actor, solicitud, act)
     }
     can_decide = bool(acciones_decision)
@@ -1003,6 +1022,8 @@ def _solicitud_detail_context(
         for v in versiones_vigentes
     )
     detalle_pendientes = []
+    if solicitud.estado == EstadoSolicitud.OBSERVADA and detalle_es_solicitante:
+        detalle_pendientes.append(("Observada para corregir", "#observacion-solicitud"))
     if solicitud.estado == EstadoSolicitud.ACEPTADA:
         if pago_consulta is None:
             detalle_pendientes.append(("Sin pago registrado", "#pago-externo"))
@@ -1170,6 +1191,12 @@ def _solicitud_detail_context(
             else None
         ),
         "detalle_versiones_actuales": detalle_versiones_actuales,
+        "puede_corregir_solicitud": puede_corregir_solicitud(actor, solicitud),
+        "es_titular_observada_sin_permiso": (
+            solicitud.estado == EstadoSolicitud.OBSERVADA
+            and detalle_es_solicitante
+            and not has_capability(actor, "gastos.presentar")
+        ),
     }
 
 
@@ -1194,6 +1221,138 @@ class SolicitudGastoDetailView(View):
                 preseleccionar_reemplaza_id=reemplaza_param,
             ),
         )
+
+
+class SolicitudGastoCorregirView(View):
+    """Permite al titular corregir el subconjunto mínimo de una solicitud observada."""
+
+    template_name = "gastos/solicitud_corregir_form.html"
+
+    def _solicitud_titular_autorizada(
+        self, actor: Any, pk: int
+    ) -> SolicitudGasto:
+        solicitud = get_object_or_404(
+            visible_expenses(actor).select_related("centro_costo"),
+            pk=pk,
+        )
+        if solicitud.solicitante_id != actor.subject_id:
+            raise PermissionDenied("Solo el titular de la solicitud puede corregirla.")
+        if not has_capability(actor, "gastos.presentar"):
+            raise PermissionDenied("El actor no posee la capacidad 'gastos.presentar'.")
+        return solicitud
+
+    def _ultima_observacion(self, solicitud: SolicitudGasto) -> DecisionGasto | None:
+        return (
+            solicitud.decisiones.filter(estado_resultante=EstadoSolicitud.OBSERVADA)
+            .order_by("-fecha", "-id")
+            .first()
+        )
+
+    def _render_form(
+        self,
+        request: HttpRequest,
+        *,
+        solicitud: SolicitudGasto,
+        form: CorregirSolicitudGastoForm,
+        error_subsanacion: str | None = None,
+        status: int = 200,
+    ) -> HttpResponse:
+        return render(
+            request,
+            self.template_name,
+            {
+                "solicitud": solicitud,
+                "form": form,
+                "ultima_observacion": self._ultima_observacion(solicitud),
+                "error_subsanacion": error_subsanacion,
+            },
+            status=status,
+        )
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+
+        solicitud = self._solicitud_titular_autorizada(actor, pk)
+        tiene_pago = PagoExterno.objects.filter(solicitud_id=solicitud.pk).exists()
+        if solicitud.estado != EstadoSolicitud.OBSERVADA or tiene_pago:
+            messages.info(
+                request,
+                "La solicitud no admite correcciones en su estado actual.",
+            )
+            return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
+
+        form = CorregirSolicitudGastoForm(
+            solicitud=solicitud,
+            initial={
+                "version": solicitud.version,
+                "concepto": solicitud.concepto,
+                "monto_estimado": formatear_importe_es_ar(solicitud.monto_estimado),
+                "centro_costo": solicitud.centro_costo_id,
+            },
+        )
+        return self._render_form(request, solicitud=solicitud, form=form)
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+
+        solicitud = self._solicitud_titular_autorizada(actor, pk)
+        form = CorregirSolicitudGastoForm(request.POST, solicitud=solicitud)
+        tiene_pago = PagoExterno.objects.filter(solicitud_id=solicitud.pk).exists()
+        if solicitud.estado != EstadoSolicitud.OBSERVADA or tiene_pago:
+            return self._render_form(
+                request,
+                solicitud=solicitud,
+                form=form,
+                error_subsanacion=(
+                    "No se pudo reenviar la solicitud porque su estado actual no admite "
+                    "subsanación."
+                ),
+                status=409,
+            )
+
+        if not form.is_valid():
+            return self._render_form(request, solicitud=solicitud, form=form, status=400)
+
+        try:
+            corregir_solicitud_gasto(
+                actor=actor,
+                solicitud_id=pk,
+                expected_version=form.cleaned_data["version"],
+                concepto=form.cleaned_data["concepto"],
+                monto_estimado=form.cleaned_data["monto_estimado"],
+                centro_costo=form.cleaned_data["centro_costo"],
+            )
+        except ExpenseNotFoundError as exc:
+            raise Http404("Solicitud inexistente o no visible.") from exc
+        except ExpensePermissionDeniedError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except InvalidSubsanacionInputError as exc:
+            form.add_error(None, str(exc))
+            return self._render_form(request, solicitud=solicitud, form=form, status=400)
+        except (ConcurrencyConflictError, InvalidTransitionError):
+            solicitud.refresh_from_db()
+            return self._render_form(
+                request,
+                solicitud=solicitud,
+                form=form,
+                error_subsanacion=(
+                    "La solicitud cambió mientras editabas. Revisá el estado actual "
+                    "y volvé a intentar sin sobrescribir otros cambios."
+                ),
+                status=409,
+            )
+
+        messages.success(
+            request,
+            "Solicitud corregida y reenviada para evaluación.",
+        )
+        return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
 
 
 class SolicitudGastoDatosTransferenciaView(View):
