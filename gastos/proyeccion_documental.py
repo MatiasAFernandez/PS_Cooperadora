@@ -14,7 +14,7 @@ from comunes.contracts import EventoHistorialDTO
 from documentos.acceso import documentos_visibles
 from documentos.models import Documento, RevisionDocumento
 from gastos.auth import has_capability
-from gastos.models import SolicitudGasto
+from gastos.models import CierreGasto, EstadoSolicitud, SolicitudGasto
 from identidad.services import Actor
 
 CAPACIDAD_CONSULTA_DOCUMENTAL = "documentos.consultar_metadatos"
@@ -235,7 +235,11 @@ def proyectar_respaldos_titular(
         .order_by("fecha_incorporacion", "pk")
     )
 
-    puede_incorporar = has_capability(actor, "documentos.incorporar")
+    puede_incorporar = (
+        has_capability(actor, "documentos.incorporar")
+        and gasto.estado != EstadoSolicitud.RECHAZADA
+        and not CierreGasto.objects.filter(solicitud_id=gasto.pk).exists()
+    )
     respaldos: list[RespaldoTitularProyectado] = []
     for doc in documentos:
         revisiones = getattr(doc, "revisiones_proyectadas", ())

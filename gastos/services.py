@@ -1,5 +1,6 @@
 """Servicios de negocio para el módulo de gastos."""
 
+import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -13,10 +14,12 @@ from django.utils import timezone
 
 from comunes.models import Circuito, TramiteBase
 from documentos.models import Documento, RevisionDocumento
+from documentos.services import bloquear_serie
 from gastos.auth import has_capability
 from gastos.datos_transferencia import validar_datos_transferencia
 from gastos.models import (
     CentroCosto,
+    CierreGasto,
     DecisionGasto,
     EstadoSolicitud,
     PagoExterno,
@@ -47,6 +50,10 @@ class InvalidDecisionInputError(ExpenseError):
 
 class InvalidSubsanacionInputError(ExpenseError):
     """Datos o versión inválidos al subsanar una solicitud observada (HTTP 400)."""
+
+
+class InvalidCierreInputError(ExpenseError):
+    """Observación, huella o versión inválidos al cerrar una solicitud (HTTP 400)."""
 
 
 class ConcurrencyConflictError(ExpenseError):
@@ -354,6 +361,7 @@ def verificar_deuda_documental_solicitante(
             solicitante_id=user_id,
             tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
             pago_externo__isnull=False,
+            cierre__isnull=True,
         )
         .select_related("pago_externo")
         .order_by("pago_externo__fecha_pago", "pk")
@@ -777,3 +785,441 @@ def corregir_solicitud_gasto(
     )
     return solicitud
 
+
+@dataclass(frozen=True, slots=True)
+class PendienteCierreDTO:
+    """Pendiente objetivo que impide cerrar administrativamente una solicitud."""
+
+    codigo: str
+    mensaje: str
+    ancla: str = ""
+    documento_id: int | None = None
+    tipo_accion: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluacionCierreDTO:
+    """Resultado determinista de las precondiciones de cierre para una solicitud."""
+
+    ya_cerrada: bool
+    puede_cerrar: bool
+    pendientes: tuple[PendienteCierreDTO, ...] = ()
+    pago: PagoExterno | None = None
+    documento_fiscal: Documento | None = None
+    revision_fiscal: RevisionDocumento | None = None
+    documento_comprobante_pago: Documento | None = None
+    revision_comprobante_pago: RevisionDocumento | None = None
+    documento_constancia_atp: Documento | None = None
+    revision_constancia_atp: RevisionDocumento | None = None
+    huella_cierre: str = ""
+
+
+def _actor_tiene_metadatos(actor: Any) -> bool:
+    return has_capability(actor, "documentos.consultar_metadatos") or has_capability(
+        actor, "documentos.ver_metadatos"
+    )
+
+
+def _calcular_huella_cierre(
+    *,
+    solicitud: SolicitudGasto,
+    pago: PagoExterno,
+    doc_fiscal: Documento,
+    rev_fiscal: RevisionDocumento,
+    doc_banco: Documento,
+    rev_banco: RevisionDocumento,
+    doc_atp: Documento | None,
+    rev_atp: RevisionDocumento | None,
+) -> str:
+    payload = "|".join(
+        str(x)
+        for x in (
+            solicitud.pk,
+            solicitud.version,
+            pago.version,
+            doc_fiscal.pk,
+            rev_fiscal.pk,
+            doc_banco.pk,
+            rev_banco.pk,
+            doc_atp.pk if doc_atp else 0,
+            rev_atp.pk if rev_atp else 0,
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _evaluar_documento_pago_cierre(
+    doc: Documento | None,
+    *,
+    codigo_base: str,
+    etiqueta: str,
+    mensaje_faltante: str,
+    tipo_accion_faltante: str,
+    ancla_faltante: str,
+) -> tuple[Documento | None, RevisionDocumento | None, PendienteCierreDTO | None]:
+    if doc is None:
+        return (
+            None,
+            None,
+            PendienteCierreDTO(
+                codigo=f"{codigo_base}_faltante",
+                mensaje=mensaje_faltante,
+                ancla=ancla_faltante,
+                tipo_accion=tipo_accion_faltante,
+            ),
+        )
+    if Documento.objects.filter(reemplaza_id=doc.pk).exists():
+        return (
+            None,
+            None,
+            PendienteCierreDTO(
+                codigo=f"{codigo_base}_reemplazado",
+                mensaje=(
+                    f"{etiqueta} fue reemplazado por fuera del pago; rectificá el pago "
+                    "para vincular la versión vigente."
+                ),
+                ancla="#pago-externo",
+                tipo_accion="rectificar_pago",
+            ),
+        )
+    rev = doc.revisiones.order_by("-id").first()
+    if rev is None:
+        return (
+            None,
+            None,
+            PendienteCierreDTO(
+                codigo=f"{codigo_base}_sin_revision",
+                mensaje=f"{etiqueta} pendiente de revisión.",
+                ancla="#pago-externo",
+                documento_id=doc.pk,
+                tipo_accion="revision",
+            ),
+        )
+    if rev.resultado == RevisionDocumento.Resultado.OBSERVADO:
+        return (
+            None,
+            None,
+            PendienteCierreDTO(
+                codigo=f"{codigo_base}_observado",
+                mensaje=f"{etiqueta} observado.",
+                ancla="#pago-externo",
+                documento_id=doc.pk,
+                tipo_accion="revision",
+            ),
+        )
+    if rev.resultado == RevisionDocumento.Resultado.RECHAZADO:
+        return (
+            None,
+            None,
+            PendienteCierreDTO(
+                codigo=f"{codigo_base}_rechazado",
+                mensaje=f"{etiqueta} rechazado.",
+                ancla="#pago-externo",
+                documento_id=doc.pk,
+                tipo_accion="revision",
+            ),
+        )
+    return doc, rev, None
+
+
+def _facturas_vigentes_candidatas(
+    solicitud: SolicitudGasto,
+    pago: PagoExterno | None,
+) -> list[Documento]:
+    ids_pago = {
+        doc_id
+        for doc_id in (
+            pago.comprobante_bancario_id if pago else None,
+            pago.constancia_atp_id if pago else None,
+        )
+        if doc_id is not None
+    }
+    qs = Documento.objects.filter(
+        Q(solicitud_gasto=solicitud) | Q(tramite_base_id=solicitud.tramite_base_id),
+        tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+        sucesor__isnull=True,
+    )
+    if ids_pago:
+        qs = qs.exclude(pk__in=ids_pago)
+    return list(qs.order_by("-id"))
+
+
+def evaluar_requisitos_cierre(
+    solicitud: SolicitudGasto,
+    *,
+    pago: PagoExterno | None = None,
+) -> EvaluacionCierreDTO:
+    """Evalúa de forma determinista las precondiciones de RF-005 para el cierre."""
+    if CierreGasto.objects.filter(solicitud_id=solicitud.pk).exists():
+        return EvaluacionCierreDTO(ya_cerrada=True, puede_cerrar=False)
+
+    pendientes: list[PendienteCierreDTO] = []
+    if solicitud.estado != EstadoSolicitud.ACEPTADA:
+        pendientes.append(
+            PendienteCierreDTO(
+                codigo="estado_no_aceptada",
+                mensaje="La solicitud debe estar en estado Aceptada para poder cerrarse.",
+            )
+        )
+
+    pago_actual = (
+        pago
+        if pago is not None
+        else PagoExterno.objects.filter(solicitud_id=solicitud.pk).first()
+    )
+    if pago_actual is None:
+        pendientes.append(
+            PendienteCierreDTO(
+                codigo="pago_faltante",
+                mensaje="Falta registrar el pago externo.",
+                ancla="#pago-externo",
+                tipo_accion="pago",
+            )
+        )
+
+    facturas_vigentes = _facturas_vigentes_candidatas(solicitud, pago_actual)
+    doc_fiscal: Documento | None = None
+    rev_fiscal: RevisionDocumento | None = None
+    for cand in facturas_vigentes:
+        ultima = cand.revisiones.order_by("-id").first()
+        if ultima is not None and ultima.resultado == RevisionDocumento.Resultado.ACEPTADO:
+            doc_fiscal = cand
+            rev_fiscal = ultima
+            break
+
+    if doc_fiscal is None:
+        if not facturas_vigentes:
+            pendientes.append(
+                PendienteCierreDTO(
+                    codigo="factura_faltante",
+                    mensaje="Falta incorporar la factura de proveedor definitiva.",
+                    ancla="#cargar-respaldo",
+                    tipo_accion="aporte",
+                )
+            )
+        else:
+            reciente = facturas_vigentes[0]
+            rev_reciente = reciente.revisiones.order_by("-id").first()
+            if rev_reciente is None:
+                pendientes.append(
+                    PendienteCierreDTO(
+                        codigo="factura_sin_revision",
+                        mensaje="Factura de proveedor pendiente de revisión.",
+                        ancla="#respaldo-documental",
+                        documento_id=reciente.pk,
+                        tipo_accion="revision",
+                    )
+                )
+            elif rev_reciente.resultado == RevisionDocumento.Resultado.OBSERVADO:
+                pendientes.append(
+                    PendienteCierreDTO(
+                        codigo="factura_observada",
+                        mensaje="Factura de proveedor observada.",
+                        ancla="#respaldo-documental",
+                        documento_id=reciente.pk,
+                        tipo_accion="revision",
+                    )
+                )
+            else:
+                pendientes.append(
+                    PendienteCierreDTO(
+                        codigo="factura_rechazada",
+                        mensaje="Factura de proveedor rechazada.",
+                        ancla="#respaldo-documental",
+                        documento_id=reciente.pk,
+                        tipo_accion="revision",
+                    )
+                )
+
+    doc_banco: Documento | None = None
+    rev_banco: RevisionDocumento | None = None
+    doc_atp: Documento | None = None
+    rev_atp: RevisionDocumento | None = None
+    if pago_actual is not None:
+        doc_banco, rev_banco, err_banco = _evaluar_documento_pago_cierre(
+            pago_actual.comprobante_bancario,
+            codigo_base="comprobante_banco",
+            etiqueta="Comprobante bancario",
+            mensaje_faltante="Falta incorporar el comprobante bancario del pago.",
+            tipo_accion_faltante="rectificar_pago",
+            ancla_faltante="#pago-externo",
+        )
+        if err_banco is not None:
+            pendientes.append(err_banco)
+
+        if pago_actual.monto_retencion_atp > Decimal("0.00"):
+            doc_atp, rev_atp, err_atp = _evaluar_documento_pago_cierre(
+                pago_actual.constancia_atp,
+                codigo_base="constancia_atp",
+                etiqueta="Constancia ATP",
+                mensaje_faltante="Falta incorporar la constancia de retención ATP.",
+                tipo_accion_faltante="atp",
+                ancla_faltante="#pago-externo",
+            )
+            if err_atp is not None:
+                pendientes.append(err_atp)
+
+    puede_cerrar = (
+        not pendientes
+        and pago_actual is not None
+        and doc_fiscal is not None
+        and rev_fiscal is not None
+        and doc_banco is not None
+        and rev_banco is not None
+        and (
+            pago_actual.monto_retencion_atp <= Decimal("0.00")
+            or (doc_atp is not None and rev_atp is not None)
+        )
+    )
+    huella = (
+        _calcular_huella_cierre(
+            solicitud=solicitud,
+            pago=pago_actual,
+            doc_fiscal=doc_fiscal,
+            rev_fiscal=rev_fiscal,
+            doc_banco=doc_banco,
+            rev_banco=rev_banco,
+            doc_atp=doc_atp,
+            rev_atp=rev_atp,
+        )
+        if puede_cerrar
+        else ""
+    )
+    return EvaluacionCierreDTO(
+        ya_cerrada=False,
+        puede_cerrar=puede_cerrar,
+        pendientes=tuple(pendientes),
+        pago=pago_actual,
+        documento_fiscal=doc_fiscal,
+        revision_fiscal=rev_fiscal,
+        documento_comprobante_pago=doc_banco,
+        revision_comprobante_pago=rev_banco,
+        documento_constancia_atp=doc_atp,
+        revision_constancia_atp=rev_atp,
+        huella_cierre=huella,
+    )
+
+
+def puede_cerrar_solicitud(actor: Any, solicitud: SolicitudGasto) -> bool:
+    """Indica si el actor tiene autoridad para acceder al cierre y el trámite es elegible."""
+    if actor is None or solicitud is None:
+        return False
+    if not has_capability(actor, "gastos.cerrar") or not _actor_tiene_metadatos(actor):
+        return False
+    if not visible_expenses(actor).filter(pk=solicitud.pk).exists():
+        return False
+    return evaluar_requisitos_cierre(solicitud).puede_cerrar
+
+
+@transaction.atomic
+def cerrar_solicitud_gasto(
+    *,
+    actor: Any,
+    solicitud_id: int,
+    expected_version: Any,
+    huella_cierre: str | None = None,
+    observacion: Any = "",
+) -> CierreGasto:
+    """Cierra administrativamente un gasto conforme bajo locks canónicos e idempotencia."""
+    if actor is None:
+        raise ExpensePermissionDeniedError("Se requiere un actor autenticado.")
+
+    solicitud_inicial = visible_expenses(actor).filter(pk=solicitud_id).first()
+    if solicitud_inicial is None:
+        raise ExpenseNotFoundError(f"Solicitud #{solicitud_id} no visible o inexistente.")
+
+    if not has_capability(actor, "gastos.cerrar") or not _actor_tiene_metadatos(actor):
+        raise ExpensePermissionDeniedError(
+            "El actor no posee las capacidades requeridas para cerrar solicitudes."
+        )
+
+    version_int = _validar_version_entera(expected_version, InvalidCierreInputError)
+
+    obs_texto = "" if observacion is None else observacion
+    if not isinstance(obs_texto, str) or "\x00" in obs_texto:
+        raise InvalidCierreInputError("La observación debe ser texto válido.")
+    obs_limpia = obs_texto.strip()
+    if len(obs_limpia) > 2000:
+        raise InvalidCierreInputError("La observación no puede superar los 2000 caracteres.")
+
+    if huella_cierre is not None and not isinstance(huella_cierre, str):
+        raise InvalidCierreInputError("La huella de confirmación es inválida.")
+
+    # 1. Lock canónico: SolicitudGasto -> PagoExterno -> raíces documentales ordenadas
+    solicitud = visible_expenses(actor).select_for_update().filter(pk=solicitud_id).first()
+    if solicitud is None:
+        raise ExpenseNotFoundError(f"Solicitud #{solicitud_id} no visible o inexistente.")
+    if not has_capability(actor, "gastos.cerrar") or not _actor_tiene_metadatos(actor):
+        raise ExpensePermissionDeniedError(
+            "El actor no posee las capacidades requeridas para cerrar solicitudes."
+        )
+
+    if CierreGasto.objects.filter(solicitud_id=solicitud.pk).exists():
+        raise InvalidTransitionError("La solicitud ya fue cerrada administrativamente.")
+    if solicitud.estado != EstadoSolicitud.ACEPTADA:
+        raise InvalidTransitionError(
+            f"No se puede cerrar la solicitud desde el estado '{solicitud.estado}'."
+        )
+
+    pago = (
+        PagoExterno.objects.select_for_update(of=("self",))
+        .filter(solicitud_id=solicitud.pk)
+        .first()
+    )
+    if pago is None:
+        raise InvalidTransitionError("La solicitud no tiene un pago externo registrado.")
+
+    docs_a_bloquear: list[Documento] = _facturas_vigentes_candidatas(solicitud, pago)
+    if pago.comprobante_bancario_id:
+        docs_a_bloquear.append(pago.comprobante_bancario)
+    if pago.constancia_atp_id:
+        docs_a_bloquear.append(pago.constancia_atp)
+
+    series_vistas: set[str] = set()
+    for doc in sorted(docs_a_bloquear, key=lambda d: str(d.serie)):
+        serie_str = str(doc.serie)
+        if serie_str not in series_vistas:
+            series_vistas.add(serie_str)
+            bloquear_serie(doc)
+
+    # 2. Reevaluar precondiciones bajo todos los locks
+    evaluacion = evaluar_requisitos_cierre(solicitud, pago=pago)
+    if not evaluacion.puede_cerrar:
+        mensaje = (
+            evaluacion.pendientes[0].mensaje
+            if evaluacion.pendientes
+            else "La solicitud no reúne los requisitos documentales para el cierre."
+        )
+        raise InvalidTransitionError(mensaje)
+
+    # 3. Validar versión esperada y huella de confirmación
+    if solicitud.version != version_int:
+        raise ConcurrencyConflictError(
+            f"Conflicto de concurrencia: versión esperada {version_int}, "
+            f"actual en BD {solicitud.version}."
+        )
+    if huella_cierre is not None and huella_cierre != evaluacion.huella_cierre:
+        raise ConcurrencyConflictError(
+            "La documentación o el pago cambiaron antes de confirmar el cierre."
+        )
+
+    assert evaluacion.documento_fiscal is not None
+    assert evaluacion.revision_fiscal is not None
+    assert evaluacion.documento_comprobante_pago is not None
+    assert evaluacion.revision_comprobante_pago is not None
+
+    cierre = CierreGasto.objects.create(
+        solicitud=solicitud,
+        actor_id=actor.subject_id,
+        observacion=obs_limpia,
+        pago_version=pago.version,
+        documento_fiscal=evaluacion.documento_fiscal,
+        revision_fiscal=evaluacion.revision_fiscal,
+        documento_comprobante_pago=evaluacion.documento_comprobante_pago,
+        revision_comprobante_pago=evaluacion.revision_comprobante_pago,
+        documento_constancia_atp=evaluacion.documento_constancia_atp,
+        revision_constancia_atp=evaluacion.revision_constancia_atp,
+    )
+    solicitud.version += 1
+    solicitud.save(update_fields=["version"])
+    return cierre

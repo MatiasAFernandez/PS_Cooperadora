@@ -14,6 +14,7 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
     "demo_operadora": frozenset({"gastos.consultar_todas", "gastos.decidir"}),
     "demo_lectura": frozenset({"gastos.consultar_todas"}),
     "demo_gastos_pago": frozenset({"gastos.registrar_pago"}),
+    "demo_gastos_cierre": frozenset({"gastos.cerrar"}),
     "demo_facturacion_solicitante": frozenset(
         {
             "facturacion.presentar",

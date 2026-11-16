@@ -51,11 +51,16 @@ def test_reversa_con_historial_no_retira_guarda(escenario_comun):
         resultado="ACEPTADO",
         actor=e.staff,
     )
-    with pytest.raises(DatabaseError, match="Hay revisiones"):
-        MigrationExecutor(connection).migrate([("documentos", "0007_revision_documental")])
-    with pytest.raises(IntegrityError), transaction.atomic():
-        RevisionDocumento.objects.filter(pk=revision.pk).update(resultado="OBSERVADO")
-    assert RevisionDocumento.objects.get(pk=revision.pk).resultado == "ACEPTADO"
+    executor = MigrationExecutor(connection)
+    finales = executor.loader.graph.leaf_nodes()
+    try:
+        with pytest.raises(DatabaseError, match="Hay revisiones"):
+            executor.migrate([("documentos", "0007_revision_documental")])
+        with pytest.raises(IntegrityError), transaction.atomic():
+            RevisionDocumento.objects.filter(pk=revision.pk).update(resultado="OBSERVADO")
+        assert RevisionDocumento.objects.get(pk=revision.pk).resultado == "ACEPTADO"
+    finally:
+        MigrationExecutor(connection).migrate(finales)
 
 
 @pytest.mark.django_db(transaction=True)

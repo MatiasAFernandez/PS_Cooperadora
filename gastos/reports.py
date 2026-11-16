@@ -318,6 +318,7 @@ def obtener_pendientes_actuales_gastos() -> dict[str, Any]:
         SolicitudGasto.objects.filter(
             tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
             pago_externo__isnull=False,
+            cierre__isnull=True,
         )
         .annotate(tiene_factura_valida=Exists(factura_valida))
         .filter(tiene_factura_valida=False)
@@ -329,6 +330,7 @@ def obtener_pendientes_actuales_gastos() -> dict[str, Any]:
     sin_atp = PagoExterno.objects.filter(
         monto_retencion_atp__gt=CERO,
         constancia_atp__isnull=True,
+        solicitud__cierre__isnull=True,
     ).aggregate(
         cantidad=Count("id"),
         monto=Coalesce(Sum("monto_retencion_atp"), CERO),

@@ -47,6 +47,11 @@ circuito siguen siendo independientes.
   operador observa (`observada`) → titular corrige y reenvía (`presentada`) →
   operador reevalúa; ver detalle en
   [spec 032](../specs/032-franco-observacion-subsanacion.md).
+- #136 incorpora el evento `cierre_gasto` («Cierre del trámite») desde
+  `CierreGasto` al historial de gastos sin exponer nombres ni identificadores de
+  documentos; requiere pago externo registrado y documentación obligatoria
+  vigente revisada como `ACEPTADO`. Ver detalle en
+  [spec 033](../specs/033-franco-cierre-gasto.md).
 
 ## Navegación
 
