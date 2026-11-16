@@ -19,9 +19,11 @@ from gastos.models import (
     CentroCosto,
     DecisionGasto,
     EstadoSolicitud,
+    PagoExterno,
     ParametroOperativo,
     RevisionDatosTransferencia,
     SolicitudGasto,
+    SubsanacionGasto,
     TipoFlujoGasto,
 )
 from gastos.queries import visible_expenses
@@ -41,6 +43,10 @@ class ExpensePermissionDeniedError(ExpenseError):
 
 class InvalidDecisionInputError(ExpenseError):
     """Acción, versión o motivo inválidos validados dentro del servicio (HTTP 400)."""
+
+
+class InvalidSubsanacionInputError(ExpenseError):
+    """Datos o versión inválidos al subsanar una solicitud observada (HTTP 400)."""
 
 
 class ConcurrencyConflictError(ExpenseError):
@@ -78,7 +84,7 @@ def can_decide_expense(actor: Any, expense: SolicitudGasto, action: str) -> bool
     if actor is None or not action:
         return False
 
-    if action not in {"aceptar", "postergar", "rechazar"}:
+    if action not in {"aceptar", "observar", "postergar", "rechazar"}:
         return False
 
     if not has_capability(actor, "gastos.decidir"):
@@ -92,15 +98,35 @@ def can_decide_expense(actor: Any, expense: SolicitudGasto, action: str) -> bool
     if not visible_expenses(actor).filter(pk=expense.pk).exists():
         return False
 
-    # Matriz de transiciones permitidas (SPEC-001)
+    # Matriz de transiciones permitidas
     if expense.estado == EstadoSolicitud.PRESENTADA:
-        return action in {"aceptar", "postergar", "rechazar"}
+        return action in {"aceptar", "observar", "postergar", "rechazar"}
 
     if expense.estado == EstadoSolicitud.POSTERGADA:
-        return action in {"aceptar", "rechazar"}
+        return action in {"aceptar", "observar", "rechazar"}
 
-    # Estados ACEPTADA y RECHAZADA son terminales en I1
+    # Estados OBSERVADA, ACEPTADA y RECHAZADA no admiten decisión del operador
     return False
+
+
+def _validar_version_entera(expected_version: Any, exc_cls: type[ExpenseError]) -> int:
+    """Valida que expected_version sea un entero no negativo sin truncar ni aceptar bool."""
+    if isinstance(expected_version, bool) or expected_version is None:
+        raise exc_cls("La versión esperada debe ser un entero no negativo.")
+
+    if isinstance(expected_version, str):
+        val = expected_version.strip()
+        if not (val.isascii() and val.isdigit()):
+            raise exc_cls("La versión esperada debe ser un entero no negativo.")
+        try:
+            return int(val)
+        except ValueError:
+            raise exc_cls("La versión esperada debe ser un entero no negativo.") from None
+    if isinstance(expected_version, int) and not isinstance(expected_version, bool):
+        if expected_version < 0:
+            raise exc_cls("La versión esperada debe ser un entero no negativo.")
+        return expected_version
+    raise exc_cls("La versión esperada debe ser un entero no negativo.")
 
 
 def validate_decision_content(
@@ -109,48 +135,18 @@ def validate_decision_content(
     expected_version: Any,
     motivo: Any,
 ) -> tuple[str, int, str]:
-    """Valida acción, versión y motivo dentro del servicio tras verificar acceso.
-
-    Reglas estrictas de validación:
-    - Acción: debe pertenecer exactamente a {'aceptar', 'postergar', 'rechazar'}.
-    - Versión: debe ser estrictamente un entero no negativo. No trunca fracciones
-      ni acepta booleanos mediante int() (en Python bool es subclase de int).
-    - Motivo: obligatorio para 'postergar' y 'rechazar'; no puede ser vacío ni contener
-      únicamente espacios en blanco. Opcional para 'aceptar'.
-    """
-    if action not in {"aceptar", "postergar", "rechazar"}:
+    """Valida acción, versión y motivo dentro del servicio tras verificar acceso."""
+    if action not in {"aceptar", "observar", "postergar", "rechazar"}:
         raise InvalidDecisionInputError(f"Acción de decisión desconocida: '{action}'.")
 
-    # Validación rigurosa de versión entera no negativa
-    if isinstance(expected_version, bool) or expected_version is None:
-        raise InvalidDecisionInputError("La versión esperada debe ser un entero no negativo.")
-
-    if isinstance(expected_version, str):
-        val = expected_version.strip()
-        # Rechaza dígitos no ASCII (ej: '²' U+00B2) y cadenas no numéricas
-        if not (val.isascii() and val.isdigit()):
-            raise InvalidDecisionInputError("La versión esperada debe ser un entero no negativo.")
-        try:
-            version_int = int(val)
-        except ValueError:
-            # Captura límites de conversión de Python (ej: >4300 dígitos)
-            raise InvalidDecisionInputError(
-                "La versión esperada debe ser un entero no negativo."
-            ) from None
-    elif isinstance(expected_version, int) and not isinstance(expected_version, bool):
-        if expected_version < 0:
-            raise InvalidDecisionInputError("La versión esperada debe ser un entero no negativo.")
-        version_int = expected_version
-    else:
-        # Rechaza flotantes (no trunca fracciones), estructuras y objetos no enteros
-        raise InvalidDecisionInputError("La versión esperada debe ser un entero no negativo.")
+    version_int = _validar_version_entera(expected_version, InvalidDecisionInputError)
 
     motivo_raw = str(motivo) if motivo is not None else ""
     if "\x00" in motivo_raw:
         raise InvalidDecisionInputError("El motivo no puede contener caracteres nulos (NUL).")
 
     motivo_limpio = motivo_raw.strip()
-    if action in {"postergar", "rechazar"} and not motivo_limpio:
+    if action in {"observar", "postergar", "rechazar"} and not motivo_limpio:
         raise InvalidDecisionInputError(
             f"El motivo es obligatorio para la acción '{action}' y no puede contener sólo espacios."
         )
@@ -217,12 +213,13 @@ def decide_expense(
     # 5. Comprobación de transición permitida sobre el estado actual bloqueado
     mapa_estados = {
         "aceptar": EstadoSolicitud.ACEPTADA,
+        "observar": EstadoSolicitud.OBSERVADA,
         "postergar": EstadoSolicitud.POSTERGADA,
         "rechazar": EstadoSolicitud.RECHAZADA,
     }
     transiciones_validas = {
-        EstadoSolicitud.PRESENTADA: {"aceptar", "postergar", "rechazar"},
-        EstadoSolicitud.POSTERGADA: {"aceptar", "rechazar"},
+        EstadoSolicitud.PRESENTADA: {"aceptar", "observar", "postergar", "rechazar"},
+        EstadoSolicitud.POSTERGADA: {"aceptar", "observar", "rechazar"},
     }
     acciones_permitidas = transiciones_validas.get(solicitud.estado, set())
     if valid_action not in acciones_permitidas:
@@ -610,4 +607,173 @@ def actualizar_parametros_atp(
         descripcion="Alícuota porcentual por defecto para retención ATP",
     )
     return p_base, p_alicuota
+
+
+def puede_corregir_solicitud(actor: Any, solicitud: SolicitudGasto | None) -> bool:
+    """Indica si el titular efectivo puede corregir y reenviar una solicitud observada."""
+    if actor is None or solicitud is None:
+        return False
+    if solicitud.solicitante_id != actor.subject_id:
+        return False
+    if not has_capability(actor, "gastos.presentar"):
+        return False
+    if solicitud.estado != EstadoSolicitud.OBSERVADA:
+        return False
+    if PagoExterno.objects.filter(solicitud_id=solicitud.pk).exists():
+        return False
+    return visible_expenses(actor).filter(pk=solicitud.pk).exists()
+
+
+def _validar_centro_costo_subsanacion(
+    centro_costo: Any,
+    centro_actual_id: int | None,
+) -> CentroCosto | None:
+    """Valida que el centro de costo sea None, activo o el ya asignado a la solicitud."""
+    if centro_costo is None or centro_costo == "":
+        return None
+    if isinstance(centro_costo, CentroCosto):
+        obj = centro_costo
+    else:
+        try:
+            cc_id = int(str(centro_costo).strip())
+        except (TypeError, ValueError) as exc:
+            raise InvalidSubsanacionInputError("El centro de costo indicado no es válido.") from exc
+        obj = CentroCosto.objects.filter(pk=cc_id).first()
+        if obj is None:
+            raise InvalidSubsanacionInputError("El centro de costo seleccionado no existe.")
+    if not obj.activo and obj.pk != centro_actual_id:
+        raise InvalidSubsanacionInputError(
+            "El centro de costo seleccionado se encuentra inactivo."
+        )
+    return obj
+
+
+@transaction.atomic
+def corregir_solicitud_gasto(
+    *,
+    actor: Any,
+    solicitud_id: int,
+    expected_version: Any,
+    concepto: Any,
+    monto_estimado: Any,
+    centro_costo: Any = None,
+) -> SolicitudGasto:
+    """Subsanación atómica por el titular de una solicitud observada.
+
+    Orden de guardas:
+    1. Actor autenticado y visibilidad (404 si ajena/inexistente).
+    2. Titularidad efectiva y capacidad 'gastos.presentar' (403).
+    3. Estado OBSERVADA, ausencia de PagoExterno y última decisión OBSERVADA sin subsanar (409).
+    4. Validación de versión y campos editables (400).
+    5. Control de concurrencia optimista por versión (409).
+    6. Actualización de SolicitudGasto, TramiteBase y creación de SubsanacionGasto.
+    """
+    if actor is None:
+        raise ExpensePermissionDeniedError("Se requiere un actor autenticado.")
+
+    solicitud = (
+        visible_expenses(actor)
+        .select_for_update()
+        .filter(pk=solicitud_id)
+        .first()
+    )
+    if solicitud is None:
+        raise ExpenseNotFoundError(f"Solicitud #{solicitud_id} no visible o inexistente.")
+
+    if solicitud.solicitante_id != actor.subject_id:
+        raise ExpensePermissionDeniedError(
+            "Solo el titular de la solicitud puede corregirla."
+        )
+    if not has_capability(actor, "gastos.presentar"):
+        raise ExpensePermissionDeniedError(
+            "El actor no posee la capacidad 'gastos.presentar'."
+        )
+
+    if solicitud.estado != EstadoSolicitud.OBSERVADA:
+        raise InvalidTransitionError(
+            f"Solo se pueden corregir solicitudes observadas (estado actual: '{solicitud.estado}')."
+        )
+    if PagoExterno.objects.filter(solicitud_id=solicitud.pk).exists():
+        raise InvalidTransitionError(
+            "No se puede corregir una solicitud que ya registra un pago externo."
+        )
+
+    ultima_decision = solicitud.decisiones.order_by("-fecha", "-id").first()
+    if (
+        ultima_decision is None
+        or ultima_decision.solicitud_id != solicitud.pk
+        or ultima_decision.estado_resultante != EstadoSolicitud.OBSERVADA
+        or SubsanacionGasto.objects.filter(decision_observacion=ultima_decision).exists()
+    ):
+        raise InvalidTransitionError(
+            "No existe una observación vigente pendiente de subsanar para esta solicitud."
+        )
+
+    version_int = _validar_version_entera(expected_version, InvalidSubsanacionInputError)
+
+    concepto_raw = "" if concepto is None else str(concepto)
+    if "\x00" in concepto_raw:
+        raise InvalidSubsanacionInputError("El concepto no puede contener caracteres nulos.")
+    concepto_limpio = concepto_raw.strip()
+    if not concepto_limpio:
+        raise InvalidSubsanacionInputError("El concepto o justificación es obligatorio.")
+    if len(concepto_limpio) > 255:
+        raise InvalidSubsanacionInputError("El concepto no puede superar los 255 caracteres.")
+
+    if isinstance(monto_estimado, bool) or monto_estimado is None:
+        raise InvalidSubsanacionInputError("El importe estimado debe ser un monto positivo en ARS.")
+    try:
+        monto_dec = Decimal(str(monto_estimado).strip())
+    except (InvalidOperation, ValueError) as exc:
+        raise InvalidSubsanacionInputError(
+            "El importe estimado debe ser un monto válido en ARS."
+        ) from exc
+    if not monto_dec.is_finite() or monto_dec <= Decimal("0") or monto_dec.as_tuple().exponent < -2:
+        raise InvalidSubsanacionInputError(
+            "El importe estimado debe ser positivo con hasta dos decimales."
+        )
+    if monto_dec > Decimal("9999999999.99"):
+        raise InvalidSubsanacionInputError("El importe estimado excede el máximo permitido.")
+
+    centro_nuevo = _validar_centro_costo_subsanacion(centro_costo, solicitud.centro_costo_id)
+
+    if solicitud.version != version_int:
+        raise ConcurrencyConflictError(
+            f"Conflicto de concurrencia: versión esperada {version_int}, "
+            f"actual en BD {solicitud.version}."
+        )
+
+    concepto_anterior = solicitud.concepto
+    monto_anterior = solicitud.monto_estimado
+    centro_anterior = solicitud.centro_costo
+
+    solicitud.concepto = concepto_limpio
+    solicitud.monto_estimado = monto_dec.quantize(Decimal("0.01"))
+    solicitud.centro_costo = centro_nuevo
+    solicitud.estado = EstadoSolicitud.PRESENTADA
+    solicitud.version += 1
+    solicitud.save(
+        update_fields=["concepto", "monto_estimado", "centro_costo", "estado", "version"]
+    )
+
+    tramite_base = solicitud.tramite_base
+    nuevo_codigo = centro_nuevo.codigo[:50] if centro_nuevo else None
+    if tramite_base.centro_costo_codigo != nuevo_codigo:
+        tramite_base.centro_costo_codigo = nuevo_codigo
+        tramite_base.save(update_fields=["centro_costo_codigo"])
+
+    SubsanacionGasto.objects.create(
+        solicitud=solicitud,
+        decision_observacion=ultima_decision,
+        autor_id=actor.subject_id,
+        concepto_anterior=concepto_anterior,
+        concepto_nuevo=solicitud.concepto,
+        monto_anterior=monto_anterior,
+        monto_nuevo=solicitud.monto_estimado,
+        centro_costo_anterior=centro_anterior,
+        centro_costo_nuevo=centro_nuevo,
+        estado_anterior=EstadoSolicitud.OBSERVADA,
+        estado_resultante=EstadoSolicitud.PRESENTADA,
+    )
+    return solicitud
 

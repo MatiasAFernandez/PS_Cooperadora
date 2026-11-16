@@ -16,6 +16,7 @@ from comunes.models import Circuito, TramiteBase
 
 class EstadoSolicitud(models.TextChoices):
     PRESENTADA = "presentada", "Presentada"
+    OBSERVADA = "observada", "Observada"
     ACEPTADA = "aceptada", "Aceptada"
     POSTERGADA = "postergada", "Postergada"
     RECHAZADA = "rechazada", "Rechazada"
@@ -330,7 +331,7 @@ class DecisionGasto(models.Model):
         default="",
         help_text=(
             "Justificación de la decisión "
-            "(obligatoria en postergación y rechazo; opcional en aceptación)."
+            "(obligatoria en observación, postergación y rechazo; opcional en aceptación)."
         ),
     )
     estado_anterior = models.CharField(
@@ -1082,4 +1083,140 @@ class ParametroOperativo(models.Model):
     def __str__(self) -> str:
         valor = self.valor_decimal if self.valor_decimal is not None else self.valor_texto
         return f"{self.clave}: {valor}"
+
+
+class SubsanacionGastoQuerySet(models.QuerySet):
+    """QuerySet que impide modificar o borrar subsanaciones ya registradas."""
+
+    def update(self, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar una Subsanación de gasto existente.")
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar Subsanaciones de gasto en lote.")
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar Subsanaciones de gasto.")
+
+
+class SubsanacionGasto(models.Model):
+    """Registro inmutable de corrección y reenvío de una solicitud observada."""
+
+    solicitud = models.ForeignKey(
+        SolicitudGasto,
+        on_delete=models.CASCADE,
+        related_name="subsanaciones",
+        help_text="Solicitud de gasto subsanada.",
+    )
+    decision_observacion = models.OneToOneField(
+        DecisionGasto,
+        on_delete=models.PROTECT,
+        related_name="subsanacion",
+        help_text="Decisión de observación que originó esta subsanación (1:1).",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="subsanaciones_gasto",
+        help_text="Titular que realizó la subsanación.",
+    )
+    fecha = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora fijadas por el servidor al subsanar.",
+    )
+    concepto_anterior = models.CharField(max_length=255)
+    concepto_nuevo = models.CharField(max_length=255)
+    monto_anterior = models.DecimalField(max_digits=12, decimal_places=2)
+    monto_nuevo = models.DecimalField(max_digits=12, decimal_places=2)
+    centro_costo_anterior = models.ForeignKey(
+        CentroCosto,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    centro_costo_nuevo = models.ForeignKey(
+        CentroCosto,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    estado_anterior = models.CharField(
+        max_length=20,
+        choices=EstadoSolicitud.choices,
+        default=EstadoSolicitud.OBSERVADA,
+    )
+    estado_resultante = models.CharField(
+        max_length=20,
+        choices=EstadoSolicitud.choices,
+        default=EstadoSolicitud.PRESENTADA,
+    )
+
+    objects = SubsanacionGastoQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Subsanación de gasto"
+        verbose_name_plural = "Subsanaciones de gasto"
+        ordering = ["fecha", "id"]
+        indexes = [
+            models.Index(fields=["solicitud", "fecha"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(monto_anterior__gt=0),
+                name="subsanacion_monto_anterior_positivo",
+            ),
+            models.CheckConstraint(
+                condition=Q(monto_nuevo__gt=0),
+                name="subsanacion_monto_nuevo_positivo",
+            ),
+            models.CheckConstraint(
+                condition=~Q(concepto_anterior=""),
+                name="subsanacion_concepto_anterior_no_vacio",
+            ),
+            models.CheckConstraint(
+                condition=~Q(concepto_nuevo=""),
+                name="subsanacion_concepto_nuevo_no_vacio",
+            ),
+            models.CheckConstraint(
+                condition=Q(estado_anterior=EstadoSolicitud.OBSERVADA),
+                name="subsanacion_estado_anterior_observada",
+            ),
+            models.CheckConstraint(
+                condition=Q(estado_resultante=EstadoSolicitud.PRESENTADA),
+                name="subsanacion_estado_resultante_presentada",
+            ),
+        ]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise IntegrityError("Cada subsanación de gasto es inmutable.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar una subsanación de gasto.")
+
+    def __str__(self) -> str:
+        return f"Subsanación #{self.pk} sobre Solicitud #{self.solicitud_id}"
+
+    def como_historial(self) -> EventoHistorialDTO:
+        """Adapta la subsanación al contrato de lectura común con valores es-AR."""
+        cc_ant = self.centro_costo_anterior.nombre if self.centro_costo_anterior else "Sin asignar"
+        cc_nvo = self.centro_costo_nuevo.nombre if self.centro_costo_nuevo else "Sin asignar"
+        monto_ant = formatear_importe_es_ar(self.monto_anterior)
+        monto_nvo = formatear_importe_es_ar(self.monto_nuevo)
+        detalle = (
+            f"Concepto: «{self.concepto_anterior}» → «{self.concepto_nuevo}». "
+            f"Monto estimado: $ {monto_ant} → $ {monto_nvo}. "
+            f"Centro de costo: {cc_ant} → {cc_nvo}."
+        )
+        return EventoHistorialDTO(
+            evento_id=self.pk,
+            tramite_ref=f"gastos:{self.solicitud_id}",
+            tipo_evento="subsanacion_gasto",
+            actor_id=str(self.autor_id),
+            fecha_hora=self.fecha,
+            estado_resultante=self.estado_resultante,
+            motivo_o_detalle=detalle,
+        )
 

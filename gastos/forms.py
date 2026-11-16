@@ -8,6 +8,7 @@ from typing import Any
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.db.models import Q
 
 from comunes.filtros import FiltroFechaForm
 from documentos.models import Documento
@@ -327,6 +328,7 @@ class DecisionGastoForm(forms.Form):
     action = forms.ChoiceField(
         choices=[
             ("aceptar", "Aceptar"),
+            ("observar", "Observar"),
             ("postergar", "Postergar"),
             ("rechazar", "Rechazar"),
         ],
@@ -340,11 +342,67 @@ class DecisionGastoForm(forms.Form):
                 "class": "form-control",
                 "rows": 3,
                 "placeholder": (
-                    "Ingrese el motivo de la decisión (obligatorio para postergar o rechazar)..."
+                    "Ingrese el motivo de la decisión "
+                    "(obligatorio para observar, postergar o rechazar)..."
                 ),
             }
         ),
     )
+
+
+class CorregirSolicitudGastoForm(forms.Form):
+    """Formulario de subsanación para el subconjunto mínimo permitido de SolicitudGasto."""
+
+    version = forms.CharField(widget=forms.HiddenInput())
+    concepto = forms.CharField(
+        label="Concepto / justificación",
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Ej: Insumos de laboratorio para cátedra",
+            }
+        ),
+    )
+    monto_estimado = MontoMonetarioField(
+        label="Importe estimado · ARS",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "inputmode": "decimal",
+                "placeholder": "0,00",
+            }
+        ),
+    )
+    centro_costo = forms.ModelChoiceField(
+        label="Centro de costo",
+        queryset=CentroCosto.objects.none(),
+        required=False,
+        empty_label="-- Sin centro de costo --",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    def __init__(self, *args: Any, solicitud: SolicitudGasto, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if solicitud.centro_costo_id:
+            qs = CentroCosto.objects.filter(
+                Q(activo=True) | Q(pk=solicitud.centro_costo_id)
+            )
+        else:
+            qs = CentroCosto.objects.filter(activo=True)
+        self.fields["centro_costo"].queryset = qs.order_by("nombre")
+
+    def clean_concepto(self) -> str:
+        concepto = (self.cleaned_data.get("concepto") or "").strip()
+        if not concepto:
+            raise ValidationError("El concepto o justificación es obligatorio.")
+        return concepto
+
+    def clean_monto_estimado(self) -> Decimal:
+        monto = self.cleaned_data.get("monto_estimado")
+        if monto is None or monto <= Decimal("0"):
+            raise ValidationError("El importe estimado debe ser un monto positivo en ARS.")
+        return monto
 
 
 class DocumentoGastoForm(forms.Form):

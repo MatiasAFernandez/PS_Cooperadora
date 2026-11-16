@@ -27,6 +27,8 @@
                     <span class="sd-pill sd-pill-success">{% if pago_consulta %}Pagada{% else %}{{ solicitud.get_estado_display }}{% endif %}</span>
                 {% elif solicitud.estado == "rechazada" or solicitud.estado == "RECHAZADA" %}
                     <span class="sd-pill sd-pill-error">{{ solicitud.get_estado_display }}</span>
+                {% elif solicitud.estado == "observada" or solicitud.estado == "OBSERVADA" %}
+                    <span class="sd-pill sd-pill-warning">{{ solicitud.get_estado_display }}</span>
                 {% elif solicitud.estado == "cancelada" or solicitud.estado == "CANCELADA" %}
                     <span class="sd-pill sd-pill-neutral">{{ solicitud.get_estado_display }}</span>
                 {% else %}
@@ -66,13 +68,22 @@
         <p class="sd-pending"><span class="sd-pill sd-pill-success">✓ Trámite al día</span></p>
         {% endif %}
     </header>
-    {% if ultima_decision and solicitud.estado == "postergada" or ultima_decision and solicitud.estado == "rechazada" %}
-    <section class="sd-alert {% if solicitud.estado == 'postergada' %}sd-alert-warning{% else %}sd-alert-error{% endif %}" aria-labelledby="ultima-decision-heading">
+    {% if ultima_decision and solicitud.estado == "observada" or ultima_decision and solicitud.estado == "postergada" or ultima_decision and solicitud.estado == "rechazada" %}
+    <section id="observacion-solicitud" class="sd-alert {% if solicitud.estado == 'observada' or solicitud.estado == 'postergada' %}sd-alert-warning{% else %}sd-alert-error{% endif %}" aria-labelledby="ultima-decision-heading">
         <h2 id="ultima-decision-heading" class="sd-h2">
-            {% if solicitud.estado == "postergada" %}Solicitud postergada{% else %}Solicitud rechazada{% endif %}
+            {% if solicitud.estado == "observada" %}Solicitud observada{% elif solicitud.estado == "postergada" %}Solicitud postergada{% else %}Solicitud rechazada{% endif %}
         </h2>
         <p class="sd-small">{{ ultima_decision.fecha|date:"d/m/Y H:i" }}</p>
         <p><strong>Motivo:</strong> {{ ultima_decision.motivo }}</p>
+        {% if solicitud.estado == "observada" %}
+            {% if puede_corregir_solicitud %}
+                <div class="sd-actions">
+                    <a class="sd-btn sd-btn-primary" href="{% url 'gastos:corregir' pk=solicitud.pk %}">Corregir solicitud</a>
+                </div>
+            {% elif es_titular_observada_sin_permiso %}
+                <p class="sd-small">No tenés permiso para corregir y reenviar solicitudes (<code>gastos.presentar</code>).</p>
+            {% endif %}
+        {% endif %}
     </section>
     {% endif %}
 
@@ -96,13 +107,16 @@
                     <input type="hidden" name="version" value="{{ solicitud.version }}">
                     <div class="sd-field">
                         <label for="id_motivo">Motivo / justificación</label>
-                        <textarea name="motivo" id="id_motivo" rows="3" placeholder="{% if 'postergar' in acciones_decision %}Obligatorio para postergar o rechazar.{% else %}Obligatorio para rechazar.{% endif %} Opcional para aceptar."{% if field_error %} aria-invalid="true" aria-describedby="id_motivo_error"{% endif %}>{{ decision_form.motivo.value|default:'' }}</textarea>
+                        <textarea name="motivo" id="id_motivo" rows="3" placeholder="{% if 'observar' in acciones_decision and 'postergar' in acciones_decision %}Obligatorio para observar, postergar o rechazar.{% elif 'observar' in acciones_decision %}Obligatorio para observar o rechazar.{% elif 'postergar' in acciones_decision %}Obligatorio para postergar o rechazar.{% else %}Obligatorio para rechazar.{% endif %} Opcional para aceptar."{% if field_error %} aria-invalid="true" aria-describedby="id_motivo_error"{% endif %}>{{ decision_form.motivo.value|default:'' }}</textarea>
                         {% if field_error %}
                             <div id="id_motivo_error" class="sd-field-error"{% if not error_decision or error_decision == field_error %} data-detail-decision-error tabindex="-1"{% endif %}>{{ field_error }}</div>
                         {% endif %}
                     </div>
                     <div class="sd-actions">
                         <button type="submit" name="action" value="aceptar" class="sd-btn sd-btn-accept">Aceptar</button>
+                        {% if 'observar' in acciones_decision %}
+                        <button type="submit" name="action" value="observar" class="sd-btn sd-btn-hold">Observar</button>
+                        {% endif %}
                         {% if 'postergar' in acciones_decision %}
                         <button type="submit" name="action" value="postergar" class="sd-btn sd-btn-hold">Postergar</button>
                         {% endif %}

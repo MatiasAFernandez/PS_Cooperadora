@@ -3,6 +3,8 @@
             <strong>
                 {% if evento.tipo_evento == "decision_gasto" %}
                     Decisión de gasto
+                {% elif evento.tipo_evento == "subsanacion_gasto" %}
+                    Subsanación de solicitud
                 {% elif evento.tipo_evento == "pago_externo_registrado" %}
                     Pago externo registrado
                 {% elif evento.tipo_evento == "aporte_documental" %}

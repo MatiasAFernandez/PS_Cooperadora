@@ -47,7 +47,7 @@
                         <dt>Correo para el comprobante</dt>
                         <dd>{{ datos_transferencia_actual.correo_comprobante }}</dd>
                         <dt>Centro de costo informado</dt>
-                        <dd>{{ datos_transferencia_actual.centro_costo }}</dd>
+                        <dd>{% firstof solicitud.centro_costo.nombre datos_transferencia_actual.centro_costo %}</dd>
                     </dl>
                 {% else %}
                     <p class="rp-small">La solicitud no tiene datos de transferencia informados.</p>
