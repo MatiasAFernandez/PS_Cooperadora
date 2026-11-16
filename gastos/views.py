@@ -45,6 +45,7 @@ from gastos.datos_transferencia import (
 from gastos.document_provider import cargar_proveedor_documental
 from gastos.forms import (
     CentroCostoForm,
+    CerrarSolicitudGastoForm,
     ConstanciaATPForm,
     CorregirSolicitudGastoForm,
     DatosTransferenciaForm,
@@ -59,6 +60,7 @@ from gastos.forms import (
 )
 from gastos.models import (
     CentroCosto,
+    CierreGasto,
     DecisionGasto,
     EstadoSolicitud,
     EventoPagoExterno,
@@ -97,16 +99,20 @@ from gastos.services import (
     DeudaDocumentalBloqueoError,
     ExpenseNotFoundError,
     ExpensePermissionDeniedError,
+    InvalidCierreInputError,
     InvalidDecisionInputError,
     InvalidSubsanacionInputError,
     InvalidTransitionError,
     actualizar_parametros_atp,
     can_decide_expense,
+    cerrar_solicitud_gasto,
     corregir_solicitud_gasto,
     crear_solicitud_gasto,
     decide_expense,
+    evaluar_requisitos_cierre,
     obtener_alicuota_atp,
     obtener_base_imponible_atp,
+    puede_cerrar_solicitud,
     puede_corregir_solicitud,
     verificar_deuda_documental_solicitante,
 )
@@ -656,7 +662,9 @@ class SolicitudGastoListView(View):
             base_solicitudes.filter(atencion).count() if ofrece_atencion else None
         )
 
-        solicitudes = base_solicitudes.select_related("centro_costo", "pago_externo")
+        solicitudes = base_solicitudes.select_related(
+            "centro_costo", "pago_externo", "cierre"
+        )
         solo_atencion = vista_rapida and request.GET.get("atencion") == "1"
         if solo_atencion:
             solicitudes = solicitudes.filter(atencion)
@@ -709,10 +717,13 @@ class SolicitudGastoListView(View):
             s.accion_bandeja = "Ver detalle"
             s.ancla_bandeja = ""
             s.pendiente_bandeja = ""
+            s.cerrada_bandeja = getattr(s, "cierre", None) is not None
             s.pagada_bandeja = (
                 s.estado == EstadoSolicitud.ACEPTADA
                 and getattr(s, "pago_externo", None) is not None
             )
+            if s.cerrada_bandeja:
+                continue
             if s.pk in deuda_ids:
                 s.pendiente_bandeja = "Falta factura definitiva"
                 s.ancla_bandeja = "#seguimiento-factura"
@@ -861,6 +872,22 @@ def _solicitud_detail_context(
         "centro_costo_anterior", "centro_costo_nuevo"
     ).order_by("fecha", "id")
     cronologia.extend(subsanacion.como_historial() for subsanacion in subsanaciones)
+    cierre = (
+        CierreGasto.objects.filter(solicitud_id=solicitud.pk)
+        .select_related(
+            "actor",
+            "documento_fiscal",
+            "revision_fiscal",
+            "documento_comprobante_pago",
+            "revision_comprobante_pago",
+            "documento_constancia_atp",
+            "revision_constancia_atp",
+        )
+        .first()
+    )
+    tiene_cierre = cierre is not None
+    if cierre is not None:
+        cronologia.append(cierre.como_historial())
     cronologia.sort(
         key=lambda evento: (
             evento.fecha_hora is None,
@@ -951,10 +978,20 @@ def _solicitud_detail_context(
 
     factura_vigente = None
     if proyeccion_documental is not None:
-        for version in proyeccion_documental.versiones:
-            if version.vigente and version.tipo == Documento.Tipo.FACTURA_PROVEEDOR:
+        facturas_proyectadas = [
+            version
+            for version in reversed(proyeccion_documental.versiones)
+            if version.vigente and version.tipo == Documento.Tipo.FACTURA_PROVEEDOR
+        ]
+        for version in facturas_proyectadas:
+            if (
+                version.revision_actual is not None
+                and version.revision_actual.resultado == "ACEPTADO"
+            ):
                 factura_vigente = version
                 break
+        if factura_vigente is None and facturas_proyectadas:
+            factura_vigente = facturas_proyectadas[0]
 
     def importe_ars(valor: Decimal | None) -> str:
         if valor is None:
@@ -1054,21 +1091,9 @@ def _solicitud_detail_context(
         detalle_pendientes.append(("Revisión documental pendiente", "#respaldo-documental"))
 
     evidencia_documental_suficiente = (
-        (
-            respaldo_categoria == "factura"
-            and any(
-                v.tipo in (Documento.Tipo.FACTURA_PROVEEDOR, Documento.Tipo.TICKET_NO_FISCAL)
-                and v.revision_actual is not None
-                and v.revision_actual.resultado == "ACEPTADO"
-                for v in versiones_vigentes
-            )
-        )
-        or (
-            respaldo_categoria == "presupuesto"
-            and factura_vigente is not None
-            and factura_vigente.revision_actual is not None
-            and factura_vigente.revision_actual.resultado == "ACEPTADO"
-        )
+        factura_vigente is not None
+        and factura_vigente.revision_actual is not None
+        and factura_vigente.revision_actual.resultado == "ACEPTADO"
     )
     detalle_al_dia = bool(
         solicitud.estado == EstadoSolicitud.ACEPTADA
@@ -1084,7 +1109,17 @@ def _solicitud_detail_context(
         and len(detalle_pendientes) == 0
     )
 
-    respaldo_cerrado = solicitud.estado == EstadoSolicitud.RECHAZADA
+    if tiene_cierre:
+        detalle_pendientes = []
+
+    evaluacion_cierre = evaluar_requisitos_cierre(solicitud)
+    puede_cerrar = puede_cerrar_solicitud(actor, solicitud)
+    tiene_permiso_cerrar = has_capability(actor, "gastos.cerrar")
+    tiene_permiso_metadatos_cierre = has_capability(
+        actor, "documentos.consultar_metadatos"
+    ) or has_capability(actor, "documentos.ver_metadatos")
+
+    respaldo_cerrado = solicitud.estado == EstadoSolicitud.RECHAZADA or tiene_cierre
     puede_incorporar_documentos = not respaldo_cerrado and has_capability(
         actor, "documentos.incorporar"
     )
@@ -1148,10 +1183,12 @@ def _solicitud_detail_context(
         "pago_sin_respaldo_confirmado": pago_sin_respaldo_confirmado,
         "puede_rectificar_pago": (
             pago_consulta is not None
+            and not tiene_cierre
             and has_capability(actor, "gastos.registrar_pago")
         ),
         "puede_incorporar_atp": (
             pago_consulta is not None
+            and not tiene_cierre
             and pago_consulta.constancia_atp_pendiente
             and has_capability(actor, "gastos.registrar_pago")
             and has_capability(actor, "documentos.incorporar")
@@ -1197,6 +1234,17 @@ def _solicitud_detail_context(
             and detalle_es_solicitante
             and not has_capability(actor, "gastos.presentar")
         ),
+        "cierre_gasto": cierre,
+        "tiene_cierre": tiene_cierre,
+        "cierre_actor_nombre": (
+            (cierre.actor.get_full_name().strip() or cierre.actor.get_username())
+            if cierre is not None
+            else ""
+        ),
+        "evaluacion_cierre": evaluacion_cierre,
+        "puede_cerrar_solicitud": puede_cerrar,
+        "tiene_permiso_cerrar": tiene_permiso_cerrar,
+        "tiene_permiso_metadatos_cierre": tiene_permiso_metadatos_cierre,
     }
 
 
@@ -1351,6 +1399,160 @@ class SolicitudGastoCorregirView(View):
         messages.success(
             request,
             "Solicitud corregida y reenviada para evaluación.",
+        )
+        return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
+
+
+class SolicitudGastoCerrarView(View):
+    """Confirmación sensible y ejecución del cierre administrativo del gasto."""
+
+    def _autorizar_y_cargar(
+        self, request: HttpRequest, pk: int
+    ) -> tuple[Any, SolicitudGasto] | tuple[HttpResponse, None]:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result, None
+        actor = result
+        solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
+        tiene_metadatos = has_capability(
+            actor, "documentos.consultar_metadatos"
+        ) or has_capability(actor, "documentos.ver_metadatos")
+        if not has_capability(actor, "gastos.cerrar") or not tiene_metadatos:
+            raise PermissionDenied(
+                "No tenés las capacidades requeridas para cerrar solicitudes."
+            )
+        return actor, solicitud
+
+    def _render_confirm(
+        self,
+        request: HttpRequest,
+        *,
+        actor: Any,
+        solicitud: SolicitudGasto,
+        form: CerrarSolicitudGastoForm,
+        evaluacion: Any,
+        error_cierre: str = "",
+        status: int = 200,
+    ) -> HttpResponse:
+        pago_consulta = consultar_pago_externo(actor=actor, solicitud_id=solicitud.pk)
+        pago_importes = (
+            {
+                "bruto": formatear_importe_es_ar(pago_consulta.monto_bruto),
+                "retencion_atp": formatear_importe_es_ar(
+                    pago_consulta.monto_retencion_atp
+                ),
+                "neto": formatear_importe_es_ar(pago_consulta.importe),
+            }
+            if pago_consulta is not None
+            else None
+        )
+        return render(
+            request,
+            "gastos/solicitud_cerrar_confirm.html",
+            {
+                "solicitud": solicitud,
+                "form": form,
+                "evaluacion": evaluacion,
+                "pago_consulta": pago_consulta,
+                "pago_importes": pago_importes,
+                "error_cierre": error_cierre,
+                "monto_estimado_formateado": formatear_importe_es_ar(
+                    solicitud.monto_estimado
+                ),
+            },
+            status=status,
+        )
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result, solicitud = self._autorizar_y_cargar(request, pk)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+        assert solicitud is not None
+
+        evaluacion = evaluar_requisitos_cierre(solicitud)
+        if evaluacion.ya_cerrada:
+            messages.info(request, "La solicitud ya fue cerrada administrativamente.")
+            return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
+        if not evaluacion.puede_cerrar:
+            messages.info(
+                request,
+                "La solicitud aún tiene requisitos pendientes antes del cierre.",
+            )
+            return redirect(reverse("gastos:detalle", kwargs={"pk": pk}) + "#cierre-tramite")
+
+        form = CerrarSolicitudGastoForm(
+            initial={
+                "version": solicitud.version,
+                "huella_cierre": evaluacion.huella_cierre,
+            }
+        )
+        return self._render_confirm(
+            request,
+            actor=actor,
+            solicitud=solicitud,
+            form=form,
+            evaluacion=evaluacion,
+        )
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        result, solicitud = self._autorizar_y_cargar(request, pk)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+        assert solicitud is not None
+
+        form = CerrarSolicitudGastoForm(request.POST)
+        if not form.is_valid():
+            evaluacion = evaluar_requisitos_cierre(solicitud)
+            return self._render_confirm(
+                request,
+                actor=actor,
+                solicitud=solicitud,
+                form=form,
+                evaluacion=evaluacion,
+                status=400,
+            )
+
+        try:
+            cerrar_solicitud_gasto(
+                actor=actor,
+                solicitud_id=pk,
+                expected_version=form.cleaned_data["version"],
+                huella_cierre=form.cleaned_data["huella_cierre"],
+                observacion=form.cleaned_data["observacion"],
+            )
+        except ExpenseNotFoundError as exc:
+            raise Http404("Solicitud inexistente o no visible.") from exc
+        except ExpensePermissionDeniedError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except InvalidCierreInputError as exc:
+            form.add_error(None, str(exc))
+            evaluacion = evaluar_requisitos_cierre(solicitud)
+            return self._render_confirm(
+                request,
+                actor=actor,
+                solicitud=solicitud,
+                form=form,
+                evaluacion=evaluacion,
+                status=400,
+            )
+        except (ConcurrencyConflictError, InvalidTransitionError) as exc:
+            solicitud.refresh_from_db()
+            evaluacion = evaluar_requisitos_cierre(solicitud)
+            return self._render_confirm(
+                request,
+                actor=actor,
+                solicitud=solicitud,
+                form=form,
+                evaluacion=evaluacion,
+                error_cierre=str(exc),
+                status=409,
+            )
+
+        messages.success(
+            request,
+            "Trámite cerrado administrativamente con documentación conforme.",
         )
         return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
 
@@ -1519,6 +1721,21 @@ class SolicitudGastoDocumentosView(View):
         solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
         if not has_capability(actor, "documentos.incorporar"):
             raise PermissionDenied("No tenés permiso para incorporar documentos.")
+        if CierreGasto.objects.filter(solicitud_id=solicitud.pk).exists():
+            if request.method == "POST":
+                return (
+                    HttpResponse(
+                        "El trámite fue cerrado administrativamente y no admite nuevos respaldos.",
+                        status=409,
+                    ),
+                    None,
+                )
+            messages.info(
+                request,
+                "El trámite fue cerrado y ya no admite nuevos respaldos en Gastos.",
+            )
+            destino = reverse("gastos:detalle", kwargs={"pk": pk}) + "#respaldo-documental"
+            return redirect(destino), None
         if solicitud.estado == EstadoSolicitud.RECHAZADA:
             destino = reverse("gastos:detalle", kwargs={"pk": pk}) + "#respaldo-documental"
             return redirect(destino), None

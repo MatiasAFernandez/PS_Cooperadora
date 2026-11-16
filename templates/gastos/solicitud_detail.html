@@ -34,6 +34,9 @@
                 {% else %}
                     <span class="sd-pill sd-pill-info">{{ solicitud.get_estado_display }}</span>
                 {% endif %}
+                {% if tiene_cierre %}
+                    <span class="sd-pill sd-pill-success">Cerrada</span>
+                {% endif %}
             </div>
             <p class="sd-requester">
                 <span class="sd-label">Solicitante</span>
@@ -89,6 +92,82 @@
 
     <div class="sd-layout">
         <div class="sd-main">
+
+            {% if tiene_cierre or solicitud.estado == "aceptada" or solicitud.estado == "ACEPTADA" %}
+            <section id="cierre-tramite" class="sd-card" aria-labelledby="cierre-tramite-heading">
+                <h2 id="cierre-tramite-heading" class="sd-h2">Cierre administrativo</h2>
+                {% if tiene_cierre %}
+                    <p><span class="sd-pill sd-pill-success">Cerrada</span> el {{ cierre_gasto.fecha_cierre|date:"d/m/Y H:i" }} por {{ cierre_actor_nombre }}.</p>
+                    {% if cierre_gasto.observacion %}
+                        <p><strong>Observación:</strong> {{ cierre_gasto.observacion }}</p>
+                    {% endif %}
+                    {% if puede_ver_documentos %}
+                        <dl class="sd-dl sd-dl-flat">
+                            <dt>Factura definitiva respaldatoria</dt>
+                            <dd>
+                                {{ cierre_gasto.documento_fiscal.nombre_original }} (v{{ cierre_gasto.documento_fiscal.version }})
+                                · <a href="{% url 'documentos:revision' cierre_gasto.documento_fiscal_id %}">Ver revisión</a>
+                            </dd>
+                            <dt>Comprobante bancario</dt>
+                            <dd>
+                                {{ cierre_gasto.documento_comprobante_pago.nombre_original }} (v{{ cierre_gasto.documento_comprobante_pago.version }})
+                                · <a href="{% url 'documentos:revision' cierre_gasto.documento_comprobante_pago_id %}">Ver revisión</a>
+                            </dd>
+                            {% if cierre_gasto.documento_constancia_atp %}
+                            <dt>Constancia ATP</dt>
+                            <dd>
+                                {{ cierre_gasto.documento_constancia_atp.nombre_original }} (v{{ cierre_gasto.documento_constancia_atp.version }})
+                                · <a href="{% url 'documentos:revision' cierre_gasto.documento_constancia_atp_id %}">Ver revisión</a>
+                            </dd>
+                            {% endif %}
+                        </dl>
+                    {% else %}
+                        <p class="sd-muted sd-small">Documentación obligatoria verificada y aceptada.</p>
+                    {% endif %}
+                {% else %}
+                    {% if evaluacion_cierre.pendientes %}
+                        {% if puede_ver_documentos or tiene_permiso_cerrar %}
+                            <p class="sd-small">Requisitos pendientes para habilitar el cierre:</p>
+                            <ul class="sd-list">
+                                {% for item in evaluacion_cierre.pendientes %}
+                                <li class="sd-row">
+                                    <div class="sd-row-main">{{ item.mensaje }}</div>
+                                    <div class="sd-row-actions">
+                                        {% if item.tipo_accion == "revision" and item.documento_id and detalle_puede_revisar %}
+                                            <a class="sd-btn sd-btn-secondary" href="{% url 'documentos:revision' item.documento_id %}">Revisar</a>
+                                        {% elif item.tipo_accion == "pago" and puede_registrar_pago %}
+                                            <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago</a>
+                                        {% elif item.tipo_accion == "atp" and puede_incorporar_atp %}
+                                            <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:pago_atp' pk=solicitud.pk %}">Incorporar constancia ATP</a>
+                                        {% elif item.tipo_accion == "rectificar_pago" and puede_rectificar_pago %}
+                                            <a class="sd-btn sd-btn-secondary" href="{% url 'gastos:pago_rectificar' pk=solicitud.pk %}">Rectificar pago</a>
+                                        {% elif item.tipo_accion == "aporte" and puede_incorporar_documentos %}
+                                            <a class="sd-btn sd-btn-secondary" href="#cargar-respaldo">Cargar respaldo</a>
+                                        {% elif item.ancla %}
+                                            <a class="sd-btn sd-btn-secondary" href="{{ item.ancla }}">Ver sección</a>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="sd-muted sd-small">Pendiente de verificación documental por Cooperadora.</p>
+                        {% endif %}
+                    {% else %}
+                        {% if puede_cerrar_solicitud %}
+                            <p class="sd-small">Toda la documentación obligatoria está incorporada y aceptada.</p>
+                            <div class="sd-actions">
+                                <a class="sd-btn sd-btn-primary" href="{% url 'gastos:cerrar' pk=solicitud.pk %}">Cerrar trámite</a>
+                            </div>
+                        {% elif tiene_permiso_cerrar and not tiene_permiso_metadatos_cierre %}
+                            <p class="sd-muted sd-small">Tenés permiso de cierre, pero necesitás acceso de consulta documental para confirmar el cierre.</p>
+                        {% else %}
+                            <p class="sd-muted sd-small">Documentación completa y aceptada; lista para cierre administrativo.</p>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </section>
+            {% endif %}
 
             {% if error_pago %}
             <div class="sd-alert" role="alert"><strong>Error:</strong> {{ error_pago }}</div>
@@ -176,7 +255,7 @@
                                             </svg>
                                         </a>
                                     {% endif %}
-                                    <a class="sd-btn sd-btn-secondary" href="{% url 'documentos:revision' version.documento_id %}">{% if not version.revision_actual and detalle_puede_revisar %}Revisar{% else %}Ver detalle{% endif %}</a>
+                                    <a class="sd-btn sd-btn-secondary" href="{% url 'documentos:revision' version.documento_id %}">{% if not version.revision_actual and detalle_puede_revisar and not tiene_cierre %}Revisar{% else %}Ver detalle{% endif %}</a>
                                 </div>
                             </li>
                             {% endwith %}
@@ -266,7 +345,7 @@
                 {% endif %}
 
                 {% if respaldo_cerrado %}
-                <p class="sd-note">La solicitud fue rechazada y ya no admite nuevos respaldos.</p>
+                <p class="sd-note">{% if tiene_cierre %}El trámite fue cerrado y ya no admite nuevos respaldos en Gastos.{% else %}La solicitud fue rechazada y ya no admite nuevos respaldos.{% endif %}</p>
                 {% elif detalle_aporte_form %}
                 <div class="sd-subsection sd-aporte-section{% if not detalle_versiones_actuales and not detalle_respaldos_titular %} sd-aporte-section-flush{% endif %}">
                     <details id="cargar-respaldo" class="sd-details sd-details-aporte"{% if detalle_aporte_con_error or preseleccionar_reemplaza_id %} open{% endif %}>

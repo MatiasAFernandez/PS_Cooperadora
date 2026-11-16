@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cerrar Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_form.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="solicitud-detalle nueva-solicitud">
+    <p class="sd-back"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a></p>
+
+    <header class="ns-head">
+        <h1>Confirmar cierre de solicitud #{{ solicitud.pk }}</h1>
+        <p class="sd-small">Verificá el pago registrado y la documentación aceptada antes de confirmar el cierre administrativo.</p>
+    </header>
+
+    {% if error_cierre %}
+    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
+        <strong>No se pudo cerrar el trámite:</strong> {{ error_cierre }}
+        {% if evaluacion.pendientes %}
+            <ul>
+                {% for item in evaluacion.pendientes %}
+                    <li>{{ item.mensaje }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors or form.version.errors or form.huella_cierre.errors %}
+    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
+        {{ form.non_field_errors }}
+        {{ form.version.errors }}
+        {{ form.huella_cierre.errors }}
+    </div>
+    {% endif %}
+
+    <section class="sd-card" aria-labelledby="cierre-resumen-heading">
+        <h2 id="cierre-resumen-heading" class="sd-h2">Resumen verificable del trámite</h2>
+        <dl class="sd-dl sd-dl-flat">
+            <dt>Solicitud</dt><dd>#{{ solicitud.pk }} — {{ solicitud.concepto }}</dd>
+            <dt>Modalidad</dt><dd>{{ solicitud.get_tipo_flujo_display }}</dd>
+            <dt>Monto estimado</dt><dd>$ {{ monto_estimado_formateado }}</dd>
+            {% if pago_importes %}
+                <dt>Pago registrado</dt>
+                <dd>Bruto $ {{ pago_importes.bruto }} · Retención ATP $ {{ pago_importes.retencion_atp }} · Neto $ {{ pago_importes.neto }}</dd>
+            {% endif %}
+            {% if evaluacion.documento_fiscal %}
+                <dt>Factura definitiva aceptada</dt>
+                <dd>{{ evaluacion.documento_fiscal.nombre_original }} (v{{ evaluacion.documento_fiscal.version }})</dd>
+            {% endif %}
+            {% if evaluacion.documento_comprobante_pago %}
+                <dt>Comprobante bancario aceptado</dt>
+                <dd>{{ evaluacion.documento_comprobante_pago.nombre_original }} (v{{ evaluacion.documento_comprobante_pago.version }})</dd>
+            {% endif %}
+            {% if evaluacion.documento_constancia_atp %}
+                <dt>Constancia ATP aceptada</dt>
+                <dd>{{ evaluacion.documento_constancia_atp.nombre_original }} (v{{ evaluacion.documento_constancia_atp.version }})</dd>
+            {% endif %}
+        </dl>
+    </section>
+
+    <section class="sd-card" aria-labelledby="cierre-form-heading">
+        <h2 id="cierre-form-heading" class="sd-h2">Confirmación administrativa</h2>
+        <form method="post" action="{% url 'gastos:cerrar' pk=solicitud.pk %}" novalidate>
+            {% csrf_token %}
+            {{ form.version }}
+            {{ form.huella_cierre }}
+
+            <div class="ns-field">
+                <div class="ns-label-row">
+                    <label for="{{ form.observacion.id_for_label }}">{{ form.observacion.label }}</label>
+                </div>
+                {{ form.observacion }}
+                {% if form.observacion.errors %}
+                    <div class="ns-field-error" role="alert">{{ form.observacion.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="sd-actions">
+                <button type="submit" class="sd-btn sd-btn-primary">Confirmar cierre del trámite</button>
+                <a href="{% url 'gastos:detalle' pk=solicitud.pk %}" class="sd-btn sd-btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

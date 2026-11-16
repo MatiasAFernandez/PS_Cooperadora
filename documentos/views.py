@@ -10,6 +10,7 @@ from django.views.decorators.http import require_http_methods
 from comunes.models import Circuito
 from facturacion.choices import ModalidadCobro
 from facturacion.models import CobroExterno
+from gastos.models import CierreGasto
 from identidad.services import has_capability, resolve_actor
 
 from .forms import RevisionDocumentoForm
@@ -120,6 +121,7 @@ def documento_revision(request, documento_id: int):
         else:
             numero_solicitud = base.numero_publico
             solicitud_url = reverse("gastos:detalle", args=[base.numero_publico])
+            terminal = CierreGasto.objects.filter(solicitud_id=base.numero_publico).exists()
         puede_revisar = has_capability(actor, "documentos.revisar") and vigente and not terminal
         form = RevisionDocumentoForm(initial={"revision_esperada": actual.pk if actual else 0})
         status = 200

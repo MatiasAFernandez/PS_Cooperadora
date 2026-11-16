@@ -1,7 +1,7 @@
 # SPEC-032 — Observación y subsanación de solicitudes de gasto
 
 Fecha: 15/11/2026. Responsable principal: Franco Damián Sánchez (Gastos).
-Estado: implementada en rama de tarea (`feat/134-observacion-subsanacion`); seguimiento en [#134](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/134).
+Estado: integrada en `main` mediante PR #135; seguimiento en [#134](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/134).
 Base: `RF-003`, `F-E06`, [SPEC-020](020-franco-doble-flujo-atp-ux.md) y [SPEC-030](030-franco-avisos-decision-gastos.md).
 No modifica Facturación, pagos externos, cierre de trámite (`F-E08`) ni reglas institucionales pendientes (`Q1`–`Q5`).
 

@@ -5,6 +5,8 @@
                     Decisión de gasto
                 {% elif evento.tipo_evento == "subsanacion_gasto" %}
                     Subsanación de solicitud
+                {% elif evento.tipo_evento == "cierre_gasto" %}
+                    Cierre del trámite
                 {% elif evento.tipo_evento == "pago_externo_registrado" %}
                     Pago externo registrado
                 {% elif evento.tipo_evento == "aporte_documental" %}

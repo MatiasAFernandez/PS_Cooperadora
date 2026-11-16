@@ -21,6 +21,7 @@ from gastos.contracts import (
     tipos_documento_admitidos_para_flujo,
 )
 from gastos.models import (
+    CierreGasto,
     EstadoSolicitud,
     EventoPagoExterno,
     PagoExterno,
@@ -1000,6 +1001,10 @@ def rectificar_pago_externo(
         raise PaymentInvalidExpenseStateError(
             "La solicitud no tiene un pago registrado para rectificar."
         )
+    if CierreGasto.objects.filter(solicitud_id=solicitud_id).exists():
+        raise PaymentConflictError(
+            "La solicitud ya fue cerrada administrativamente y no admite rectificaciones de pago."
+        )
     try:
         version = int(version_esperada)
     except (TypeError, ValueError):
@@ -1048,6 +1053,11 @@ def rectificar_pago_externo(
         if not has_capability(actor, "gastos.registrar_pago"):
             raise PaymentPermissionDeniedError(
                 "El actor no posee la capacidad 'gastos.registrar_pago'."
+            )
+        if CierreGasto.objects.filter(solicitud_id=solicitud.pk).exists():
+            raise PaymentConflictError(
+                "La solicitud ya fue cerrada administrativamente y no admite "
+                "rectificaciones de pago."
             )
         # PostgreSQL rechaza FOR UPDATE sobre el lado anulable del join con
         # documentos: el lock cubre sólo la fila del pago. Las raíces
@@ -1198,6 +1208,11 @@ def incorporar_constancia_atp_posterior(
         raise PaymentPermissionDeniedError(
             "El actor no posee la capacidad 'gastos.registrar_pago'."
         )
+    if CierreGasto.objects.filter(solicitud_id=solicitud_id).exists():
+        raise PaymentConflictError(
+            "La solicitud ya fue cerrada administrativamente y no admite nuevos "
+            "aportes de constancia ATP."
+        )
     try:
         version = int(version_esperada)
     except (TypeError, ValueError):
@@ -1225,6 +1240,11 @@ def incorporar_constancia_atp_posterior(
         if not has_capability(actor, "gastos.registrar_pago"):
             raise PaymentPermissionDeniedError(
                 "El actor no posee la capacidad 'gastos.registrar_pago'."
+            )
+        if CierreGasto.objects.filter(solicitud_id=solicitud.pk).exists():
+            raise PaymentConflictError(
+                "La solicitud ya fue cerrada administrativamente y no admite nuevos "
+                "aportes de constancia ATP."
             )
         # Mismo criterio que en rectificar: el join anulable no se bloquea.
         pago = (

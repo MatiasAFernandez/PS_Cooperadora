@@ -9,6 +9,7 @@
     <td class="bandeja-estado">
         <div class="bandeja-chips">
             <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
+            {% if s.cerrada_bandeja %}<span class="bandeja-chip bandeja-chip-pagada">Cerrada</span>{% endif %}
             {% if s.pendiente_bandeja %}<span class="bandeja-chip bandeja-chip-pend{% if s.pendiente_bandeja == 'Falta factura definitiva' %} bandeja-chip-pend-err{% endif %}">{{ s.pendiente_bandeja }}</span>{% endif %}
         </div>
     </td>
@@ -19,7 +20,10 @@
                 <form method="dialog" class="bandeja-panel-cierre"><button class="btn btn-secondary" autofocus>Cerrar</button></form>
                 <p class="bandeja-meta">Solicitud #{{ s.pk }}</p>
                 <h2 id="resumen-titulo-{{ s.pk }}">{{ s.concepto }}</h2>
-                <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
+                <div class="bandeja-chips">
+                    <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
+                    {% if s.cerrada_bandeja %}<span class="bandeja-chip bandeja-chip-pagada">Cerrada</span>{% endif %}
+                </div>
                 {% if s.motivo_bandeja and s.estado == "observada" or s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
                     <p><strong>Motivo</strong> {{ s.motivo_bandeja }}</p>
                 {% endif %}

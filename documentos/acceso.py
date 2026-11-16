@@ -8,7 +8,7 @@ from django.db.models.functions import Cast
 from comunes.contracts import TramiteNoDisponible, TramiteRef
 from comunes.models import Circuito, TramiteBase
 from comunes.services import resolver_tramite_base
-from gastos.models import SolicitudGasto
+from gastos.models import CierreGasto, SolicitudGasto
 from gastos.queries import visible_expenses
 from identidad.services import Actor, has_capability
 
@@ -20,12 +20,16 @@ class DocumentoNoVisible(LookupError):
 
 
 def bloquear_facturacion_abierta(base):
-    """Orden común con resolución: cabecera antes de raíz documental; gastos no cambia."""
-    if base.circuito == Circuito.FACTURACION:
-        from django.core.exceptions import PermissionDenied
+    """Orden común con resolución y cierre: cabecera/solicitud antes de raíz documental."""
+    from django.core.exceptions import PermissionDenied
 
+    if base.circuito == Circuito.FACTURACION:
         bloqueada = TramiteBase.objects.select_for_update().get(pk=base.pk)
         if bloqueada.solicitud_facturacion.estado in {"CERRADA", "ANULADA"}:
+            raise PermissionDenied("El trámite es terminal y sólo admite consulta.")
+    elif base.circuito == Circuito.GASTO:
+        gasto = SolicitudGasto.objects.select_for_update().filter(pk=base.numero_publico).first()
+        if gasto is not None and CierreGasto.objects.filter(solicitud_id=gasto.pk).exists():
             raise PermissionDenied("El trámite es terminal y sólo admite consulta.")
 
 

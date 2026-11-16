@@ -1220,3 +1220,135 @@ class SubsanacionGasto(models.Model):
             motivo_o_detalle=detalle,
         )
 
+
+class CierreGastoQuerySet(models.QuerySet):
+    """QuerySet que impide modificar o borrar registros de cierre de gasto."""
+
+    def update(self, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar un CierreGasto existente.")
+
+    def bulk_update(self, objs: Any, fields: Any, **kwargs: Any) -> int:
+        raise IntegrityError("No se permite modificar un CierreGasto existente.")
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar un CierreGasto existente.")
+
+
+class CierreGasto(models.Model):
+    """Registro administrativo inmutable de cierre explícito de una solicitud de gasto."""
+
+    solicitud = models.OneToOneField(
+        SolicitudGasto,
+        on_delete=models.PROTECT,
+        related_name="cierre",
+        help_text="Solicitud de gasto cerrada administrativamente.",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="cierres_gasto_registrados",
+        help_text="Usuario autorizado que confirmó el cierre.",
+    )
+    fecha_cierre = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora del cierre fijadas por el servidor.",
+    )
+    observacion = models.TextField(
+        blank=True,
+        default="",
+        max_length=2000,
+        help_text="Observación opcional registrada al cerrar el trámite.",
+    )
+    pago_version = models.PositiveIntegerField(
+        help_text="Versión de PagoExterno vigente al momento del cierre.",
+    )
+    documento_fiscal = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        related_name="cierres_gasto_como_fiscal",
+        help_text="Factura definitiva del proveedor aceptada que respaldó el cierre.",
+    )
+    revision_fiscal = models.ForeignKey(
+        "documentos.RevisionDocumento",
+        on_delete=models.PROTECT,
+        related_name="cierres_gasto_como_revision_fiscal",
+        help_text="Revisión documental ACEPTADO del respaldo fiscal al cerrar.",
+    )
+    documento_comprobante_pago = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        related_name="cierres_gasto_como_comprobante_pago",
+        help_text="Comprobante bancario del pago aceptado que respaldó el cierre.",
+    )
+    revision_comprobante_pago = models.ForeignKey(
+        "documentos.RevisionDocumento",
+        on_delete=models.PROTECT,
+        related_name="cierres_gasto_como_revision_comprobante_pago",
+        help_text="Revisión documental ACEPTADO del comprobante bancario al cerrar.",
+    )
+    documento_constancia_atp = models.ForeignKey(
+        "documentos.Documento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cierres_gasto_como_constancia_atp",
+        help_text="Constancia ATP aceptada al cerrar (si correspondió retención > 0).",
+    )
+    revision_constancia_atp = models.ForeignKey(
+        "documentos.RevisionDocumento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cierres_gasto_como_revision_constancia_atp",
+        help_text="Revisión documental ACEPTADO de la constancia ATP al cerrar.",
+    )
+
+    objects = CierreGastoQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Cierre de gasto"
+        verbose_name_plural = "Cierres de gasto"
+        ordering = ["-fecha_cierre", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(pago_version__gt=0),
+                name="cierre_gasto_pago_version_positiva",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(documento_constancia_atp__isnull=True, revision_constancia_atp__isnull=True)
+                    | Q(
+                        documento_constancia_atp__isnull=False,
+                        revision_constancia_atp__isnull=False,
+                    )
+                ),
+                name="cierre_gasto_atp_consistente",
+            ),
+        ]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise IntegrityError("Cada cierre de gasto es inmutable.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise IntegrityError("No se permite borrar un cierre de gasto.")
+
+    def __str__(self) -> str:
+        return f"Cierre #{self.pk} de Solicitud #{self.solicitud_id}"
+
+    def como_historial(self) -> EventoHistorialDTO:
+        """Proyecta el cierre al historial común sin filtrar nombres ni IDs documentales."""
+        detalle = "Cierre administrativo registrado con documentación obligatoria aceptada."
+        obs = (self.observacion or "").strip()
+        if obs:
+            detalle = f"{detalle} Observación: {obs}"
+        return EventoHistorialDTO(
+            evento_id=self.pk,
+            tramite_ref=f"gastos:{self.solicitud_id}",
+            tipo_evento="cierre_gasto",
+            actor_id=str(self.actor_id),
+            fecha_hora=self.fecha_cierre,
+            estado_resultante="Cerrada",
+            motivo_o_detalle=detalle,
+        )

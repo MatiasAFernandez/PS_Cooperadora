@@ -405,6 +405,42 @@ class CorregirSolicitudGastoForm(forms.Form):
         return monto
 
 
+class CerrarSolicitudGastoForm(forms.Form):
+    """Formulario de confirmación sensible para el cierre administrativo del gasto."""
+
+    version = forms.IntegerField(widget=forms.HiddenInput())
+    huella_cierre = forms.CharField(
+        required=True,
+        widget=forms.HiddenInput(),
+        error_messages={
+            "required": (
+                "Falta la huella de verificación del cierre. "
+                "Recargá la confirmación antes de enviar."
+            ),
+        },
+    )
+    observacion = forms.CharField(
+        label="Observación de cierre (opcional)",
+        required=False,
+        max_length=2000,
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": (
+                    "Opcional: aclaración administrativa sobre la documentación verificada."
+                ),
+            }
+        ),
+    )
+
+    def clean_observacion(self) -> str:
+        obs = (self.cleaned_data.get("observacion") or "").strip()
+        if "\x00" in obs:
+            raise ValidationError("La observación contiene caracteres inválidos.")
+        return obs
+
+
 class DocumentoGastoForm(forms.Form):
     """Formulario de aporte o reemplazo; los servicios documentales revalidan."""
 
