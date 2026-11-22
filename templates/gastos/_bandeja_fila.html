@@ -17,7 +17,7 @@
         <a class="btn {% if s.accion_bandeja == 'Ver detalle' %}btn-secondary{% else %}btn-primary{% endif %}" href="{{ detalle_href }}{{ s.ancla_bandeja }}" aria-label="{{ s.accion_bandeja }} de la solicitud {{ s.pk }}">{{ s.accion_bandeja }}</a>
         {% if vista_rapida %}
             <dialog class="bandeja-panel" id="resumen-{{ s.pk }}" aria-labelledby="resumen-titulo-{{ s.pk }}">
-                <form method="dialog" class="bandeja-panel-cierre"><button class="btn btn-secondary" autofocus>Cerrar</button></form>
+                <form method="dialog" class="bandeja-panel-cierre"><button type="submit" class="bandeja-panel-cerrar" aria-label="Cerrar vista rápida" autofocus><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></form>
                 <p class="bandeja-meta">Solicitud #{{ s.pk }}</p>
                 <h2 id="resumen-titulo-{{ s.pk }}">{{ s.concepto }}</h2>
                 <div class="bandeja-chips">
