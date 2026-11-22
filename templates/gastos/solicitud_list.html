@@ -35,7 +35,7 @@
         </div>
     {% endif %}
 
-    <form class="bandeja-filtros" method="get" action="{% url 'gastos:lista' %}">
+    <form class="bandeja-filtros" data-bandeja-filtros{% if solo_atencion %} data-solo-atencion="1"{% endif %} method="get" action="{% url 'gastos:lista' %}">
         {% include "comunes/campos_filtro.html" with form=filtro_form %}
         <div class="bandeja-filtros-acciones">
             {% if solo_atencion %}
@@ -50,8 +50,11 @@
             {% endif %}
     </form>
 
+    <p class="bandeja-estado-busqueda bandeja-estado-busqueda--sr" data-bandeja-estado role="status" aria-live="polite" aria-atomic="true"></p>
+
+    <div class="bandeja-contenido" data-bandeja-resultados data-total-resultados="{% if solicitudes %}{{ page_obj.paginator.count }}{% else %}0{% endif %}" data-tiene-errores="{% if filtro_form.errors %}1{% else %}0{% endif %}">
     {% if solicitudes %}
-        <p class="bandeja-conteo" aria-live="polite">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if consulta_bandeja %} (filtrado){% endif %}</p>
+        <p class="bandeja-conteo">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if consulta_bandeja %} (filtrado){% endif %}</p>
         <div class="bandeja-resultados">
             <table class="bandeja-tabla" aria-label="Solicitudes de gasto">
                 <thead>
@@ -95,8 +98,7 @@
     {% else %}
         <p class="bandeja-vacio">No se encontraron solicitudes de gasto visibles para su cuenta.</p>
     {% endif %}
+    </div>
 </section>
-{% if vista_rapida %}
 <script src="{% static 'gastos/js/solicitud_list.js' %}" defer></script>
-{% endif %}
 {% endblock %}
