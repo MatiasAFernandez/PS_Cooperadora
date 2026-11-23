@@ -79,8 +79,13 @@
                 panel.showModal();
             });
 
+            let empezoEnFondo = false;
+            panel.addEventListener("pointerdown", (evento) => {
+                empezoEnFondo = evento.target === panel && clicFueraDelPanel(evento, panel);
+            });
+
             panel.addEventListener("click", (evento) => {
-                // "Cerrar" usa un form method="dialog"; interceptarlo conserva la salida suave.
+                // El cierre de la cabecera usa form method="dialog"; interceptarlo conserva la salida suave.
                 const objetivo = evento.target;
                 if (objetivo instanceof Element) {
                     const botonCerrar = objetivo.closest('form[method="dialog"] button');
@@ -93,8 +98,8 @@
                     }
                 }
                 // El backdrop tiene como target al propio <dialog>; el rectángulo evita
-                // cerrar cuando el clic cae en el padding interior del cuadro.
-                if (objetivo !== panel || !clicFueraDelPanel(evento, panel)) return;
+                // cerrar cuando el clic cae en el padding interior y la guarda impide cierres al seleccionar texto.
+                if (!empezoEnFondo || objetivo !== panel || !clicFueraDelPanel(evento, panel)) return;
                 cerrarPanel(panel);
             });
 
@@ -105,8 +110,9 @@
             });
 
             panel.addEventListener("close", () => {
+                empezoEnFondo = false;
                 panel.classList.remove("is-closing");
-                if (enlace.isConnected) enlace.focus();
+                if (enlace.isConnected) enlace.focus({ preventScroll: true });
             });
         });
     }

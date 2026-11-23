@@ -276,6 +276,32 @@ a:hover {
   color: var(--ink-strong);
 }
 
+.btn-danger {
+  color: var(--st-danger-fg);
+  background-color: var(--st-danger-bg);
+  border-color: var(--color-error-border);
+  box-shadow: none;
+}
+
+.btn-danger:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.btn-danger-solid {
+  color: var(--bg-surface);
+  background-color: var(--st-danger-fg);
+  border-color: var(--st-danger-fg);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-danger-solid:hover {
+  background-color: #991b1b;
+  border-color: #991b1b;
+  color: var(--bg-surface);
+}
+
 .btn-icon {
   display: inline-flex;
   align-items: center;
@@ -329,7 +355,8 @@ a:hover {
  * Chips y Píldoras de Estado (Estilo Mercury: suaves con punto semántico)
  * --------------------------------------------------------------------------- */
 .badge,
-.status-pill {
+.status-pill,
+.bandeja-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -343,7 +370,8 @@ a:hover {
   white-space: nowrap;
 }
 
-.status-pill::before {
+.status-pill::before,
+.bandeja-chip::before {
   content: "";
   width: 6px;
   height: 6px;
@@ -592,47 +620,8 @@ input[readonly]:focus {
 }
 
 /* ---------------------------------------------------------------------------
- * Drawer Lateral (Master-Detail compartido con Facturación)
+ * Drawer Lateral (piezas reutilizables para panel compartido)
  * --------------------------------------------------------------------------- */
-.drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background-color: rgb(17 24 39 / 0.34);
-  backdrop-filter: blur(2px);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-normal), visibility var(--transition-normal);
-}
-
-.drawer-backdrop.is-open,
-.drawer-backdrop.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.drawer-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 101;
-  width: min(100vw, var(--drawer-width));
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-drawer);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  transform: translateX(100%);
-  transition: transform var(--transition-normal);
-}
-
-.drawer-backdrop.is-open .drawer-panel,
-.drawer-panel.is-open,
-.drawer-panel.open {
-  transform: translateX(0);
-}
-
 .drawer-header {
   padding: 1.1rem 1.25rem;
   border-bottom: 1px solid var(--border-hairline);
