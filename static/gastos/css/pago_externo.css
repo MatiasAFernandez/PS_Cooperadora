@@ -703,6 +703,9 @@
   justify-content: center;
   width: 18px;
   height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  flex: none;
   border-radius: 9999px;
   border: 1px solid #94a3b8;
   background: #f8fafc;
@@ -721,6 +724,10 @@
   background: #eff6ff;
   color: var(--ref-deep-blue, #0a58ca);
   outline: none;
+}
+.registro-pago.rp-alta .rp-tooltip-trigger:focus-visible {
+  outline: 2px solid var(--brand-ring, #3b6fd8);
+  outline-offset: 2px;
 }
 .registro-pago.rp-alta .rp-tooltip-bubble {
   position: absolute;
