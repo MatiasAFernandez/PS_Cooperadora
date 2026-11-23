@@ -1,4 +1,9 @@
 {% extends "facturacion/base.html" %}
+{% load static %}
+{% block extra_head %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/visor_documentos.css' %}">
+{% endblock %}
 {% block facturacion_content %}
 <header class="fac-header">
 <div><h2 aria-label="Solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}">Solicitud {{ solicitud.numero_visible }}</h2><p class="fac-muted">{{ solicitud.correo_solicitante }}</p></div>
@@ -82,4 +87,8 @@
 {% if version.antes %}<h4>Antes</h4><dl>{% for etiqueta, valor in version.antes %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>{% endif %}
 <h4>Después</h4><dl>{% for etiqueta, valor in version.despues %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>
 </details>{% endfor %}</section>{% include "gestion/respuestas.html" %}
+{% if puede_descargar %}
+{% include "comunes/visor_documento_dialogo.html" only %}
+<script src="{% static 'js/visor_documentos.js' %}"></script>
+{% endif %}
 {% endblock %}

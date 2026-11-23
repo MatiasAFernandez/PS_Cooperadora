@@ -267,10 +267,16 @@
 .solicitud-detalle .sd-transfer-panel .sd-form-aporte { margin-top: 0.75rem; }
 .solicitud-detalle .sd-doc-pago-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.65rem 0.75rem;
   padding: 0.35rem 0;
+}
+.solicitud-detalle .sd-doc-pago-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .solicitud-detalle .sd-form-aporte {
@@ -525,10 +531,11 @@
   }
   .solicitud-detalle .sd-doc-pago-row {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: flex-start;
   }
-  .solicitud-detalle .sd-doc-pago-row .sd-btn-icon {
-    align-self: flex-start;
+  .solicitud-detalle .sd-doc-pago-row .visor-doc-acciones {
+    flex: 0 0 auto;
   }
   :is(.solicitud-detalle, .nueva-solicitud) .sd-file-card-content {
     flex-direction: column;

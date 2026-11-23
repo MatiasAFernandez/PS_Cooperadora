@@ -1,0 +1,11 @@
+<div class="visor-doc-acciones">
+    <button type="button" class="visor-doc-btn visor-doc-btn-secondary visor-doc-trigger" hidden data-visor-doc-trigger data-visor-url="{{ url }}" data-visor-formatos="{{ formatos|default:'pdf' }}" data-visor-titulo="{{ titulo|default:'Archivo' }}"{% if nombre %} data-visor-nombre="{{ nombre }}"{% endif %} data-visor-descargar-label="{{ descargar_label|default:'Descargar archivo' }}" aria-label="{% if ver_label %}{{ ver_label }}{% else %}Ver archivo de {{ titulo }}{% endif %}">Ver archivo</button>
+    <a class="visor-doc-btn visor-doc-btn-secondary" href="{{ url }}" download aria-label="{{ descargar_label|default:'Descargar archivo' }}">
+        <svg class="visor-doc-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Descargar</span>
+    </a>
+</div>

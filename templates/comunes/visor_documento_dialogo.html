@@ -1,0 +1,42 @@
+<dialog id="visor-documento-dialogo" class="visor-doc-dialog" aria-labelledby="visor-documento-titulo" data-visor-doc-dialog>
+    <div class="visor-doc-surface">
+        <header class="visor-doc-header">
+            <div class="visor-doc-heading">
+                <h2 id="visor-documento-titulo" class="visor-doc-title" data-visor-titulo>Archivo</h2>
+                <p class="visor-doc-subtitle" data-visor-nombre hidden></p>
+            </div>
+            <button type="button" class="visor-doc-btn visor-doc-btn-secondary visor-doc-close" data-visor-cerrar aria-label="Cerrar vista previa">
+                <svg class="visor-doc-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                <span>Cerrar</span>
+            </button>
+        </header>
+        <div class="visor-doc-body" data-visor-body>
+            <div class="visor-doc-state" data-visor-cargando role="status" aria-live="polite" hidden>
+                <span class="visor-doc-spinner" aria-hidden="true"></span>
+                <p class="visor-doc-msg">Cargando archivo…</p>
+            </div>
+            <div class="visor-doc-img-wrap" data-visor-imagen-wrap hidden>
+                <img class="visor-doc-img" data-visor-imagen alt="">
+            </div>
+            <div class="visor-doc-state" data-visor-pdf hidden>
+                <div class="visor-doc-pdf-box">
+                    <p class="visor-doc-msg">El documento PDF está listo para consultarse en otra pestaña.</p>
+                    <a class="visor-doc-btn visor-doc-btn-primary" data-visor-pdf-link href="#" target="_blank" rel="noopener noreferrer">Abrir PDF en otra pestaña</a>
+                    <p class="visor-doc-note">Al volver de esa pestaña retomás este trámite. Si el navegador no muestra PDF, podés usar «Descargar».</p>
+                </div>
+            </div>
+            <div class="visor-doc-state" data-visor-error hidden>
+                <div class="visor-doc-error" role="alert">
+                    <p data-visor-error-texto></p>
+                </div>
+            </div>
+        </div>
+        <footer class="visor-doc-footer">
+            <button type="button" class="visor-doc-btn visor-doc-btn-primary" data-visor-reintentar hidden>Reintentar</button>
+            <a class="visor-doc-btn visor-doc-btn-secondary" data-visor-descargar href="#" download>Descargar</a>
+        </footer>
+    </div>
+</dialog>

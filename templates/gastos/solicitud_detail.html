@@ -4,7 +4,10 @@
 
 {% block title %}Detalle de Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
 
-{% block extra_css %}<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+<link rel="stylesheet" href="{% static 'css/visor_documentos.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="solicitud-detalle">
@@ -407,10 +410,10 @@
 
                     <div class="sd-docs-pago">
                         <div class="sd-doc-pago-row">
-                            <div>
+                            <div class="sd-doc-pago-info">
                                 <strong>Comprobante bancario</strong>
                                 {% if pago_consulta.tiene_comprobante_bancario %}
-                                    <p class="sd-muted sd-small">{% if pago_consulta.comprobante_bancario_nombre %}{{ pago_consulta.comprobante_bancario_nombre }}{% else %}Incorporado{% endif %}</p>
+                                    <p class="sd-muted sd-small sd-break">{% if pago_consulta.comprobante_bancario_nombre %}{{ pago_consulta.comprobante_bancario_nombre }}{% else %}Incorporado{% endif %}</p>
                                     {% if not pago_consulta.comprobante_bancario_id or not puede_descargar_documentos %}
                                         {% if pago_consulta.comprobante_bancario_id %}
                                             <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
@@ -421,20 +424,15 @@
                                 {% endif %}
                             </div>
                             {% if pago_consulta.tiene_comprobante_bancario and pago_consulta.comprobante_bancario_id and puede_descargar_documentos %}
-                                <a class="sd-btn sd-btn-secondary sd-btn-icon" href="{% url 'documentos:archivo' pago_consulta.comprobante_bancario_id %}" download aria-label="Descargar comprobante bancario">
-                                    <svg class="sd-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="7 10 12 15 17 10"/>
-                                        <line x1="12" y1="15" x2="12" y2="3"/>
-                                    </svg>
-                                </a>
+                                {% url 'documentos:archivo' pago_consulta.comprobante_bancario_id as url_archivo %}
+                                {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf-imagen" titulo="Comprobante bancario" nombre=pago_consulta.comprobante_bancario_nombre ver_label="Ver comprobante bancario" descargar_label="Descargar comprobante bancario" only %}
                             {% endif %}
                         </div>
                         <div class="sd-doc-pago-row">
-                            <div>
+                            <div class="sd-doc-pago-info">
                                 <strong>Constancia ATP</strong>
                                 {% if pago_consulta.tiene_constancia_atp %}
-                                    <p class="sd-muted sd-small">{% if pago_consulta.constancia_atp_nombre %}{{ pago_consulta.constancia_atp_nombre }}{% else %}Incorporada{% endif %}</p>
+                                    <p class="sd-muted sd-small sd-break">{% if pago_consulta.constancia_atp_nombre %}{{ pago_consulta.constancia_atp_nombre }}{% else %}Incorporada{% endif %}</p>
                                     {% if not pago_consulta.constancia_atp_id or not puede_descargar_documentos %}
                                         {% if pago_consulta.constancia_atp_id %}
                                             <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
@@ -447,13 +445,8 @@
                                 {% endif %}
                             </div>
                             {% if pago_consulta.tiene_constancia_atp and pago_consulta.constancia_atp_id and puede_descargar_documentos %}
-                                <a class="sd-btn sd-btn-secondary sd-btn-icon" href="{% url 'documentos:archivo' pago_consulta.constancia_atp_id %}" download aria-label="Descargar constancia ATP">
-                                    <svg class="sd-icon" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="7 10 12 15 17 10"/>
-                                        <line x1="12" y1="15" x2="12" y2="3"/>
-                                    </svg>
-                                </a>
+                                {% url 'documentos:archivo' pago_consulta.constancia_atp_id as url_archivo %}
+                                {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf" titulo="Constancia ATP" nombre=pago_consulta.constancia_atp_nombre ver_label="Ver constancia ATP" descargar_label="Descargar constancia ATP" only %}
                             {% endif %}
                         </div>
                     </div>
@@ -666,10 +659,17 @@
     </div>
 
     <p class="sd-back sd-back-bottom"><a href="{% url 'gastos:lista' %}{% if request.GET.bandeja %}?{{ request.GET.bandeja }}{% endif %}">&larr; Volver al listado</a></p>
+
+    {% if pago_consulta and puede_descargar_documentos %}
+        {% if pago_consulta.tiene_comprobante_bancario and pago_consulta.comprobante_bancario_id or pago_consulta.tiene_constancia_atp and pago_consulta.constancia_atp_id %}
+            {% include "comunes/visor_documento_dialogo.html" only %}
+        {% endif %}
+    {% endif %}
 </div>
 
 <script src="{% static 'gastos/js/drawer.js' %}"></script>
 <script src="{% static 'gastos/js/solicitud_detail.js' %}"></script>
+<script src="{% static 'js/visor_documentos.js' %}"></script>
 <script src="{% static 'gastos/js/documento_aporte.js' %}"></script>
 {% include "gestion/respuestas.html" %}
 {% endblock %}

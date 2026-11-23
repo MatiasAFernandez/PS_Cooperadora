@@ -21,7 +21,10 @@
 {% if cobro.resultado == "RECTIFICADO" %}<p>Motivo de rectificación: {{ cobro.verificacion.rectificacion.motivo }}</p>{% endif %}
 <div class="record-actions" role="group" aria-label="Acciones del cobro {{ cobro.numero_en_solicitud }}">
 {% if cobro.puede_corregir or puede_actualizar_respaldo and not diagnostico.terminal and cobro.resultado != "RECTIFICADO" %}<a class="btn btn-secondary" href="{% url 'facturacion:corregir_cobro' solicitud.pk cobro.pk %}">Modificar cobro</a>{% endif %}
-{% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' cobro.respaldo_vinculado.pk %}">Descargar documento de respaldo vinculado</a>{% endif %}
+{% if puede_descargar and cobro.respaldo_vinculado %}
+{% url 'documentos:archivo' cobro.respaldo_vinculado.pk as url_archivo %}
+{% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf-imagen" titulo="Respaldo de cobro" nombre=cobro.respaldo_vinculado.nombre_original ver_label="Ver respaldo de cobro" descargar_label="Descargar documento de respaldo vinculado" only %}
+{% endif %}
 {% if puede_ver_revision %}<a class="btn btn-secondary" href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}">{% if puede_revisar_documentos and cobro.estado_revision == "PENDIENTE" %}Realizar revisión documental{% else %}Consultar revisión documental{% endif %}</a>{% endif %}
 {% if puede_verificar_cobro and cobro.resultado == "CONFIRMADO" and not diagnostico.terminal %}<a class="btn btn-secondary" href="{% url 'facturacion:rectificar_cobro' solicitud.pk cobro.pk %}">Rectificar ingreso</a>{% endif %}
 {% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" and not diagnostico.terminal %}

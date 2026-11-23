@@ -35,7 +35,10 @@
 {% if not diagnostico.terminal %}
 {% if puede_registrar_comprobante or puede_actualizar_respaldo %}<a class="btn btn-secondary" href="{% url 'facturacion:modificar_comprobante' solicitud.pk c.pk %}">Modificar comprobante externo</a>{% endif %}
 {% endif %}
-{% if puede_descargar and c.respaldo_vinculado %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' c.respaldo_vinculado.pk %}">Descargar PDF vinculado</a>{% endif %}
+{% if puede_descargar and c.respaldo_vinculado %}
+{% url 'documentos:archivo' c.respaldo_vinculado.pk as url_archivo %}
+{% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf" titulo=c.get_tipo_display nombre=c.respaldo_vinculado.nombre_original descargar_label="Descargar PDF vinculado" only %}
+{% endif %}
 {% if puede_ver_revision and c.respaldo_vinculado %}<a class="btn" href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}">{% if puede_revisar_documentos and c.estado_revision == "PENDIENTE" %}Realizar revisión documental{% else %}Consultar revisión documental{% endif %}</a>{% endif %}
 </div>
 </li>{% endfor %}</ul>
