@@ -32,9 +32,9 @@
     {% endif %}
 
     {% if ofrece_atencion %}
-        <nav class="bandeja-tabs" aria-label="Vista rápida de solicitudes">
-            <a class="bandeja-tab" href="{% url 'gastos:lista' %}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
-            <a class="bandeja-tab" href="{% url 'gastos:lista' %}?atencion=1"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-tab-count bandeja-tab-count--attn">{{ total_atencion }}</span>{% endif %}</a>
+        <nav class="bandeja-tabs" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
+            <a class="bandeja-tab" data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
+            <a class="bandeja-tab" data-bandeja-tab="atencion" href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-tab-count bandeja-tab-count--attn">{{ total_atencion }}</span>{% endif %}</a>
         </nav>
     {% endif %}
 
@@ -42,8 +42,8 @@
         {% if solo_atencion %}<input type="hidden" name="atencion" value="1">{% endif %}
         {% include "comunes/campos_filtro.html" with form=filtro_form %}
         <div class="bandeja-filtros-acciones">
-            <button class="btn btn-secondary bandeja-btn-filtrar" type="submit">{% if solo_atencion %}Filtrar pendientes{% else %}Filtrar{% endif %}</button>
-            <a class="btn btn-ghost bandeja-enlace" href="{% url 'gastos:lista' %}">Quitar filtros</a>
+            <button class="btn btn-secondary bandeja-btn-filtrar" type="submit">Filtrar</button>
+            <a class="btn btn-ghost bandeja-enlace" data-bandeja-limpiar{% if not tiene_filtros_activos %} hidden{% endif %} href="{{ limpiar_filtros_url }}">Quitar filtros</a>
         </div>
     </form>
 

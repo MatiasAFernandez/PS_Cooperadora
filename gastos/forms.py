@@ -81,7 +81,7 @@ class FiltroEstadoGastoForm(FiltroFechaForm):
             self.fields["pendiente"].choices = [("", "")]
             self.fields["pendiente"].widget = forms.HiddenInput()
             self.fields["pendiente"].label = ""
-        self.order_fields(["estado", "q", "pendiente", "periodo", "dia", "mes", "anio"])
+        self.order_fields(["q", "estado", "pendiente", "periodo", "dia", "mes", "anio"])
 
 
 class OptionalCentroCostoChoiceField(forms.ModelChoiceField):

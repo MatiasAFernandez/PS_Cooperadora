@@ -743,42 +743,34 @@ a.bandeja-concepto:focus-visible .bandeja-concepto-texto {
     .bandeja-filtros .errorlist,
     .bandeja-filtros > :not(.filter-fields):not(.bandeja-filtros-acciones):not(input[type="hidden"]) {
         flex-basis: 100%;
-        order: 0;
     }
 
     .bandeja-filtros .filter-wide {
-        order: 1;
         flex: 1 1 200px;
     }
 
     .bandeja-filtros .form-group:has(#id_estado) {
-        order: 2;
         flex: 0 0 162px;
     }
 
     .bandeja-filtros .form-group:has(#id_pendiente) {
-        order: 3;
         flex: 0 0 170px;
     }
 
     .bandeja-filtros .form-group:has(#id_periodo) {
-        order: 4;
         flex: 0 0 160px;
     }
 
     .bandeja-filtros .form-group:has(#id_dia),
     .bandeja-filtros .form-group:has(#id_mes) {
-        order: 5;
         flex: 0 0 150px;
     }
 
     .bandeja-filtros .form-group:has(#id_anio) {
-        order: 6;
         flex: 0 0 108px;
     }
 
     .bandeja-filtros-acciones {
-        order: 7;
         flex: 0 0 auto;
     }
 }

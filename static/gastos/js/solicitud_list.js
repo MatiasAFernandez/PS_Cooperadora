@@ -223,6 +223,27 @@
                 window.history.replaceState(window.history.state, "", url);
                 resultados.replaceChildren(...resultadosOrigen.childNodes);
                 inicializarVistasRapidas(resultados);
+
+                const limpiarActual = formulario.querySelector("[data-bandeja-limpiar]");
+                const limpiarOrigen = pagina.querySelector("[data-bandeja-limpiar]");
+                if (limpiarActual && limpiarOrigen) {
+                    limpiarActual.hidden = limpiarOrigen.hidden;
+                    const hrefLimpio = limpiarOrigen.getAttribute("href");
+                    if (hrefLimpio) limpiarActual.setAttribute("href", hrefLimpio);
+                }
+
+                const tabsActuales = formulario.closest(".bandeja")?.querySelector("[data-bandeja-tabs]");
+                const tabsOrigen = pagina.querySelector("[data-bandeja-tabs]");
+                if (tabsActuales && tabsOrigen) {
+                    tabsOrigen.querySelectorAll("[data-bandeja-tab]").forEach((origen) => {
+                        const destino = tabsActuales.querySelector(
+                            `[data-bandeja-tab="${origen.dataset.bandejaTab}"]`
+                        );
+                        const href = origen.getAttribute("href");
+                        if (destino && href) destino.setAttribute("href", href);
+                    });
+                }
+
                 const total = Number(resultadosOrigen.dataset.totalResultados);
                 informar(total ? `${total} solicitud${total === 1 ? "" : "es"}` : "No se encontraron solicitudes.");
             } catch {
@@ -258,9 +279,18 @@
         formulario.addEventListener("submit", cancelarBusqueda);
 
         // La respuesta pendiente no debe reemplazar una fila que el usuario acaba de abrir.
+        // Si cambia de pestaña durante el debounce de búsqueda, conserva el término vigente.
         formulario.closest(".bandeja").addEventListener("click", (evento) => {
             const enlace = evento.target.closest?.("a[href]");
             if (enlace && !evento.ctrlKey && !evento.metaKey && !evento.shiftKey && !evento.altKey) {
+                if (enlace.matches("[data-bandeja-tab]")) {
+                    const destinoUrl = new URL(enlace.href, window.location.origin);
+                    if (buscador.value.trim()) destinoUrl.searchParams.set("q", buscador.value);
+                    else destinoUrl.searchParams.delete("q");
+                    destinoUrl.searchParams.delete("page");
+                    destinoUrl.searchParams.delete("pagina");
+                    enlace.setAttribute("href", `${destinoUrl.pathname}${destinoUrl.search}`);
+                }
                 cancelarBusqueda();
             }
         });

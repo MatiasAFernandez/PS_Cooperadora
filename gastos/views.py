@@ -10,7 +10,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import OuterRef, Q, Subquery
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
@@ -600,6 +600,47 @@ def _numero_de_solicitud_buscado(texto: str) -> int | None:
     return numero
 
 
+def _construir_query_bandeja(
+    parametros: QueryDict,
+    *,
+    incluir_atencion: bool = False,
+    estados_compatibles: set[str] | None = None,
+    pendientes_compatibles: set[str] | None = None,
+    campos_excluidos: set[str] | None = None,
+) -> QueryDict:
+    """Arma parámetros de la bandeja sin paginación, vacíos ni criterios incompatibles."""
+    excluidos = campos_excluidos or set()
+    limpios = QueryDict(mutable=True)
+    if incluir_atencion:
+        limpios["atencion"] = "1"
+    for campo in ("q", "estado", "pendiente", "periodo", "dia", "mes", "anio"):
+        if campo in excluidos:
+            continue
+        valor = parametros.get(campo, "")
+        if not valor or (campo == "q" and not valor.strip()):
+            continue
+        if (
+            campo == "estado"
+            and estados_compatibles is not None
+            and valor not in estados_compatibles
+        ):
+            continue
+        if (
+            campo == "pendiente"
+            and pendientes_compatibles is not None
+            and valor not in pendientes_compatibles
+        ):
+            continue
+        limpios[campo] = valor
+    periodo = limpios.get("periodo", "")
+    activos_fecha = {"dia": {"dia"}, "mes": {"mes", "anio"}, "anio": {"anio"}}.get(
+        periodo, set()
+    )
+    for campo_fecha in {"dia", "mes", "anio"} - activos_fecha:
+        limpios.pop(campo_fecha, None)
+    return limpios
+
+
 class SolicitudGastoListView(View):
     """Listado de solicitudes de gasto visibles para el actor (panel compacto Master-Detail)."""
 
@@ -752,6 +793,43 @@ class SolicitudGastoListView(View):
         parametros.pop("page", None)
         parametros.pop("pagina", None)
 
+        campos_con_error = set(filtro_form.errors.keys())
+        if campos_con_error & {"periodo", "dia", "mes", "anio"}:
+            campos_con_error |= {"periodo", "dia", "mes", "anio"}
+
+        estados_compatibles_atencion: set[str] = set()
+        pendientes_compatibles_atencion: set[str] = set()
+        if puede_decidir:
+            estados_compatibles_atencion.update(
+                {EstadoSolicitud.PRESENTADA, EstadoSolicitud.POSTERGADA}
+            )
+            pendientes_compatibles_atencion.add("decision")
+        if puede_pagar:
+            estados_compatibles_atencion.update({EstadoSolicitud.ACEPTADA, "pagada"})
+            pendientes_compatibles_atencion.update({"pago", "atp"})
+        if pendientes_compatibles_atencion and "cualquiera" in condiciones_pendiente:
+            pendientes_compatibles_atencion.add("cualquiera")
+
+        base_url = reverse("gastos:lista")
+        query_criterios = _construir_query_bandeja(parametros)
+        tiene_filtros_activos = bool(query_criterios) or bool(filtro_form.errors)
+        limpiar_filtros_url = f"{base_url}?atencion=1" if solo_atencion else base_url
+
+        query_tab_todas = _construir_query_bandeja(
+            parametros, campos_excluidos=campos_con_error
+        )
+        query_tab_atencion = _construir_query_bandeja(
+            parametros,
+            incluir_atencion=True,
+            estados_compatibles=estados_compatibles_atencion,
+            pendientes_compatibles=pendientes_compatibles_atencion,
+            campos_excluidos=campos_con_error,
+        )
+        url_tab_todas = (
+            f"{base_url}?{query_tab_todas.urlencode()}" if query_tab_todas else base_url
+        )
+        url_tab_atencion = f"{base_url}?{query_tab_atencion.urlencode()}"
+
         return render(
             request,
             "gastos/solicitud_list.html",
@@ -768,6 +846,10 @@ class SolicitudGastoListView(View):
                 "solo_atencion": solo_atencion,
                 "ofrece_atencion": ofrece_atencion,
                 "total_atencion": total_atencion,
+                "tiene_filtros_activos": tiene_filtros_activos,
+                "limpiar_filtros_url": limpiar_filtros_url,
+                "url_tab_todas": url_tab_todas,
+                "url_tab_atencion": url_tab_atencion,
                 "consulta_bandeja": request.GET.urlencode(),
             },
         )

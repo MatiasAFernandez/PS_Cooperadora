@@ -598,3 +598,106 @@ def test_cualquier_pendiente_reune_condiciones_del_actor(create_actor: Any) -> N
         sin_pago.pk,
         con_atp.pk,
     }
+
+
+# ---------------------------------------------------------------------------
+# 7. Orden de filtros, preservación entre pestañas y limpieza contextual
+# ---------------------------------------------------------------------------
+
+
+def test_buscador_aparece_primero_en_el_dom_de_filtros(create_actor: Any) -> None:
+    """El orden del DOM y tabulación ubica el buscador antes del selector de estado."""
+    operador, _ = create_actor("operador_orden_filtros", ["gastos.decidir"])
+    client = Client()
+    client.force_login(operador)
+
+    response = client.get(reverse("gastos:lista"))
+    assert response.status_code == 200
+    assert list(response.context["filtro_form"].fields)[:4] == [
+        "q",
+        "estado",
+        "pendiente",
+        "periodo",
+    ]
+    html = response.content.decode()
+    assert html.index('id="id_q"') < html.index('id="id_estado"')
+
+
+def test_pestanas_conservan_filtros_compatibles_y_vuelven_a_primera_pagina(
+    create_actor: Any,
+) -> None:
+    """Al cambiar de pestaña conserva búsqueda y filtros compatibles, sin paginación."""
+    operador, _ = create_actor("operador_tabs_filtros", ["gastos.decidir"])
+    for grupo in ("demo_gastos_pago", "demo_documentos_aporte", "demo_documentos_metadatos"):
+        operador.groups.add(Group.objects.get_or_create(name=grupo)[0])
+    client = Client()
+    client.force_login(operador)
+
+    # Desde Todas con criterio compatible y página 2 -> Requieren atención conserva todo sin page
+    r_compatible = client.get(
+        reverse("gastos:lista"),
+        {"q": "QA 134", "estado": "aceptada", "periodo": "anio", "anio": "2026", "page": "2"},
+    )
+    assert (
+        r_compatible.context["url_tab_atencion"]
+        == "/gastos/?atencion=1&q=QA+134&estado=aceptada&periodo=anio&anio=2026"
+    )
+    assert (
+        r_compatible.context["url_tab_todas"]
+        == "/gastos/?q=QA+134&estado=aceptada&periodo=anio&anio=2026"
+    )
+
+    # Estado incompatible (rechazada) se descarta al ir a Requieren atención, manteniendo q
+    r_incompatible = client.get(
+        reverse("gastos:lista"),
+        {"q": "QA 134", "estado": "rechazada", "page": "3"},
+    )
+    assert r_incompatible.context["url_tab_atencion"] == "/gastos/?atencion=1&q=QA+134"
+    assert r_incompatible.context["url_tab_todas"] == "/gastos/?q=QA+134&estado=rechazada"
+
+    # Desde Requieren atención hacia Todas conserva criterios y vuelve a página 1
+    r_desde_atencion = client.get(
+        reverse("gastos:lista"),
+        {"atencion": "1", "q": "QA 134", "pendiente": "pago", "pagina": "2"},
+    )
+    assert r_desde_atencion.context["url_tab_todas"] == "/gastos/?q=QA+134&pendiente=pago"
+    assert (
+        r_desde_atencion.context["url_tab_atencion"]
+        == "/gastos/?atencion=1&q=QA+134&pendiente=pago"
+    )
+
+
+def test_quitar_filtros_solo_visible_con_criterios_y_limpia_en_pestana_actual(
+    create_actor: Any,
+) -> None:
+    """Quitar filtros se oculta sin criterios y limpia dentro de la pestaña activa."""
+    operador, _ = create_actor("operador_limpiar_filtros", ["gastos.decidir"])
+    client = Client()
+    client.force_login(operador)
+
+    sin_filtros_todas = client.get(reverse("gastos:lista"))
+    assert sin_filtros_todas.context["tiene_filtros_activos"] is False
+    assert (
+        'data-bandeja-limpiar hidden href="/gastos/">Quitar filtros</a>'
+        in sin_filtros_todas.content.decode()
+    )
+
+    sin_filtros_atencion = client.get(reverse("gastos:lista"), {"atencion": "1"})
+    assert sin_filtros_atencion.context["tiene_filtros_activos"] is False
+    assert sin_filtros_atencion.context["limpiar_filtros_url"] == "/gastos/?atencion=1"
+    assert (
+        'data-bandeja-limpiar hidden href="/gastos/?atencion=1">Quitar filtros</a>'
+        in sin_filtros_atencion.content.decode()
+    )
+    assert sin_filtros_atencion.context["url_tab_todas"] == "/gastos/"
+
+    con_filtros_atencion = client.get(
+        reverse("gastos:lista"), {"atencion": "1", "q": "insumos"}
+    )
+    assert con_filtros_atencion.context["tiene_filtros_activos"] is True
+    assert con_filtros_atencion.context["limpiar_filtros_url"] == "/gastos/?atencion=1"
+    assert (
+        'data-bandeja-limpiar href="/gastos/?atencion=1">Quitar filtros</a>'
+        in con_filtros_atencion.content.decode()
+    )
+    assert con_filtros_atencion.context["url_tab_todas"] == "/gastos/?q=insumos"
