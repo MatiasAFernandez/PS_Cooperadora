@@ -123,3 +123,28 @@ def test_fecha_precargada_usa_formato_html(escenario, solicitud):
     respuesta = cliente.get(reverse("facturacion:registrar_comprobante", args=[solicitud.pk]))
     campo = str(respuesta.context["form"]["fecha_envio"])
     assert f'value="{timezone.localdate().isoformat()}"' in campo
+
+
+def test_declarar_envio_invalido_conserva_navegacion_y_mensaje_legible(
+    escenario, solicitud, entrada
+):
+    comprobante = registrar(escenario, solicitud, dict(entrada, enviado=False))
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["o"])
+    url = reverse("facturacion:declarar_envio", args=[solicitud.pk, comprobante.pk])
+
+    respuesta = cliente.post(
+        url,
+        {
+            "destinatario": "destino@example.invalid",
+            "fecha_envio": "2025-01-01",
+        },
+    )
+
+    assert respuesta.status_code == 400
+    html = respuesta.content.decode()
+    assert respuesta.context["actor"] is not None
+    assert 'id="app-nav"' in html
+    assert "No se pudo registrar el envío: El envío no puede preceder a la emisión." in html
+    assert "['" not in respuesta.context["error"]
+    assert "{'" not in respuesta.context["error"]

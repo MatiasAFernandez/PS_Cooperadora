@@ -10,36 +10,6 @@
  *  - Totalmente adaptativo y sin scroll horizontal en 390px.
  */
 
-:root {
-  --ref-deep-blue: #090979;
-  --ref-blue: #084298;
-  --ref-bright-blue: #0d6efd;
-  --ref-text: #1e293b;
-  --ref-heading: #37423b;
-  --ref-bg-surface: #ffffff;
-  --ref-bg-muted: #f8fafc;
-  --ref-border: #e2e8f0;
-  --ref-border-strong: #cbd5e1;
-
-  --color-success: #166534;
-  --color-success-bg: #effaf2;
-  --color-success-border: #bbf7d0;
-
-  --color-error: #9f1239;
-  --color-error-bg: #fff1f2;
-  --color-error-border: #fecdd3;
-
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-full: 9999px;
-  --row-height-dense: 44px;
-
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 /* -------------------------------------------------------------------------
  * Layout Principal y Contenedor
  * ------------------------------------------------------------------------- */

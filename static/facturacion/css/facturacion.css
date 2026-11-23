@@ -181,6 +181,7 @@ body:has(.fac-drawer[open]) { overflow: hidden; }
 }
 .facturacion .fac-help-icon:hover span, .facturacion .fac-help-icon:focus-visible span { background: var(--color-info-bg); }
 .facturacion .fac-help-text {
+    display: none;
     position: absolute;
     z-index: 3;
     inset-block-start: calc(var(--fac-help-inset) + var(--row-height-dense));
@@ -197,7 +198,7 @@ body:has(.fac-drawer[open]) { overflow: hidden; }
     font-weight: var(--font-semibold);
     line-height: 1.5;
 }
-.facturacion .fac-help-icon:is(:hover, :focus) + .fac-help-text, .facturacion .fac-help-text:hover { display: block; }
+.facturacion .fac-help-icon:is(:hover, :focus, :focus-visible) + .fac-help-text, .facturacion .fac-help-text:hover { display: block; }
 
 .facturacion .fac-resolution-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
 .facturacion .fac-resolution-grid h4 { margin: 0 0 .65rem; }

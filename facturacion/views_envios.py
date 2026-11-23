@@ -19,8 +19,19 @@ class DeclararEnvioView(FacturacionView):
             declarar_envio(actor=self.actor, comprobante=comprobante,
                            datos={**request.POST.dict(), "enviado": True})
         except ValidationError as exc:
+            if hasattr(exc, "message_dict"):
+                mensaje_error = "; ".join(
+                    str(msg) for msgs in exc.message_dict.values() for msg in msgs
+                )
+            elif hasattr(exc, "messages") and exc.messages:
+                mensaje_error = " ".join(str(msg) for msg in exc.messages)
+            else:
+                mensaje_error = str(exc)
             return render(request, "facturacion/envio_error.html", {
-                "solicitud": solicitud, "form": EnvioForm(request.POST), "error": exc,
+                "actor": self.actor,
+                "solicitud": solicitud,
+                "form": EnvioForm(request.POST),
+                "error": mensaje_error,
                 "comprobante": comprobante,
             }, status=400)
         return redirect("facturacion:detalle", numero=numero)

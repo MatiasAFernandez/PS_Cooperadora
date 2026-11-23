@@ -1,4 +1,7 @@
 document.querySelectorAll('form[enctype="multipart/form-data"] input[type="file"]').forEach((campo) => {
+    if (campo.closest('.rp-dropzone, .sd-dropzone, [data-aporte-drop], [data-file-drop-custom], .file-drop')) {
+        return;
+    }
     const zona = document.createElement('div');
     zona.className = 'file-drop';
 

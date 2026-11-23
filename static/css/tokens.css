@@ -214,6 +214,7 @@ a:hover {
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
+  max-width: 100%;
   touch-action: manipulation;
   color: var(--bg-surface);
   background-color: var(--brand-primary);
@@ -746,18 +747,27 @@ input[readonly]:focus {
 }
 
 .nowrap {
-  white-space: nowrap !important;
+  white-space: nowrap;
 }
 
 table th,
 table td,
 .badge,
 .status-pill,
-.btn,
 .btn-copy,
 .font-tabular {
-  overflow-wrap: normal !important;
-  word-break: normal !important;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+@media (max-width: 640px) {
+  .button,
+  .btn {
+    white-space: normal;
+    text-align: center;
+    padding-block: 8px;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ---------------------------------------------------------------------------

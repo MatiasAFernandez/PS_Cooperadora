@@ -10,7 +10,7 @@
         badge.hidden = true;
         badge.textContent = "";
         badge.removeAttribute("aria-label");
-        badge.className = "";
+        badge.className = "app-nav-badge";
     }
 
     fetch(url, {
@@ -31,7 +31,7 @@
                 ocultar();
                 return;
             }
-            badge.className = "badge badge-info";
+            badge.className = "app-nav-badge";
             badge.textContent = String(n);
             badge.setAttribute(
                 "aria-label",
