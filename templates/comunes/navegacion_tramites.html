@@ -3,54 +3,80 @@
 <div class="app-nav-scrim" id="app-nav-scrim" hidden></div>
 <aside class="app-nav" id="app-nav" aria-label="Navegación principal">
     <div class="app-nav-head">
-        <span class="app-nav-title">Navegación</span>
-        <button type="button" class="app-nav-toggle" id="app-nav-toggle" aria-controls="app-nav" aria-label="Plegar menú" title="Plegar menú">
-            <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path id="app-nav-toggle-icon" d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
-            <span class="app-nav-toggle-text">Cerrar</span>
+        <a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" title="Inicio de Cooperadora">
+            <span class="brand-badge">UTN</span>
+            <span class="brand-copy">
+                <span class="brand-title">Cooperadora</span>
+                <span class="brand-sub">UTN FRRe</span>
+            </span>
+        </a>
+        <button type="button" class="btn-icon app-nav-toggle" id="app-nav-toggle" aria-controls="app-nav" aria-label="Plegar menú" title="Plegar menú">
+            <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path id="app-nav-toggle-icon" d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg>
         </button>
     </div>
-    <nav aria-label="Navegación de trámites">
+    <nav class="app-nav-body" aria-label="Navegación de trámites">
         {% if "gastos.presentar" in caps or "facturacion.presentar" in caps or "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps or "facturacion.consultar_propias" in caps or "facturacion.consultar_todas" in caps %}
-        <h3 class="app-nav-section">Trámites</h3>
-        <ul>
-            {% if "gastos.presentar" in caps and "gastos.consultar_propias" not in caps and "gastos.consultar_todas" not in caps %}
-                <li><a href="{% url 'gastos:presentar' %}"{% if ns == "gastos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span class="app-nl">Solicitud de Gasto</span></a></li>
-            {% endif %}
-            {% if "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps %}
-                <li><a href="{% url 'gastos:lista' %}"{% if ns == "gastos" and name != "reporte_cuatrimestral" and name != "gestion_catalogos" and name != "centro_costo_toggle" and "catalogos" not in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span class="app-nl">{% if "gastos.presentar" in caps %}Solicitud de Gasto{% else %}Consultar gastos{% endif %}</span></a></li>
-            {% endif %}
-            {% if "facturacion.presentar" in caps and "facturacion.consultar_propias" not in caps and "facturacion.consultar_todas" not in caps %}
-                <li><a href="{% url 'facturacion:presentar' %}"{% if ns == "facturacion" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></svg><span class="app-nl">Solicitud de Facturación</span></a></li>
-            {% endif %}
-            {% if "facturacion.consultar_propias" in caps or "facturacion.consultar_todas" in caps %}
-                <li><a href="{% url 'facturacion:lista' %}"{% if ns == "facturacion" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></svg><span class="app-nl">{% if "facturacion.presentar" in caps %}Solicitud de Facturación{% else %}Consultar facturación{% endif %}</span></a></li>
-            {% endif %}
-        </ul>
+        <div class="app-nav-group">
+            <h3 class="app-nav-section">Trámites</h3>
+            <ul>
+                {% if "gastos.presentar" in caps and "gastos.consultar_propias" not in caps and "gastos.consultar_todas" not in caps %}
+                    <li><a href="{% url 'gastos:presentar' %}" title="Solicitud de Gasto"{% if ns == "gastos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg><span class="app-nl">Solicitud de Gasto</span></a></li>
+                {% endif %}
+                {% if "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps %}
+                    <li><a href="{% url 'gastos:lista' %}" title="{% if 'gastos.presentar' in caps %}Solicitud de Gasto{% else %}Gastos{% endif %}"{% if ns == "gastos" and name != "reporte_cuatrimestral" and name != "gestion_catalogos" and name != "centro_costo_toggle" and "catalogos" not in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg><span class="app-nl">{% if "gastos.presentar" in caps %}Solicitud de Gasto{% else %}Consultar gastos{% endif %}</span></a></li>
+                {% endif %}
+                {% if "facturacion.presentar" in caps and "facturacion.consultar_propias" not in caps and "facturacion.consultar_todas" not in caps %}
+                    <li><a href="{% url 'facturacion:presentar' %}" title="Solicitud de Facturación"{% if ns == "facturacion" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="app-nl">Solicitud de Facturación</span></a></li>
+                {% endif %}
+                {% if "facturacion.consultar_propias" in caps or "facturacion.consultar_todas" in caps %}
+                    <li><a href="{% url 'facturacion:lista' %}" title="{% if 'facturacion.presentar' in caps %}Solicitud de Facturación{% else %}Facturación{% endif %}"{% if ns == "facturacion" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="app-nl">{% if "facturacion.presentar" in caps %}Solicitud de Facturación{% else %}Consultar facturación{% endif %}</span></a></li>
+                {% endif %}
+            </ul>
+        </div>
         {% endif %}
         {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps or "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps or "identidad.administrar_cuentas" in caps %}
-        <h3 class="app-nav-section">Gestión</h3>
-        <ul>
-        {% if "identidad.administrar_cuentas" in caps %}
-        <li><a href="{% url 'cuentas:altas' %}"{% if ns == 'cuentas' and name == 'altas' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg><span class="app-nl">Solicitudes de cuenta</span></a></li>
-        <li><a href="{% url 'cuentas:usuarios' %}"{% if ns == 'cuentas' and name == 'usuarios' or ns == 'cuentas' and name == 'usuario_detalle' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="app-nl">Usuarios</span></a></li>
+        <div class="app-nav-group">
+            <h3 class="app-nav-section">Gestión</h3>
+            <ul>
+                {% if "identidad.administrar_cuentas" in caps %}
+                <li><a href="{% url 'cuentas:altas' %}" title="Solicitudes de cuenta"{% if ns == 'cuentas' and name == 'altas' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span class="app-nl">Solicitudes de cuenta</span></a></li>
+                <li><a href="{% url 'cuentas:usuarios' %}" title="Usuarios"{% if ns == 'cuentas' and name == 'usuarios' or ns == 'cuentas' and name == 'usuario_detalle' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="app-nl">Usuarios</span></a></li>
+                {% endif %}
+                {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}
+                <li><a href="{% if 'gastos.consultar_todas' in caps %}{% url 'gestion:reporte_gastos' %}{% else %}{% url 'gestion:reporte_facturacion' %}{% endif %}" title="Reporte"{% if ns == 'gestion' and name == 'reporte_gastos' or ns == 'gestion' and name == 'reporte_facturacion' or ns == 'gastos' and name == 'reporte_cuatrimestral' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="app-nl">Reporte</span></a></li>
+                {% endif %}
+                {% if "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
+                <li><a href="{% if 'gestion.configurar' in caps %}{% url 'gestion:configuracion' 'GASTO' %}{% else %}{% url 'gastos:gestion_catalogos' %}{% endif %}" title="Configuración"{% if ns == 'gestion' and name == 'configuracion' or ns == 'gestion' and name == 'campo' or ns == 'gestion' and name == 'campo_nuevo' or ns == 'gastos' and 'catalogos' in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg><span class="app-nl">Configuración</span></a></li>
+                {% endif %}
+            </ul>
+        </div>
         {% endif %}
-        {% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}
-        <li><a href="{% if 'gastos.consultar_todas' in caps %}{% url 'gestion:reporte_gastos' %}{% else %}{% url 'gestion:reporte_facturacion' %}{% endif %}"{% if ns == 'gestion' and name == 'reporte_gastos' or ns == 'gestion' and name == 'reporte_facturacion' or ns == 'gastos' and name == 'reporte_cuatrimestral' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M6 20v-7M12 20V5M18 20v-10"/></svg><span class="app-nl">Reporte</span></a></li>
-        {% endif %}
-        {% if "gestion.configurar" in caps or "gastos.decidir" in caps or "gastos.registrar_pago" in caps %}
-        <li><a href="{% if 'gestion.configurar' in caps %}{% url 'gestion:configuracion' 'GASTO' %}{% else %}{% url 'gastos:gestion_catalogos' %}{% endif %}"{% if ns == 'gestion' and name == 'configuracion' or ns == 'gestion' and name == 'campo' or ns == 'gestion' and name == 'campo_nuevo' or ns == 'gastos' and 'catalogos' in route %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg><span class="app-nl">Configuración</span></a></li>
-        {% endif %}
-        </ul>
-        {% endif %}
-        <h3 class="app-nav-section">General</h3>
-        <ul>
-            <li><a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}"{% if ns == "identidad" and name == "inicio" or ns == "cuentas" and name == "inicio" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/></svg><span class="app-nl">Inicio</span></a></li>
-            {% if "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps %}
-            <li><a href="{% url 'avisos:lista' %}" data-avisos-contador-url="{% url 'avisos:contador' %}"{% if ns == "avisos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="app-nl">Avisos</span><span data-avisos-contador hidden></span></a></li>
-            {% endif %}
-            {% if request.user.cuenta_local %}<li><a href="{% url 'cuentas:cambiar_clave' %}"{% if ns == 'cuentas' and name == 'cambiar_clave' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15v3M6 10V7a6 6 0 0 1 12 0v3M5 10h14v12H5z"/></svg><span class="app-nl">Cambiar contraseña</span></a></li>{% endif %}
-        </ul>
+        <div class="app-nav-group">
+            <h3 class="app-nav-section">Cuenta</h3>
+            <ul>
+                <li><a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" title="Inicio"{% if ns == "identidad" and name == "inicio" or ns == "cuentas" and name == "inicio" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="app-nl">Inicio</span></a></li>
+                {% if "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps %}
+                <li><a href="{% url 'avisos:lista' %}" title="Avisos" data-avisos-contador-url="{% url 'avisos:contador' %}"{% if ns == "avisos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="app-nl">Avisos</span><span class="app-nav-badge" data-avisos-contador hidden></span></a></li>
+                {% endif %}
+                {% if request.user.cuenta_local %}
+                <li><a href="{% url 'cuentas:cambiar_clave' %}" title="Cambiar contraseña"{% if ns == 'cuentas' and name == 'cambiar_clave' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="app-nl">Cambiar contraseña</span></a></li>
+                {% endif %}
+            </ul>
+        </div>
     </nav>
+    <div class="app-nav-footer">
+        <span class="app-user-avatar" aria-hidden="true">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username|slice:":2"|upper }}{% else %}US{% endif %}</span>
+        <div class="app-user-meta">
+            <span class="app-user-name">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username }}{% else %}Cuenta activa{% endif %}</span>
+            <span class="app-user-role">{% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}Cooperadora{% elif "gastos.presentar" in caps or "facturacion.presentar" in caps %}Solicitante{% else %}Consulta{% endif %}</span>
+        </div>
+        <form method="post" action="{% if request.user.cuenta_local %}{% url 'cuentas:logout' %}{% else %}{% url 'identidad:logout' %}{% endif %}" class="app-logout-form">
+            {% csrf_token %}
+            <button class="btn-icon app-logout" type="submit" aria-label="Cerrar sesión" title="Cerrar sesión">
+                <svg class="app-ic app-ic-sm" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            </button>
+        </form>
+    </div>
 </aside>
 {% endwith %}
 {% endif %}
