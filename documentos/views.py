@@ -1,5 +1,8 @@
 """Rutas HTTP protegidas para metadatos y contenido documental."""
 
+from urllib.parse import urlencode
+
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import FileResponse, Http404, JsonResponse
@@ -103,6 +106,7 @@ def documento_archivo(request, documento_id: int):
 @require_http_methods(["GET", "POST"])
 def documento_revision(request, documento_id: int):
     actor = _actor(request)
+    bandeja = (request.GET.get("bandeja") or request.POST.get("bandeja") or "").strip()
     try:
         documento, revisiones = consultar_revision(actor=actor, documento_id=documento_id)
         actual = ultima_revision(documento)
@@ -122,6 +126,8 @@ def documento_revision(request, documento_id: int):
             numero_solicitud = base.numero_publico
             solicitud_url = reverse("gastos:detalle", args=[base.numero_publico])
             terminal = CierreGasto.objects.filter(solicitud_id=base.numero_publico).exists()
+        if bandeja:
+            solicitud_url = f"{solicitud_url}?{urlencode({'bandeja': bandeja})}"
         puede_revisar = has_capability(actor, "documentos.revisar") and vigente and not terminal
         form = RevisionDocumentoForm(initial={"revision_esperada": actual.pk if actual else 0})
         status = 200
@@ -139,7 +145,21 @@ def documento_revision(request, documento_id: int):
                     form.add_error(None, str(exc))
                     status = 409
                 else:
-                    return redirect("documentos:revision", documento_id=documento_id)
+                    messages.success(request, "Revisión documental registrada.")
+                    destino = reverse("documentos:revision", kwargs={"documento_id": documento_id})
+                    if bandeja:
+                        destino = f"{destino}?{urlencode({'bandeja': bandeja})}"
+                    return redirect(destino)
+        form.fields["motivo"].widget.attrs["aria-describedby"] = "id_motivo_help"
+        if form.errors:
+            if "resultado" in form.errors:
+                form.fields["resultado"].widget.attrs["aria-invalid"] = "true"
+                form.fields["resultado"].widget.attrs["aria-describedby"] = "id_resultado_error"
+            if "motivo" in form.errors:
+                form.fields["motivo"].widget.attrs["aria-invalid"] = "true"
+                form.fields["motivo"].widget.attrs["aria-describedby"] = (
+                    "id_motivo_error id_motivo_help"
+                )
         cobros_revision = []
         if base.circuito == Circuito.FACTURACION and documento.tipo == "COMPROBANTE_COBRO":
             cobros = CobroExterno.todos.filter(solicitud=solicitud).filter(
@@ -150,6 +170,7 @@ def documento_revision(request, documento_id: int):
         respuesta = render(request, "documentos/revision.html", {
             "actor": actor, "documento": documento, "actual": actual, "vigente": vigente,
             "numero_solicitud": numero_solicitud, "solicitud_url": solicitud_url,
+            "bandeja": bandeja,
             "terminal": terminal,
             "cobros_revision": cobros_revision,
             "puede_revisar": puede_revisar, "form": form,

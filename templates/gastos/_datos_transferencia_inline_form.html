@@ -1,7 +1,9 @@
 {% if detalle_datos_transferencia_form.non_field_errors %}
-    <div class="sd-alert sd-alert-error" role="alert" data-transferencia-error tabindex="-1">
-        <strong>No se pudieron guardar los datos:</strong>
-        {{ detalle_datos_transferencia_form.non_field_errors }}
+    <div class="form-error-summary" role="alert" data-transferencia-error tabindex="-1">
+        <p>No se pudieron guardar los datos:</p>
+        <ul>
+            {% for error in detalle_datos_transferencia_form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
     </div>
 {% endif %}
 
@@ -20,7 +22,6 @@
                 <div class="form-group sd-form-group{% if field.errors %} has-error{% endif %}">
                     <label for="{{ field.id_for_label }}" class="sd-form-label">
                         {{ field.label }}
-                        {% if field.field.required %}<span class="sd-required" aria-hidden="true">*</span>{% endif %}
                     </label>
                     {{ field }}
                     {% if field.help_text %}
@@ -37,7 +38,7 @@
     </div>
 
     <div class="sd-actions sd-form-actions">
-        <button class="sd-btn sd-btn-primary" type="submit">Guardar</button>
-        <button type="button" class="sd-btn sd-btn-secondary" data-transferencia-cancelar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button type="button" class="btn btn-secondary" data-transferencia-cancelar>Cancelar</button>
     </div>
 </form>

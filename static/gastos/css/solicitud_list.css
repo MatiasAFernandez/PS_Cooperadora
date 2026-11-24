@@ -67,8 +67,8 @@
 
 /* Avisos de deuda / bloqueo (sólo solicitante con deuda documental) */
 .bandeja-aviso {
-    padding: 12px 14px;
-    margin: 0 0 16px;
+    padding: 10px 14px;
+    margin: 0 0 14px;
     background: var(--color-warning-bg);
     border: 1px solid var(--color-warning-border);
     border-radius: var(--radius-md);
@@ -82,15 +82,33 @@
 }
 
 .bandeja-aviso h2 {
-    font-size: var(--text-body);
+    font-size: var(--text-sm);
     font-weight: var(--font-semibold);
     margin: 0;
 }
 
-.bandeja-aviso p,
+.bandeja-aviso p {
+    margin: 3px 0 0;
+    font-size: var(--text-xs);
+    line-height: 1.45;
+}
+
 .bandeja-aviso ul {
-    margin: 4px 0 0;
-    font-size: var(--text-sm);
+    margin: 6px 0 0;
+    padding-left: 1.15rem;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.bandeja-aviso li + li {
+    margin-top: 2px;
+}
+
+.bandeja-aviso .bandeja-enlace {
+    padding: 0 4px;
+    font-weight: var(--font-semibold);
+    color: inherit;
+    text-decoration: underline;
 }
 
 /* Pestañas segmentadas <a> (funcionales con y sin JS; reemplazan banner + botón redundantes) */

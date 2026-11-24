@@ -1,77 +1,158 @@
-{% extends "facturacion/base.html" %}
-{% block title %}Revisión documental — Cooperadora{% endblock %}
-{% block titulo_modulo %}Documentos — Cooperadora{% endblock %}
-{% block facturacion_content %}
-<header class="fac-header">
-    <div>
-        <h2>Revisión documental</h2>
-        <p class="fac-muted">{{ documento.tramite_base.get_circuito_display }} · Solicitud #{{ numero_solicitud }}</p>
-    </div>
-    <a class="btn btn-secondary" href="{{ solicitud_url }}">Volver a la solicitud</a>
-</header>
+{% extends "base.html" %}
+{% load static formato_ars %}
 
-<div class="fac-review-grid{% if puede_revisar %} fac-review-grid-editable{% endif %}">
-<section class="panel" aria-labelledby="titulo-respaldo">
-    <div class="fac-header">
-        <div>
-            <h3 id="titulo-respaldo">Documento de respaldo de la solicitud</h3>
-            <p><strong>{{ documento.nombre_original }}</strong></p>
-        </div>
-        {% if puede_descargar %}
-        <a class="btn btn-secondary" href="{% url 'documentos:archivo' documento.pk %}">Descargar esta versión</a>
+{% block title %}Revisión documental — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Revisión documental — PS Cooperadora{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/visor_documentos.css' %}">
+<link rel="stylesheet" href="{% static 'documentos/css/revision.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="doc-rev">
+    <a class="page-back page-back--arrow" href="{{ solicitud_url }}">Volver a la solicitud</a>
+
+    <header class="doc-rev-header">
+        <h1>Revisión documental</h1>
+        <p class="doc-rev-subtitle">{{ documento.tramite_base.get_circuito_display }} · Solicitud #{{ numero_solicitud }}</p>
+    </header>
+
+    {% include "comunes/mensajes_flash.html" %}
+
+    <div class="doc-rev-grid{% if puede_revisar and not actual %} doc-rev-grid--split{% endif %}">
+        <section class="card doc-rev-card" aria-labelledby="titulo-respaldo">
+            <div class="doc-rev-doc-head">
+                <div class="doc-rev-doc-meta">
+                    <h2 id="titulo-respaldo" class="doc-rev-h2">Documento de respaldo</h2>
+                    <p class="doc-rev-filename">{{ documento.nombre_original }}</p>
+                </div>
+                {% if puede_descargar %}
+                    {% url 'documentos:archivo' documento.pk as url_archivo %}
+                    {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf-imagen" titulo=documento.get_tipo_display nombre=documento.nombre_original ver_label="Ver archivo de esta versión" descargar_label="Descargar esta versión" only %}
+                {% endif %}
+            </div>
+
+            <dl class="kv-list">
+                <div>
+                    <dt>Tipo de documento</dt>
+                    <dd>{{ documento.get_tipo_display }}</dd>
+                </div>
+                <div>
+                    <dt>Versión</dt>
+                    <dd class="font-tabular">{{ documento.version }} · {% if vigente %}Vigente{% else %}Reemplazada{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>Resultado documental</dt>
+                    <dd>
+                        {% if actual %}
+                            <span class="status-pill {% if actual.resultado == 'ACEPTADO' %}status-success{% elif actual.resultado == 'RECHAZADO' %}status-error{% else %}status-warning{% endif %}">{{ actual.get_resultado_display }}</span>
+                        {% else %}
+                            <span class="status-pill status-warning">Pendiente</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                {% if actual and actual.motivo %}
+                <div>
+                    <dt>Motivo vigente</dt>
+                    <dd>{{ actual.motivo }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+
+            {% if cobros_revision %}
+            <section class="doc-rev-subsection" aria-labelledby="titulo-datos-cobro">
+                <h3 id="titulo-datos-cobro" class="doc-rev-h3">Datos ingresados del cobro</h3>
+                {% for cobro, medio in cobros_revision %}
+                <dl class="kv-list">
+                    <div>
+                        <dt>Medio o cuenta de destino</dt>
+                        <dd>{{ medio }}</dd>
+                    </div>
+                    <div>
+                        <dt>Operación</dt>
+                        <dd class="font-mono">{{ cobro.numero_operacion }}</dd>
+                    </div>
+                    <div>
+                        <dt>Fecha de operación</dt>
+                        <dd class="font-tabular">{{ cobro.fecha_operacion|date:"d/m/Y" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Importe</dt>
+                        <dd class="font-tabular">{{ cobro.importe|ars }}{% if cobro.moneda %} {{ cobro.moneda }}{% endif %}</dd>
+                    </div>
+                </dl>
+                {% endfor %}
+            </section>
+            {% elif documento.tipo == "COMPROBANTE_COBRO" and documento.tramite_base.circuito == "FACTURACION" %}
+            <p class="doc-rev-muted">Este documento todavía no está vinculado a un cobro.</p>
+            {% endif %}
+
+            {% if not vigente %}
+            <div class="message message-warning doc-rev-notice" role="status">
+                Versión reemplazada. El historial queda disponible y la nueva versión requiere su propia revisión.
+            </div>
+            {% elif terminal %}
+            <div class="message message-info doc-rev-notice" role="status">
+                El trámite tiene una resolución definitiva. La revisión queda disponible para consulta.
+            </div>
+            {% endif %}
+
+            {% if documento.tipo == "COMPROBANTE_COBRO" %}
+            <div class="message message-info doc-rev-notice" role="status">
+                Aceptar este comprobante no confirma el cobro. Registrá la verificación del ingreso desde «Verificar ingreso» en el detalle de la solicitud.
+            </div>
+            {% endif %}
+        </section>
+
+        {% if puede_revisar %}
+        <section class="card doc-rev-card" aria-labelledby="titulo-registrar-revision">
+            {% if actual %}
+            <details class="doc-rev-reopen" data-revision-reopen{% if form.errors %} open{% endif %}>
+                <summary id="titulo-registrar-revision">
+                    <span>Registrar nueva revisión</span>
+                    <span class="doc-rev-reopen-summary-right">
+                        <span>Conserva el historial anterior</span>
+                        <svg class="doc-rev-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                </summary>
+                <div class="doc-rev-reopen-body">
+                    {% include "documentos/_revision_form.html" %}
+                </div>
+            </details>
+            {% else %}
+            <h2 id="titulo-registrar-revision" class="doc-rev-h2">Registrar revisión</h2>
+            {% include "documentos/_revision_form.html" %}
+            {% endif %}
+        </section>
+        {% elif form.errors %}
+        <section class="card doc-rev-card" aria-label="Errores de revisión">
+            <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+                <p>No se pudo registrar la revisión:</p>
+                <ul>
+                    {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+                    {% for field in form %}{% for err in field.errors %}<li>{{ err }}</li>{% endfor %}{% endfor %}
+                </ul>
+            </div>
+        </section>
         {% endif %}
     </div>
-    <dl class="detail-grid">
-        <dt>Tipo de documento</dt><dd>{{ documento.get_tipo_display }}</dd>
-        <dt>Versión</dt><dd>{{ documento.version }} · {% if vigente %}Vigente{% else %}Reemplazada{% endif %}</dd>
-        <dt>Resultado documental</dt>
-        <dd>{% if actual %}
-            {% include "facturacion/estado.html" with estado=actual.resultado etiqueta=actual.get_resultado_display only %}
-            {% else %}{% include "facturacion/estado.html" with estado="PENDIENTE" etiqueta="Pendiente" only %}{% endif %}</dd>
-    </dl>
-    {% if cobros_revision %}
-    <section aria-labelledby="titulo-datos-cobro">
-        <h4 id="titulo-datos-cobro">Datos ingresados del cobro</h4>
-        {% for cobro, medio in cobros_revision %}
-        <dl class="detail-grid">
-            <dt>Medio o cuenta de destino</dt><dd>{{ medio }}</dd>
-            <dt>Operación</dt><dd>{{ cobro.numero_operacion }}</dd>
-            <dt>Fecha de operación</dt><dd>{{ cobro.fecha_operacion|date:"d/m/Y" }}</dd>
-            <dt>Importe</dt><dd>$ {{ cobro.importe|floatformat:2 }} {{ cobro.moneda }}</dd>
-        </dl>
-        {% endfor %}
-    </section>
-    {% elif documento.tipo == "COMPROBANTE_COBRO" and documento.tramite_base.circuito == "FACTURACION" %}
-    <p class="fac-muted">Este documento todavía no está vinculado a un cobro.</p>
-    {% endif %}
-    {% if not vigente %}
-    <p class="notice fac-warning">Versión reemplazada. El historial queda disponible y la nueva versión requiere su propia revisión.</p>
-    {% elif terminal %}
-    <p class="notice">El trámite tiene una resolución definitiva. La revisión queda disponible para consulta.</p>
-    {% endif %}
-    {% if documento.tipo == "COMPROBANTE_COBRO" %}
-    <p class="notice">Aceptar este comprobante no confirma el cobro. Registrá la verificación del ingreso desde «Verificar ingreso» en el detalle de la solicitud.</p>
-    {% endif %}
-</section>
 
-{% if puede_revisar %}
-<section class="panel fac-has-help" aria-labelledby="titulo-registrar-revision">
-    <h3 id="titulo-registrar-revision">Registrar revisión</h3>
-    {% include "facturacion/ayuda.html" with id="ayuda-registrar-revision" etiqueta="Registrar revisión" texto="El historial de esta versión conserva el resultado, la fecha y la cuenta que revisó el documento de respaldo." only %}
-    <form method="post">
-        {% csrf_token %}
-        {% include "facturacion/campos_formulario.html" %}
-        <button class="btn" type="submit">Registrar revisión</button>
-    </form>
-</section>
-{% elif form.errors %}
-<section class="panel" aria-label="Errores de revisión">{{ form.errors }}</section>
-{% endif %}
+    <section class="card doc-rev-card" aria-labelledby="titulo-historial-documental">
+        <h2 id="titulo-historial-documental" class="doc-rev-h2">Historial de esta versión</h2>
+        {% if historial %}
+            {% include "comunes/historial_eventos.html" %}
+        {% else %}
+            <p class="doc-rev-muted">Todavía no se registraron revisiones para esta versión.</p>
+        {% endif %}
+    </section>
 </div>
 
-<section class="panel" aria-labelledby="titulo-historial-documental">
-    <h3 id="titulo-historial-documental">Historial de esta versión</h3>
-    {% if historial %}{% include "comunes/historial_eventos.html" %}
-    {% else %}<p class="fac-muted">Todavía no se registraron revisiones para esta versión.</p>{% endif %}
-</section>
+{% if puede_descargar %}
+    {% include "comunes/visor_documento_dialogo.html" only %}
+    <script src="{% static 'js/visor_documentos.js' %}" defer></script>
+{% endif %}
+{% if form.errors %}
+    <script src="{% static 'js/foco_errores.js' %}" defer></script>
+{% endif %}
 {% endblock %}

@@ -51,7 +51,7 @@
 
     <div class="bandeja-contenido" data-bandeja-resultados data-total-resultados="{% if solicitudes %}{{ page_obj.paginator.count }}{% else %}0{% endif %}" data-tiene-errores="{% if filtro_form.errors %}1{% else %}0{% endif %}">
     {% if solicitudes %}
-        <p class="bandeja-conteo">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if consulta_bandeja %} (filtrado){% endif %}</p>
+        <p class="bandeja-conteo">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if tiene_filtros_activos %} (filtrado){% endif %}</p>
         <div class="bandeja-resultados">
             <table class="bandeja-tabla" aria-label="Solicitudes de gasto">
                 <thead>
@@ -90,6 +90,8 @@
         <p class="bandeja-vacio">No se encontraron solicitudes visibles con el concepto buscado y los filtros seleccionados.</p>
     {% elif filtro_form.cleaned_data.estado %}
         <p class="bandeja-vacio">No se encontraron solicitudes visibles con el estado seleccionado.</p>
+    {% elif solo_atencion and not tiene_filtros_activos %}
+        <p class="bandeja-vacio">No tenés solicitudes que requieran atención en este momento.</p>
     {% elif consulta_bandeja %}
         <p class="bandeja-vacio">No hay solicitudes que coincidan con esta búsqueda.</p>
     {% else %}

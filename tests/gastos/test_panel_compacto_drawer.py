@@ -529,7 +529,7 @@ def test_bandeja_distingue_aceptada_de_pagada_y_filtra_estado_pagada(
     assert [s.pk for s in solo_pagadas.context["solicitudes"]] == [pagada.pk]
 
     detalle = client.get(reverse("gastos:detalle", kwargs={"pk": pagada.pk}))
-    assert '<span class="sd-pill sd-pill-success">Pagada</span>' in detalle.content.decode()
+    assert '<span class="status-pill status-success">Pagada</span>' in detalle.content.decode()
 
 
 def test_cualquier_pendiente_reune_condiciones_del_actor(create_actor: Any) -> None:
@@ -701,3 +701,190 @@ def test_quitar_filtros_solo_visible_con_criterios_y_limpia_en_pestana_actual(
         in con_filtros_atencion.content.decode()
     )
     assert con_filtros_atencion.context["url_tab_todas"] == "/gastos/?q=insumos"
+
+
+# ---------------------------------------------------------------------------
+# 8. Requieren atención para Solicitantes (Incremento 8A / D-4 + A2)
+# ---------------------------------------------------------------------------
+
+
+def test_solicitante_ve_pestana_atencion_observada_y_deuda_con_cta_adjuntar(
+    create_actor: Any, django_assert_num_queries: Any
+) -> None:
+    """Solicitante agrupa OBSERVADA + deuda en O(1) con contador solo en Atención."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from documentos.models import Documento
+    from documentos.revision import revisar
+    from documentos.services import incorporar
+    from gastos.models import CierreGasto
+    from identidad.services import Actor
+
+    solicitante, _ = create_actor("solicitante_inc8a_tabs", ["gastos.presentar"])
+    for grupo in ("demo_documentos_aporte", "demo_documentos_metadatos"):
+        solicitante.groups.add(Group.objects.get_or_create(name=grupo)[0])
+    otro, _ = create_actor("otro_inc8a_tabs", ["gastos.presentar"])
+    operador, _ = create_actor("operador_inc8a_cierre", ["gastos.decidir"])
+
+    observada = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Gasto observado propio",
+        estado=EstadoSolicitud.OBSERVADA,
+    )
+    deuda = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Compra directa con factura pendiente",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    deuda.tipo_flujo = TipoFlujoGasto.COMPRA_DIRECTA
+    deuda.save()
+    PagoExterno.objects.create(
+        solicitud=deuda,
+        monto_bruto=Decimal("500.00"),
+        importe=Decimal("500.00"),
+        referencia_documental="PRESUP-INC8A-1",
+        fecha_pago=date(2026, 11, 20),
+        huella_idempotencia="huella-inc8a-deuda-1",
+    )
+    # Presentada normal y compra directa ya cerrada NO deben entrar en Requieren atención
+    crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Presentada sin acción propia",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    cerrada = crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Compra directa cerrada",
+        estado=EstadoSolicitud.ACEPTADA,
+    )
+    cerrada.tipo_flujo = TipoFlujoGasto.COMPRA_DIRECTA
+    cerrada.save()
+    actor_full = Actor(
+        subject_id=operador.pk,
+        capabilities=frozenset(
+            {
+                "gastos.consultar_todas",
+                "documentos.incorporar",
+                "documentos.consultar_metadatos",
+                "documentos.revisar",
+            }
+        ),
+    )
+    pdf = lambda nombre: SimpleUploadedFile(  # noqa: E731
+        nombre, b"%PDF-1.7\nContenido test\n%%EOF", "application/pdf"
+    )
+    doc_f = incorporar(
+        actor=actor_full,
+        referencia=f"gastos:{cerrada.pk}",
+        archivo=pdf("fac-cerrada.pdf"),
+        tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+        procedencia=Documento.Procedencia.INTERNO_COOPERADORA,
+    )
+    rev_f = revisar(
+        actor=actor_full,
+        documento_id=doc_f.pk,
+        resultado="ACEPTADO",
+        motivo="",
+        revision_esperada=0,
+    )
+    doc_p = incorporar(
+        actor=actor_full,
+        referencia=f"gastos:{cerrada.pk}",
+        archivo=pdf("comp-cerrada.pdf"),
+        tipo=Documento.Tipo.COMPROBANTE_PAGO,
+        procedencia=Documento.Procedencia.EXTERNO_BANCO,
+    )
+    rev_p = revisar(
+        actor=actor_full,
+        documento_id=doc_p.pk,
+        resultado="ACEPTADO",
+        motivo="",
+        revision_esperada=0,
+    )
+    PagoExterno.objects.create(
+        solicitud=cerrada,
+        monto_bruto=Decimal("300.00"),
+        importe=Decimal("300.00"),
+        referencia_documental=str(doc_f.referencia_version),
+        comprobante_bancario=doc_p,
+        fecha_pago=date(2026, 11, 18),
+        huella_idempotencia="huella-inc8a-deuda-2",
+    )
+    CierreGasto.objects.create(
+        solicitud=cerrada,
+        actor=operador,
+        observacion="Cerrada en test",
+        pago_version=1,
+        documento_fiscal=doc_f,
+        revision_fiscal=rev_f,
+        documento_comprobante_pago=doc_p,
+        revision_comprobante_pago=rev_p,
+    )
+    # Observada ajena no visible para el solicitante
+    crear_gasto_sintetico(
+        solicitante=otro,
+        concepto="Observada de otro usuario",
+        estado=EstadoSolicitud.OBSERVADA,
+    )
+
+    client = Client()
+    client.force_login(solicitante)
+
+    # Cantidad fija de consultas independientemente del número de filas
+    with django_assert_num_queries(9):
+        resp_todas = client.get(reverse("gastos:lista"))
+    assert resp_todas.status_code == 200
+    assert resp_todas.context["ofrece_atencion"] is True
+    assert resp_todas.context["total_atencion"] == 2
+    html_todas = resp_todas.content.decode()
+    assert "Requieren atención" in html_todas
+    assert '<span class="bandeja-tab-count bandeja-tab-count--attn">2</span>' in html_todas
+    # A2: solo en Requieren atención (clase base + modificador --attn)
+    assert html_todas.count("bandeja-tab-count") == 2
+
+    resp_atencion = client.get(reverse("gastos:lista"), {"atencion": "1"})
+    assert resp_atencion.status_code == 200
+    assert {s.pk for s in resp_atencion.context["solicitudes"]} == {observada.pk, deuda.pk}
+    html_atencion = resp_atencion.content.decode()
+    assert f'href="/gastos/{deuda.pk}/?bandeja=atencion%3D1#cargar-respaldo"' in html_atencion
+    assert "Adjuntar factura" in html_atencion
+    href_obs = f'href="/gastos/{observada.pk}/?bandeja=atencion%3D1#observacion-solicitud"'
+    assert href_obs in html_atencion
+    assert "Corregir solicitud" in html_atencion
+
+    # Filtros compatibles vs incompatibles al cambiar de pestaña
+    r_obs = client.get(reverse("gastos:lista"), {"estado": "observada", "q": "propio"})
+    assert r_obs.context["url_tab_atencion"] == "/gastos/?atencion=1&q=propio&estado=observada"
+    r_rech = client.get(reverse("gastos:lista"), {"estado": "rechazada", "q": "propio"})
+    assert r_rech.context["url_tab_atencion"] == "/gastos/?atencion=1&q=propio"
+
+    # Sin permiso documentos.incorporar, el CTA de deuda cae en Ver detalle (#seguimiento-factura)
+    solicitante.groups.remove(Group.objects.get(name="demo_documentos_aporte"))
+    html_sin_aporte = client.get(reverse("gastos:lista"), {"atencion": "1"}).content.decode()
+    assert "Adjuntar factura" not in html_sin_aporte
+    assert f'href="/gastos/{deuda.pk}/?bandeja=atencion%3D1#seguimiento-factura"' in html_sin_aporte
+
+
+def test_solicitante_atencion_vacia_y_lectura_sin_pestanas(create_actor: Any) -> None:
+    """Solicitante sin pendientes ve estado vacío de atención; Lectura no ve pestañas."""
+    solicitante, _ = create_actor("solicitante_sin_pendientes", ["gastos.presentar"])
+    crear_gasto_sintetico(
+        solicitante=solicitante,
+        concepto="Presentada sin deuda",
+        estado=EstadoSolicitud.PRESENTADA,
+    )
+    client = Client()
+    client.force_login(solicitante)
+    resp = client.get(reverse("gastos:lista"), {"atencion": "1"})
+    assert resp.status_code == 200
+    assert resp.context["total_atencion"] == 0
+    assert list(resp.context["solicitudes"]) == []
+    assert "No tenés solicitudes que requieran atención en este momento." in resp.content.decode()
+
+    lector, _ = create_actor("lector_sin_pestanas", ["gastos.consultar_todas"])
+    client.force_login(lector)
+    resp_lector = client.get(reverse("gastos:lista"), {"atencion": "1"})
+    assert resp_lector.status_code == 200
+    assert resp_lector.context["ofrece_atencion"] is False
+    assert "Requieren atención" not in resp_lector.content.decode()
+    assert len(resp_lector.context["solicitudes"]) == 1

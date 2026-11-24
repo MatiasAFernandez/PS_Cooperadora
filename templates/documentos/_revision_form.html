@@ -1,0 +1,55 @@
+<p class="doc-rev-note">El historial de esta versión conserva cada resultado, la fecha y la cuenta que revisó el documento.</p>
+
+{% if form.errors %}
+<div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+    <p>No se pudo registrar la revisión:</p>
+    <ul>
+        {% for err in form.non_field_errors %}
+            <li>{{ err }}</li>
+        {% endfor %}
+        {% for field in form.visible_fields %}
+            {% for err in field.errors %}
+                <li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ err }}</a></li>
+            {% endfor %}
+        {% endfor %}
+        {% for field in form.hidden_fields %}
+            {% for err in field.errors %}
+                <li>{{ err }}</li>
+            {% endfor %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<form method="post" class="doc-rev-form">
+    {% csrf_token %}
+    {{ form.revision_esperada }}
+    {% if bandeja %}<input type="hidden" name="bandeja" value="{{ bandeja }}">{% endif %}
+
+    <div class="form-group">
+        <label for="{{ form.resultado.id_for_label }}">{{ form.resultado.label }}</label>
+        {{ form.resultado }}
+        {% if form.resultado.errors %}
+            <div id="id_resultado_error" class="doc-rev-field-error" role="alert">
+                {% for err in form.resultado.errors %}<p>{{ err }}</p>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.motivo.id_for_label }}">{{ form.motivo.label }}</label>
+        {{ form.motivo }}
+        {% if form.motivo.help_text %}
+            <p id="id_motivo_help" class="doc-rev-field-help">{{ form.motivo.help_text }}</p>
+        {% endif %}
+        {% if form.motivo.errors %}
+            <div id="id_motivo_error" class="doc-rev-field-error" role="alert">
+                {% for err in form.motivo.errors %}<p>{{ err }}</p>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="doc-rev-actions">
+        <button class="btn btn-primary" type="submit">Registrar revisión</button>
+    </div>
+</form>

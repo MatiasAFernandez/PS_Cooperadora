@@ -361,3 +361,78 @@ def test_preparacion_revision_es_optativa_y_no_otorga_pago(escenario_comun):
     actor = resolve_actor(cliente.get(reverse("identidad:inicio")).wsgi_request)
     assert "documentos.revisar" in actor.capabilities
     assert "gastos.registrar_pago" not in actor.capabilities
+
+
+def test_revision_ui_independiente_visor_y_d4_colapsado(revision):
+    """Inc 8A: base.html propio, visor compartido, ?bandeja= y <details> tras revisión."""
+    e = revision
+    e.staff.groups.add(
+        Group.objects.get_or_create(name="demo_documentos_revision")[0],
+        Group.objects.get_or_create(name="demo_documentos_descarga")[0],
+    )
+    cliente = Client()
+    cliente.force_login(e.staff)
+    url = reverse("documentos:revision", args=[e.documento.pk])
+
+    resp_pendiente = cliente.get(url, {"bandeja": "estado=aceptada"})
+    assert resp_pendiente.status_code == 200
+    html_pendiente = resp_pendiente.content.decode()
+    assert "facturacion/css/facturacion.css" not in html_pendiente
+    assert "documentos/css/revision.css" in html_pendiente
+    assert "css/visor_documentos.css" in html_pendiente
+    assert "<h1>Revisión documental</h1>" in html_pendiente
+    assert "bandeja=estado%3Daceptada" in html_pendiente
+    assert "data-visor-doc-trigger" in html_pendiente
+    assert "Ver archivo de esta versión" in html_pendiente
+    assert "Descargar esta versión" in html_pendiente
+    assert 'id="visor-documento-dialogo"' in html_pendiente
+    assert "data-revision-reopen" not in html_pendiente
+
+    # Sin permiso de descarga no debe exponer visor ni botón de descarga
+    e.staff.groups.remove(Group.objects.get(name="demo_documentos_descarga"))
+    html_sin_descarga = cliente.get(url).content.decode()
+    assert "data-visor-doc-trigger" not in html_sin_descarga
+    assert "Descargar esta versión" not in html_sin_descarga
+    assert 'id="visor-documento-dialogo"' not in html_sin_descarga
+
+    # POST válido preserva ?bandeja= en PRG, muestra flash y colapsa D-4 bajo <details>
+    resp_post = cliente.post(
+        f"{url}?bandeja=estado%3Daceptada",
+        {"resultado": "ACEPTADO", "motivo": "", "revision_esperada": 0},
+    )
+    assert resp_post.status_code == 302
+    assert resp_post.url == f"{url}?bandeja=estado%3Daceptada"
+
+    html_revisado = cliente.get(resp_post.url).content.decode()
+    assert "Revisión documental registrada." in html_revisado
+    assert '<details class="doc-rev-reopen" data-revision-reopen>' in html_revisado
+    assert "Registrar nueva revisión" in html_revisado
+
+    # Error (409 por revision_esperada vencida) autoexpande <details open> y enfoca errores
+    resp_conflicto = cliente.post(
+        url,
+        {"resultado": "OBSERVADO", "motivo": "Motivo sintético", "revision_esperada": 0},
+    )
+    assert resp_conflicto.status_code == 409
+    html_conflicto = resp_conflicto.content.decode()
+    assert '<details class="doc-rev-reopen" data-revision-reopen open>' in html_conflicto
+    assert "data-auto-focus-error" in html_conflicto
+    assert "foco_errores.js" in html_conflicto
+
+
+def test_revision_cobro_usa_verbo_verificar_ingreso(escenario_comun):
+    """Inc 8A / A3: la nota de comprobante de cobro usa «Verificar ingreso»."""
+    e = escenario_comun
+    doc_cobro = incorporar(
+        actor=e.actor_b,
+        referencia=f"facturacion:{e.factura.pk}",
+        archivo=archivo_pdf(),
+        tipo="COMPROBANTE_COBRO",
+        procedencia="SOLICITANTE",
+    )
+    e.staff.groups.add(Group.objects.get_or_create(name="demo_documentos_revision")[0])
+    cliente = Client()
+    cliente.force_login(e.staff)
+    html = cliente.get(reverse("documentos:revision", args=[doc_cobro.pk])).content.decode()
+    assert "«Verificar ingreso»" in html
+    assert "Constatar Ingreso" not in html

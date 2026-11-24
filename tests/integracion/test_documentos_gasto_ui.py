@@ -189,7 +189,7 @@ def test_sin_metadatos_puede_aportar_pero_no_reemplazar_por_id(
         reemplaza_id=str(documento.pk),
     )
     assert intento.status_code == 400
-    assert "Seleccione una versión vigente" in intento.content.decode()
+    assert "Seleccioná una versión vigente" in intento.content.decode()
     assert Documento.objects.filter(solicitud_gasto=e.gasto).count() == 1
 
 

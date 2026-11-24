@@ -1,0 +1,222 @@
+/* Revisión documental compartida — scoped a .doc-rev */
+.doc-rev {
+    color: var(--ink-primary);
+    max-width: 1080px;
+}
+
+.doc-rev-header {
+    margin: 0 0 18px;
+}
+
+.doc-rev-header h1 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+}
+
+.doc-rev-subtitle {
+    margin: 4px 0 0;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.doc-rev-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (min-width: 960px) {
+    .doc-rev-grid--split {
+        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    }
+}
+
+.doc-rev-card {
+    margin: 0 0 16px;
+    min-width: 0;
+}
+
+.doc-rev-grid .doc-rev-card {
+    margin-bottom: 0;
+}
+
+.doc-rev-grid + .doc-rev-card {
+    margin-top: 16px;
+}
+
+.doc-rev-doc-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.doc-rev-doc-meta {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.doc-rev-h2 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    line-height: 1.35;
+}
+
+.doc-rev-h3 {
+    margin: 0 0 8px;
+    color: var(--ink-strong);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+}
+
+.doc-rev-filename {
+    margin: 4px 0 0;
+    color: var(--ink-strong);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    overflow-wrap: anywhere;
+}
+
+.doc-rev-subsection {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-hairline);
+}
+
+.doc-rev-notice {
+    margin-top: 12px;
+}
+
+.doc-rev-muted {
+    margin: 8px 0 0;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+}
+
+.doc-rev-note {
+    margin: 6px 0 14px;
+    color: var(--ink-muted);
+    font-size: var(--text-xs);
+    line-height: 1.45;
+}
+
+.doc-rev-form .form-group {
+    margin-bottom: 14px;
+}
+
+.doc-rev-form .form-group label {
+    margin-bottom: 4px;
+    color: var(--ink-strong);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+}
+
+.doc-rev-form [aria-invalid="true"] {
+    border-color: var(--st-danger-dot);
+}
+
+.doc-rev-field-help {
+    margin: 4px 0 0;
+    color: var(--ink-muted);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+}
+
+.doc-rev-field-error {
+    margin: 4px 0 0;
+    color: var(--color-error);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+}
+
+.doc-rev-field-error p {
+    margin: 0;
+}
+
+.doc-rev-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* Re-revisión colapsable (D-4) */
+.doc-rev-reopen > summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    min-height: var(--ctrl-h);
+    padding: 2px 0;
+    cursor: pointer;
+    list-style: none;
+    color: var(--ink-strong);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+}
+
+.doc-rev-reopen > summary::-webkit-details-marker {
+    display: none;
+}
+
+.doc-rev-reopen-summary-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--brand-primary);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+}
+
+.doc-rev-chevron {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    transition: transform var(--transition-fast);
+}
+
+.doc-rev-reopen[open] .doc-rev-chevron {
+    transform: rotate(180deg);
+}
+
+.doc-rev-reopen-body {
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-hairline);
+}
+
+@media (max-width: 640px) {
+    .doc-rev-doc-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .doc-rev-doc-meta {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+
+    .doc-rev-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .doc-rev-chevron {
+        transition: none;
+    }
+}

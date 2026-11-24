@@ -105,7 +105,7 @@ def test_parametros_invalidos_y_repetidos(
     assert response.status_code == 200
     if invalid:
         assert list(response.context["solicitudes"]) == []
-        assert "Seleccione un estado válido." in response.content.decode()
+        assert "Seleccioná un estado válido." in response.content.decode()
         assert "Corregí los filtros" in response.content.decode()
     else:
         assert list(response.context["solicitudes"]) == [gastos_por_estado[("demo_a", "aceptada")]]

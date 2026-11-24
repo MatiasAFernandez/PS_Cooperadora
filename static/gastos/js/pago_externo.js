@@ -319,8 +319,8 @@
     sum(
       "rp-sum-banco",
       estado.banco
-        ? '<span class="rp-chip rp-chip-success">Seleccionado</span>'
-        : '<span class="rp-chip rp-chip-warning">Falta adjuntar</span>'
+        ? '<span class="badge badge-success">Seleccionado</span>'
+        : '<span class="badge badge-warning">Falta adjuntar</span>'
     );
 
     const cardAtp = $("rp-atp-card");
@@ -353,7 +353,7 @@
           refAtpInput.disabled = true;
         }
         if (atpFileInput) atpFileInput.disabled = true;
-        sum("rp-sum-atp", '<span class="rp-chip rp-chip-warning">Constancia ATP pendiente</span>');
+        sum("rp-sum-atp", '<span class="badge badge-warning">Constancia ATP pendiente</span>');
       } else {
         if (refAtpInput) refAtpInput.disabled = false;
         if (atpFileInput) atpFileInput.disabled = false;
@@ -361,15 +361,15 @@
         sum(
           "rp-sum-atp",
           adjunta
-            ? '<span class="rp-chip rp-chip-success">Seleccionado</span>'
-            : '<span class="rp-chip rp-chip-warning">Falta adjuntar</span>'
+            ? '<span class="badge badge-success">Seleccionado</span>'
+            : '<span class="badge badge-warning">Falta adjuntar</span>'
         );
       }
     }
 
     const respaldoSelect = $("id_referencia_documental");
     if (!respaldoSelect || !respaldoSelect.options || respaldoSelect.options.length === 0) {
-      sum("rp-sum-respaldo", '<span class="rp-chip rp-chip-warning">Falta cargar</span>');
+      sum("rp-sum-respaldo", '<span class="badge badge-warning">Falta cargar</span>');
     } else {
       const idx = respaldoSelect.selectedIndex >= 0 ? respaldoSelect.selectedIndex : 0;
       const opt = respaldoSelect.options[idx];
@@ -702,38 +702,6 @@
       sincronizarAvisoAlCorregir("atp");
     });
   });
-
-  // Copiado de CBU / alias con feedback accesible
-  const copyBtn = $("btn-copy-cbu");
-  if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      const textToCopy = copyBtn.dataset.copy || $("rp-cbu-val")?.textContent?.trim() || "";
-      if (!textToCopy) return;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(textToCopy);
-        } else {
-          const ta = document.createElement("textarea");
-          ta.value = textToCopy;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-        }
-        copyBtn.classList.add("copied");
-        const textNode = copyBtn.querySelector(".btn-copy-text");
-        if (textNode) textNode.textContent = "Copiado";
-        setTimeout(() => {
-          copyBtn.classList.remove("copied");
-          if (textNode) textNode.textContent = "Copiar";
-        }, 2000);
-      } catch (err) {
-        // Ignorar fallos de permisos de portapapeles
-      }
-    });
-  }
 
   function validarAlta() {
     const problemas = [];

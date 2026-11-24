@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Cerrar Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+{% block title %}Confirmar cierre de solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
@@ -10,55 +10,67 @@
 
 {% block content %}
 <div class="solicitud-detalle nueva-solicitud">
-    <p class="sd-back"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a></p>
+    <a class="page-back" href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a>
 
     <header class="ns-head">
         <h1>Confirmar cierre de solicitud #{{ solicitud.pk }}</h1>
-        <p class="sd-small">Verificá el pago registrado y la documentación aceptada antes de confirmar el cierre administrativo.</p>
+        <p class="ns-subtitle">Verificá el pago registrado y la documentación aceptada antes de confirmar el cierre administrativo.</p>
     </header>
 
-    {% if error_cierre %}
-    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
-        <strong>No se pudo cerrar el trámite:</strong> {{ error_cierre }}
-        {% if evaluacion.pendientes %}
+    {% if error_cierre or form.errors %}
+    <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+        {% if error_cierre %}
+            <p>No se pudo cerrar el trámite: {{ error_cierre }}</p>
+            {% if evaluacion.pendientes %}
+                <ul>
+                    {% for item in evaluacion.pendientes %}
+                        <li>{{ item.mensaje }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% else %}
+            <p>No se pudo confirmar el cierre:</p>
+        {% endif %}
+        {% if form.errors %}
             <ul>
-                {% for item in evaluacion.pendientes %}
-                    <li>{{ item.mensaje }}</li>
-                {% endfor %}
+                {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+                {% for err in form.version.errors %}<li>{{ err }}</li>{% endfor %}
+                {% for err in form.huella_cierre.errors %}<li>{{ err }}</li>{% endfor %}
+                {% for err in form.observacion.errors %}<li><a href="#{{ form.observacion.id_for_label }}">{{ form.observacion.label }}: {{ err }}</a></li>{% endfor %}
             </ul>
         {% endif %}
     </div>
     {% endif %}
 
-    {% if form.non_field_errors or form.version.errors or form.huella_cierre.errors %}
-    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
-        {{ form.non_field_errors }}
-        {{ form.version.errors }}
-        {{ form.huella_cierre.errors }}
-    </div>
-    {% endif %}
-
     <section class="sd-card" aria-labelledby="cierre-resumen-heading">
         <h2 id="cierre-resumen-heading" class="sd-h2">Resumen verificable del trámite</h2>
-        <dl class="sd-dl sd-dl-flat">
-            <dt>Solicitud</dt><dd>#{{ solicitud.pk }} — {{ solicitud.concepto }}</dd>
-            <dt>Modalidad</dt><dd>{{ solicitud.get_tipo_flujo_display }}</dd>
-            <dt>Monto estimado</dt><dd>$ {{ monto_estimado_formateado }}</dd>
+        <dl class="kv-list">
+            <div><dt>Solicitud</dt><dd>#{{ solicitud.pk }} — {{ solicitud.concepto }}</dd></div>
+            <div><dt>Modalidad</dt><dd>{{ solicitud.get_tipo_flujo_display }}</dd></div>
+            <div><dt>Monto estimado</dt><dd class="font-tabular">$ {{ monto_estimado_formateado }}</dd></div>
             {% if pago_importes %}
+            <div>
                 <dt>Pago registrado</dt>
-                <dd>Bruto $ {{ pago_importes.bruto }} · Retención ATP $ {{ pago_importes.retencion_atp }} · Neto $ {{ pago_importes.neto }}</dd>
+                <dd class="font-tabular">Bruto $ {{ pago_importes.bruto }} · Retención ATP $ {{ pago_importes.retencion_atp }} · Neto $ {{ pago_importes.neto }}</dd>
+            </div>
             {% endif %}
             {% if evaluacion.documento_fiscal %}
+            <div>
                 <dt>Factura definitiva aceptada</dt>
                 <dd>{{ evaluacion.documento_fiscal.nombre_original }} (v{{ evaluacion.documento_fiscal.version }})</dd>
+            </div>
             {% endif %}
             {% if evaluacion.documento_comprobante_pago %}
+            <div>
                 <dt>Comprobante bancario aceptado</dt>
                 <dd>{{ evaluacion.documento_comprobante_pago.nombre_original }} (v{{ evaluacion.documento_comprobante_pago.version }})</dd>
+            </div>
             {% endif %}
             {% if evaluacion.documento_constancia_atp %}
+            <div>
                 <dt>Constancia ATP aceptada</dt>
                 <dd>{{ evaluacion.documento_constancia_atp.nombre_original }} (v{{ evaluacion.documento_constancia_atp.version }})</dd>
+            </div>
             {% endif %}
         </dl>
     </section>
@@ -70,21 +82,24 @@
             {{ form.version }}
             {{ form.huella_cierre }}
 
-            <div class="ns-field">
+            <div class="ns-field{% if form.observacion.errors %} has-error{% endif %}">
                 <div class="ns-label-row">
-                    <label for="{{ form.observacion.id_for_label }}">{{ form.observacion.label }}</label>
+                    <label for="{{ form.observacion.id_for_label }}">{{ form.observacion.label }} <span class="field-optional">(Opcional)</span></label>
                 </div>
                 {{ form.observacion }}
                 {% if form.observacion.errors %}
-                    <div class="ns-field-error" role="alert">{{ form.observacion.errors }}</div>
+                    <div id="{{ form.observacion.id_for_label }}_error" class="ns-field-error" role="alert">{{ form.observacion.errors }}</div>
                 {% endif %}
             </div>
 
             <div class="sd-actions">
-                <button type="submit" class="sd-btn sd-btn-primary">Confirmar cierre del trámite</button>
-                <a href="{% url 'gastos:detalle' pk=solicitud.pk %}" class="sd-btn sd-btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Confirmar cierre del trámite</button>
+                <a href="{% url 'gastos:detalle' pk=solicitud.pk %}" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </section>
 </div>
+{% if error_cierre or form.errors %}
+<script src="{% static 'js/foco_errores.js' %}" defer></script>
+{% endif %}
 {% endblock %}
