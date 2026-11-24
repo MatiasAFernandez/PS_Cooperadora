@@ -87,6 +87,10 @@
 }
 
 /* Diálogo nativo del visor */
+body:has(.visor-doc-dialog[open]) {
+  overflow: hidden;
+}
+
 .visor-doc-dialog {
   box-sizing: border-box;
   padding: 0;

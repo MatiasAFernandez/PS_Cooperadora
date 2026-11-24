@@ -700,3 +700,43 @@ def test_reversa_vacia_upgrade_preservan_solicitud(escenario, solicitud):
         assert solicitud.estado == "PRESENTADA" and solicitud.eventos.count() == 1
     finally:
         MigrationExecutor(connection).migrate(finales)
+
+
+def test_cobro_form_oculta_select_vacio_y_usa_selector_compartido_con_respaldos(
+    escenario, solicitud, entrada
+):
+    from documentos.services import incorporar
+
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["a"])
+    url = reverse("facturacion:registrar_cobro", args=[solicitud.pk])
+
+    sin_respaldos = cliente.get(url)
+    assert sin_respaldos.status_code == 200
+    html_sin = sin_respaldos.content.decode("utf-8")
+    assert 'id="fac-cobro-archivo-selector"' in html_sin
+    assert "data-file-drop-custom" in html_sin
+    assert 'id="visor-documento-dialogo"' in html_sin
+    assert 'name="documento"' not in html_sin
+
+    doc_previo = incorporar(
+        actor=escenario.actores["a"],
+        referencia=f"facturacion:{solicitud.pk}",
+        archivo=pdf(),
+        tipo="COMPROBANTE_COBRO",
+        procedencia="SOLICITANTE",
+    )
+    con_respaldos = cliente.get(url)
+    assert con_respaldos.status_code == 200
+    html_con = con_respaldos.content.decode("utf-8")
+    assert 'name="documento"' in html_con
+    assert 'id="fac-cobro-archivo-selector"' in html_con
+
+    combinado = cliente.post(
+        url, dict(entrada, documento=str(doc_previo.pk), archivo=pdf())
+    )
+    assert combinado.status_code == 400
+    html_err = combinado.content.decode("utf-8")
+    assert 'name="documento"' in html_err
+    assert "Usá una sola opción" in html_err
+    assert "volvé a seleccionarlo" in html_err

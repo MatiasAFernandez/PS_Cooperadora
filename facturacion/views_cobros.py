@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
 
@@ -33,6 +34,7 @@ from .workflow import ConflictoConcurrenciaError
 
 class RegistrarCobroView(FacturacionView):
     def mostrar(self, request, solicitud, form, status=200):
+        max_bytes = settings.DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES
         return render(
             request,
             "facturacion/cobro_form.html",
@@ -40,6 +42,9 @@ class RegistrarCobroView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "form": form,
+                "max_upload_bytes": max_bytes,
+                "max_upload_mib": max(1, max_bytes // (1024 * 1024)),
+                "tiene_respaldos_existentes": form.fields["documento"].queryset.exists(),
             },
             status=status,
         )

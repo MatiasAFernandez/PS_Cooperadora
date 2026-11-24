@@ -7,6 +7,28 @@
         'image/png': 'image/png'
     };
 
+    var EXTENSION_MIME = {
+        '.pdf': 'application/pdf',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg'
+    };
+
+    function mimePorNombre(nombre) {
+        if (!nombre) {
+            return '';
+        }
+        var lower = String(nombre).toLowerCase();
+        var exts = Object.keys(EXTENSION_MIME);
+        for (var i = 0; i < exts.length; i += 1) {
+            var ext = exts[i];
+            if (lower.length >= ext.length && lower.slice(-ext.length) === ext) {
+                return EXTENSION_MIME[ext];
+            }
+        }
+        return '';
+    }
+
     function mimePermitido(formatos, contentType) {
         if (!contentType) {
             return '';
@@ -41,11 +63,12 @@
         if (!dialog || typeof dialog.showModal !== 'function' || typeof window.fetch !== 'function' || !window.URL || typeof window.URL.createObjectURL !== 'function') {
             return;
         }
-
-        var disparadores = document.querySelectorAll('[data-visor-doc-trigger]');
-        if (!disparadores.length) {
+        if (dialog.dataset.visorInit === '1') {
             return;
         }
+        dialog.dataset.visorInit = '1';
+
+        var disparadores = document.querySelectorAll('[data-visor-doc-trigger]');
 
         var elTitulo = dialog.querySelector('[data-visor-titulo]');
         var elNombre = dialog.querySelector('[data-visor-nombre]');
@@ -66,6 +89,8 @@
         var objectUrl = '';
         var disparadorActual = null;
         var archivoActual = null;
+        var esArchivoLocal = false;
+        var empezoEnFondo = false;
 
         function revocarUrl() {
             if (objectUrl) {
@@ -216,6 +241,7 @@
 
             disparadorActual = disparador;
             archivoActual = { url: url, formatos: formatos, titulo: titulo, nombre: nombre };
+            esArchivoLocal = false;
 
             elTitulo.textContent = titulo;
             if (nombre) {
@@ -227,6 +253,7 @@
             }
 
             linkDescargar.setAttribute('href', url || '#');
+            linkDescargar.setAttribute('download', '');
             linkDescargar.setAttribute('aria-label', descargarLabel);
 
             if (!dialog.open) {
@@ -235,6 +262,88 @@
             btnCerrar.focus();
             cargarArchivo();
         }
+
+        function abrirArchivoLocal(opts) {
+            var opciones = opts || {};
+            var file = opciones.file || null;
+            var formatos = (opciones.formatos || 'pdf-imagen').trim().toLowerCase();
+            var titulo = opciones.titulo || 'Archivo';
+            var nombre = opciones.nombre || (file && file.name) || '';
+            var descargarLabel = opciones.descargarLabel || ('Descargar ' + (nombre || titulo));
+            var disparador = opciones.disparador || null;
+
+            cancelarCarga();
+            limpiarContenido();
+
+            disparadorActual = disparador;
+            archivoActual = null;
+            esArchivoLocal = true;
+
+            elTitulo.textContent = titulo;
+            if (nombre) {
+                elNombre.textContent = nombre;
+                elNombre.hidden = false;
+            } else {
+                elNombre.textContent = '';
+                elNombre.hidden = true;
+            }
+
+            var mimeEfectivo = mimePermitido(formatos, file && file.type)
+                || mimePermitido(formatos, mimePorNombre(nombre));
+
+            if (!file || !mimeEfectivo) {
+                linkDescargar.setAttribute('href', '#');
+                linkDescargar.removeAttribute('download');
+                linkDescargar.setAttribute('aria-label', descargarLabel);
+                if (!dialog.open) {
+                    dialog.showModal();
+                }
+                btnCerrar.focus();
+                mostrarError('Este archivo no se puede mostrar en vista previa. Podés acceder usando «Descargar».', false);
+                return;
+            }
+
+            var blobTipado = file.type === mimeEfectivo ? file : new Blob([file], { type: mimeEfectivo });
+            objectUrl = window.URL.createObjectURL(blobTipado);
+
+            linkDescargar.setAttribute('href', objectUrl);
+            linkDescargar.setAttribute('download', nombre || 'archivo');
+            linkDescargar.setAttribute('aria-label', descargarLabel);
+
+            if (!dialog.open) {
+                dialog.showModal();
+            }
+            btnCerrar.focus();
+
+            if (mimeEfectivo === 'application/pdf') {
+                ocultarEstados();
+                elPdfLink.setAttribute('href', objectUrl);
+                elPdf.hidden = false;
+                return;
+            }
+
+            var idLocal = solicitudId;
+            elCargando.hidden = false;
+            elImagen.onload = function () {
+                if (idLocal !== solicitudId || !dialog.open) {
+                    return;
+                }
+                ocultarEstados();
+                elImagenWrap.hidden = false;
+            };
+            elImagen.onerror = function () {
+                if (idLocal !== solicitudId || !dialog.open) {
+                    return;
+                }
+                mostrarError('No se pudo mostrar la imagen. Podés acceder al archivo usando «Descargar».', false);
+            };
+            elImagen.alt = nombre ? (titulo + ': ' + nombre) : titulo;
+            elImagen.src = objectUrl;
+        }
+
+        window.PSVisorDocumentos = {
+            abrirArchivoLocal: abrirArchivoLocal
+        };
 
         for (var i = 0; i < disparadores.length; i += 1) {
             disparadores[i].hidden = false;
@@ -259,20 +368,35 @@
             cargarArchivo();
         });
 
+        dialog.addEventListener('pointerdown', function (evento) {
+            empezoEnFondo = evento.target === dialog;
+        });
+
         dialog.addEventListener('click', function (evento) {
-            if (evento.target === dialog && dialog.open) {
+            if (empezoEnFondo && evento.target === dialog && dialog.open) {
                 dialog.close();
             }
+            empezoEnFondo = false;
         });
 
         dialog.addEventListener('close', function () {
             cancelarCarga();
             limpiarContenido();
+            empezoEnFondo = false;
+            if (esArchivoLocal) {
+                linkDescargar.removeAttribute('download');
+                linkDescargar.setAttribute('href', '#');
+                esArchivoLocal = false;
+            }
             var destino = disparadorActual;
             disparadorActual = null;
             archivoActual = null;
             if (destino && destino.isConnected && typeof destino.focus === 'function') {
-                destino.focus();
+                try {
+                    destino.focus({ preventScroll: true });
+                } catch (e) {
+                    destino.focus();
+                }
             }
         });
 

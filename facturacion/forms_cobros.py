@@ -39,6 +39,9 @@ class CobroForm(forms.Form):
     archivo = forms.FileField(
         label="Nuevo documento de respaldo",
         required=False,
+        widget=forms.FileInput(
+            attrs={"accept": "application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png"}
+        ),
         help_text="PDF, JPEG o PNG de hasta 10 MiB.",
     )
     confirmar_al_registrar = forms.BooleanField(

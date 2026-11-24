@@ -1,0 +1,49 @@
+<div class="sc-root"
+     id="{{ component_id }}-selector"
+     data-selector-comprobante
+     data-component-id="{{ component_id }}"
+     data-file-drop-custom
+     data-max-bytes="{{ max_bytes|default:10485760 }}"
+     data-formatos="{{ formatos|default:'pdf-imagen' }}"
+     data-titulo-visor="{{ titulo_visor|default:'Comprobante' }}">
+    <div class="sc-dropzone" id="{{ component_id }}-drop" data-sc-drop>
+        {{ field }}
+        <p class="sc-drop-text">{{ texto_arrastre|default:"Arrastrá el comprobante acá o elegilo con el botón." }}</p>
+        <label for="{{ field.id_for_label }}"
+               class="btn btn-secondary sc-trigger"
+               id="{{ component_id }}-label"
+               data-sc-trigger
+               tabindex="0">{{ etiqueta_boton|default:"Seleccionar archivo" }}</label>
+        <span class="sc-hint">{% if texto_tipos %}{{ texto_tipos }}{% else %}PDF, JPG o PNG · hasta {{ max_mib|default:10 }} MiB{% endif %}</span>
+    </div>
+
+    <div class="sc-card" id="{{ component_id }}-file" data-sc-card hidden>
+        <div class="sc-card-head">
+            <div class="sc-file-icon-wrap" aria-hidden="true">
+                <svg class="sc-file-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                    <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                    <path d="M10 9H8"/>
+                    <path d="M16 13H8"/>
+                    <path d="M16 17H8"/>
+                </svg>
+            </div>
+            <div class="sc-file-info">
+                <p class="sc-file-name" id="{{ component_id }}-nombre" data-sc-nombre></p>
+                <p class="sc-file-meta" id="{{ component_id }}-meta" data-sc-meta></p>
+            </div>
+            <span class="status-pill sc-ready" data-sc-ready>Listo para guardar</span>
+        </div>
+        <div class="sc-actions" id="{{ component_id }}-actions">
+            <button type="button" class="btn btn-secondary sc-btn" id="{{ component_id }}-ver" data-sc-ver>Ver archivo</button>
+            <a class="btn btn-secondary sc-btn" id="{{ component_id }}-descargar" data-sc-descargar href="#" download>Descargar</a>
+            <button type="button" class="btn btn-secondary sc-btn" id="{{ component_id }}-cambiar" data-sc-cambiar>Cambiar</button>
+            <button type="button" class="btn btn-ghost sc-btn" id="{{ component_id }}-quitar" data-sc-quitar>Quitar</button>
+        </div>
+    </div>
+
+    <p class="sc-status{% if extra_status_class %} {{ extra_status_class }}{% endif %}" id="{{ component_id }}-status" data-sc-status role="status" hidden></p>
+    {% if aviso_perdida %}
+        <p class="sc-notice" data-sc-aviso-perdida role="status">{{ aviso_perdida }}</p>
+    {% endif %}
+</div>
