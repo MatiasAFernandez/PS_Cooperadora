@@ -111,8 +111,17 @@ class FiltroFacturacionForm(FiltroFechaForm):
         ],
     )
     q = forms.CharField(
-        label="Buscar solicitud, solicitante, receptor, CUIT o detalle",
+        label="Buscar por solicitud, solicitante, receptor, CUIT o detalle",
         max_length=255,
         required=False,
-        widget=forms.TextInput(attrs={"type": "search"}),
+        widget=forms.TextInput(
+            attrs={
+                "type": "search",
+                "placeholder": "Buscar por solicitud, solicitante, receptor, CUIT o detalle",
+            }
+        ),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.order_fields(["q", "estado", "periodo", "dia", "mes", "anio"])

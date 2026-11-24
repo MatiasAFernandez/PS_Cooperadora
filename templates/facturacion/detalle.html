@@ -7,7 +7,7 @@
 {% block facturacion_content %}
 <header class="fac-header">
 <div><h2 aria-label="Solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}">Solicitud {{ solicitud.numero_visible }}</h2><p class="fac-muted">{{ solicitud.correo_solicitante }}</p></div>
-<a class="btn btn-secondary" href="{% url 'facturacion:lista' %}">Volver a solicitudes</a>
+<a class="btn btn-secondary" href="{% url 'facturacion:lista' %}{% if request.GET.bandeja %}?{{ request.GET.bandeja }}{% endif %}">Volver a solicitudes</a>
 </header>
 {% if solicitud.estado == "ANULADA" %}
 <section class="panel" aria-labelledby="titulo-motivo-anulacion">

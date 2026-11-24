@@ -35,6 +35,34 @@ class Accion:
     texto: str
     url: str
     descripcion: str = ""
+    etiqueta_fila: str = ""
+
+    @property
+    def texto_fila(self) -> str:
+        return self.etiqueta_fila or self.texto
+
+
+def puede_tener_atencion(actor) -> bool:
+    """Indica si la cuenta puede ejecutar acciones en facturación (oculta tabs a Lectura)."""
+    if has_capability(actor, "facturacion.consultar_todas"):
+        return any(
+            has_capability(actor, cap)
+            for cap in (
+                "facturacion.observar",
+                "facturacion.registrar_factura_externa",
+                "facturacion.verificar_cobro",
+                "facturacion.cerrar",
+                "documentos.revisar",
+                "facturacion.registrar_cobro",
+                "facturacion.actualizar_respaldo",
+            )
+        )
+    if has_capability(actor, "facturacion.consultar_propias"):
+        return has_capability(actor, "facturacion.corregir") or (
+            has_capability(actor, "facturacion.informar_cobro")
+            and has_capability(actor, "documentos.incorporar")
+        )
+    return False
 
 
 def mensaje_espera(actor, solicitud, importes):
@@ -81,6 +109,7 @@ def acciones_inmediatas(actor, solicitud):
                 Accion(
                     "Corregir la solicitud observada",
                     reverse("facturacion:corregir", args=[solicitud.pk]),
+                    etiqueta_fila="Corregir solicitud",
                 )
             ]
         return []
@@ -98,7 +127,7 @@ def acciones_inmediatas(actor, solicitud):
                 Accion(
                     "Registrar factura externa",
                     reverse("facturacion:registrar_comprobante", args=[solicitud.pk]),
-                    "Revisá los datos en Ver Detalle y registrá el comprobante emitido.",
+                    "Revisá los datos en Ver detalle y registrá el comprobante emitido.",
                 )
             )
         if capacidad("documentos.consultar_metadatos") and capacidad("documentos.revisar"):
@@ -115,6 +144,7 @@ def acciones_inmediatas(actor, solicitud):
                             "Revisar el documento de respaldo",
                             reverse("documentos:revision", args=[documento.pk]),
                             f"Revisá el documento {documento.nombre_original}.",
+                            etiqueta_fila="Revisar respaldo",
                         )
                     )
                 # Observado/rechazado espera un reemplazo, no otra aprobación sugerida.
@@ -128,7 +158,7 @@ def acciones_inmediatas(actor, solicitud):
             ):
                 acciones.append(
                     Accion(
-                        "Constatar Ingreso",
+                        "Verificar ingreso",
                         reverse("facturacion:verificar_cobro", args=[solicitud.pk, cobro.pk]),
                         f"Cotejá el movimiento de la operación {cobro.numero_operacion}.",
                     )
@@ -163,6 +193,7 @@ def acciones_inmediatas(actor, solicitud):
                             ),
                             "Vinculá el documento de respaldo vigente a "
                             f"{comprobante.identificacion}.",
+                            etiqueta_fila="Modificar comprobante",
                         )
                     )
         if (
@@ -222,6 +253,7 @@ def acciones_inmediatas(actor, solicitud):
                 Accion(
                     "Informar el cobro y aportar su comprobante",
                     reverse("facturacion:registrar_cobro", args=[solicitud.pk]),
+                    etiqueta_fila="Informar cobro",
                 )
             )
     return acciones
@@ -234,8 +266,8 @@ def proximidad_cierre(solicitud, hoy=None):
     return hoy >= limite and creacion < limite
 
 
-def solicitudes_atencion(actor, visibles):
-    """Panel independiente de los filtros; orden estable por actualización pertinente."""
+def solicitudes_atencion(actor, visibles, *, limite: int | None = None):
+    """Lista priorizada independiente de filtros; orden estable por actualización pertinente."""
     operador = has_capability(actor, "facturacion.consultar_todas")
     eventos = EventoFacturacion.objects.filter(solicitud_id=OuterRef("pk"))
     documentos = Documento.objects.filter(tramite_base_id=OuterRef("tramite_base_id"))
@@ -297,6 +329,6 @@ def solicitudes_atencion(actor, visibles):
                     cierre_mes=not operador and proximidad_cierre(solicitud),
                 )
             )
-            if len(tarjetas) == (3 if operador else 2):
+            if limite is not None and len(tarjetas) == limite:
                 break
     return tarjetas

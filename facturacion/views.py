@@ -7,8 +7,9 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import DatabaseError
-from django.http import Http404
+from django.http import Http404, QueryDict
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views import View
 
 from documentos.policy import ArchivoInvalido, TipoArchivoNoSoportado
@@ -16,7 +17,12 @@ from documentos.revision import estado_revision_vigente
 from documentos.services import documentos_visibles
 from identidad.services import has_capability, resolve_actor
 
-from .atencion import acciones_inmediatas, mensaje_espera, solicitudes_atencion
+from .atencion import (
+    acciones_inmediatas,
+    mensaje_espera,
+    puede_tener_atencion,
+    solicitudes_atencion,
+)
 from .cobros import puede_corregir_cobro, resumen_cobros
 from .comprobantes import puede_registrar_comprobante, resumen_comprobantes
 from .consultas import filtrar_solicitudes
@@ -140,6 +146,40 @@ def _version_visible(datos):
     return filas
 
 
+def _construir_query_bandeja(
+    parametros: QueryDict,
+    *,
+    incluir_atencion: bool = False,
+    estados_compatibles: set[str] | None = None,
+    campos_excluidos: set[str] | None = None,
+) -> QueryDict:
+    """Arma parámetros de la bandeja sin paginación, vacíos ni criterios incompatibles."""
+    excluidos = campos_excluidos or set()
+    limpios = QueryDict(mutable=True)
+    if incluir_atencion:
+        limpios["atencion"] = "1"
+    for campo in ("q", "estado", "periodo", "dia", "mes", "anio"):
+        if campo in excluidos:
+            continue
+        valor = parametros.get(campo, "")
+        if not valor or (campo == "q" and not valor.strip()):
+            continue
+        if (
+            campo == "estado"
+            and estados_compatibles is not None
+            and valor not in estados_compatibles
+        ):
+            continue
+        limpios[campo] = valor
+    periodo = limpios.get("periodo", "")
+    activos_fecha = {"dia": {"dia"}, "mes": {"mes", "anio"}, "anio": {"anio"}}.get(
+        periodo, set()
+    )
+    for campo_fecha in {"dia", "mes", "anio"} - activos_fecha:
+        limpios.pop(campo_fecha, None)
+    return limpios
+
+
 class ListaSolicitudesView(FacturacionView):
     def get(self, request):
         if not any(
@@ -150,36 +190,98 @@ class ListaSolicitudesView(FacturacionView):
             )
         ):
             raise PermissionDenied
+        por_circuito = has_capability(self.actor, "facturacion.consultar_todas")
+        puede_presentar = has_capability(self.actor, "facturacion.presentar")
+        ofrece_atencion = puede_tener_atencion(self.actor)
+        solo_atencion = ofrece_atencion and request.GET.get("atencion") == "1"
+
         filtro = FiltroFacturacionForm(request.GET)
         visibles = filtrar_solicitudes_visibles(self.actor)
-        consulta = filtrar_solicitudes(
-            visibles, filtro, por_circuito=has_capability(self.actor, "facturacion.consultar_todas")
-        )
-        pagina = Paginator(
-            consulta.prefetch_related(
+        consulta = filtrar_solicitudes(visibles, filtro, por_circuito=por_circuito)
+
+        atencion = solicitudes_atencion(self.actor, visibles) if ofrece_atencion else []
+        total_atencion = len(atencion) if ofrece_atencion else None
+        mapa_atencion = {tarjeta["solicitud"].pk: tarjeta for tarjeta in atencion}
+
+        if solo_atencion:
+            pks_filtrados = set(consulta.values_list("pk", flat=True))
+            origen_pagina = [
+                tarjeta["solicitud"]
+                for tarjeta in atencion
+                if tarjeta["solicitud"].pk in pks_filtrados
+            ]
+        else:
+            origen_pagina = consulta.prefetch_related(
                 "comprobantes", "cobros__verificacion__rectificacion"
-            ).order_by("-fecha_presentacion", "-pk"),
-            25,
-        ).get_page(request.GET.get("pagina"))
-        atencion = solicitudes_atencion(self.actor, visibles)
-        solicitudes = {tarjeta["solicitud"].pk: tarjeta["solicitud"] for tarjeta in atencion}
-        solicitudes.update((solicitud.pk, solicitud) for solicitud in pagina)
-        resumenes = [
-            (solicitud, importes_cobro(solicitud.comprobantes.all(), solicitud.cobros.all()))
-            for solicitud in solicitudes.values()
-        ]
+            ).order_by("-fecha_presentacion", "-pk")
+
+        page_number = request.GET.get("page") or request.GET.get("pagina")
+        pagina = Paginator(origen_pagina, 25).get_page(page_number)
+
+        for solicitud in pagina:
+            info = mapa_atencion.get(solicitud.pk)
+            solicitud.accion_bandeja = info["accion"] if info else None
+            solicitud.cierre_mes_bandeja = bool(info and info["cierre_mes"])
+            solicitud.importes_bandeja = importes_cobro(
+                solicitud.comprobantes.all(), solicitud.cobros.all()
+            )
+
+        resumenes = [(solicitud, solicitud.importes_bandeja) for solicitud in pagina]
+
         parametros = request.GET.copy()
+        parametros.pop("page", None)
         parametros.pop("pagina", None)
+
+        campos_con_error = set(filtro.errors.keys())
+        if campos_con_error & {"periodo", "dia", "mes", "anio"}:
+            campos_con_error |= {"periodo", "dia", "mes", "anio"}
+
+        estados_compatibles_atencion = (
+            {"PRESENTADA", "FACTURADA_PENDIENTE_COBRO", "COBRADA_EN_REVISION"}
+            if por_circuito
+            else {"PRESENTADA", "OBSERVADA", "FACTURADA_PENDIENTE_COBRO", "COBRADA_EN_REVISION"}
+        )
+
+        base_url = reverse("facturacion:lista")
+        query_criterios = _construir_query_bandeja(parametros)
+        tiene_filtros_activos = bool(query_criterios) or bool(filtro.errors)
+        limpiar_filtros_url = f"{base_url}?atencion=1" if solo_atencion else base_url
+
+        query_tab_todas = _construir_query_bandeja(
+            parametros, campos_excluidos=campos_con_error
+        )
+        query_tab_atencion = _construir_query_bandeja(
+            parametros,
+            incluir_atencion=True,
+            estados_compatibles=estados_compatibles_atencion,
+            campos_excluidos=campos_con_error,
+        )
+        url_tab_todas = (
+            f"{base_url}?{query_tab_todas.urlencode()}" if query_tab_todas else base_url
+        )
+        url_tab_atencion = f"{base_url}?{query_tab_atencion.urlencode()}"
+
         return render(
             request,
             "facturacion/lista.html",
             {
                 "actor": self.actor,
                 "pagina": pagina,
+                "is_paginated": pagina.has_other_pages(),
                 "filtro_form": filtro,
                 "filtros_query": parametros.urlencode(),
                 "atencion": atencion,
                 "resumenes": resumenes,
+                "es_operador": por_circuito,
+                "puede_presentar": puede_presentar,
+                "ofrece_atencion": ofrece_atencion,
+                "solo_atencion": solo_atencion,
+                "total_atencion": total_atencion,
+                "tiene_filtros_activos": tiene_filtros_activos,
+                "limpiar_filtros_url": limpiar_filtros_url,
+                "url_tab_todas": url_tab_todas,
+                "url_tab_atencion": url_tab_atencion,
+                "consulta_bandeja": request.GET.urlencode(),
             },
         )
 

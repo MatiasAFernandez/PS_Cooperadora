@@ -47,7 +47,7 @@ def test_paneles_priorizan_actualizacion_y_separan_responsabilidades(escenario, 
     assert ajena.pk not in [x["solicitud"].pk for x in panel]
     operador = e.actores["o"]
     panel_op = solicitudes_atencion(operador, filtrar_solicitudes_visibles(operador))
-    assert len(panel_op) == 3
+    assert len(panel_op) == 4
     assert panel_op[0]["solicitud"].pk == ajena.pk
     assert all(x["solicitud"].pk not in {solicitudes[0].pk, solicitudes[1].pk}
                for x in panel_op)
@@ -93,8 +93,15 @@ def test_listado_escapado_panel_independiente_de_filtros(escenario, datos):
     respuesta = cliente.get(reverse("facturacion:lista"), {"q": "sin coincidencia"})
     assert respuesta.status_code == 200
     assert len(respuesta.context["atencion"]) == 1
+    assert respuesta.context["total_atencion"] == 1
     assert len(respuesta.context["pagina"]) == 0
-    assert f'id="resumen-solicitud-{s.pk}"' in respuesta.content.decode()
+    assert (
+        '<span class="bandeja-tab-count bandeja-tab-count--attn">1</span>'
+        in respuesta.content.decode()
+    )
+    atencion_resp = cliente.get(reverse("facturacion:lista"), {"atencion": "1"})
+    assert atencion_resp.status_code == 200
+    assert f'id="resumen-solicitud-{s.pk}"' in atencion_resp.content.decode()
     detalle = cliente.get(reverse("facturacion:detalle", args=[s.pk]))
     html = detalle.content.decode()
     assert html.index("Acciones inmediatas") < html.index("Exportar solicitud")
@@ -142,7 +149,7 @@ def test_operador_conserva_trabajo_despues_de_su_actualizacion(escenario, datos)
     acciones = acciones_inmediatas(op, s)
     assert "Revisar el documento de respaldo" in acciones[0].texto
     aceptar(escenario, c.documento)
-    assert acciones_inmediatas(op, s)[0].texto == "Constatar Ingreso"
+    assert acciones_inmediatas(op, s)[0].texto == "Verificar ingreso"
     from facturacion.cobros import verificar_cobro
     verificar_cobro(actor=op, numero=s.pk, cobro_id=c.pk, datos={"resultado": "CONFIRMADO"})
     assert acciones_inmediatas(op, s)[0].texto == "Ir a resolución"

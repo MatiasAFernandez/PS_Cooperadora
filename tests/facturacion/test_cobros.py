@@ -258,7 +258,7 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     cliente.force_login(escenario.usuarios["o"])
     respuesta = cliente.get(reverse("facturacion:verificar_cobro", args=[otra.pk, intercalado.pk]))
     assert respuesta.status_code == 200
-    assert "Constatar Ingreso del cobro #1" in respuesta.content.decode()
+    assert "Verificar ingreso del cobro #1" in respuesta.content.decode()
 
 
 def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada):
@@ -274,7 +274,7 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
     detalle = reverse("facturacion:detalle", args=[solicitud.pk])
     contenido = cliente.get(detalle).content.decode()
     assert "Realizar revisión documental" in contenido
-    assert "Constatar Ingreso</a>" in contenido
+    assert "Verificar ingreso</a>" in contenido
     revision_url = reverse("documentos:revision", args=[cobro.documento_id])
     contenido = cliente.get(revision_url).content.decode()
     assert "Datos ingresados del cobro" in contenido
@@ -291,8 +291,8 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
     )
     assert resumen_cobros(solicitud)[1]["PENDIENTE"] == Decimal("60.10")
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
-    assert "Falta constatar el ingreso externo" in contenido
-    assert "Constatar Ingreso</a>" in contenido
+    assert "Falta verificar el ingreso externo" in contenido
+    assert "Verificar ingreso</a>" in contenido
     assert "Revisión documental:" in contenido and ">ACEPTADO<" in contenido
     assert "Consultar revisión documental" in contenido
     respuesta = cliente.get(revision_url)

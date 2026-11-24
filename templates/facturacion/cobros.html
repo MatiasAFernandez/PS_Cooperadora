@@ -15,7 +15,7 @@
 <p>Ingreso: {% include "facturacion/estado.html" with estado=cobro.resultado only %}</p>
 </div></div>
 <p>{{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }}.</p>
-{% if cobro.resultado == "PENDIENTE" and cobro.estado_revision == "ACEPTADO" %}<p>Falta constatar el ingreso externo.</p>{% endif %}
+{% if cobro.resultado == "PENDIENTE" and cobro.estado_revision == "ACEPTADO" %}<p>Falta verificar el ingreso externo.</p>{% endif %}
 <p>Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
 {% if cobro.resultado != "PENDIENTE" %}<p>Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}</p>{% endif %}
 {% if cobro.resultado == "RECTIFICADO" %}<p>Motivo de rectificación: {{ cobro.verificacion.rectificacion.motivo }}</p>{% endif %}
@@ -28,7 +28,7 @@
 {% if puede_ver_revision %}<a class="btn btn-secondary" href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}">{% if puede_revisar_documentos and cobro.estado_revision == "PENDIENTE" %}Realizar revisión documental{% else %}Consultar revisión documental{% endif %}</a>{% endif %}
 {% if puede_verificar_cobro and cobro.resultado == "CONFIRMADO" and not diagnostico.terminal %}<a class="btn btn-secondary" href="{% url 'facturacion:rectificar_cobro' solicitud.pk cobro.pk %}">Rectificar ingreso</a>{% endif %}
 {% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" and not diagnostico.terminal %}
-<a class="btn{% if cobro.estado_revision and cobro.estado_revision != 'ACEPTADO' %} btn-secondary{% endif %}" href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Constatar Ingreso</a>
+<a class="btn{% if cobro.estado_revision and cobro.estado_revision != 'ACEPTADO' %} btn-secondary{% endif %}" href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>
 {% endif %}
 </div>
 </li>{% empty %}<li>Sin cobros registrados.</li>{% endfor %}</ul>

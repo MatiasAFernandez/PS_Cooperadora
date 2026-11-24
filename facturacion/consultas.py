@@ -31,13 +31,14 @@ def filtrar_solicitudes(consulta, form, *, por_circuito=False):
             | Q(cuit_receptor__icontains=texto)
             | Q(detalle_factura__icontains=texto)
         )
-        if texto.isascii() and texto.isdigit() and len(texto) <= 18:
+        digitos = texto[1:] if texto.startswith("#") else texto
+        if digitos and digitos.isascii() and digitos.isdigit() and len(digitos) <= 18:
             if por_circuito:
-                numero = Q(pk=int(texto))
+                numero = Q(pk=int(digitos))
             else:
                 consulta = consulta.con_numero_solicitante()
-                numero = Q(_numero_solicitante=int(texto))
-            criterio = numero | Q(cuit_receptor=texto)
+                numero = Q(_numero_solicitante=int(digitos))
+            criterio = numero if texto.startswith("#") else (numero | Q(cuit_receptor=digitos))
         consulta = consulta.filter(criterio)
     estado = form.cleaned_data["estado"]
     if not estado:

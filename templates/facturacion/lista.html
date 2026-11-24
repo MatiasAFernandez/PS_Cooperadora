@@ -1,42 +1,146 @@
-{% extends "facturacion/base.html" %}
-{% load static %}
-{% block facturacion_content %}
-<header class="fac-header fac-page-title fac-has-help">
-<h2>Solicitudes de facturación</h2>
-{% if "facturacion.presentar" in actor.capabilities %}<a class="btn" href="{% url 'facturacion:presentar' %}">Nueva solicitud</a>{% endif %}
-{% include "facturacion/ayuda.html" with id="ayuda-lista" etiqueta="Solicitudes de facturación" texto="Seleccioná una fila para abrir el resumen lateral. La columna Solicitante muestra el correo al que Cooperadora enviará la factura." only %}
-</header>
-<p class="visually-hidden-module-title" id="ayuda-abrir-resumen">Presioná Enter o Espacio para abrir el resumen.</p>
-{% include "facturacion/atencion.html" %}
-<form method="get" class="panel fac-filters" aria-label="Filtros de solicitudes">
-{% include "comunes/campos_filtro.html" with form=filtro_form %}
-<div class="filter-actions">
-<button type="submit">Filtrar</button> <a href="{% url 'facturacion:lista' %}">Quitar filtro</a>
-</div>
-</form>
-<div class="solicitudes-scroll" tabindex="0" role="region" aria-label="Lista de solicitudes de facturación">
-<table class="solicitudes-tabla"><thead><tr><th scope="col">ID</th><th scope="col">Solicitante</th><th scope="col">Fecha de Presentación</th><th scope="col">Receptor</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead><tbody>
-{% for solicitud in pagina %}<tr data-resumen="{{ solicitud.pk }}"><td class="fac-number">#{{ solicitud.numero_visible }}</td><td class="fac-email">{{ solicitud.email_envio_factura }}</td>
-<td class="fac-date">{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</td><td>{{ solicitud.nombre_receptor }}</td><td>{% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}</td><td><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Ver Detalle</a></td></tr>
-{% empty %}<tr><td colspan="6" class="fac-empty">No hay solicitudes para mostrar.</td></tr>{% endfor %}</tbody></table>
-</div>
-<nav class="fac-pagination" aria-label="Páginas">{% if pagina.has_previous %}<a class="btn btn-secondary" href="?{{ filtros_query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
-<span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-{% if pagina.has_next %}<a class="btn btn-secondary" href="?{{ filtros_query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>
-{% include "facturacion/resumen_lateral.html" %}
-<script src="{% static 'facturacion/js/resumen_lateral.js' %}?v=2" defer></script>
-<script>
-document.querySelectorAll('.solicitudes-scroll').forEach(function (region) {
-    const tabla = region.querySelector('table');
-    function ajustar() {
-        const filas = Array.from(tabla.tBodies[0].rows).slice(0, 4);
-        const alto = tabla.tHead.getBoundingClientRect().height +
-            filas.reduce(function (total, fila) { return total + fila.getBoundingClientRect().height; }, 0);
-        region.style.maxHeight = Math.ceil(alto + 1) + 'px';
-    }
-    ajustar();
-    if (window.ResizeObserver) new ResizeObserver(ajustar).observe(tabla);
-    else window.addEventListener('resize', ajustar);
-});
-</script>
+{% extends "base.html" %}
+{% load static formato_ars %}
+{% block title %}Solicitudes de facturación — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Solicitudes de facturación — Cooperadora{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'facturacion/css/lista.css' %}">{% endblock %}
+
+{% block content %}
+<section class="bandeja" aria-labelledby="bandeja-titulo">
+    <header class="bandeja-header">
+        <div class="bandeja-titulo-wrap">
+            <h1 id="bandeja-titulo">{% if puede_presentar and not es_operador %}Mis solicitudes de facturación{% else %}Solicitudes de facturación{% endif %}</h1>
+            <p class="bandeja-subtitulo">{% if es_operador and ofrece_atencion %}Emisión de comprobantes, revisión de respaldos y verificación de cobros.{% elif puede_presentar and not es_operador %}Tus solicitudes presentadas y seguimiento de cobro externo.{% else %}Consulta general de solicitudes de facturación y cobros.{% endif %}</p>
+        </div>
+        {% if puede_presentar %}
+            <div class="bandeja-acciones">
+                <a class="btn btn-primary" href="{% url 'facturacion:presentar' %}"><svg class="bandeja-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Nueva solicitud</a>
+            </div>
+        {% endif %}
+    </header>
+
+    {% if ofrece_atencion %}
+        <nav class="ui-tabs-segmented" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
+            <a data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
+            <a data-bandeja-tab="atencion" href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-tab-count bandeja-tab-count--attn">{{ total_atencion }}</span>{% endif %}</a>
+        </nav>
+    {% endif %}
+
+    <form class="bandeja-filtros" data-bandeja-filtros{% if solo_atencion %} data-solo-atencion="1"{% endif %} method="get" action="{% url 'facturacion:lista' %}">
+        {% if solo_atencion %}<input type="hidden" name="atencion" value="1">{% endif %}
+        {% include "comunes/campos_filtro.html" with form=filtro_form %}
+        <div class="bandeja-filtros-acciones">
+            <button class="btn btn-secondary bandeja-btn-filtrar" type="submit">Filtrar</button>
+            <a class="btn btn-ghost bandeja-enlace" data-bandeja-limpiar{% if not tiene_filtros_activos %} hidden{% endif %} href="{{ limpiar_filtros_url }}">Quitar filtros</a>
+        </div>
+    </form>
+
+    <p class="bandeja-estado-busqueda bandeja-estado-busqueda--sr" data-bandeja-estado role="status" aria-live="polite" aria-atomic="true"></p>
+
+    <div class="bandeja-contenido" data-bandeja-resultados data-total-resultados="{% if pagina %}{{ pagina.paginator.count }}{% else %}0{% endif %}" data-tiene-errores="{% if filtro_form.errors %}1{% else %}0{% endif %}">
+    {% if pagina %}
+        <p class="bandeja-conteo">Mostrando {{ pagina.paginator.count }} solicitud{{ pagina.paginator.count|pluralize:",es" }}{% if tiene_filtros_activos %} (filtrado){% endif %}</p>
+        <div class="bandeja-resultados">
+            <table class="bandeja-tabla" aria-label="Solicitudes de facturación">
+                <thead>
+                    <tr>
+                        <th scope="col">Solicitud y receptor</th>
+                        <th scope="col">Solicitante y envío</th>
+                        <th scope="col" class="th-right">Importe</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col" class="th-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitud in pagina %}
+                        {% url 'facturacion:detalle' solicitud.pk as detalle_url %}
+                        <tr data-resumen="{{ solicitud.pk }}">
+                            <td class="bandeja-solicitud">
+                                <a class="fac-fila-titulo" href="{{ detalle_url }}{% if consulta_bandeja %}?bandeja={{ consulta_bandeja|urlencode }}{% endif %}" data-abrir-resumen="{{ solicitud.pk }}" aria-controls="resumen-facturacion" aria-haspopup="dialog">
+                                    <span class="fac-fila-num">#{{ solicitud.numero_visible }}</span> · <span class="fac-fila-receptor">{{ solicitud.nombre_receptor }}</span>
+                                </a>
+                                <span class="fac-fila-sub">{{ solicitud.detalle_factura|truncatechars:72 }} · <span class="fac-nowrap">CUIT {{ solicitud.cuit_receptor }}</span> · <span class="fac-nowrap">{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</span></span>
+                                {% if solicitud.cierre_mes_bandeja %}
+                                    <span class="fac-cierre-tag">Se aproxima el cierre de mes: completá la acción pendiente.</span>
+                                {% endif %}
+                            </td>
+                            <td class="fac-solicitante-col">
+                                <span class="fac-mobile-label">Solicitante y envío</span>
+                                <span class="fac-solicitante">{{ solicitud.nombre_solicitante }}</span>
+                                <span class="fac-envio-email" title="{{ solicitud.email_envio_factura }}">Envío: {{ solicitud.email_envio_factura }}</span>
+                            </td>
+                            <td class="bandeja-importe">
+                                {% if solicitud.importes_bandeja.hay_factura %}
+                                    <span class="fac-mobile-label">Importe neto</span>
+                                    <span class="fac-importe-valor">{{ solicitud.importes_bandeja.neto|ars }}</span>
+                                    <span class="fac-importe-sub">Neto</span>
+                                {% else %}
+                                    <span class="fac-mobile-label">Importe solicitado</span>
+                                    <span class="fac-importe-valor">{{ solicitud.importe_factura|ars }}</span>
+                                    <span class="fac-importe-sub">Solicitado</span>
+                                {% endif %}
+                            </td>
+                            <td class="bandeja-estado">
+                                {% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}
+                            </td>
+                            <td class="bandeja-fila-accion">
+                                {% if solicitud.accion_bandeja %}
+                                    <a class="btn btn-primary btn-row" href="{{ solicitud.accion_bandeja.url }}" aria-label="{{ solicitud.accion_bandeja.texto }} de la solicitud {{ solicitud.numero_visible }}">{{ solicitud.accion_bandeja.texto_fila }}</a>
+                                {% else %}
+                                    <a class="btn btn-ghost btn-row fac-accion-detalle" href="{{ detalle_url }}{% if consulta_bandeja %}?bandeja={{ consulta_bandeja|urlencode }}{% endif %}" aria-label="Ver detalle de la solicitud {{ solicitud.numero_visible }}">Ver detalle<svg class="bandeja-ic-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg></a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if is_paginated %}
+                <nav class="bandeja-paginacion" aria-label="Paginación de solicitudes">
+                    <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+                    <div class="bandeja-acciones">
+                        {% if pagina.has_previous %}
+                            <a class="btn btn-secondary btn-row" href="?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ pagina.previous_page_number }}">Anterior</a>
+                        {% endif %}
+                        {% if pagina.has_next %}
+                            <a class="btn btn-secondary btn-row" href="?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ pagina.next_page_number }}">Siguiente</a>
+                        {% endif %}
+                    </div>
+                </nav>
+            {% endif %}
+        </div>
+    {% elif filtro_form.errors %}
+        <p class="bandeja-vacio">Corregí los filtros para consultar las solicitudes.</p>
+    {% elif filtro_form.cleaned_data.q %}
+        <p class="bandeja-vacio">No se encontraron solicitudes visibles con el término buscado y los filtros seleccionados.</p>
+    {% elif filtro_form.cleaned_data.estado %}
+        <p class="bandeja-vacio">No se encontraron solicitudes visibles con el estado seleccionado.</p>
+    {% elif solo_atencion and not tiene_filtros_activos %}
+        <p class="bandeja-vacio">No tenés solicitudes que requieran atención en este momento.</p>
+    {% elif consulta_bandeja %}
+        <p class="bandeja-vacio">No hay solicitudes que coincidan con esta búsqueda.</p>
+    {% else %}
+        <p class="bandeja-vacio">No se encontraron solicitudes de facturación visibles para tu cuenta.</p>
+    {% endif %}
+    {% include "facturacion/resumen_lateral.html" %}
+    </div>
+
+    <dialog class="fac-drawer" id="resumen-facturacion" aria-labelledby="titulo-resumen-facturacion">
+        <div class="fac-drawer-head">
+            <div class="fac-drawer-heading">
+                <p class="fac-drawer-eyebrow" data-drawer-eyebrow></p>
+                <h2 id="titulo-resumen-facturacion"></h2>
+            </div>
+            <form method="dialog" class="fac-drawer-cierre">
+                <button type="submit" class="btn-icon fac-drawer-close" aria-label="Cerrar resumen" title="Cerrar resumen" autofocus>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </form>
+        </div>
+        <div class="fac-drawer-body" data-contenido-resumen></div>
+        <div class="fac-drawer-foot">
+            <a class="btn btn-secondary" data-drawer-detalle href="#">Ir al detalle completo</a>
+            <a class="btn btn-primary" data-drawer-accion href="#" hidden></a>
+        </div>
+    </dialog>
+</section>
+<script src="{% static 'facturacion/js/lista.js' %}" defer></script>
 {% endblock %}
