@@ -572,7 +572,7 @@
 .registro-pago.rp-alta .rp-dropzone {
   overflow: hidden;
 }
-.registro-pago.rp-alta .rp-file-input {
+.registro-pago.rp-alta .rp-dropzone .rp-file-input {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
