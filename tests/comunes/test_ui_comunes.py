@@ -4,7 +4,7 @@ from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 
-from comunes.templatetags.formato_ars import ars
+from comunes.templatetags.formato_ars import actor_visible, ars, cuit, estado_historial
 
 
 class _MensajeSintetico:
@@ -99,3 +99,25 @@ class MensajesFlashTests(SimpleTestCase):
             '<div class="message message-info" role="status">Mensaje sin etiqueta</div>',
             salida,
         )
+
+
+class FormatoCuitYHistorialTests(SimpleTestCase):
+    def test_cuit_formatea_once_digitos_y_respeta_fallbacks(self):
+        self.assertEqual(cuit("30712345671"), "30-71234567-1")
+        self.assertEqual(cuit("30-71234567-1"), "30-71234567-1")
+        self.assertEqual(cuit(" 20 12345678 9 "), "20-12345678-9")
+        self.assertEqual(cuit("12345"), "12345")
+        self.assertEqual(cuit(""), "—")
+        self.assertEqual(cuit(None), "—")
+
+    def test_cuit_en_plantilla(self):
+        tpl = Template("{% load formato_ars %}{{ valor|cuit }}")
+        self.assertEqual(tpl.render(Context({"valor": "30712345671"})), "30-71234567-1")
+
+    def test_actor_visible_y_estado_historial(self):
+        self.assertEqual(actor_visible("42", {"42": "Ing. Laura Gómez"}), "Ing. Laura Gómez")
+        self.assertEqual(actor_visible("42", {"99": "Otro"}), "actor #42")
+        self.assertEqual(actor_visible("42", None), "actor #42")
+        self.assertEqual(estado_historial("PENDIENTE"), "Pendiente")
+        self.assertEqual(estado_historial("CERRADA"), "Cerrada")
+        self.assertEqual(estado_historial("Cerrada"), "Cerrada")
