@@ -1,20 +1,45 @@
 {% extends "facturacion/base.html" %}
+{% load static %}
+{% block title %}{{ titulo }} — Facturación — PS Cooperadora{% endblock %}
 {% block facturacion_content %}
-<header class="fac-page-title fac-has-help">
-<h2>{{ titulo }}</h2>
-{% include "facturacion/ayuda.html" with id="ayuda-presentacion" etiqueta=titulo texto="Completá los datos que Cooperadora necesita para registrar y enviar la factura. Un pago declarado queda pendiente de verificación." only %}
-</header>
-{% if solicitud %}<p><strong>Observación:</strong> {{ solicitud.observacion_vigente }}</p>
-{% endif %}
-<form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}
-{% if token %}<input type="hidden" name="token_presentacion" value="{{ token }}">{% endif %}
-{% if solicitud %}<input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">{% endif %}
-{% include "facturacion/campos_formulario.html" %}
-{% if form.errors %}<p>Si habías seleccionado un archivo nuevo, volvé a seleccionarlo antes de reenviar.</p>{% endif %}
-{% if solicitud %}<p><label for="nota_correccion">Nota de corrección (opcional)</label>
-<textarea id="nota_correccion" name="nota_correccion">{{ request.POST.nota_correccion }}</textarea></p>{% endif %}
-<button type="submit">Guardar y presentar</button>
-</form>
+<div class="fac-subpage">
+    {% if solicitud %}
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a>
+    {% else %}
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:lista' %}">Volver a solicitudes</a>
+    {% endif %}
+
+    <header class="fac-page-head">
+        <h1>{{ titulo }}</h1>
+        <p class="fac-page-subtitle">Completá los datos que Cooperadora necesita para registrar y enviar la factura. Un pago declarado queda pendiente de verificación.</p>
+    </header>
+
+    {% if solicitud %}
+    <div class="notice fac-warning" role="status">
+        <strong>Observación:</strong> {{ solicitud.observacion_vigente }}
+    </div>
+    {% endif %}
+
+    {% include "facturacion/errores_formulario.html" %}
+
+    <form class="fac-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% if token %}<input type="hidden" name="token_presentacion" value="{{ token }}">{% endif %}
+        {% if solicitud %}<input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">{% endif %}
+        {% include "facturacion/campos_formulario.html" %}
+        {% if form.errors %}<p class="fac-field-help" role="status">Si habías seleccionado un archivo nuevo, volvé a seleccionarlo antes de reenviar.</p>{% endif %}
+        {% if solicitud %}
+        <div class="form-group">
+            <label for="nota_correccion">Nota de corrección <span class="field-optional">(Opcional)</span></label>
+            <textarea id="nota_correccion" name="nota_correccion">{{ request.POST.nota_correccion }}</textarea>
+        </div>
+        {% endif %}
+        <div class="fac-form-actions">
+            <button class="btn btn-primary" type="submit">Guardar y presentar</button>
+        </div>
+    </form>
+</div>
+<script src="{% static 'js/foco_errores.js' %}"></script>
 <script>
 (function () {
     const selector = document.getElementById('id_presento_comprobante_pago');

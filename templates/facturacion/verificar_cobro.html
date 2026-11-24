@@ -1,22 +1,84 @@
 {% extends "facturacion/base.html" %}
+{% load static formato_ars %}
+{% block title %}Verificar ingreso del cobro #{{ cobro.numero_en_solicitud }} — Solicitud {{ solicitud.numero_visible }} — PS Cooperadora{% endblock %}
+{% block extra_head %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/visor_documentos.css' %}">
+{% endblock %}
 {% block facturacion_content %}
-<header class="fac-page-title fac-has-help">
-<h2>Verificar ingreso del cobro #{{ cobro.numero_en_solicitud }}</h2>
-{% include "facturacion/ayuda.html" with id="ayuda-verificar" etiqueta="Verificar ingreso" texto="Cotejá el movimiento externo y registrá el resultado. Para confirmar el ingreso, primero aceptá el documento de respaldo vigente. La verificación queda en el historial." only %}
-</header>
-<p>{{ cobro.importe }} ARS — {{ cobro.medio }} — operación {{ cobro.numero_operacion }} — {{ cobro.fecha_operacion|date:"d/m/Y" }}.</p>
-{% if cobro.resultado == "PENDIENTE" %}
-{% if not respaldo_aceptado %}
-<div class="notice fac-warning">Para confirmar el ingreso, primero aceptá el documento de respaldo vigente.
-{% if respaldo %}<a href="{% url 'documentos:revision' respaldo.pk %}">Consultar revisión documental</a>{% endif %}</div>
-{% endif %}
-{% if supera_importe_solicitado or supera_neto %}
-<div class="notice fac-warning fac-overpayment" role="status">
-{% if supera_importe_solicitado %}<p><strong>El cobro supera el importe solicitado de $ {{ solicitud.importe_factura|floatformat:2 }}.</strong></p>{% endif %}
-{% if supera_neto %}<p><strong>Si confirmás este cobro, el total confirmado superará el neto de la factura.</strong></p>{% endif %}
-<p>Cotejá el importe con el movimiento externo antes de confirmar.</p>
-</div>{% endif %}
-<form class="fac-form" method="post">{% csrf_token %}{% include "facturacion/campos_formulario.html" %}<button type="submit">Guardar verificación</button></form>
-{% else %}<p>Resultado registrado: {{ cobro.resultado }}.</p>{{ form.non_field_errors }}{% endif %}
-<p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+<div class="fac-subpage">
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a>
+
+    <header class="fac-page-head">
+        <h1>Verificar ingreso del cobro #{{ cobro.numero_en_solicitud }}</h1>
+        <p class="fac-page-subtitle">Cotejá el movimiento externo y registrá el resultado. Para confirmar el ingreso, primero aceptá el documento de respaldo vigente. La verificación queda en el historial.</p>
+    </header>
+
+    <section class="card fac-context-card">
+        <dl class="kv-list">
+            <div>
+                <dt>Importe</dt>
+                <dd class="font-tabular"><strong>{{ cobro.importe|ars }}</strong></dd>
+            </div>
+            <div>
+                <dt>Medio</dt>
+                <dd>{{ medio_mostrado }}</dd>
+            </div>
+            <div>
+                <dt>Número de operación</dt>
+                <dd class="font-mono">{{ cobro.numero_operacion }}</dd>
+            </div>
+            <div>
+                <dt>Fecha de operación</dt>
+                <dd class="font-tabular">{{ cobro.fecha_operacion|date:"d/m/Y" }}</dd>
+            </div>
+            {% if respaldo %}
+            <div>
+                <dt>Documento de respaldo</dt>
+                <dd>
+                    {{ respaldo.nombre_original }} (v{{ respaldo.version }})
+                    {% if puede_descargar %}
+                    <div class="fd-record-actions fd-details-compact">
+                        {% url 'documentos:archivo' respaldo.pk as url_archivo %}
+                        {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf-imagen" titulo="Respaldo de cobro" nombre=respaldo.nombre_original ver_label="Ver respaldo de cobro" descargar_label="Descargar documento de respaldo" only %}
+                    </div>
+                    {% endif %}
+                </dd>
+            </div>
+            {% endif %}
+        </dl>
+    </section>
+
+    {% if cobro.resultado == "PENDIENTE" %}
+        {% if not respaldo_aceptado %}
+        <div class="notice fac-warning" role="status">
+            Para confirmar el ingreso, primero aceptá el documento de respaldo vigente.
+            {% if respaldo %}<a href="{% url 'documentos:revision' respaldo.pk %}">Revisar documento</a>{% endif %}
+        </div>
+        {% endif %}
+        {% if supera_importe_solicitado or supera_neto %}
+        <div class="notice fac-warning fac-overpayment" role="status">
+            {% if supera_importe_solicitado %}<p><strong>El cobro supera el importe solicitado de {{ solicitud.importe_factura|ars }}.</strong></p>{% endif %}
+            {% if supera_neto %}<p><strong>Si confirmás este cobro, el total confirmado superará el neto de la factura.</strong></p>{% endif %}
+            <p>Cotejá el importe con el movimiento externo antes de confirmar.</p>
+        </div>
+        {% endif %}
+
+        {% include "facturacion/errores_formulario.html" %}
+
+        <form class="fac-form" method="post">
+            {% csrf_token %}
+            {% include "facturacion/campos_formulario.html" %}
+            <div class="fac-form-actions">
+                <button class="btn btn-primary" type="submit">Guardar verificación</button>
+            </div>
+        </form>
+    {% else %}
+        {% include "facturacion/errores_formulario.html" %}
+        <div class="notice" role="status">Resultado registrado: <strong>{{ cobro.resultado|estado_historial }}</strong>.</div>
+    {% endif %}
+</div>
+{% include "comunes/visor_documento_dialogo.html" %}
+<script src="{% static 'js/visor_documentos.js' %}"></script>
+<script src="{% static 'js/foco_errores.js' %}"></script>
 {% endblock %}

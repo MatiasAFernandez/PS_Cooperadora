@@ -1,94 +1,326 @@
 {% extends "facturacion/base.html" %}
-{% load static %}
+{% load static formato_ars %}
+
+{% block title %}Solicitud #{{ solicitud.numero_visible }} — Facturación — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Solicitud #{{ solicitud.numero_visible }} — Facturación — PS Cooperadora{% endblock %}
+
 {% block extra_head %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/visor_documentos.css' %}">
 {% endblock %}
+
 {% block facturacion_content %}
-<header class="fac-header">
-<div><h2 aria-label="Solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}">Solicitud {{ solicitud.numero_visible }}</h2><p class="fac-muted">{{ solicitud.correo_solicitante }}</p></div>
-<a class="btn btn-secondary" href="{% url 'facturacion:lista' %}{% if request.GET.bandeja %}?{{ request.GET.bandeja }}{% endif %}">Volver a solicitudes</a>
-</header>
-{% if solicitud.estado == "ANULADA" %}
-<section class="panel" aria-labelledby="titulo-motivo-anulacion">
-<h3 id="titulo-motivo-anulacion">Motivo de anulación</h3>
-<p>{{ motivo_anulacion|default:"No hay un motivo registrado."|linebreaksbr }}</p>
-</section>
-{% elif not diagnostico.terminal %}
-<section class="panel fac-has-help" aria-labelledby="titulo-acciones">
-<h3 id="titulo-acciones">Acciones inmediatas</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-acciones" etiqueta="Acciones inmediatas" texto="Indica qué pasos podés realizar en el estado actual de la solicitud." only %}
-{% if acciones_inmediatas %}
-<ul class="fac-actions-list">{% for accion in acciones_inmediatas %}<li><a class="btn" href="{{ accion.url }}">{{ accion.texto }}</a>{% if accion.descripcion %}<p class="fac-muted">{{ accion.descripcion }}</p>{% endif %}</li>{% endfor %}</ul>
-{% else %}<p>No tenés acciones pendientes en este momento.</p>{% endif %}
-{% if mensaje_espera %}{% if not acciones_inmediatas or "facturacion.consultar_todas" in actor.capabilities %}<p class="notice">{{ mensaje_espera }}</p>{% endif %}{% endif %}
-</section>
-{% endif %}
-<section class="panel fac-has-help" aria-labelledby="titulo-estado-cobro">
-<h3 id="titulo-estado-cobro">Estado de cobro</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-estado-cobro" etiqueta="Estado de cobro" texto="El neto se calcula con la factura y sus notas. El saldo resta únicamente los ingresos confirmados; los pendientes se muestran en Cobros externos." only %}
-<dl class="fac-totals">
-<div class="fac-total"><dt>Neto</dt><dd>{% if diagnostico.hay_factura %}$ {{ diagnostico.neto|floatformat:2 }}{% else %}Pendiente de factura{% endif %}</dd></div>
-<div class="fac-total fac-total-success"><dt>Cobrado y confirmado</dt><dd>$ {{ diagnostico.confirmado|floatformat:2 }}</dd></div>
-<div class="fac-total{% if diagnostico.restante %} fac-total-warning{% endif %}"><dt>Restante por cobrar</dt><dd>{% if diagnostico.hay_factura %}$ {{ diagnostico.restante|floatformat:2 }}{% else %}Por determinar{% endif %}</dd></div>
-</dl>
-{% if diagnostico.hay_factura and diagnostico.neto >= 0 and diagnostico.exceso %}<p class="notice fac-warning">Excedente confirmado de $ {{ diagnostico.exceso|floatformat:2 }} sobre el neto.</p>{% endif %}
-</section>
-<section class="panel fac-has-help fac-pendiente-destino" id="observacion-solicitud" tabindex="-1" aria-labelledby="titulo-solicitud">
-<div class="fac-header"><h3 id="titulo-solicitud">Datos de la solicitud</h3>
-<a class="btn btn-secondary" href="{% url 'facturacion:exportar_pdf' solicitud.pk %}">Exportar solicitud a PDF</a></div>
-{% include "facturacion/ayuda.html" with id="ayuda-datos" etiqueta="Datos de la solicitud" texto="Reúne los datos de presentación, del receptor y de envío. Un pago declarado queda pendiente de verificación." only %}
-<div class="fac-statuses">{% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}
-<small>Versión {{ solicitud.version_concurrencia }}</small></div>
-<dl class="detail-grid"><dt>Presentación</dt><dd>{{ solicitud.fecha_presentacion }} — {{ solicitud.correo_solicitante }}</dd>
-<dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd>
-<dt>Receptor</dt><dd>{{ solicitud.nombre_receptor }} — CUIT {{ solicitud.cuit_receptor }}</dd>
-<dt>Condición IVA</dt><dd>{{ datos_configurados.condicion_iva|default:solicitud.get_condicion_iva_display }}</dd>
-<dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd>
-<dt>Detalle</dt><dd>{{ solicitud.detalle_factura|linebreaksbr }}</dd>
-<dt>Importe solicitado</dt><dd class="fac-amount">{{ solicitud.importe_factura }} ARS</dd>
-<dt>Producto/servicio</dt><dd>{{ datos_configurados.producto_servicio|default:solicitud.get_producto_servicio_display }}</dd>
-<dt>Centro de costo</dt><dd>{{ datos_configurados.centro_costo|default:solicitud.centro_costo }}</dd>
-<dt>Modalidad</dt><dd>{{ datos_configurados.modalidad_cobro|default:solicitud.get_modalidad_cobro_display }}</dd>
-<dt>Comprobante declarado</dt><dd>{{ solicitud.presento_comprobante_pago|yesno:"Sí,No" }}</dd>
-<dt>Operación declarada</dt><dd>{{ solicitud.fecha_operacion_declarada|default_if_none:"—" }} — {{ solicitud.numero_operacion_declarado|default:"—" }}</dd>
-<dt>Observaciones del solicitante</dt><dd>{{ solicitud.observaciones|linebreaksbr }}</dd></dl>
-{% if solicitud.documento_comprobante_inicial_id and puede_descargar %}
-<p><a href="{% url 'documentos:archivo' solicitud.documento_comprobante_inicial_id %}">Descargar documento de respaldo vigente</a></p>{% endif %}
-{% if solicitud.observacion_vigente %}<p class="notice fac-warning"><strong>Observación pendiente:</strong> {{ solicitud.observacion_vigente }}</p>{% endif %}
-{% if puede_corregir %}<p><a class="btn" href="{% url 'facturacion:corregir' solicitud.pk %}">Corregir solicitud</a></p>{% endif %}
-{% if puede_observar %}<h3>Observar solicitud</h3><form method="post" action="{% url 'facturacion:observar' solicitud.pk %}">{% csrf_token %}
-<input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">
-<label for="motivo">Motivo de observación</label><textarea id="motivo" name="motivo" required></textarea>
-<button type="submit">Registrar observación</button></form>{% endif %}
-</section>
-{% include "facturacion/comprobantes.html" %}
-{% include "facturacion/cobros.html" %}
-{% if "facturacion.consultar_todas" in actor.capabilities or puede_cerrar or puede_anular %}
-{% include "facturacion/resolucion.html" %}
-{% endif %}
-<section class="panel fac-has-help"><h3>Historial</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-historial" etiqueta="Historial" texto="Muestra los eventos del trámite y quién intervino en cada paso." only %}
-{% include "facturacion/historial.html" %}</section>
-{% if puede_ver_revision %}<section class="panel fac-has-help"><h3>Revisión de documentos de respaldo</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-revision" etiqueta="Revisión de documentos de respaldo" texto="Agrupa los documentos de respaldo vigentes que todavía requieren revisión o corrección." only %}
-<ul class="fac-documents">
-{% for documento in pendientes_revision %}<li>{{ documento.get_tipo_display }} — <a href="{% url 'documentos:revision' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a> — {{ documento.resultado_revision|default:"Pendiente" }}</li>
-{% empty %}<li>Sin versiones vigentes pendientes, observadas o rechazadas.</li>{% endfor %}</ul></section>{% endif %}
-{% if puede_descargar %}<section class="panel fac-has-help"><h3>Documentos de respaldo conservados</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-respaldos" etiqueta="Documentos de respaldo conservados" texto="Permite descargar los archivos y sus versiones históricas según tus permisos." only %}
-<ul class="fac-documents">
-{% for documento in respaldos %}<li><a href="{% url 'documentos:archivo' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a>
-— {{ documento.fecha_incorporacion }}</li>{% empty %}<li>Sin archivos.</li>{% endfor %}
-</ul></section>{% endif %}
-<section class="panel fac-versions fac-has-help"><h3>Versiones conservadas</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-versiones" etiqueta="Versiones conservadas" texto="Permite comparar los datos de cada versión de la solicitud." only %}
-{% for version in versiones %}<details><summary>{{ version.tipo }} — {{ version.fecha }}</summary>
-{% if version.antes %}<h4>Antes</h4><dl>{% for etiqueta, valor in version.antes %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>{% endif %}
-<h4>Después</h4><dl>{% for etiqueta, valor in version.despues %}<dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd>{% endfor %}</dl>
-</details>{% endfor %}</section>{% include "gestion/respuestas.html" %}
+<div class="fd">
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:lista' %}{% if request.GET.bandeja %}?{{ request.GET.bandeja }}{% endif %}">Volver a solicitudes</a>
+
+    {% include "comunes/mensajes_flash.html" %}
+
+    <header class="card fd-header">
+        <div class="fd-header-main">
+            <p class="fd-eyebrow font-tabular">Solicitud #{{ solicitud.numero_visible }} · Versión {{ solicitud.version_concurrencia }}</p>
+            <h1 class="fd-title" aria-label="Solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}">{{ solicitud.nombre_receptor }}</h1>
+            <div class="fac-statuses">
+                {% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}
+                <span class="badge badge-neutral">{{ datos_configurados.modalidad_cobro|default:solicitud.get_modalidad_cobro_display }}</span>
+                <span class="badge badge-neutral">{{ datos_configurados.producto_servicio|default:solicitud.get_producto_servicio_display }}{% if datos_configurados.centro_costo or solicitud.centro_costo %} · {{ datos_configurados.centro_costo|default:solicitud.centro_costo }}{% endif %}</span>
+            </div>
+            <p class="fd-meta-line">
+                <strong>Solicitante:</strong> {{ solicitud.nombre_solicitante }} ({{ solicitud.correo_solicitante }}) ·
+                <span class="font-tabular">Presentada el {{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</span>
+            </p>
+        </div>
+        <div class="fd-header-side">
+            <div class="fd-header-amount">
+                <span class="fd-amount-label">Importe solicitado</span>
+                <strong class="fd-amount-value font-tabular">{{ solicitud.importe_factura|ars }}</strong>
+            </div>
+            <a class="btn btn-secondary btn-row" href="{% url 'facturacion:exportar_pdf' solicitud.pk %}" aria-label="Exportar solicitud a PDF">
+                <svg class="fd-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar PDF
+            </a>
+        </div>
+    </header>
+
+    {% if solicitud.estado == "ANULADA" %}
+    <section class="message message-error fd-banner" aria-labelledby="titulo-motivo-anulacion">
+        <h2 id="titulo-motivo-anulacion" class="fd-banner-title">Motivo de anulación</h2>
+        <p>{{ motivo_anulacion|default:"No hay un motivo registrado."|linebreaksbr }}</p>
+    </section>
+    {% elif solicitud.observacion_vigente %}
+    <section class="message message-warning fd-banner" aria-labelledby="titulo-observacion-vigente">
+        <h2 id="titulo-observacion-vigente" class="fd-banner-title">Observación pendiente</h2>
+        <p>{{ solicitud.observacion_vigente }}</p>
+        {% if puede_corregir %}
+        <div class="fd-banner-actions">
+            <a class="btn btn-primary btn-row" href="{% url 'facturacion:corregir' solicitud.pk %}">Corregir solicitud</a>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <div class="fd-layout">
+        <div class="fd-main">
+
+            {% if not diagnostico.terminal and solicitud.estado != "ANULADA" %}
+            <section class="card" aria-labelledby="titulo-acciones">
+                <div class="fd-card-head">
+                    <div>
+                        <h2 id="titulo-acciones" class="fd-h2">Acciones inmediatas</h2>
+                        <p class="fd-sub">Próximos pasos disponibles para tu perfil</p>
+                    </div>
+                </div>
+                {% if acciones_inmediatas %}
+                <ul class="fd-action-list">
+                    {% for accion in acciones_inmediatas %}
+                    <li class="fd-action-row">
+                        <div class="fd-action-copy">
+                            <p class="fd-action-title">{{ accion.texto }}</p>
+                            {% if accion.descripcion %}<p class="fd-action-desc">{{ accion.descripcion }}</p>{% endif %}
+                        </div>
+                        <a class="btn {% if forloop.first %}btn-primary{% else %}btn-secondary{% endif %} btn-row" href="{{ accion.url }}">{{ accion.texto_fila }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="fd-muted">No tenés acciones pendientes en este momento.</p>
+                {% endif %}
+                {% if mensaje_espera %}
+                    {% if not acciones_inmediatas or "facturacion.consultar_todas" in actor.capabilities %}
+                    <div class="message message-info fd-notice-top" role="status">{{ mensaje_espera }}</div>
+                    {% endif %}
+                {% endif %}
+            </section>
+            {% endif %}
+
+            {% include "facturacion/comprobantes.html" %}
+            {% include "facturacion/cobros.html" %}
+
+            <section class="card" aria-labelledby="titulo-historial">
+                <div class="fd-card-head">
+                    <div>
+                        <h2 id="titulo-historial" class="fd-h2">Historial y archivos conservados</h2>
+                        <p class="fd-sub">Eventos del trámite, respaldos y versiones de la solicitud.</p>
+                    </div>
+                </div>
+
+                {% include "facturacion/historial.html" %}
+
+                {% if puede_ver_revision or puede_descargar or versiones %}
+                <details class="fd-details fd-details-top">
+                    <summary>
+                        <span>Archivos y versiones de la solicitud</span>
+                        <span class="fd-details-right">
+                            <span>{% if puede_descargar %}{{ respaldos|length }} archivo{{ respaldos|length|pluralize:",s" }} · {% endif %}{{ versiones|length }} versión{{ versiones|length|pluralize:",es" }}</span>
+                            <svg class="fd-ic fd-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                        </span>
+                    </summary>
+                    <div class="fd-details-body">
+                        {% if puede_ver_revision %}
+                        <div class="fd-subblock">
+                            <h3 class="fd-h3">Revisión documental pendiente</h3>
+                            <ul class="fd-doc-list">
+                                {% for documento in pendientes_revision %}
+                                <li>
+                                    <span>{{ documento.get_tipo_display }} — <strong>{{ documento.nombre_original }}</strong> (v{{ documento.version }})</span>
+                                    <span class="fd-doc-meta">
+                                        {% include "facturacion/estado.html" with estado=documento.resultado_revision|default:"PENDIENTE" only %}
+                                        <a href="{% url 'documentos:revision' documento.pk %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{% if puede_revisar_documentos and not documento.resultado_revision %}Abrir revisión{% else %}Ver revisión{% endif %}</a>
+                                    </span>
+                                </li>
+                                {% empty %}
+                                <li class="fd-muted">Sin versiones vigentes pendientes, observadas o rechazadas.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if puede_descargar %}
+                        <div class="fd-subblock">
+                            <h3 class="fd-h3">Documentos de respaldo conservados</h3>
+                            <ul class="fd-doc-list">
+                                {% for documento in respaldos %}
+                                <li>
+                                    <a href="{% url 'documentos:archivo' documento.pk %}">{{ documento.nombre_original }} — versión {{ documento.version }}</a>
+                                    <span class="fd-muted font-tabular">{{ documento.fecha_incorporacion|date:"d/m/Y H:i" }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="fd-muted">Sin archivos conservados.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if versiones %}
+                        <div class="fd-subblock">
+                            <h3 class="fd-h3">Versiones de la solicitud</h3>
+                            <div class="fd-versions">
+                                {% for version in versiones %}
+                                <details class="fd-version-item">
+                                    <summary>{{ version.tipo_mostrado }} — <span class="font-tabular">{{ version.fecha|date:"d/m/Y H:i" }}</span></summary>
+                                    <div class="fd-version-body">
+                                        {% if version.antes %}
+                                        <h4 class="fd-h4">Antes</h4>
+                                        <dl class="kv-list">{% for etiqueta, valor in version.antes %}<div><dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd></div>{% endfor %}</dl>
+                                        {% endif %}
+                                        <h4 class="fd-h4">Después</h4>
+                                        <dl class="kv-list">{% for etiqueta, valor in version.despues %}<div><dt>{{ etiqueta }}</dt><dd>{{ valor|default_if_none:"—" }}</dd></div>{% endfor %}</dl>
+                                    </div>
+                                </details>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </details>
+                {% endif %}
+            </section>
+
+            {% include "gestion/respuestas.html" %}
+        </div>
+
+        <aside class="fd-side">
+            <section class="card" aria-labelledby="titulo-estado-cobro">
+                <div class="fd-card-head">
+                    <h2 id="titulo-estado-cobro" class="fd-h2">Estado de cobro</h2>
+                </div>
+                <dl class="kv-list fd-balance">
+                    <div>
+                        <dt>Neto facturado</dt>
+                        <dd class="font-tabular">{% if diagnostico.hay_factura %}{{ diagnostico.neto|ars }}{% else %}Pendiente de factura{% endif %}</dd>
+                    </div>
+                    <div>
+                        <dt>Cobrado y confirmado</dt>
+                        <dd class="font-tabular">{{ diagnostico.confirmado|ars }}</dd>
+                    </div>
+                    <div class="fd-balance-total">
+                        <dt>Restante por cobrar</dt>
+                        <dd class="font-tabular">{% if diagnostico.hay_factura %}{{ diagnostico.restante|ars }}{% else %}Por determinar{% endif %}</dd>
+                    </div>
+                </dl>
+                <p class="fd-sub fd-notice-top">El saldo resta únicamente los ingresos confirmados; los pendientes figuran en Cobros externos.</p>
+                {% if diagnostico.hay_factura and diagnostico.neto >= 0 and diagnostico.exceso %}
+                <div class="message message-warning fd-notice-top" role="status">
+                    Excedente confirmado de <strong class="font-tabular">{{ diagnostico.exceso|ars }}</strong> sobre el neto.
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="card fac-pendiente-destino" id="observacion-solicitud" tabindex="-1" aria-labelledby="titulo-solicitud">
+                <div class="fd-card-head">
+                    <h2 id="titulo-solicitud" class="fd-h2">Datos de la solicitud</h2>
+                </div>
+                <dl class="kv-list">
+                    <div>
+                        <dt>CUIT del receptor</dt>
+                        <dd class="fd-copy-cell">
+                            <span class="font-mono">{{ solicitud.cuit_receptor|cuit }}</span>
+                            <button type="button" class="btn-copy" data-copy="{{ solicitud.cuit_receptor }}" aria-label="Copiar CUIT del receptor"><span class="btn-copy-text">Copiar</span></button>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Condición IVA</dt>
+                        <dd>{{ datos_configurados.condicion_iva|default:solicitud.get_condicion_iva_display }}</dd>
+                    </div>
+                    <div>
+                        <dt>Correo de envío</dt>
+                        <dd class="fd-copy-cell">
+                            <span class="fd-break">{{ solicitud.email_envio_factura }}</span>
+                            <button type="button" class="btn-copy" data-copy="{{ solicitud.email_envio_factura }}" aria-label="Copiar correo de envío"><span class="btn-copy-text">Copiar</span></button>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Detalle</dt>
+                        <dd>{{ solicitud.detalle_factura|linebreaksbr }}</dd>
+                    </div>
+                    <div>
+                        <dt>Importe solicitado</dt>
+                        <dd class="font-tabular">{{ solicitud.importe_factura|ars }}</dd>
+                    </div>
+                    <div>
+                        <dt>Producto o servicio</dt>
+                        <dd>{{ datos_configurados.producto_servicio|default:solicitud.get_producto_servicio_display }}</dd>
+                    </div>
+                    <div>
+                        <dt>Centro de costo</dt>
+                        <dd>{{ datos_configurados.centro_costo|default:solicitud.centro_costo }}</dd>
+                    </div>
+                    <div>
+                        <dt>Modalidad</dt>
+                        <dd>{{ datos_configurados.modalidad_cobro|default:solicitud.get_modalidad_cobro_display }}</dd>
+                    </div>
+                    <div>
+                        <dt>Comprobante declarado</dt>
+                        <dd>{{ solicitud.presento_comprobante_pago|yesno:"Sí,No" }}</dd>
+                    </div>
+                    {% if solicitud.presento_comprobante_pago or solicitud.fecha_operacion_declarada or solicitud.numero_operacion_declarado %}
+                    <div>
+                        <dt>Operación declarada</dt>
+                        <dd class="font-tabular">{{ solicitud.fecha_operacion_declarada|date:"d/m/Y"|default:"—" }} · <span class="font-mono">{{ solicitud.numero_operacion_declarado|default:"—" }}</span></dd>
+                    </div>
+                    {% endif %}
+                    {% if solicitud.observaciones %}
+                    <div>
+                        <dt>Observaciones del solicitante</dt>
+                        <dd>{{ solicitud.observaciones|linebreaksbr }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+
+                {% if solicitud.documento_comprobante_inicial_id and puede_descargar %}
+                <div class="fd-inline-actions">
+                    {% url 'documentos:archivo' solicitud.documento_comprobante_inicial_id as url_doc_inicial %}
+                    {% include "comunes/visor_documento_acciones.html" with url=url_doc_inicial formatos="pdf-imagen" titulo="Comprobante inicial declarado" ver_label="Ver comprobante inicial" descargar_label="Descargar documento de respaldo vigente" only %}
+                </div>
+                {% endif %}
+
+                {% if puede_corregir and not solicitud.observacion_vigente %}
+                <div class="fd-inline-actions">
+                    <a class="btn btn-primary" href="{% url 'facturacion:corregir' solicitud.pk %}">Corregir solicitud</a>
+                </div>
+                {% endif %}
+
+                {% if puede_observar %}
+                <details id="observar-solicitud" class="fd-details fd-details-top"{% if error_observacion %} open{% endif %}>
+                    <summary>
+                        <span>Observar solicitud</span>
+                        <span class="fd-details-right">
+                            <span>Devolver al solicitante</span>
+                            <svg class="fd-ic fd-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                        </span>
+                    </summary>
+                    <div class="fd-details-body">
+                        {% if error_observacion %}
+                        <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+                            <p>{{ error_observacion }}</p>
+                        </div>
+                        {% endif %}
+                        <form method="post" action="{% url 'facturacion:observar' solicitud.pk %}" class="fd-inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="version_esperada" value="{{ solicitud.version_concurrencia }}">
+                            <div class="form-group">
+                                <label for="motivo">Motivo de observación</label>
+                                <textarea id="motivo" name="motivo" rows="3" required placeholder="Indicá qué datos debe corregir el solicitante."{% if error_observacion %} aria-invalid="true"{% endif %}>{{ motivo_observacion }}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-row">Registrar observación</button>
+                        </form>
+                    </div>
+                </details>
+                {% endif %}
+            </section>
+
+            {% if "facturacion.consultar_todas" in actor.capabilities or puede_cerrar or puede_anular %}
+                {% include "facturacion/resolucion.html" %}
+            {% endif %}
+        </aside>
+    </div>
+</div>
+
 {% if puede_descargar %}
-{% include "comunes/visor_documento_dialogo.html" only %}
-<script src="{% static 'js/visor_documentos.js' %}"></script>
+    {% include "comunes/visor_documento_dialogo.html" only %}
+    <script src="{% static 'js/visor_documentos.js' %}" defer></script>
+{% endif %}
+<script src="{% static 'js/copiar_portapapeles.js' %}" defer></script>
+{% if error_observacion %}
+    <script src="{% static 'js/foco_errores.js' %}" defer></script>
 {% endif %}
 {% endblock %}

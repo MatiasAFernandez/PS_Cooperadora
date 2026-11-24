@@ -24,7 +24,7 @@
     <dl class="kv-list">
         <div><dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd></div>
         <div><dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd></div>
-        <div><dt>Receptor / CUIT</dt><dd>{{ solicitud.nombre_receptor }} · {{ solicitud.cuit_receptor }}</dd></div>
+        <div><dt>Receptor / CUIT</dt><dd>{{ solicitud.nombre_receptor }} · {{ solicitud.cuit_receptor|cuit }}</dd></div>
         <div><dt>Centro de costo</dt><dd>{{ solicitud.centro_costo|default:"—" }}</dd></div>
         <div><dt>Producto o servicio</dt><dd>{{ solicitud.get_producto_servicio_display }}</dd></div>
         <div><dt>Importe solicitado</dt><dd>{{ solicitud.importe_factura|ars }}</dd></div>

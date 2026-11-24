@@ -1,47 +1,109 @@
-<section class="panel fac-has-help fac-pendiente-destino" id="comprobantes-externos" tabindex="-1">
-<h3>Comprobantes externos registrados</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-comprobantes" etiqueta="Comprobantes externos registrados" texto="Reúne la factura emitida y sus notas. El neto suma los débitos y resta los créditos a la factura." only %}
-{% if puede_registrar_comprobante and not diagnostico.terminal %}<p><a class="btn" href="{% url 'facturacion:registrar_comprobante' solicitud.pk %}">Registrar factura o nota externa</a></p>{% endif %}
-{% if comprobantes %}
-<ul class="record-list">{% for c in comprobantes %}<li class="record-card fac-pendiente-destino" id="comprobante-{{ c.pk }}" tabindex="-1">
-<p><strong>{{ c.identificacion }}</strong> — emisor {{ c.cuit_emisor }} — emisión {{ c.fecha_emision|date:"d/m/Y" }} — importe {{ c.importe }}.
-{% if c.factura_origen_id %}Vinculada a {{ factura_vigente.identificacion }}.{% endif %}
-</p><p>Origen {{ c.origen_mostrado }}. Registrado por actor #{{ c.actor_id }} el {{ c.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
-{% if not c.respaldo_vinculado %}<p>Registrado en Xubio. PDF opcional: el archivo se conserva en el sistema de origen.</p>{% endif %}
-{% if c.estado_revision %}<p>Revisión documental: {% include "facturacion/estado.html" with estado=c.estado_revision only %}</p>{% endif %}
-{% if c.ultimo_envio %}
-<p>Envío informado por la operadora: {{ c.ultimo_envio.fecha_envio|date:"d/m/Y" }} a {{ c.ultimo_envio.destinatario }}.</p>
-{% if c.ultimo_envio.confirmacion %}
-<p>Recepción confirmada por el solicitante el {{ c.ultimo_envio.confirmacion.fecha_registro|date:"d/m/Y H:i" }}.</p>
-{% else %}
-<p>Recepción sin confirmar. La confirmación es opcional y no impide el cierre.</p>
-{% if es_titular %}
-<form method="post" action="{% url 'facturacion:confirmar_recepcion' solicitud.pk c.ultimo_envio.pk %}">{% csrf_token %}
-<button type="submit">Confirmar que recibí este comprobante</button>
-</form>
-{% endif %}
-{% endif %}
-{% else %}<p>Envío no informado.</p>{% endif %}
-{% if puede_registrar_comprobante and not diagnostico.terminal %}
-<details><summary>{% if c.ultimo_envio %}Informar otro envío o corregir los datos{% else %}Informar envío por correo{% endif %}</summary>
-<p>Registra un envío realizado fuera del sistema; no envía correo ni acredita entrega automática.</p>
-<form class="fac-form" method="post" action="{% url 'facturacion:declarar_envio' solicitud.pk c.pk %}">{% csrf_token %}
-{{ c.form_envio.destinatario.as_field_group }}
-{{ c.form_envio.fecha_envio.as_field_group }}
-<button type="submit">Guardar envío informado</button>
-</form></details>
-{% endif %}
-<div class="record-actions" role="group" aria-label="Acciones de {{ c.identificacion }}">
-{% if not diagnostico.terminal %}
-{% if puede_registrar_comprobante or puede_actualizar_respaldo %}<a class="btn btn-secondary" href="{% url 'facturacion:modificar_comprobante' solicitud.pk c.pk %}">Modificar comprobante externo</a>{% endif %}
-{% endif %}
-{% if puede_descargar and c.respaldo_vinculado %}
-{% url 'documentos:archivo' c.respaldo_vinculado.pk as url_archivo %}
-{% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf" titulo=c.get_tipo_display nombre=c.respaldo_vinculado.nombre_original descargar_label="Descargar PDF vinculado" only %}
-{% endif %}
-{% if puede_ver_revision and c.respaldo_vinculado %}<a class="btn" href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}">{% if puede_revisar_documentos and c.estado_revision == "PENDIENTE" %}Realizar revisión documental{% else %}Consultar revisión documental{% endif %}</a>{% endif %}
-</div>
-</li>{% endfor %}</ul>
-{% else %}<p class="fac-empty">Sin comprobantes externos registrados.</p>{% endif %}
+{% load formato_ars %}
+<section class="card fac-pendiente-destino" id="comprobantes-externos" tabindex="-1" aria-labelledby="titulo-comprobantes">
+    <div class="fd-card-head">
+        <div>
+            <h2 id="titulo-comprobantes" class="fd-h2">Comprobantes externos</h2>
+            <p class="fd-sub">Factura emitida y notas asociadas. El neto suma débitos y resta créditos.</p>
+        </div>
+        {% if puede_registrar_comprobante and not diagnostico.terminal %}
+        <a class="btn btn-secondary btn-row" href="{% url 'facturacion:registrar_comprobante' solicitud.pk %}">Registrar factura o nota externa</a>
+        {% endif %}
+    </div>
 
+    {% if comprobantes %}
+    <ul class="fd-records">
+        {% for c in comprobantes %}
+        <li class="fd-record fac-pendiente-destino" id="comprobante-{{ c.pk }}" tabindex="-1">
+            <div class="fd-record-top">
+                <div>
+                    <p class="fd-record-title">{{ c.identificacion }}</p>
+                    <p class="fd-record-meta font-tabular">
+                        Emisor <strong class="font-mono">{{ c.cuit_emisor|cuit }}</strong> · Emisión <strong>{{ c.fecha_emision|date:"d/m/Y" }}</strong> · Origen <strong>{{ c.origen_mostrado }}</strong>
+                        {% if c.factura_origen_id %} · Vinculada a {{ factura_vigente.identificacion }}{% endif %}
+                    </p>
+                </div>
+                <span class="fd-record-amount font-tabular">{% if c.tipo == "NOTA_CREDITO" %}-{% endif %}{{ c.importe|ars }}</span>
+            </div>
+
+            <div class="fd-record-pills">
+                {% if c.estado_revision %}
+                <span class="fd-pill-group"><span class="fd-pill-label">Revisión documental:</span> {% include "facturacion/estado.html" with estado=c.estado_revision only %}</span>
+                {% endif %}
+                {% if not c.respaldo_vinculado %}
+                <span class="badge badge-info">Xubio · Sin PDF adjunto (opcional)</span>
+                {% endif %}
+                {% if c.ultimo_envio %}
+                <span class="badge badge-neutral">Envío informado: {{ c.ultimo_envio.fecha_envio|date:"d/m/Y" }}</span>
+                {% else %}
+                <span class="badge badge-neutral">Envío no informado</span>
+                {% endif %}
+            </div>
+
+            <p class="fd-record-meta">
+                Registrado por <strong>{{ c.actor_id|actor_visible:actores_visibles }}</strong> el <span class="font-tabular">{{ c.fecha_registro|date:"d/m/Y H:i:s" }}</span>.
+            </p>
+            {% if not c.respaldo_vinculado %}
+            <p class="fd-record-meta">Registrado en Xubio. PDF opcional: el archivo se conserva en el sistema de origen.</p>
+            {% endif %}
+
+            {% if c.ultimo_envio %}
+            <p class="fd-record-meta">
+                Envío informado a <strong>{{ c.ultimo_envio.destinatario }}</strong> el <span class="font-tabular">{{ c.ultimo_envio.fecha_envio|date:"d/m/Y" }}</span>.
+                {% if c.ultimo_envio.confirmacion %}
+                    Recepción confirmada por el solicitante el <span class="font-tabular">{{ c.ultimo_envio.confirmacion.fecha_registro|date:"d/m/Y H:i" }}</span>.
+                {% else %}
+                    Recepción sin confirmar (opcional; no impide el cierre).
+                {% endif %}
+            </p>
+            {% if not c.ultimo_envio.confirmacion and es_titular %}
+            <form method="post" action="{% url 'facturacion:confirmar_recepcion' solicitud.pk c.ultimo_envio.pk %}" class="fd-confirm-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-row">Confirmar que recibí este comprobante</button>
+            </form>
+            {% endif %}
+            {% endif %}
+
+            {% if puede_registrar_comprobante and not diagnostico.terminal %}
+            <details class="fd-details fd-details-compact">
+                <summary>
+                    <span>{% if c.ultimo_envio %}Informar otro envío o corregir los datos{% else %}Informar envío por correo{% endif %}</span>
+                    <span class="fd-details-right">
+                        <span>Opcional</span>
+                        <svg class="fd-ic fd-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                </summary>
+                <div class="fd-details-body">
+                    <p class="fd-sub fd-mb-sm">Registra un envío realizado fuera del sistema; no envía correo ni acredita entrega automática.</p>
+                    <form class="fd-envio-form" method="post" action="{% url 'facturacion:declarar_envio' solicitud.pk c.pk %}">
+                        {% csrf_token %}
+                        <div class="fd-envio-grid">
+                            {{ c.form_envio.destinatario.as_field_group }}
+                            {{ c.form_envio.fecha_envio.as_field_group }}
+                        </div>
+                        <button type="submit" class="btn btn-secondary btn-row">Guardar envío informado</button>
+                    </form>
+                </div>
+            </details>
+            {% endif %}
+
+            <div class="fd-record-actions" role="group" aria-label="Acciones de {{ c.identificacion }}">
+                {% if puede_descargar and c.respaldo_vinculado %}
+                    {% url 'documentos:archivo' c.respaldo_vinculado.pk as url_archivo %}
+                    {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf" titulo=c.get_tipo_display nombre=c.respaldo_vinculado.nombre_original descargar_label="Descargar PDF vinculado" only %}
+                {% endif %}
+                {% if puede_ver_revision and c.respaldo_vinculado %}
+                <a class="btn {% if puede_revisar_documentos and c.estado_revision == 'PENDIENTE' %}btn-primary{% else %}btn-secondary{% endif %} btn-row" href="{% url 'documentos:revision' c.respaldo_vinculado.pk %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{% if puede_revisar_documentos and c.estado_revision == "PENDIENTE" %}Revisar documento{% else %}Ver revisión{% endif %}</a>
+                {% endif %}
+                {% if not diagnostico.terminal %}
+                    {% if puede_registrar_comprobante or puede_actualizar_respaldo %}
+                    <a class="btn btn-ghost btn-row" href="{% url 'facturacion:modificar_comprobante' solicitud.pk c.pk %}">Modificar comprobante</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="fd-muted">Sin comprobantes externos registrados.</p>
+    {% endif %}
 </section>

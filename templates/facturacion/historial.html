@@ -1,1 +1,21 @@
-{% include "comunes/historial_eventos.html" %}
+{% if historial %}
+{% with eventos=historial|dictsortreversed:"tipo_evento"|dictsortreversed:"evento_id"|dictsortreversed:"fecha_hora" %}
+<ol class="history-list" aria-label="Eventos más recientes">
+    {% for evento in eventos|slice:":3" %}
+        {% include "facturacion/historial_evento.html" with destacado=forloop.first %}
+    {% endfor %}
+</ol>
+{% if eventos|length > 3 %}
+<details class="history-expand">
+    <summary><span class="history-show">Ver historial completo ({{ eventos|length }} eventos)</span><span class="history-hide">Colapsar historial (mostrar sólo 3)</span></summary>
+    <ol class="history-list" start="4" aria-label="Eventos anteriores">
+        {% for evento in eventos|slice:"3:" %}
+            {% include "facturacion/historial_evento.html" with destacado=False %}
+        {% endfor %}
+    </ol>
+</details>
+{% endif %}
+{% endwith %}
+{% else %}
+<p>Sin eventos para este trámite.</p>
+{% endif %}

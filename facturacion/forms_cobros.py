@@ -81,7 +81,7 @@ class CorreccionCobroForm(forms.Form):
     )
     importe = CobroForm.base_fields["importe"]
     archivo = forms.FileField(
-        label="Nuevo documento de respaldo (opcional)",
+        label="Nuevo documento de respaldo",
         required=False,
         help_text=(
             "PDF, JPEG o PNG de hasta 10 MiB. Si lo omitís, se crea una versión "
@@ -142,9 +142,16 @@ class ModificarCobroForm(CorreccionCobroForm):
 
 class VerificacionCobroForm(forms.Form):
     resultado = forms.ChoiceField(
-        choices=[("", "Seleccioná…"), *VerificacionCobro.Resultado.choices]
+        label="Resultado de la verificación",
+        choices=[("", "Seleccioná…"), *VerificacionCobro.Resultado.choices],
     )
-    motivo = forms.CharField(required=False, max_length=2000, widget=forms.Textarea)
+    motivo = forms.CharField(
+        label="Motivo",
+        required=False,
+        max_length=2000,
+        widget=forms.Textarea,
+        help_text="Obligatorio si rechazás el ingreso.",
+    )
 
     def clean(self):
         datos = super().clean()

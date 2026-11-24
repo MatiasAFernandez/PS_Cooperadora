@@ -85,8 +85,8 @@ def test_http_acepta_el_pdf_al_registrar(escenario, solicitud, entrada, tipo):
     respuesta = cliente.post(url, dict(datos, archivo_pdf=pdf()), follow=True)
     assert respuesta.redirect_chain == [(reverse("facturacion:detalle", args=[solicitud.pk]), 302)]
     assert "Revisión documental:" in respuesta.content.decode()
-    assert "Consultar revisión documental" in respuesta.content.decode()
-    assert b">ACEPTADO<" in respuesta.content
+    assert "Ver revisión" in respuesta.content.decode()
+    assert b">Aceptado<" in respuesta.content
     comprobante = solicitud.comprobantes.get(tipo=tipo)
     assert comprobante.importe == Decimal("75.50")
     revision = comprobante.documento.revisiones.get()
@@ -162,12 +162,12 @@ def test_factura_notas_neto_historial_y_estado(escenario, solicitud, entrada):
     detalle = c.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     assert len(detalle.context["historial"]) == 5
     assert b"90,20" in detalle.content and b"Nota de" in detalle.content
-    assert "Realizar revisión documental" not in detalle.content.decode()
+    assert "Revisar documento" not in detalle.content.decode()
     operador = escenario.usuarios["o"]
     operador.groups.add(Group.objects.get(name="demo_documentos_revision"))
     c.force_login(operador)
     detalle = c.get(reverse("facturacion:detalle", args=[solicitud.pk]))
-    assert detalle.content.decode().count("Realizar revisión documental") == 4
+    assert detalle.content.decode().count("Revisar documento") == 4
 
 
 def test_http_corrige_factura_y_nota_preservando_historial_y_cobro(

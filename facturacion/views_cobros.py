@@ -6,6 +6,7 @@ from documentos.policy import ArchivoInvalido
 from documentos.revision import version_aceptada
 from identidad.services import has_capability
 
+from .choices import ModalidadCobro
 from .cobros import (
     autorizar_cobro,
     cobro_rectificable,
@@ -28,12 +29,13 @@ from .seguimiento import (
     respaldo_actual,
     sucesores_respaldo_cobro,
 )
-from .views import FacturacionView, _errores
+from .views import FacturacionView, _errores, _marcar_campos_invalidos
 from .workflow import ConflictoConcurrenciaError
 
 
 class RegistrarCobroView(FacturacionView):
     def mostrar(self, request, solicitud, form, status=200):
+        _marcar_campos_invalidos(form)
         max_bytes = settings.DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES
         return render(
             request,
@@ -146,6 +148,7 @@ class ModificarCobroView(FacturacionView):
             _errores(form, exc, campo_archivo="archivo")
             if isinstance(exc, ConflictoConcurrenciaError):
                 status = 409
+        _marcar_campos_invalidos(form)
         return render(request, "facturacion/corregir_cobro.html", contexto, status=status)
 
     def guardar(self, numero, contexto):
@@ -205,6 +208,7 @@ class VerificarCobroView(FacturacionView):
         return solicitud, cobro
 
     def mostrar(self, request, numero, cobro_id, form, status=200):
+        _marcar_campos_invalidos(form)
         solicitud, cobro = self.resolver(numero, cobro_id)
         importes = importes_cobro(solicitud.comprobantes.all(), solicitud.cobros.all())
         respaldo = respaldo_actual(cobro)
@@ -214,6 +218,7 @@ class VerificarCobroView(FacturacionView):
             resultado.choices = [
                 opcion for opcion in resultado.choices if opcion[0] != "CONFIRMADO"
             ]
+        medios = dict(ModalidadCobro.choices)
         return render(
             request,
             "facturacion/verificar_cobro.html",
@@ -221,11 +226,13 @@ class VerificarCobroView(FacturacionView):
                 "actor": self.actor,
                 "solicitud": solicitud,
                 "cobro": cobro,
+                "medio_mostrado": medios.get(cobro.medio, cobro.medio),
                 "form": form,
                 "respaldo_aceptado": respaldo_aceptado,
                 "respaldo": respaldo
                 if has_capability(self.actor, "documentos.consultar_metadatos")
                 else None,
+                "puede_descargar": has_capability(self.actor, "documentos.descargar"),
                 "supera_importe_solicitado": cobro.importe > solicitud.importe_factura,
                 "supera_neto": importes["hay_factura"]
                 and importes["confirmado"] + cobro.importe > importes["neto"],
@@ -261,10 +268,17 @@ class RectificarCobroView(FacturacionView):
     def mostrar(self, request, numero, cobro_id, errores=()):
         solicitud = autorizar_cobro(self.actor, numero, verificar=True)
         cobro = cobro_rectificable(solicitud, cobro_id)
+        medios = dict(ModalidadCobro.choices)
         return render(
             request,
             "facturacion/rectificar_cobro.html",
-            {"actor": self.actor, "solicitud": solicitud, "cobro": cobro, "errores": errores},
+            {
+                "actor": self.actor,
+                "solicitud": solicitud,
+                "cobro": cobro,
+                "medio_mostrado": medios.get(cobro.medio, cobro.medio),
+                "errores": errores,
+            },
             status=400 if errores else 200,
         )
 

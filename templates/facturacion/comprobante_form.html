@@ -1,25 +1,62 @@
 {% extends "facturacion/base.html" %}
+{% load static formato_ars %}
+{% block title %}{% if comprobante %}Modificar comprobante{% else %}Registrar comprobante{% endif %} — Solicitud {{ solicitud.numero_visible }} — PS Cooperadora{% endblock %}
 {% block facturacion_content %}
-<header class="fac-page-title fac-has-help">
-{% if comprobante %}
-<h2>Modificar comprobante externo</h2>
-{% include "facturacion/ayuda.html" with id="ayuda-comprobante" etiqueta="Modificar comprobante externo" texto="Corregí los datos transcritos o actualizá el PDF del comprobante. Si cambiás los datos, la versión anterior queda en el historial y el PDF nuevo requiere revisión documental cuando se adjunta. Para una nota emitida por separado, usá Registrar factura o nota externa." only %}
-{% else %}
-<h2>Registrar comprobante externo — solicitud {{ solicitud.numero_visible }} de {{ solicitud.correo_solicitante }}</h2>
-{% include "facturacion/ayuda.html" with id="ayuda-comprobante" etiqueta="Registrar comprobante externo" texto="Copiá los datos del comprobante emitido. Si está en Xubio, adjuntar el PDF es opcional. Registrá primero la factura y después sus notas, con el mismo emisor y letra." only %}
-{% endif %}
-</header>
-{% if comprobante %}<p><strong>{{ comprobante.identificacion }}</strong> · Solicitud {{ solicitud.numero_visible }}.</p>{% endif %}
-{% if documento_actual %}<p>PDF vinculado <strong>{{ documento_actual.nombre_original }}</strong> · versión {{ documento_actual.version }}.</p>{% endif %}
-{% if factura %}<p>Factura vinculada: {{ factura.identificacion }} — CUIT {{ factura.cuit_emisor }}.</p>{% endif %}
-<p class="notice">Si el comprobante ya existe en Xubio, no necesitás volver a cargar el PDF: registrá sus datos para vincularlo con esta solicitud. Para Otro origen, el PDF es obligatorio.</p>
-<p>Informar el envío es opcional. Registra lo realizado en Xubio u otro correo; no envía mensajes ni confirma su entrega.</p>
-<form class="fac-form" method="post" enctype="multipart/form-data">{% csrf_token %}
-{% include "facturacion/campos_formulario.html" %}
-{% if form.errors %}<p>Los datos se conservaron. Si elegiste un PDF, volvé a seleccionarlo.</p>{% endif %}
-<button type="submit">{% if comprobante %}Guardar cambios{% else %}Registrar comprobante{% endif %}</button>
-</form>
-<p><a class="btn btn-secondary" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+<div class="fac-subpage">
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a>
+
+    <header class="fac-page-head">
+        {% if comprobante %}
+        <h1>Modificar comprobante externo</h1>
+        <p class="fac-page-subtitle">Solicitud {{ solicitud.numero_visible }} · Corregí los datos transcritos o actualizá el PDF. La versión anterior queda en el historial y un PDF nuevo requiere revisión documental.</p>
+        {% else %}
+        <h1>Registrar comprobante externo</h1>
+        <p class="fac-page-subtitle">Solicitud {{ solicitud.numero_visible }} · {{ solicitud.correo_solicitante }}. Copiá los datos del comprobante emitido. Registrá primero la factura y después sus notas, con el mismo emisor y letra.</p>
+        {% endif %}
+    </header>
+
+    {% if comprobante or documento_actual or factura %}
+    <section class="card fac-context-card">
+        <dl class="kv-list">
+            {% if comprobante %}
+            <div>
+                <dt>Comprobante</dt>
+                <dd>{{ comprobante.identificacion }}</dd>
+            </div>
+            {% endif %}
+            {% if documento_actual %}
+            <div>
+                <dt>PDF vinculado</dt>
+                <dd>{{ documento_actual.nombre_original }} (v{{ documento_actual.version }})</dd>
+            </div>
+            {% endif %}
+            {% if factura %}
+            <div>
+                <dt>Factura vinculada</dt>
+                <dd>{{ factura.identificacion }} — CUIT {{ factura.cuit_emisor|cuit }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </section>
+    {% endif %}
+
+    <p class="notice">Si el comprobante ya existe en Xubio, no necesitás volver a cargar el PDF: registrá sus datos para vincularlo con esta solicitud. Para Otro origen, el PDF es obligatorio.</p>
+    {% if not comprobante %}
+    <p class="fac-page-subtitle fd-mb-sm">Informar el envío es opcional. Registra lo realizado en Xubio u otro correo; no envía mensajes ni confirma su entrega.</p>
+    {% endif %}
+
+    {% include "facturacion/errores_formulario.html" %}
+
+    <form class="fac-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% include "facturacion/campos_formulario.html" %}
+        {% if form.errors %}<p class="fac-field-help" role="status">Los datos se conservaron. Si elegiste un PDF, volvé a seleccionarlo.</p>{% endif %}
+        <div class="fac-form-actions">
+            <button class="btn btn-primary" type="submit">{% if comprobante %}Guardar cambios{% else %}Registrar comprobante{% endif %}</button>
+        </div>
+    </form>
+</div>
+<script src="{% static 'js/foco_errores.js' %}"></script>
 <script>
 (() => {
     const origen = document.getElementById('id_procedencia');

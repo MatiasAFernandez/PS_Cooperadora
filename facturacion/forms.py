@@ -26,7 +26,10 @@ class SolicitudFacturacionForm(FormularioConfigurableMixin, forms.Form):
         label="CUIT del receptor", validators=[validar_cuit], max_length=11
     )
     nombre_receptor = forms.CharField(label="Nombre o razón social del receptor", max_length=255)
-    condicion_iva = forms.ChoiceField(label="Condición ante el IVA", choices=CondicionIVA.choices)
+    condicion_iva = forms.ChoiceField(
+        label="Condición ante el IVA",
+        choices=[("", "Seleccioná…"), *CondicionIVA.choices],
+    )
     email_envio_factura = forms.EmailField(
         label="Correo para enviar la factura",
         max_length=254,
@@ -40,12 +43,19 @@ class SolicitudFacturacionForm(FormularioConfigurableMixin, forms.Form):
         min_value=Decimal("0.01"),
     )
     producto_servicio = forms.ChoiceField(
-        label="Producto o servicio", choices=ProductoServicio.choices
+        label="Producto o servicio",
+        choices=[("", "Seleccioná…"), *ProductoServicio.choices],
     )
-    centro_costo = forms.ChoiceField(label="Centro de costo", choices=CentroCosto.choices)
-    modalidad_cobro = forms.ChoiceField(label="Medio o cuenta", choices=ModalidadCobro.choices)
+    centro_costo = forms.ChoiceField(
+        label="Centro de costo",
+        choices=[("", "Seleccioná…"), *CentroCosto.choices],
+    )
+    modalidad_cobro = forms.ChoiceField(
+        label="Medio o cuenta",
+        choices=[("", "Seleccioná…"), *ModalidadCobro.choices],
+    )
     observaciones = forms.CharField(
-        label="Observaciones (opcional)", widget=forms.Textarea, required=False
+        label="Observaciones", widget=forms.Textarea, required=False
     )
     fecha_operacion_declarada = forms.DateField(
         label="Fecha de operación declarada",
@@ -71,8 +81,12 @@ class SolicitudFacturacionForm(FormularioConfigurableMixin, forms.Form):
         super().__init__(*args, **kwargs)
         self.documento_actual = documento_actual
         self.fields["centro_costo"].choices = [
-            (valor, etiqueta) for valor, etiqueta in CentroCosto.choices
-            if valor != "OPCION_35"
+            ("", "Seleccioná…"),
+            *(
+                (valor, etiqueta)
+                for valor, etiqueta in CentroCosto.choices
+                if valor != "OPCION_35"
+            ),
         ]
         orden = list(self.fields)
         orden.remove("presento_comprobante_pago")
@@ -111,13 +125,13 @@ class FiltroFacturacionForm(FiltroFechaForm):
         ],
     )
     q = forms.CharField(
-        label="Buscar por solicitud, solicitante, receptor, CUIT o detalle",
+        label="Buscar por #, solicitante, receptor o CUIT",
         max_length=255,
         required=False,
         widget=forms.TextInput(
             attrs={
                 "type": "search",
-                "placeholder": "Buscar por solicitud, solicitante, receptor, CUIT o detalle",
+                "placeholder": "Buscar por #, solicitante, receptor o CUIT",
             }
         ),
     )

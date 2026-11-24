@@ -1,3 +1,14 @@
-{% extends "facturacion/base.html" %}{% block facturacion_content %}
-<h2>No se pudo completar la acción</h2><p role="alert">{{ error }}</p>
-<p><a class="btn btn-secondary" href="{% url 'facturacion:lista' %}">Volver a solicitudes</a></p>{% endblock %}
+{% extends "facturacion/base.html" %}
+{% block title %}No se pudo completar la acción — Facturación — PS Cooperadora{% endblock %}
+{% block facturacion_content %}
+<div class="fac-subpage">
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:lista' %}">Volver a solicitudes</a>
+    <header class="fac-page-head">
+        <h1>No se pudo completar la acción</h1>
+    </header>
+    <div class="form-error-summary" role="alert">
+        <strong>Detalle</strong>
+        <p>{{ error }}</p>
+    </div>
+</div>
+{% endblock %}

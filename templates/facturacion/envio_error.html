@@ -1,11 +1,40 @@
 {% extends "facturacion/base.html" %}
+{% load static %}
+{% block title %}Informar envío de {{ comprobante.identificacion }} — PS Cooperadora{% endblock %}
 {% block facturacion_content %}
-<h2>Informar envío de {{ comprobante.identificacion }}</h2>
-<p role="alert">No se pudo registrar el envío: {{ error }}</p>
-<form class="fac-form" method="post">{% csrf_token %}
-{{ form.destinatario.as_field_group }}
-{{ form.fecha_envio.as_field_group }}
-<button type="submit">Guardar envío informado</button>
-</form>
-<p><a href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a></p>
+<div class="fac-subpage">
+    <a class="page-back page-back--arrow" href="{% url 'facturacion:detalle' solicitud.pk %}">Volver a la solicitud</a>
+
+    <header class="fac-page-head">
+        <h1>Informar envío de {{ comprobante.identificacion }}</h1>
+    </header>
+
+    <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+        <p>No se pudo registrar el envío: {{ error }}</p>
+    </div>
+
+    <form class="fac-form" method="post">
+        {% csrf_token %}
+        <div class="fac-form-fields">
+            <div class="form-group">
+                <div class="fac-field-label">
+                    <label for="{{ form.destinatario.id_for_label }}">{{ form.destinatario.label }}</label>
+                </div>
+                {{ form.destinatario }}
+                {% if form.destinatario.errors %}<div class="fac-field-error" role="alert">{{ form.destinatario.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <div class="fac-field-label">
+                    <label for="{{ form.fecha_envio.id_for_label }}">{{ form.fecha_envio.label }}</label>
+                </div>
+                {{ form.fecha_envio }}
+                {% if form.fecha_envio.errors %}<div class="fac-field-error" role="alert">{{ form.fecha_envio.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="fac-form-actions">
+            <button class="btn btn-primary" type="submit">Guardar envío informado</button>
+        </div>
+    </form>
+</div>
+<script src="{% static 'js/foco_errores.js' %}"></script>
 {% endblock %}

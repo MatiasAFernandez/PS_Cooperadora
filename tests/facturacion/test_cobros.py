@@ -273,7 +273,7 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
     cliente.force_login(escenario.usuarios["o"])
     detalle = reverse("facturacion:detalle", args=[solicitud.pk])
     contenido = cliente.get(detalle).content.decode()
-    assert "Realizar revisión documental" in contenido
+    assert "Revisar documento" in contenido
     assert "Verificar ingreso</a>" in contenido
     revision_url = reverse("documentos:revision", args=[cobro.documento_id])
     contenido = cliente.get(revision_url).content.decode()
@@ -293,8 +293,8 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
     assert "Falta verificar el ingreso externo" in contenido
     assert "Verificar ingreso</a>" in contenido
-    assert "Revisión documental:" in contenido and ">ACEPTADO<" in contenido
-    assert "Consultar revisión documental" in contenido
+    assert "Revisión documental:" in contenido and ">Aceptado<" in contenido
+    assert "Ver revisión" in contenido
     respuesta = cliente.get(revision_url)
     contenido = respuesta.content.decode()
     assert "Aceptar este comprobante no confirma el cobro" in contenido
@@ -359,7 +359,7 @@ def test_anticipos_parciales_verificacion_y_factura_posterior(escenario, solicit
     respuesta = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     assert respuesta.status_code == 200
     assert len(respuesta.context["historial"]) == 8
-    assert "CONFIRMADO" in respuesta.content.decode()
+    assert ">Confirmado<" in respuesta.content.decode()
 
 
 @pytest.mark.parametrize(

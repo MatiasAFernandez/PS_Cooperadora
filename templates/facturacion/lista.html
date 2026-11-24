@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static formato_ars %}
 {% block title %}Solicitudes de facturación — PS Cooperadora{% endblock %}
-{% block titulo_modulo %}Solicitudes de facturación — Cooperadora{% endblock %}
+{% block titulo_modulo %}Solicitudes de facturación — PS Cooperadora{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'facturacion/css/lista.css' %}">{% endblock %}
 
 {% block content %}
@@ -58,7 +58,7 @@
                                 <a class="fac-fila-titulo" href="{{ detalle_url }}{% if consulta_bandeja %}?bandeja={{ consulta_bandeja|urlencode }}{% endif %}" data-abrir-resumen="{{ solicitud.pk }}" aria-controls="resumen-facturacion" aria-haspopup="dialog">
                                     <span class="fac-fila-num">#{{ solicitud.numero_visible }}</span> · <span class="fac-fila-receptor">{{ solicitud.nombre_receptor }}</span>
                                 </a>
-                                <span class="fac-fila-sub">{{ solicitud.detalle_factura|truncatechars:72 }} · <span class="fac-nowrap">CUIT {{ solicitud.cuit_receptor }}</span> · <span class="fac-nowrap">{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</span></span>
+                                <span class="fac-fila-sub">{{ solicitud.detalle_factura|truncatechars:72 }} · <span class="fac-nowrap">CUIT {{ solicitud.cuit_receptor|cuit }}</span> · <span class="fac-nowrap">{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</span></span>
                                 {% if solicitud.cierre_mes_bandeja %}
                                     <span class="fac-cierre-tag">Se aproxima el cierre de mes: completá la acción pendiente.</span>
                                 {% endif %}
@@ -70,11 +70,11 @@
                             </td>
                             <td class="bandeja-importe">
                                 {% if solicitud.importes_bandeja.hay_factura %}
-                                    <span class="fac-mobile-label">Importe neto</span>
+                                    <span class="fac-mobile-label">Importe</span>
                                     <span class="fac-importe-valor">{{ solicitud.importes_bandeja.neto|ars }}</span>
                                     <span class="fac-importe-sub">Neto</span>
                                 {% else %}
-                                    <span class="fac-mobile-label">Importe solicitado</span>
+                                    <span class="fac-mobile-label">Importe</span>
                                     <span class="fac-importe-valor">{{ solicitud.importe_factura|ars }}</span>
                                     <span class="fac-importe-sub">Solicitado</span>
                                 {% endif %}

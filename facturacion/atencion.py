@@ -77,9 +77,15 @@ def mensaje_espera(actor, solicitud, importes):
             return "El solicitante aún debe registrar el cobro del importe restante."
     elif solicitud.tramite_base.solicitante_actor_id == str(actor.subject_id):
         if not importes["hay_factura"]:
-            return "Estamos creando la factura, te notificaremos cuando esté lista."
+            return (
+                "Cooperadora está emitiendo la factura. "
+                "Podés consultar el avance desde esta pantalla."
+            )
         if importes["pendiente"]:
-            return "Estamos validando tus cobros, te notificaremos cuando estén listos."
+            return (
+                "Cooperadora está validando tus cobros. "
+                "Podés consultar el avance desde esta pantalla."
+            )
     return ""
 
 
@@ -141,9 +147,9 @@ def acciones_inmediatas(actor, solicitud):
                 if revision is None:
                     acciones.append(
                         Accion(
-                            "Revisar el documento de respaldo",
+                            f"Revisar {documento.get_tipo_display().lower()}",
                             reverse("documentos:revision", args=[documento.pk]),
-                            f"Revisá el documento {documento.nombre_original}.",
+                            f"{documento.nombre_original} · versión {documento.version}.",
                             etiqueta_fila="Revisar respaldo",
                         )
                     )

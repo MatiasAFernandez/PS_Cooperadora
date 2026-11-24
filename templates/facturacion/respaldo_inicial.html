@@ -1,15 +1,20 @@
-<div class="form-group" data-respaldo-inicial>
-    {{ field.errors }}
-    <div class="fac-total fac-file-card">
+<div class="form-group fac-field-full" data-respaldo-inicial>
+    <div class="fac-file-card">
         <div aria-live="polite">
             <strong data-nombre-respaldo>{{ nombre_respaldo_inicial }}</strong>
             <small data-estado-respaldo>Documento de respaldo guardado</small>
         </div>
         <div data-accion-respaldo hidden>
-            <button class="btn btn-secondary" type="button" aria-label="Quitar documento de respaldo">×</button>
+            <button class="btn btn-secondary btn-sm" type="button" aria-label="Quitar documento de respaldo">×</button>
         </div>
     </div>
     <div data-retiro-respaldo>
-        {{ field }} {{ field.label_tag }}
+        <label class="fac-checkbox-card" for="{{ field.id_for_label }}">
+            {{ field }}
+            <span class="fac-checkbox-copy">
+                <span class="fac-checkbox-title">{{ field.label }}</span>
+            </span>
+        </label>
     </div>
+    {% if field.errors %}<div id="{{ field.id_for_label }}_error" class="fac-field-error" role="alert">{{ field.errors }}</div>{% endif %}
 </div>
