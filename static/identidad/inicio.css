@@ -1,0 +1,134 @@
+/* Inicio — grilla proporcionada por rol sobre tokens cálidos de tokens.css / base.css. */
+
+.inicio-page {
+    max-width: 1120px;
+    min-width: 0;
+}
+
+.inicio-header {
+    margin-bottom: 20px;
+}
+
+.inicio-header h1 {
+    margin: 0 0 4px;
+    color: var(--ink-strong);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+}
+
+.inicio-intro {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+.inicio-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+/* Perfiles con 1 o 2 tarjetas: evita que queden estiradas de punta a punta a 1280 px */
+.inicio-grid--few {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 348px));
+    max-width: 720px;
+}
+
+.inicio-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    min-width: 0;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.inicio-card:hover {
+    border-color: var(--border-control);
+    box-shadow: var(--shadow-sm);
+}
+
+.inicio-card-eyebrow {
+    margin: 0 0 6px;
+    color: var(--ink-subtle);
+    font-size: 11px;
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.inicio-card-title {
+    margin: 0 0 6px;
+    color: var(--ink-strong);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    line-height: 1.3;
+}
+
+.inicio-card-desc {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+}
+
+.inicio-card-foot {
+    display: flex;
+    align-items: center;
+}
+
+.inicio-card-foot .btn {
+    min-height: var(--ctrl-h);
+    gap: 6px;
+}
+
+.inicio-card-chevron {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.85;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.inicio-empty-note {
+    margin-top: 16px;
+    max-width: 720px;
+}
+
+@media (max-width: 959px) {
+    .inicio-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .inicio-grid--few {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        max-width: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .inicio-header h1 {
+        font-size: var(--text-xl);
+    }
+
+    .inicio-grid,
+    .inicio-grid--few {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .inicio-card-foot .btn {
+        width: 100%;
+        min-height: 44px;
+    }
+}

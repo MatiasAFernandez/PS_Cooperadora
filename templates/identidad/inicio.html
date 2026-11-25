@@ -1,4 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Inicio — Cooperadora{% endblock %}
-{% block titulo_modulo %}Inicio — Cooperadora{% endblock %}
-{% block content %}<section class="panel"><h3>Trámites de Cooperadora</h3><p>Elegí un circuito en el menú para consultar tus trámites.</p><small>Identificador de cuenta {{ actor.subject_id }}</small></section>{% endblock %}
+{% load static %}
+{% block titulo_modulo %}Inicio — PS Cooperadora{% endblock %}
+{% block title %}Inicio — PS Cooperadora{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'identidad/inicio.css' %}">
+{% endblock %}
+{% block content %}
+{% include "identidad/_inicio_contenido.html" %}
+{% endblock %}

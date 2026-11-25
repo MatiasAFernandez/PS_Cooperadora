@@ -37,6 +37,7 @@ from identidad.forms_local import (
     RegistroForm,
     VerificacionForm,
 )
+from identidad.inicio import contexto_inicio
 from identidad.models import CuentaLocal
 from identidad.services import has_capability, resolve_actor
 from identidad.tokens_local import token_recuperacion_local
@@ -331,11 +332,7 @@ class InicioView(LocalOnlyMixin, View):
         return render(
             request,
             "cuentas/inicio.html",
-            {
-                "actor": actor,
-                "cuenta": cuenta,
-                "acceso_local": True,
-            },
+            contexto_inicio(request, actor, cuenta=cuenta, acceso_local=True),
         )
 
 
