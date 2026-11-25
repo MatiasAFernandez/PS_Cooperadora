@@ -59,6 +59,12 @@ def test_detalle_layout_d5_actores_cuit_y_propagacion_bandeja(escenario, datos):
     rev_cob = reverse("documentos:revision", args=[cob.documento_id])
     assert f"{rev_comp}?bandeja=atencion%3D1" in html_op
     assert f"{rev_cob}?bandeja=atencion%3D1" in html_op
+    # Presentación legible en cuerpo del historial (sin códigos crudos ni montos con punto).
+    assert "Emisor: 30-71234567-1." in html_op
+    assert "Importe: $ 100,25." in html_op
+    assert "Banco Nación Cuenta Comun:" in html_op
+    assert "BNA_COMUN:" not in html_op
+    assert "100.25 ARS" not in html_op
 
     # Contrato DTO intacto: actor_id sigue siendo el identificador original.
     assert any(ev.actor_id == str(operador_user.pk) for ev in resp_op.context["historial"])
@@ -222,3 +228,27 @@ def test_css_facturacion_sin_important_ni_tokens_legacy():
     contenido = re.sub(r"/\*.*?\*/", "", ruta.read_text(encoding="utf-8"), flags=re.S)
     assert "!important" not in contenido
     assert "--ref-" not in contenido
+
+
+def test_detalle_historial_formatea_patrones_y_conserva_fallback_seguro():
+    from facturacion.templatetags.facturacion_ui import detalle_historial
+
+    assert (
+        detalle_historial("Cobro #1. 480000.00 ARS. BNA_COMUN: OP-RES-5.")
+        == "Cobro #1. $ 480.000,00. Banco Nación Cuenta Comun: OP-RES-5."
+    )
+    assert (
+        detalle_historial(
+            "Factura B 00001-00000105. Emisor: 30712345671. Importe: 100.25 ARS. Origen: Xubio."
+        )
+        == "Factura B 00001-00000105. Emisor: 30-71234567-1. Importe: $ 100,25. Origen: Xubio."
+    )
+    # Fallback seguro: textos libres, vacíos, None o formatos que no matchean salen intactos.
+    assert detalle_historial(None) == ""
+    assert detalle_historial("") == ""
+    assert detalle_historial("Observación libre sin montos ni códigos.") == (
+        "Observación libre sin montos ni códigos."
+    )
+    assert detalle_historial("Emisor: 12345. Referencia OTRO_CODIGO: 99.") == (
+        "Emisor: 12345. Referencia OTRO_CODIGO: 99."
+    )

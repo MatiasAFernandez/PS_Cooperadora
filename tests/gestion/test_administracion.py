@@ -49,7 +49,7 @@ def test_permisos_y_menu(escenario, administrador):
     cliente.force_login(administrador.user)
     pagina = cliente.get(url)
     assert pagina.status_code == 200
-    nav = pagina.content.decode().split(">Gestión</h3>")[1].split(">General</h3>")[0]
+    nav = pagina.content.decode().split(">Gestión</h3>")[1].split(">Cuenta</h3>")[0]
     assert nav.count('class="app-nl"') == 2
     assert ">Reporte<" in nav and ">Configuración<" in nav
     with pytest.raises(PermissionDenied):

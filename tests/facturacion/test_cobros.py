@@ -250,10 +250,10 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     cliente.force_login(escenario.usuarios["a"])
     contenido = cliente.get(reverse("facturacion:detalle", args=[otra.pk])).content.decode()
     assert "Cobro #1:" in contenido and f"Cobro #{intercalado.pk}:" not in contenido
-    assert "Cobro #1. 60.10 ARS." in contenido
+    assert "Cobro #1. $ 60,10." in contenido
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
-    assert "Cobro #1. 60.10 ARS." in contenido
-    assert "Cobro #2. 60.10 ARS." in contenido
+    assert "Cobro #1. $ 60,10." in contenido
+    assert "Cobro #2. $ 60,10." in contenido
     escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_verificacion_cobros"))
     cliente.force_login(escenario.usuarios["o"])
     respuesta = cliente.get(reverse("facturacion:verificar_cobro", args=[otra.pk, intercalado.pk]))

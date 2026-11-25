@@ -1,4 +1,4 @@
-{% load formato_ars %}
+{% load formato_ars facturacion_ui %}
 <li class="history-event{% if destacado %} history-latest{% endif %}">
     {% if destacado %}<p class="history-current">Último evento</p>{% endif %}
     <strong>
@@ -42,6 +42,6 @@
     — {% if actores_visibles %}{{ evento.actor_id|actor_visible:actores_visibles }}{% else %}actor #{{ evento.actor_id }}{% endif %}
     — {% if evento.tipo_evento == "envio_informado" or evento.tipo_evento == "recepcion_confirmada" %}hecho de comunicación{% elif evento.tipo_evento == "revision_documental" %}resultado documental{% elif evento.tipo_evento == "aporte_documental" %}hecho documental{% elif evento.tipo_evento == "comprobante_externo_registrado" or evento.tipo_evento == "comprobante_externo_corregido" %}registro del comprobante{% elif evento.tipo_evento == "actualizacion_respaldo" %}vínculo documental{% elif evento.tipo_evento == "cobro_informado" or evento.tipo_evento == "cobro_verificado" or evento.tipo_evento == "cobro_corregido" or evento.tipo_evento == "cobro_rectificado" %}verificación del ingreso{% else %}estado del trámite{% endif %}: {{ evento.estado_resultante|estado_historial }}
     {% if evento.motivo_o_detalle %}
-        <p>{{ evento.motivo_o_detalle }}</p>
+        <p>{{ evento.motivo_o_detalle|detalle_historial }}</p>
     {% endif %}
 </li>
