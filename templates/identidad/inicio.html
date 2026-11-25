@@ -7,4 +7,7 @@
 {% endblock %}
 {% block content %}
 {% include "identidad/_inicio_contenido.html" %}
+{% if actor and actor.subject_id %}
+<p class="inicio-demo-meta">Entorno de demostración · Cuenta <span class="font-tabular">#{{ actor.subject_id }}</span></p>
+{% endif %}
 {% endblock %}
