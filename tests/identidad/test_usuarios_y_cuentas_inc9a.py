@@ -76,11 +76,21 @@ def test_listado_usuarios_tabla_densa_banner_condicional_y_vacio(settings):
         verificado=False,
         cuit_cuil="30712345671",
     )
+    _crear_cuenta(
+        "sinnombre_u9a",
+        "",
+        estado=CuentaLocal.Estado.APROBADA,
+        verificado=True,
+    )
     html1 = cliente.get(url).content.decode()
     assert "usuarios-altas-banner" in html1
     assert '<span class="usuarios-altas-count">1</span>' in html1
     assert ">Pendiente<" in html1
     assert ">Sin verificar<" in html1
+    assert 'usuarios-accion-ficha' in html1
+    # Cuenta sin nombre_completo muestra correo como enlace principal sin duplicarlo debajo.
+    assert 'sinnombre_u9a@example.invalid</a>' in html1
+    assert '<span class="usuarios-email" title="sinnombre_u9a@example.invalid">' not in html1
 
     # Filtro sin resultados muestra estado vacío claro + botón Quitar filtros.
     html_vacio = cliente.get(url, {"q": "sin-coincidencias-9a"}).content.decode()

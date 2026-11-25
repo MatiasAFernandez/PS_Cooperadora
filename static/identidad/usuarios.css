@@ -244,6 +244,27 @@
     gap: 4px;
 }
 
+.usuarios-accion-ficha {
+    color: var(--ink-primary);
+    border-color: var(--border-subtle);
+    background: var(--bg-surface);
+}
+
+.usuarios-accion-ficha:hover {
+    background: var(--bg-subtle);
+    border-color: var(--border-control);
+    color: var(--ink-strong);
+}
+
+.usuarios-accion-ficha .usuarios-ic {
+    transition: transform var(--transition-fast);
+}
+
+.usuarios-accion-ficha:hover .usuarios-ic {
+    color: var(--ink-strong);
+    transform: translateX(1px);
+}
+
 .usuarios-mobile-label {
     display: none;
 }

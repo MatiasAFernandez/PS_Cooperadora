@@ -99,8 +99,12 @@
                 {% for cuenta_item in cuentas %}
                 <tr>
                     <td class="usuarios-td-usuario">
+                        {% if cuenta_item.nombre_completo.strip %}
                         <a class="usuarios-nombre-link" href="{% url 'cuentas:usuario_detalle' cuenta_item.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">{{ cuenta_item.nombre_completo }}</a>
                         <span class="usuarios-email" title="{{ cuenta_item.email }}">{{ cuenta_item.email }}</span>
+                        {% else %}
+                        <a class="usuarios-nombre-link" href="{% url 'cuentas:usuario_detalle' cuenta_item.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}" title="{{ cuenta_item.email }}">{{ cuenta_item.email }}</a>
+                        {% endif %}
                     </td>
                     <td class="usuarios-td-area">
                         <span class="usuarios-mobile-label">Área habitual</span>
@@ -131,7 +135,7 @@
                         {% endif %}
                     </td>
                     <td class="usuarios-td-accion">
-                        <a class="btn btn-ghost btn-row" href="{% url 'cuentas:usuario_detalle' cuenta_item.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
+                        <a class="btn btn-ghost btn-row usuarios-accion-ficha" href="{% url 'cuentas:usuario_detalle' cuenta_item.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
                             Ver ficha
                             <svg class="usuarios-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
                         </a>
