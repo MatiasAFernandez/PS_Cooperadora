@@ -361,7 +361,7 @@ def test_self_post_no_escribe_y_ficha_propia_oculta_enlace_con_aviso(admin_clien
         },
     )
     assert resp_post.status_code == 400
-    assert "No puede desactivar su propia cuenta." in resp_post.content.decode()
+    assert "No podés desactivar tu propia cuenta." in resp_post.content.decode()
     admin.user.refresh_from_db()
     assert admin.user.is_active is True
     assert CambioActividadCuentaLocal.objects.filter(cuenta=admin).count() == 0

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static formato_ars %}
 
 {% block title %}{{ title }} — PS Cooperadora{% endblock %}
-{% block titulo_modulo %}{{ title }} — Cooperadora{% endblock %}
+{% block titulo_modulo %}{{ title }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
@@ -17,11 +17,10 @@
         </div>
 
         {% if cuenta %}
-            {# Situación real de la cuenta propia autenticada #}
             {% if not cuenta.user.is_active %}
                 <div class="cuentas-status cuentas-status--error" role="status">
                     <p><strong>Cuenta inactiva</strong></p>
-                    <p>La cuenta se encuentra actualmente desactivada o suspendida.</p>
+                    <p>Tu cuenta se encuentra desactivada o suspendida.</p>
                 </div>
             {% elif cuenta.estado == "RECHAZADA" %}
                 <div class="cuentas-status cuentas-status--error" role="status">
@@ -38,43 +37,43 @@
             {% elif cuenta.estado == "PENDIENTE" %}
                 <div class="cuentas-status cuentas-status--pending" role="status">
                     <p><strong>Pendiente de aprobación</strong></p>
-                    <p>Tu correo ha sido verificado. La solicitud está a la espera de la resolución administrativa.</p>
+                    <p>Tu correo ya fue verificado. La solicitud aguarda resolución administrativa.</p>
                 </div>
             {% elif cuenta.estado == "APROBADA" %}
                 <div class="cuentas-status cuentas-status--success" role="status">
                     <p><strong>Cuenta habilitada</strong></p>
-                    <p>Tu cuenta se encuentra activa y habilitada para operar en el sistema.</p>
+                    <p>Tu cuenta está activa y habilitada para operar en el sistema.</p>
                 </div>
             {% endif %}
 
-            <div class="cuentas-data-list" aria-label="Detalle de la cuenta">
-                <div class="cuentas-data-row">
-                    <span class="cuentas-data-label">Nombre completo</span>
-                    <span class="cuentas-data-value">{{ cuenta.nombre_completo }}</span>
+            <dl class="kv-list" aria-label="Detalle de la cuenta">
+                <div>
+                    <dt>Nombre completo</dt>
+                    <dd>{{ cuenta.nombre_completo }}</dd>
                 </div>
-                <div class="cuentas-data-row">
-                    <span class="cuentas-data-label">Correo electrónico</span>
-                    <span class="cuentas-data-value">{{ cuenta.email }}</span>
+                <div>
+                    <dt>Correo electrónico</dt>
+                    <dd>{{ cuenta.email }}</dd>
                 </div>
                 {% if cuenta.area_habitual %}
-                <div class="cuentas-data-row">
-                    <span class="cuentas-data-label">Área habitual</span>
-                    <span class="cuentas-data-value">{{ cuenta.area_habitual }}</span>
+                <div>
+                    <dt>Área habitual</dt>
+                    <dd>{{ cuenta.area_habitual }}</dd>
                 </div>
                 {% endif %}
                 {% if cuenta.cuit_cuil %}
-                <div class="cuentas-data-row">
-                    <span class="cuentas-data-label">CUIT / CUIL</span>
-                    <span class="cuentas-data-value">{{ cuenta.cuit_cuil }}</span>
+                <div>
+                    <dt>CUIT / CUIL</dt>
+                    <dd class="font-mono">{{ cuenta.cuit_cuil|cuit }}</dd>
                 </div>
                 {% endif %}
                 {% if cuenta.legajo %}
-                <div class="cuentas-data-row">
-                    <span class="cuentas-data-label">Legajo</span>
-                    <span class="cuentas-data-value">{{ cuenta.legajo }}</span>
+                <div>
+                    <dt>Legajo</dt>
+                    <dd class="font-tabular">{{ cuenta.legajo }}</dd>
                 </div>
                 {% endif %}
-            </div>
+            </dl>
 
             <div class="cuentas-actions">
                 {% if cuenta.estado == "APROBADA" and cuenta.user.is_active %}
@@ -88,7 +87,7 @@
                 <a href="{% url 'cuentas:cambiar_clave' %}" class="btn btn-secondary">Cambiar contraseña</a>
 
                 {% if not actor %}
-                <form method="post" action="{% url 'cuentas:logout' %}" style="display:inline;">
+                <form method="post" action="{% url 'cuentas:logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-secondary">Cerrar sesión</button>
                 </form>
@@ -96,7 +95,6 @@
             </div>
 
         {% else %}
-            {# Confirmaciones públicas para usuarios anónimos o en proceso de verificación/recuperación #}
             <div class="cuentas-status{% if modo == 'error' %} cuentas-status--error{% elif modo == 'reset_completo' or modo == 'clave_cambiada' or modo == 'verificado' or modo == 'invitacion_completa' %} cuentas-status--success{% else %} cuentas-status--pending{% endif %}" role="status">
                 <p>{{ mensaje }}</p>
             </div>

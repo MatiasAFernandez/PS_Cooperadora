@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block titulo_modulo %}Nueva cuenta por invitación — Cooperadora{% endblock %}
-
+{% block titulo_modulo %}Nueva cuenta por invitación — PS Cooperadora{% endblock %}
 {% block title %}Nueva cuenta por invitación — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
@@ -10,31 +9,25 @@
 {% endblock %}
 
 {% block content %}
-<div class="cuentas-wide usuarios-page">
-    <a class="usuarios-volver" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
-        Volver al listado
-    </a>
+<div class="usuarios-subpage">
+    <a class="page-back page-back--arrow" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">Volver al listado</a>
 
-    <header class="usuarios-head">
-        <div class="usuarios-head-texto">
-            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
-            <h1 class="cuentas-title">Nueva cuenta por invitación</h1>
-            <p class="cuentas-intro">Creá una cuenta local pendiente y enviá un enlace para que la persona defina su contraseña.</p>
-        </div>
+    <header class="cuentas-header">
+        <h1 class="cuentas-title">Nueva cuenta por invitación</h1>
+        <p class="cuentas-intro">Creá una cuenta local pendiente y enviá un enlace para que la persona defina su contraseña.</p>
     </header>
 
     <section class="cuentas-card usuarios-ficha-card" aria-labelledby="invitacion-alta-titulo">
         <h2 class="usuarios-ficha-titulo" id="invitacion-alta-titulo">Datos de la cuenta</h2>
 
         {% if form.non_field_errors %}
-        <div class="cuentas-error-summary" role="alert">
+        <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
             {% for err in form.non_field_errors %}
             <p>{{ err }}</p>
             {% endfor %}
         </div>
         {% elif form.errors %}
-        <div class="cuentas-error-summary" role="alert">
+        <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
             <p>Revisá los campos marcados antes de crear la cuenta.</p>
         </div>
         {% endif %}
@@ -78,7 +71,7 @@
                 </div>
 
                 <div class="usuarios-field">
-                    <label for="{{ form.area_habitual.id_for_label }}">Área habitual (opcional)</label>
+                    <label for="{{ form.area_habitual.id_for_label }}">Área habitual <span class="field-optional">(Opcional)</span></label>
                     <input
                         type="text"
                         id="{{ form.area_habitual.id_for_label }}"
@@ -93,7 +86,7 @@
                 </div>
 
                 <div class="usuarios-field">
-                    <label for="{{ form.cuit_cuil.id_for_label }}">CUIT / CUIL (opcional)</label>
+                    <label for="{{ form.cuit_cuil.id_for_label }}">CUIT / CUIL <span class="field-optional">(Opcional)</span></label>
                     <input
                         type="text"
                         id="{{ form.cuit_cuil.id_for_label }}"
@@ -108,7 +101,7 @@
                 </div>
 
                 <div class="usuarios-field">
-                    <label for="{{ form.legajo.id_for_label }}">Legajo (opcional)</label>
+                    <label for="{{ form.legajo.id_for_label }}">Legajo <span class="field-optional">(Opcional)</span></label>
                     <input
                         type="text"
                         id="{{ form.legajo.id_for_label }}"
@@ -123,11 +116,12 @@
                 </div>
             </div>
 
-            <div class="cuentas-actions usuarios-editar-acciones">
+            <div class="cuentas-actions">
                 <button type="submit" class="btn btn-primary">Crear y enviar invitación</button>
                 <a class="btn btn-secondary" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">Cancelar</a>
             </div>
         </form>
     </section>
 </div>
+<script src="{% static 'js/foco_errores.js' %}"></script>
 {% endblock %}

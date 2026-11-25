@@ -357,7 +357,7 @@ def test_cuenta_propia_ficha_get_y_post_forzado_sin_mutacion(admin, admin_client
         },
     )
     assert post_resp.status_code == 400
-    assert "No puede modificar sus propios perfiles." in post_resp.content.decode()
+    assert "No podés modificar tus propios perfiles." in post_resp.content.decode()
     assert set(admin.user.groups.values_list("name", flat=True)) == {"local_administracion"}
     assert CambioPerfilesCuentaLocal.objects.filter(cuenta=admin).count() == 0
 

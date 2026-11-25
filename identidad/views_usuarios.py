@@ -83,17 +83,17 @@ class FiltrosUsuariosForm(forms.Form):
     q = forms.CharField(required=False, max_length=150, strip=True, label="Buscar")
     estado = forms.ChoiceField(
         required=False,
-        choices=[("", "Todas"), *CuentaLocal.Estado.choices],
+        choices=[("", "Todas las aprobaciones"), *CuentaLocal.Estado.choices],
         label="Aprobación",
     )
     verificado = forms.ChoiceField(
         required=False,
-        choices=[("", "Todos"), ("si", "Sí"), ("no", "No")],
+        choices=[("", "Todos los correos"), ("si", "Verificado"), ("no", "Sin verificar")],
         label="Correo verificado",
     )
     actividad = forms.ChoiceField(
         required=False,
-        choices=[("", "Todas"), ("activa", "Activa"), ("inactiva", "Inactiva")],
+        choices=[("", "Toda la actividad"), ("activa", "Activa"), ("inactiva", "Inactiva")],
         label="Actividad",
     )
 
@@ -170,6 +170,9 @@ class UsuariosView(LocalOnlyMixin, View):
     def get(self, request: HttpRequest) -> HttpResponse:
         actor = _autorizar(request)
         form = FiltrosUsuariosForm(request.GET)
+        solicitudes_pendientes = CuentaLocal.objects.filter(
+            estado=CuentaLocal.Estado.PENDIENTE
+        ).count()
 
         if not form.is_valid():
             sin_resultados = Paginator(_cuentas_base().none(), TAMANIO_PAGINA).get_page(1)
@@ -184,6 +187,7 @@ class UsuariosView(LocalOnlyMixin, View):
                     "filtros_query": "",
                     "listado_query": "",
                     "total": 0,
+                    "solicitudes_pendientes": solicitudes_pendientes,
                 },
                 status=400,
             )
@@ -203,6 +207,7 @@ class UsuariosView(LocalOnlyMixin, View):
                 "filtros_query": _query_normalizado(datos),
                 "listado_query": _query_normalizado(datos, pagina.number),
                 "total": pagina.paginator.count,
+                "solicitudes_pendientes": solicitudes_pendientes,
             },
         )
         add_never_cache_headers(response)

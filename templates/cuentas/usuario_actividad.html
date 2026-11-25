@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block titulo_modulo %}{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %} — Cooperadora{% endblock %}
-
+{% block titulo_modulo %}{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %} — PS Cooperadora{% endblock %}
 {% block title %}{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %} — {{ cuenta.nombre_completo }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
@@ -10,43 +9,37 @@
 {% endblock %}
 
 {% block content %}
-<div class="cuentas-wide usuarios-page">
-    <a class="usuarios-volver" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
-        Volver a la ficha
-    </a>
+<div class="usuarios-subpage">
+    <a class="page-back page-back--arrow" href="{% url 'cuentas:usuario_detalle' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Volver a la ficha</a>
 
-    <header class="usuarios-head">
-        <div class="usuarios-head-texto">
-            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
-            <h1 class="cuentas-title">{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %}</h1>
-            <p class="cuentas-intro">{{ cuenta.nombre_completo }}</p>
-        </div>
+    <header class="cuentas-header">
+        <h1 class="cuentas-title">{% if accion_activar %}Reactivar cuenta{% else %}Desactivar cuenta{% endif %}</h1>
+        <p class="cuentas-intro">{{ cuenta.nombre_completo }}</p>
     </header>
 
     <section class="cuentas-card usuarios-ficha-card" aria-labelledby="actividad-confirmacion-titulo">
         <h2 class="usuarios-ficha-titulo" id="actividad-confirmacion-titulo">Confirmación de cambio de actividad</h2>
 
-        <dl class="usuarios-datos usuarios-editar-consulta">
-            <div class="usuarios-dato">
+        <dl class="kv-list usuarios-editar-consulta">
+            <div>
                 <dt>Nombre completo</dt>
                 <dd>{{ cuenta.nombre_completo }}</dd>
             </div>
-            <div class="usuarios-dato">
+            <div>
                 <dt>Correo electrónico</dt>
-                <dd class="usuarios-email">{{ cuenta.email }}</dd>
+                <dd>{{ cuenta.email }}</dd>
             </div>
-            <div class="usuarios-dato">
+            <div>
                 <dt>Actividad actual</dt>
                 <dd>
                     {% if cuenta.user.is_active %}
-                    <span class="badge badge-success">Activa</span>
+                    <span class="status-pill status-success">Activa</span>
                     {% else %}
-                    <span class="badge badge-neutral">Inactiva</span>
+                    <span class="status-pill status-neutral">Inactiva</span>
                     {% endif %}
                 </dd>
             </div>
-            <div class="usuarios-dato">
+            <div>
                 <dt>Aprobación y correo</dt>
                 <dd>
                     {{ cuenta.get_estado_display }} ·
@@ -58,8 +51,8 @@
         {% if accion_activar %}
         <div class="cuentas-status" role="note">
             <p>
-                <strong>Efecto:</strong> habilitará el acceso de la cuenta (<code>User.is_active</code>).
-                Reactivar no cambia la aprobación ni la verificación de correo; la persona deberá iniciar sesión nuevamente.
+                <strong>Efecto:</strong> habilitará nuevamente el acceso de la cuenta al sistema.
+                Reactivar no cambia la aprobación ni la verificación de correo; la persona deberá iniciar sesión otra vez.
             </p>
         </div>
         {% else %}
@@ -72,7 +65,7 @@
         {% endif %}
 
         {% if form.non_field_errors %}
-        <div class="cuentas-error-summary" role="alert">
+        <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
             {% for err in form.non_field_errors %}
             <p>{{ err }}</p>
             {% endfor %}
@@ -83,7 +76,7 @@
             {% endif %}
         </div>
         {% elif form.errors %}
-        <div class="cuentas-error-summary" role="alert">
+        <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
             <p>Revisá los campos marcados antes de confirmar.</p>
         </div>
         {% endif %}
@@ -108,7 +101,7 @@
                 {% endif %}
             </div>
 
-            <div class="cuentas-actions usuarios-editar-acciones">
+            <div class="cuentas-actions">
                 {% if accion_activar %}
                 <button type="submit" class="btn btn-primary">Reactivar cuenta</button>
                 {% else %}
@@ -119,4 +112,5 @@
         </form>
     </section>
 </div>
+<script src="{% static 'js/foco_errores.js' %}"></script>
 {% endblock %}
