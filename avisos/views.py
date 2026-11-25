@@ -57,6 +57,9 @@ def lista(request: HttpRequest) -> HttpResponse:
     """Bandeja personal de avisos con filtro Todos / No leídos y paginación."""
     actor = _autorizar(request)
 
+    base_qs = _avisos_del_actor(actor)
+    total_no_leidos = base_qs.filter(leida_en__isnull=True).count()
+
     if "estado" in request.GET:
         estado = request.GET["estado"]
         if estado not in ESTADOS_VALIDOS:
@@ -70,15 +73,14 @@ def lista(request: HttpRequest) -> HttpResponse:
                     "avisos": None,
                     "page_obj": None,
                     "total": 0,
+                    "total_no_leidos": total_no_leidos,
                 },
                 status=400,
             )
     else:
         estado = "todos"
 
-    qs = _avisos_del_actor(actor)
-    if estado == "no_leidos":
-        qs = qs.filter(leida_en__isnull=True)
+    qs = base_qs.filter(leida_en__isnull=True) if estado == "no_leidos" else base_qs
 
     paginator = Paginator(qs, POR_PAGINA)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -151,6 +153,7 @@ def lista(request: HttpRequest) -> HttpResponse:
             "avisos": items_pagina,
             "page_obj": page_obj,
             "total": paginator.count,
+            "total_no_leidos": total_no_leidos,
         },
     )
 
