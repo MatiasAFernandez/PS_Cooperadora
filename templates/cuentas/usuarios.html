@@ -112,7 +112,7 @@
                     </td>
                     <td>
                         <span class="usuarios-mobile-label">Aprobación</span>
-                        <span class="status-pill {% if cuenta_item.estado == 'APROBADA' %}status-success{% elif cuenta_item.estado == 'PENDIENTE' %}status-warning{% else %}status-danger{% endif %}">{{ cuenta_item.get_estado_display }}</span>
+                        <span class="status-pill {% if cuenta_item.estado == 'APROBADA' %}status-success{% elif cuenta_item.estado == 'PENDIENTE' %}status-warning{% else %}status-error{% endif %}">{{ cuenta_item.get_estado_display }}</span>
                     </td>
                     <td>
                         <span class="usuarios-mobile-label">Correo</span>

@@ -86,9 +86,9 @@
 }
 
 .cuentas-error-summary {
-    color: var(--st-danger-ink);
+    color: var(--st-danger-fg);
     background: var(--st-danger-bg);
-    border: 1px solid var(--st-danger-dot);
+    border: 1px solid var(--color-error-border);
     padding: 12px 14px;
     border-radius: var(--radius-md);
     margin-bottom: 16px;
@@ -145,8 +145,8 @@
     padding: 12px 14px;
     border-radius: var(--radius-md);
     background: var(--st-info-bg);
-    border: 1px solid var(--border-subtle);
-    color: var(--st-info-ink);
+    border: 1px solid var(--color-info-border);
+    color: var(--st-info-fg);
     margin-bottom: 16px;
     font-size: var(--text-sm);
     line-height: 1.5;
@@ -163,20 +163,20 @@
 
 .cuentas-status--error {
     background: var(--st-danger-bg);
-    border-color: var(--st-danger-dot);
-    color: var(--st-danger-ink);
+    border-color: var(--color-error-border);
+    color: var(--st-danger-fg);
 }
 
 .cuentas-status--pending {
-    background: var(--st-warn-bg);
-    border-color: #fde68a;
-    color: var(--st-warn-ink);
+    background: var(--st-warning-bg);
+    border-color: var(--color-warning-border);
+    color: var(--st-warning-fg);
 }
 
 .cuentas-status--success {
-    background: var(--st-ok-bg);
-    border-color: #a7f3d0;
-    color: var(--st-ok-ink);
+    background: var(--st-success-bg);
+    border-color: var(--color-success-border);
+    color: var(--st-success-fg);
 }
 
 .cuentas-list {

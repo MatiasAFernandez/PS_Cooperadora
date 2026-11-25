@@ -103,7 +103,7 @@
                                 <span class="status-pill status-success">Enviada</span>
                                 <span class="usuarios-invitacion-nota">Aceptada por el servidor de correo (no confirma entrega externa).</span>
                                 {% elif invitacion.estado_envio == "ERROR" %}
-                                <span class="status-pill status-danger">Error al enviar</span>
+                                <span class="status-pill status-error">Error al enviar</span>
                                 {% else %}
                                 <span class="status-pill status-warning">Pendiente de envío</span>
                                 {% endif %}
@@ -255,7 +255,7 @@
             <ul class="usuarios-estado-lista">
                 <li class="usuarios-estado-item">
                     <span class="usuarios-meta-label">Aprobación</span>
-                    <span class="status-pill {% if cuenta.estado == 'APROBADA' %}status-success{% elif cuenta.estado == 'PENDIENTE' %}status-warning{% else %}status-danger{% endif %}">{{ cuenta.get_estado_display }}</span>
+                    <span class="status-pill {% if cuenta.estado == 'APROBADA' %}status-success{% elif cuenta.estado == 'PENDIENTE' %}status-warning{% else %}status-error{% endif %}">{{ cuenta.get_estado_display }}</span>
                 </li>
                 <li class="usuarios-estado-item">
                     <span class="usuarios-meta-label">Correo</span>
