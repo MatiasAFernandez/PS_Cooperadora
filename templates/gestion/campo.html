@@ -1,16 +1,70 @@
 {% extends "gestion/base.html" %}
-{% block title %}Editar formulario — Cooperadora{% endblock %}
+{% load static %}
+{% block title %}{% if clave %}Editar campo{% else %}Agregar campo o sección{% endif %} — Configuración — PS Cooperadora{% endblock %}
 {% block gestion_content %}
-<h1>{% if clave %}Editar campo{% else %}Agregar campo o sección{% endif %}</h1>
+<a class="page-back page-back--arrow" href="{% url 'gestion:configuracion' circuito %}">Volver a configuración</a>
+
+<header class="gestion-heading">
+  <div>
+    <h1 class="gestion-title">{% if clave %}Editar campo{% else %}Agregar campo o sección{% endif %}</h1>
+    <p class="gestion-intro">Formulario de {% if circuito == 'GASTO' %}gastos{% else %}facturación{% endif %}.</p>
+  </div>
+</header>
+
 {% include "gestion/tabs_configuracion.html" %}
-<section class="gestion-card"><form method="post">{% csrf_token %}{{ form.non_field_errors }}
-{% for campo in form %}{% if campo.is_hidden %}{{ campo }}{% else %}<div class="form-group">{{ campo.label_tag }}{{ campo }}{% if campo.help_text %}<p class="gestion-help">{{ campo.help_text }}</p>{% endif %}{{ campo.errors }}</div>{% endif %}{% endfor %}
-<div class="gestion-actions"><button class="btn" type="submit">Guardar configuración</button><a class="btn btn-secondary" href="{% url 'gestion:configuracion' circuito %}">Volver</a></div></form></section>
+{% include "comunes/mensajes_flash.html" %}
+
+<section class="card gestion-card gestion-form-card">
+  {% if form.errors %}
+  <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+    <p>Revisá los datos marcados antes de guardar la configuración.</p>
+    <ul>
+      {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+      {% for campo in form %}{% for err in campo.errors %}<li><a href="#{{ campo.id_for_label }}">{{ campo.label }}:</a> {{ err }}</li>{% endfor %}{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" class="gestion-form" novalidate>
+    {% csrf_token %}
+    {% for campo in form %}
+      {% if campo.is_hidden %}
+        {{ campo }}
+      {% elif campo.field.widget.input_type == 'checkbox' %}
+        <div class="form-group gestion-form-group gestion-form-check">
+          <label class="gestion-check-label" for="{{ campo.id_for_label }}">
+            {{ campo }}
+            <span>{{ campo.label }}</span>
+          </label>
+          {% if campo.help_text %}<p class="gestion-help">{{ campo.help_text }}</p>{% endif %}
+          {{ campo.errors }}
+        </div>
+      {% else %}
+        <div class="form-group gestion-form-group">
+          <label for="{{ campo.id_for_label }}">
+            {{ campo.label }}{% if not campo.field.required %}<span class="field-optional">(Opcional)</span>{% endif %}
+          </label>
+          {{ campo }}
+          {% if campo.help_text %}<p class="gestion-help">{{ campo.help_text }}</p>{% endif %}
+          {{ campo.errors }}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <div class="gestion-actions">
+      <button class="btn btn-primary" type="submit">Guardar configuración</button>
+      <a class="btn btn-secondary" href="{% url 'gestion:configuracion' circuito %}">Cancelar</a>
+    </div>
+  </form>
+</section>
+
+<script src="{% static 'js/foco_errores.js' %}"></script>
 <script>
 (() => {
     const tipo = document.getElementById('id_tipo');
     const opciones = document.getElementById('id_opciones');
     const requerido = document.getElementById('id_requerido');
+    if (!tipo || !opciones || !requerido) return;
     function actualizar() {
         const lista = ['seleccion', 'multiple', 'radio'].includes(tipo.value)
             || (tipo.value === 'base' && {{ form.opciones_visibles|yesno:"true,false" }});

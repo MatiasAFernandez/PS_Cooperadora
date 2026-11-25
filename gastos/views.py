@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 from typing import Any
+from urllib.parse import urlsplit
 
 from django import forms
 from django.conf import settings
@@ -13,6 +14,7 @@ from django.db.models import OuterRef, Q, Subquery
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 from comunes.models import Circuito
@@ -2789,6 +2791,54 @@ def contexto_catalogos(actor):
     return dict(actor=actor, centros_costo=centros, centro_form=centro_form, atp_form=atp_form)
 
 
+def _resolver_retorno_catalogos(request: HttpRequest, actor: Any) -> tuple[str, bool]:
+    """Devuelve (url_destino, desde_configuracion) validando `next` de forma estricta."""
+    default_url = reverse("gastos:gestion_catalogos")
+    raw_next = request.POST.get("next", "").strip()
+    if not raw_next or not has_capability(actor, "gestion.configurar"):
+        return default_url, False
+    if not url_has_allowed_host_and_scheme(
+        raw_next,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return default_url, False
+    parsed = urlsplit(raw_next)
+    config_gasto_path = reverse("gestion:configuracion", args=["GASTO"])
+    if parsed.scheme or parsed.netloc or parsed.path != config_gasto_path:
+        return default_url, False
+    return f"{config_gasto_path}?seccion=catalogos", True
+
+
+def _render_error_catalogos(
+    request: HttpRequest,
+    actor: Any,
+    contexto_catalogos_error: dict[str, Any],
+) -> HttpResponse:
+    """Re-renderiza Configuración (con <details> abierto) o Catálogos según el origen del POST."""
+    destino, desde_configuracion = _resolver_retorno_catalogos(request, actor)
+    if desde_configuracion:
+        from gestion.formularios import esquema_editor
+
+        revision, campos = esquema_editor("GASTO")
+        contexto = {
+            "actor": actor,
+            "circuito": "GASTO",
+            "revision": revision,
+            "campos": campos,
+            "catalogos_abierto": True,
+            "catalogos_next_url": destino,
+            **contexto_catalogos_error,
+        }
+        return render(request, "gestion/configuracion.html", contexto, status=400)
+    return render(
+        request,
+        "gastos/gestion_catalogos.html",
+        {"actor": actor, **contexto_catalogos_error},
+        status=400,
+    )
+
+
 class GestionCatalogosView(View):
     """Administración de catálogos (centros de costo) y parámetros de Cooperadora."""
 
@@ -2808,6 +2858,7 @@ class GestionCatalogosView(View):
     def post(self, request: HttpRequest) -> HttpResponse:
         action = request.POST.get("action", "").strip()
         centros = CentroCosto.objects.all().order_by("nombre")
+        destino, _ = _resolver_retorno_catalogos(request, self.actor)
 
         if action == "crear_centro":
             centro_form = CentroCostoForm(request.POST)
@@ -2823,17 +2874,15 @@ class GestionCatalogosView(View):
                     request,
                     f"Centro de costo '{centro_form.instance.nombre}' creado exitosamente.",
                 )
-                return redirect(reverse("gastos:gestion_catalogos"))
-            return render(
+                return redirect(destino)
+            return _render_error_catalogos(
                 request,
-                "gastos/gestion_catalogos.html",
+                self.actor,
                 {
-                    "actor": self.actor,
                     "centros_costo": centros,
                     "centro_form": centro_form,
                     "atp_form": atp_form,
                 },
-                status=400,
             )
 
         if action == "editar_centro":
@@ -2849,12 +2898,11 @@ class GestionCatalogosView(View):
                 centro.nombre = edicion_form.cleaned_data["nombre"]
                 centro.save(update_fields=["nombre"])
                 messages.success(request, "Nombre del centro de costo actualizado.")
-                return redirect(reverse("gastos:gestion_catalogos"))
-            return render(
+                return redirect(destino)
+            return _render_error_catalogos(
                 request,
-                "gastos/gestion_catalogos.html",
+                self.actor,
                 {
-                    "actor": self.actor,
                     "centros_costo": centros,
                     "centro_form": CentroCostoForm(),
                     "atp_form": ParametrosATPForm(
@@ -2866,7 +2914,6 @@ class GestionCatalogosView(View):
                     "centro_editado_id": centro.pk,
                     "centro_edicion_form": edicion_form,
                 },
-                status=400,
             )
 
         if action == "actualizar_atp":
@@ -2882,20 +2929,18 @@ class GestionCatalogosView(View):
                     request,
                     "Parámetros de retención ATP actualizados exitosamente.",
                 )
-                return redirect(reverse("gastos:gestion_catalogos"))
-            return render(
+                return redirect(destino)
+            return _render_error_catalogos(
                 request,
-                "gastos/gestion_catalogos.html",
+                self.actor,
                 {
-                    "actor": self.actor,
                     "centros_costo": centros,
                     "centro_form": centro_form,
                     "atp_form": atp_form,
                 },
-                status=400,
             )
 
-        return redirect(reverse("gastos:gestion_catalogos"))
+        return redirect(destino)
 
 
 class CentroCostoToggleActivoView(View):
@@ -2914,5 +2959,6 @@ class CentroCostoToggleActivoView(View):
         centro.save(update_fields=["activo"])
         estado_desc = "activado" if centro.activo else "desactivado"
         messages.info(request, f"Centro de costo '{centro.nombre}' {estado_desc}.")
-        return redirect(reverse("gastos:gestion_catalogos"))
+        destino, _ = _resolver_retorno_catalogos(request, actor)
+        return redirect(destino)
 

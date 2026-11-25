@@ -1007,7 +1007,7 @@ class ParametrosATPForm(forms.Form):
         help_text="Monto a partir del cual aplica retención impositiva.",
     )
     alicuota_atp = forms.DecimalField(
-        label="Alícuota sugerida ATP (%)",
+        label="Alícuota de referencia ATP (%)",
         min_value=Decimal("0.00"),
         max_value=Decimal("100.00"),
         max_digits=5,
@@ -1015,6 +1015,9 @@ class ParametrosATPForm(forms.Form):
         widget=forms.NumberInput(
             attrs={"class": "form-control", "step": "0.01", "placeholder": "3.50"}
         ),
-        help_text="Porcentaje de retención provincial aplicado por defecto.",
+        help_text=(
+            "Porcentaje de referencia para retención provincial "
+            "(el importe retenido se carga manualmente al registrar cada pago)."
+        ),
     )
 

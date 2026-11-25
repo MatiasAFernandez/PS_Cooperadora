@@ -1,197 +1,110 @@
-/**
- * Estilos para Gestión de Catálogos y Parámetros — PS_Cooperadora
- * Estándar visual UTN FRRe / Calidad 2026:
- *  - Ancho máximo institucional 1140px (--content-width).
- *  - Paleta azul institucional (#090979, #084298, #0d6efd).
- *  - Tipografía Montserrat con fallback estándar.
- *  - Controles y zonas de interacción ergonómicas (>= 44px).
- *  - Chips atenuados de estado con contraste certificado (> 6:1).
- *  - Bordes sutiles (1px #e2e8f0), esquinas suaves (rounded-md).
- *  - Totalmente adaptativo y sin scroll horizontal en 390px.
- */
+/* Catálogos (centros de costo) y parámetros ATP sobre tokens cálidos de tokens.css / base.css. */
 
-/* -------------------------------------------------------------------------
- * Layout Principal y Contenedor
- * ------------------------------------------------------------------------- */
 .catalog-admin {
   width: 100%;
-  max-width: 1140px;
+  max-width: 1120px;
   margin: 0 auto;
-  box-sizing: border-box;
-}
-
-/* -------------------------------------------------------------------------
- * Cabeceras de Página y de Sección
- * ------------------------------------------------------------------------- */
-.catalog-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
-}
-
-.catalog-heading > div {
-  flex: 1 1 280px;
   min-width: 0;
 }
 
-.catalog-eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
+.catalog-heading {
+  margin-bottom: 16px;
 }
 
-.catalog-heading h1 {
+.catalog-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--ref-deep-blue, #090979);
+  color: var(--ink-strong);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  letter-spacing: -0.02em;
   line-height: 1.25;
 }
 
-.catalog-heading h2 {
+.catalog-intro {
+  margin: 4px 0 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.catalog-card {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.catalog-section-head {
+  margin-bottom: 14px;
+}
+
+.catalog-section-head h2 {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--ref-deep-blue, #090979);
+  color: var(--ink-strong);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
   line-height: 1.3;
 }
 
-.catalog-heading p {
-  margin: 0.25rem 0 0;
-  font-size: 0.875rem;
-  color: #475569;
+.catalog-section-head p {
+  margin: 3px 0 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
 }
 
-/* -------------------------------------------------------------------------
- * Mensajes de Estado / Flash Messages
- * ------------------------------------------------------------------------- */
-.catalog-message {
-  background: var(--color-success-bg, #effaf2);
-  color: var(--color-success, #166534);
-  border: 1px solid var(--color-success-border, #bbf7d0);
-  border-radius: var(--radius-md, 6px);
-  padding: 0.75rem 1rem;
-  margin-bottom: 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+.catalog-ic {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* -------------------------------------------------------------------------
- * Tarjetas de Sección (.catalog-card)
- * ------------------------------------------------------------------------- */
-.catalog-card {
-  background: #ffffff;
-  border: 1px solid var(--ref-border, #e2e8f0);
-  border-radius: var(--radius-lg, 8px);
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
-  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
-  box-sizing: border-box;
-}
-
-/* -------------------------------------------------------------------------
- * Formulario Desplegable de Nuevo Centro (.catalog-add)
- * ------------------------------------------------------------------------- */
+/* Nuevo centro */
 .catalog-add {
-  margin-bottom: 1.25rem;
+  margin-bottom: 14px;
 }
 
 .catalog-add > summary.btn {
   list-style: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  padding: 0 1.15rem;
-  background: var(--ref-blue, #084298);
-  color: #ffffff;
-  border-radius: var(--radius-md, 6px);
-  font-size: 0.875rem;
-  font-weight: 600;
+  gap: 6px;
+  min-height: var(--ctrl-h);
   cursor: pointer;
   user-select: none;
-  transition: background-color var(--transition-fast, 150ms ease);
-}
-
-.catalog-add > summary.btn:hover {
-  background: var(--ref-deep-blue, #090979);
 }
 
 .catalog-add > summary::-webkit-details-marker {
   display: none;
 }
 
-.catalog-add > summary svg {
-  width: 18px;
-  height: 18px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  flex-shrink: 0;
-}
-
-/* -------------------------------------------------------------------------
- * Cajas de Formulario (.catalog-box)
- * ------------------------------------------------------------------------- */
 .catalog-box {
-  background: var(--ref-bg-muted, #f8fafc);
-  border: 1px solid var(--ref-border, #e2e8f0);
-  border-radius: var(--radius-md, 6px);
-  padding: 1.15rem;
-  margin-top: 0.75rem;
-  box-sizing: border-box;
+  background: var(--bg-surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 10px;
 }
 
 .catalog-box label {
   display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ref-heading, #37423b);
-  margin-bottom: 0.35rem;
+  margin-bottom: 5px;
+  color: var(--ink-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
 }
 
-.catalog-box input[type="text"] {
-  width: 100%;
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-md, 6px);
-  font-family: inherit;
-  font-size: 0.875rem;
-  background: #ffffff;
-  color: #1e293b;
-  transition: border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
+.catalog-box-actions {
+  margin-top: 4px;
 }
 
-.catalog-box input[type="text"]:focus {
-  border-color: var(--ref-bright-blue, #0d6efd);
-  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
-  outline: none;
-}
-
-.catalog-box input[aria-invalid="true"] {
-  border-color: var(--color-error, #9f1239);
-  background-color: #fffafa;
-}
-
-/* -------------------------------------------------------------------------
- * Grilla de Campos (.catalog-fields)
- * ------------------------------------------------------------------------- */
 .catalog-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 12px 16px;
+  margin-bottom: 14px;
 }
 
 .catalog-fields > div {
@@ -200,228 +113,170 @@
 
 .catalog-fields label {
   display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ref-heading, #37423b);
-  margin-bottom: 0.35rem;
-}
-
-.catalog-fields input:not([type="checkbox"]):not([type="radio"]),
-.catalog-fields select {
-  width: 100%;
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-md, 6px);
-  font-family: inherit;
-  font-size: 0.875rem;
-  background: #ffffff;
-  color: #1e293b;
-}
-
-.catalog-fields input:focus,
-.catalog-fields select:focus {
-  border-color: var(--ref-bright-blue, #0d6efd);
-  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
-  outline: none;
+  margin-bottom: 5px;
+  color: var(--ink-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
 }
 
 .catalog-fields small {
   display: block;
-  margin-top: 0.3rem;
-  font-size: 0.75rem;
-  color: #64748b;
-  line-height: 1.4;
+  margin-top: 5px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
 }
 
-/* -------------------------------------------------------------------------
- * Checkbox de Disponibilidad (.catalog-check)
- * ------------------------------------------------------------------------- */
 .catalog-check {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #334155;
-  margin-bottom: 1.15rem;
+  gap: 8px;
+  min-height: var(--ctrl-h);
+  margin-bottom: 10px;
+  color: var(--ink-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   cursor: pointer;
-  min-height: 44px;
 }
 
 .catalog-check input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   margin: 0;
-  accent-color: var(--ref-blue, #084298);
+  accent-color: var(--brand-primary);
   cursor: pointer;
 }
 
-/* -------------------------------------------------------------------------
- * Barra de Herramientas / Búsqueda y Filtro (.catalog-tools)
- * ------------------------------------------------------------------------- */
+/* Herramientas de filtrado progresivo */
 .catalog-tools {
   display: flex;
-  justify-content: space-between;
   align-items: flex-end;
-  gap: 1rem;
+  gap: 10px 12px;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--ref-bg-muted, #f8fafc);
-  border: 1px solid var(--ref-border, #e2e8f0);
-  border-radius: var(--radius-md, 6px);
-}
-
-.catalog-tools[hidden] {
-  display: none !important;
+  margin-bottom: 12px;
 }
 
 .catalog-search {
-  flex: 1 1 260px;
+  flex: 1 1 240px;
   min-width: 0;
 }
 
-.catalog-search label,
+.catalog-status-wrap {
+  flex: 0 1 180px;
+  min-width: 150px;
+}
+
 .catalog-tools label {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 0.25rem;
-}
-
-.catalog-search input[type="search"],
-.catalog-tools select {
-  width: 100%;
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.5rem 0.85rem;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-md, 6px);
-  font-family: inherit;
-  font-size: 0.875rem;
-  background: #ffffff;
-  color: #1e293b;
-}
-
-.catalog-search input[type="search"]:focus,
-.catalog-tools select:focus {
-  border-color: var(--ref-bright-blue, #0d6efd);
-  box-shadow: 0 0 0 3px rgb(13 110 253 / 0.15);
-  outline: none;
+  margin-bottom: 4px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .catalog-filter-empty {
-  padding: 1.5rem 1rem;
+  padding: 20px 16px;
   text-align: center;
-  color: #64748b;
-  font-size: 0.875rem;
-  background: var(--ref-bg-muted, #f8fafc);
-  border: 1px dashed #cbd5e1;
-  border-radius: var(--radius-md, 6px);
-  margin: 1rem 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  background: var(--bg-surface-muted);
+  border: 1px dashed var(--border-control);
+  border-radius: var(--radius-md);
+  margin: 12px 0;
 }
 
-.catalog-filter-empty[hidden] {
-  display: none !important;
+/* Tabla densa de Centros de costo */
+.catalog-table-wrap {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  overflow: visible;
 }
 
-/* -------------------------------------------------------------------------
- * Tabla Densa de Centros de Costo (.catalog-table)
- * ------------------------------------------------------------------------- */
 .catalog-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   text-align: left;
 }
 
 .catalog-table thead th {
-  background: var(--ref-bg-muted, #f8fafc);
-  color: #475569;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: var(--bg-surface-muted);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--ref-border, #e2e8f0);
-  height: var(--row-height-dense, 44px);
-  box-sizing: border-box;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.catalog-table thead th:first-child {
+  border-top-left-radius: calc(var(--radius-md) - 1px);
+}
+
+.catalog-table thead th:last-child {
+  border-top-right-radius: calc(var(--radius-md) - 1px);
+}
+
+.catalog-table thead th.catalog-th-actions {
+  text-align: right;
 }
 
 .catalog-table tbody tr {
-  border-bottom: 1px solid var(--ref-border, #e2e8f0);
-  transition: background-color var(--transition-fast, 150ms ease);
+  border-bottom: 1px solid var(--border-hairline);
+  transition: background-color var(--transition-fast);
+}
+
+.catalog-table tbody tr:last-child {
+  border-bottom: 0;
 }
 
 .catalog-table tbody tr:hover {
-  background-color: #f8fafc;
+  background: var(--bg-hover);
 }
 
 .catalog-table tbody tr[data-status="inactivo"] {
-  background-color: #fafbfc;
+  background: var(--bg-surface-muted);
 }
 
 .catalog-table td {
-  padding: 0.75rem 1rem;
+  padding: 10px 14px;
   vertical-align: middle;
-  box-sizing: border-box;
 }
 
 .catalog-code code {
-  font-family: var(--font-mono, monospace);
-  font-weight: 700;
-  color: var(--ref-deep-blue, #090979);
-  background: #edf2f7;
-  padding: 0.2rem 0.45rem;
-  border-radius: var(--radius-sm, 4px);
-  font-size: 0.8125rem;
+  font-family: var(--font-mono);
+  font-weight: var(--font-semibold);
+  color: var(--brand-navy);
+  background: var(--brand-soft);
+  border: 1px solid var(--color-info-border);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
 .catalog-name strong {
-  color: #0f172a;
-  font-weight: 600;
-  font-size: 0.875rem;
+  color: var(--ink-strong);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
 }
 
-/* Píldoras / Chips de Estado */
-.catalog-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.65rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-}
-
-.catalog-chip.catalog-chip-active {
-  background: #ecfdf5;
-  color: #166534;
-  border-color: #bbf7d0;
-}
-
-/* -------------------------------------------------------------------------
- * Acciones de Fila y Detalles (.catalog-actions, .catalog-action)
- * ------------------------------------------------------------------------- */
+/* Acciones de fila alineadas a la derecha */
 .catalog-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .catalog-actions form {
   margin: 0;
-  display: inline-block;
+  display: inline-flex;
 }
 
 .catalog-action {
@@ -431,9 +286,6 @@
 
 .catalog-action > summary.btn {
   list-style: none;
-  min-height: 38px;
-  padding: 0 0.85rem;
-  font-size: 0.8125rem;
   cursor: pointer;
   user-select: none;
 }
@@ -443,121 +295,108 @@
 }
 
 .catalog-action[open] > summary {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: #0f172a;
+  background: var(--bg-subtle);
+  border-color: var(--border-control-hover);
+  color: var(--ink-strong);
 }
 
-/* Ventana flotante de formulario en Desktop */
 @media (min-width: 641px) {
   .catalog-action .catalog-box {
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
     z-index: 30;
-    width: 320px;
+    width: 310px;
     max-width: 90vw;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: var(--radius-md, 6px);
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
-    padding: 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: 14px;
     text-align: left;
     margin: 0;
   }
 }
 
 .catalog-action .catalog-box label {
-  font-size: 0.75rem;
-  margin-bottom: 0.25rem;
+  font-size: var(--text-xs);
+  margin-bottom: 4px;
 }
 
 .catalog-action .catalog-box input[type="text"] {
-  min-height: 40px;
-  padding: 0.45rem 0.75rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 10px;
 }
 
 .catalog-action .catalog-box p {
-  font-size: 0.75rem;
-  color: #475569;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
   line-height: 1.45;
-  margin: 0 0 0.75rem;
+  margin: 0 0 10px;
 }
 
 .catalog-action .catalog-box button[type="submit"] {
   width: 100%;
-  min-height: 38px;
-}
-
-.btn.catalog-confirm {
-  background: var(--color-error, #9f1239);
-  color: #ffffff;
-  border: 1px solid transparent;
-}
-
-.btn.catalog-confirm:hover {
-  background: #881337;
-  color: #ffffff;
 }
 
 .catalog-atp-save {
-  min-height: 44px;
-  padding: 0.55rem 1.35rem;
+  min-height: var(--ctrl-h);
 }
 
-/* -------------------------------------------------------------------------
- * Errores de Validación (Django form errors)
- * ------------------------------------------------------------------------- */
-.errorlist {
-  color: var(--color-error, #9f1239);
-  font-size: 0.75rem;
-  font-weight: 600;
+/* Errores de validación */
+.catalog-admin .errorlist,
+.gestion-form .errorlist {
+  color: var(--color-error);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
   list-style: none;
   padding-left: 0;
-  margin: 0.35rem 0 0;
+  margin: 4px 0 0;
 }
 
-.errorlist li {
-  margin-bottom: 0.15rem;
+.catalog-admin .errorlist li,
+.gestion-form .errorlist li {
+  margin-bottom: 2px;
 }
 
-/* -------------------------------------------------------------------------
- * Responsivo y Móvil estricto (390px sin scroll horizontal)
- * ------------------------------------------------------------------------- */
-@media (max-width: 640px) {
-  .catalog-heading {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
+@media (max-width: 959px) {
+  .catalog-add > summary.btn,
+  .catalog-action > summary.btn,
+  .catalog-actions .btn,
+  .catalog-atp-save {
+    min-height: 44px;
   }
+}
 
-  .catalog-heading .btn {
-    width: 100%;
+@media (max-width: 640px) {
+  .catalog-title {
+    font-size: var(--text-xl);
   }
 
   .catalog-card {
-    padding: 1rem;
+    padding: 16px;
   }
 
   .catalog-fields {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 
   .catalog-tools {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.75rem;
   }
 
   .catalog-search,
-  .catalog-tools > div:not(.catalog-search) {
+  .catalog-status-wrap {
     width: 100%;
     flex: none;
   }
 
-  /* Conversión de filas de tabla en tarjetas móviles legibles */
+  .catalog-table-wrap {
+    background: transparent;
+    border: 0;
+  }
+
   .catalog-table,
   .catalog-table tbody {
     display: block;
@@ -570,66 +409,44 @@
 
   .catalog-table tr[data-catalog-row] {
     display: block;
-    padding: 0.85rem;
-    margin-bottom: 0.75rem;
-    background: #ffffff;
-    border: 1px solid var(--ref-border, #e2e8f0);
-    border-radius: var(--radius-md, 6px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    padding: 14px;
+    margin-bottom: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
   }
 
   .catalog-table td {
     display: block;
-    padding: 0.25rem 0;
-    border: none;
+    padding: 3px 0;
+    border: 0;
     width: 100%;
-    box-sizing: border-box;
-  }
-
-  .catalog-table td.catalog-code {
-    margin-bottom: 0.25rem;
-  }
-
-  .catalog-table td.catalog-name {
-    margin-bottom: 0.35rem;
   }
 
   .catalog-table td.catalog-name strong {
-    font-size: 0.95rem;
     display: block;
     overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  .catalog-table td.catalog-state {
-    margin-bottom: 0.5rem;
   }
 
   .catalog-table td.catalog-actions {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid #f1f5f9;
-    text-align: left;
-  }
-
-  .catalog-actions {
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-hairline);
     justify-content: stretch;
-    gap: 0.5rem;
   }
 
   .catalog-actions details.catalog-action,
-  .catalog-actions form {
-    width: 100%;
-  }
-
-  .catalog-actions .btn {
+  .catalog-actions form,
+  .catalog-actions .btn,
+  .catalog-add > summary.btn,
+  .catalog-atp-save {
     width: 100%;
   }
 
   .catalog-action .catalog-box {
     position: static;
     width: 100%;
-    margin-top: 0.5rem;
-    box-sizing: border-box;
+    margin-top: 8px;
   }
 }
