@@ -109,7 +109,7 @@ def test_reporte_presenta_pestanas_filtros_y_limpieza(escenario):
     respuesta = cliente.get(url, {"anio": 2024, "trimestre": 2, "orden": "neto"})
     assert respuesta.status_code == 200
     html = respuesta.content.decode()
-    assert html.index('class="gestion-tabs"') < html.index('<h1 class="rep-title">')
+    assert html.index('<h1 class="rep-title">') < html.index('class="gestion-tabs"')
     assert "Aplicar filtros" not in html
     assert "data-filtros-reporte" in html
     assert f'href="{url}" class="btn ghost">Limpiar filtros' in html

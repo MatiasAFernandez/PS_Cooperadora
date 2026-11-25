@@ -125,7 +125,7 @@ def test_usuario_con_consultar_todas_accede_con_200(
     url = reverse("gastos:reporte_cuatrimestral")
     response = client.get(url)
     assert response.status_code == 200
-    assert "Reporte Directivo de Gastos" in response.content.decode()
+    assert "Reporte directivo de gastos" in response.content.decode()
 
 
 def test_visibilidad_boton_reporte_en_panel_segun_permisos(
@@ -374,7 +374,7 @@ def test_vista_reporte_renderiza_kpis_y_tablas(create_actor: Any, auth_client: A
     html = response.content.decode()
 
     # Verificación de elementos del template Calidad 2026
-    assert "Reporte Directivo de Gastos" in html
+    assert "Reporte directivo de gastos" in html
     assert 'id="kpiBruto">$ 95.000,00' in html
     assert 'id="kpiAtp">$ 3.325,00' in html
     assert 'id="kpiNeto">$ 91.675,00' in html
@@ -434,3 +434,31 @@ def test_ranking_y_filtros_por_centro(create_actor: Any, auth_client: Any) -> No
     invalido = client.get(url, {"anio": 2026, "corte": "C1", "centro_costo": "9" * 25})
     assert invalido.status_code == 200
     assert invalido.context["reporte"].totales == general.context["reporte"].totales
+
+
+def test_proporcion_atp_y_neto_en_grafico_cuatrimestral(create_actor: Any) -> None:
+    """porcentaje_atp_grafico refleja la proporción real de ATP sobre el bruto del cuatrimestre."""
+    user, _ = create_actor("solic_prop_atp", ["gastos.presentar"])
+
+    # C1: bruto 100.000 con ATP 3.500 (3,50 % ATP, 96,50 % neto) — mayor bruto del año
+    s1 = _crear_solicitud_con_fecha(user, "Gasto C1 mixto", Decimal("100000.00"), date(2026, 2, 10))
+    _crear_pago_con_fecha(
+        s1, date(2026, 2, 15), Decimal("100000.00"), monto_retencion_atp=Decimal("3500.00")
+    )
+    # C2: bruto 50.000 con ATP 10.000 (20,00 % ATP, 80,00 % neto) — mayor ATP del año
+    s2 = _crear_solicitud_con_fecha(
+        user, "Gasto C2 ATP alto", Decimal("50000.00"), date(2026, 6, 10)
+    )
+    _crear_pago_con_fecha(
+        s2, date(2026, 6, 15), Decimal("50000.00"), monto_retencion_atp=Decimal("10000.00")
+    )
+
+    reporte = obtener_reporte_cuatrimestral_gastos(2026)
+    c1, c2, c3 = reporte.cuatrimestres
+
+    assert c1.porcentaje_bruto_grafico == Decimal("100.00")
+    assert c1.porcentaje_atp_grafico == Decimal("3.50")
+    assert c2.porcentaje_bruto_grafico == Decimal("50.00")
+    assert c2.porcentaje_atp_grafico == Decimal("20.00")
+    assert c3.porcentaje_bruto_grafico == Decimal("0.00")
+    assert c3.porcentaje_atp_grafico == Decimal("0.00")

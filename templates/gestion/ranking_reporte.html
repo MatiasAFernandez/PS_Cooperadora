@@ -16,7 +16,10 @@
       {% endfor %}
     </ol>
     <details class="fac-detalle">
-      <summary>Ver tabla completa</summary>
+      <summary>
+        <span>Ver tabla completa</span>
+        <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
       {% include "gestion/tabla_reporte.html" with filas=filas %}
     </details>
   {% else %}

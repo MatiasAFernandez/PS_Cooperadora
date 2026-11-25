@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static l10n formato_ars %}
 
-{% block title %}Reporte Directivo de Gastos — PS Cooperadora{% endblock %}
+{% block title %}Reporte directivo de gastos — PS Cooperadora{% endblock %}
 {% block titulo_modulo %}Reportes — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
@@ -10,11 +10,9 @@
 
 {% block content %}
 <div class="rep-wrap">
-  {% include "gestion/tabs_reportes.html" with reporte_circuito="GASTO" %}
-
   <header class="top">
     <div>
-      <h1 class="rep-title" id="repTitle" tabindex="-1">Reporte Directivo de Gastos</h1>
+      <h1 class="rep-title" id="repTitle" tabindex="-1">Reporte directivo de gastos</h1>
       <p class="lead">Ejecución financiera (bruto = neto transferido + retención ATP), compromisos y distribución por centro de costo · ARS</p>
     </div>
     <div class="top-acts">
@@ -23,6 +21,8 @@
       </button>
     </div>
   </header>
+
+  {% include "gestion/tabs_reportes.html" with reporte_circuito="GASTO" %}
 
   <form class="card control-bar" id="repForm" method="get" action="{{ request.path }}" aria-label="Filtros del reporte" data-filtros-reporte>
     <input type="hidden" name="corte" id="id_corte" value="{{ corte|default:'ANIO' }}">
@@ -98,11 +98,10 @@
         <span>Gasto bruto ejecutado</span>
         <span class="status-pill status-success" id="kpiPagosCnt">{{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }}</span>
       </div>
-      <div class="kpi-num font-tabular" id="kpiBruto">{{ reporte.totales.monto_erogado_bruto|ars }}</div>
+      <div class="kpi-num font-tabular rep-money" id="kpiBruto">{{ reporte.totales.monto_erogado_bruto|ars }}</div>
       <div class="kpi-eq font-tabular" aria-label="Desglose en neto transferido y retención ATP">
-        <span>Neto: <b id="kpiNeto">{{ reporte.totales.monto_neto_transferido|ars }}</b></span>
-        <span aria-hidden="true">·</span>
-        <span>Retención ATP: <b id="kpiAtp">{{ reporte.totales.monto_retencion_atp|ars }}</b></span>
+        <span class="kpi-eq-item"><span>Neto</span><b class="rep-money" id="kpiNeto">{{ reporte.totales.monto_neto_transferido|ars }}</b></span>
+        <span class="kpi-eq-item"><span>Retención ATP</span><b class="rep-money" id="kpiAtp">{{ reporte.totales.monto_retencion_atp|ars }}</b></span>
       </div>
       <div class="kpi-sub">
         <span>Erogado en el período seleccionado</span>
@@ -114,9 +113,9 @@
         <span>Comprometido por pagar</span>
         <span class="status-pill status-info" id="kpiCompCnt">{{ reporte.totales.cantidad_comprometida }} aceptada{{ reporte.totales.cantidad_comprometida|pluralize }}</span>
       </div>
-      <div class="kpi-num font-tabular" id="kpiCompMonto">{{ reporte.totales.monto_comprometido|ars }}</div>
+      <div class="kpi-num font-tabular rep-money" id="kpiCompMonto">{{ reporte.totales.monto_comprometido|ars }}</div>
       <div class="kpi-sub font-tabular">
-        <span>Solicitado del período ({{ reporte.totales.cantidad_solicitudes }}): <b>{{ reporte.totales.monto_solicitado|ars }}</b></span>
+        <span>Solicitado del período ({{ reporte.totales.cantidad_solicitudes }}): <b class="rep-money">{{ reporte.totales.monto_solicitado|ars }}</b></span>
       </div>
       <div class="kpi-sub">
         <span>Autorizado pendiente de transferencia</span>
@@ -128,7 +127,7 @@
         <span>Retenciones ATP del período</span>
         <span class="status-pill status-warning" id="kpiAtpCnt">{{ reporte.totales.cantidad_pagos_atp }} con retención</span>
       </div>
-      <div class="kpi-num font-tabular" id="kpiAtpCard">{{ reporte.totales.monto_retencion_atp|ars }}</div>
+      <div class="kpi-num font-tabular rep-money" id="kpiAtpCard">{{ reporte.totales.monto_retencion_atp|ars }}</div>
       <div class="kpi-sub" id="kpiAtpModSub">
         <span>Retención provincial sobre erogaciones</span>
       </div>
@@ -199,9 +198,9 @@
                    class="vcol-btn"
                    {% if corte == c_code %}aria-current="page"{% endif %}
                    aria-label="{{ c.etiqueta }}: Gasto bruto {{ c.monto_erogado_bruto|ars }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Seleccioná para filtrar este cuatrimestre.">
-                  <span class="vcol-val font-tabular">{{ c.monto_erogado_bruto|ars }}</span>
+                  <span class="vcol-val font-tabular rep-money">{{ c.monto_erogado_bruto|ars }}</span>
                   <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
-                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>
+                    {% if c.monto_retencion_atp > 0 %}<span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>{% endif %}
                     <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: {{ c.monto_neto_transferido|ars }}"></span>
                   </span>
                 </a>
@@ -210,9 +209,9 @@
                    class="vcol-btn"
                    {% if corte == c_code %}aria-current="page"{% endif %}
                    aria-label="{{ c.etiqueta }}: Gasto bruto {{ c.monto_erogado_bruto|ars }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Seleccioná para filtrar este cuatrimestre.">
-                  <span class="vcol-val font-tabular">{{ c.monto_erogado_bruto|ars }}</span>
+                  <span class="vcol-val font-tabular rep-money">{{ c.monto_erogado_bruto|ars }}</span>
                   <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
-                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>
+                    {% if c.monto_retencion_atp > 0 %}<span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>{% endif %}
                     <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: {{ c.monto_neto_transferido|ars }}"></span>
                   </span>
                 </a>
@@ -221,9 +220,9 @@
                    class="vcol-btn"
                    {% if corte == c_code %}aria-current="page"{% endif %}
                    aria-label="{{ c.etiqueta }}: Gasto bruto {{ c.monto_erogado_bruto|ars }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Seleccioná para filtrar este cuatrimestre.">
-                  <span class="vcol-val font-tabular">{{ c.monto_erogado_bruto|ars }}</span>
+                  <span class="vcol-val font-tabular rep-money">{{ c.monto_erogado_bruto|ars }}</span>
                   <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
-                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>
+                    {% if c.monto_retencion_atp > 0 %}<span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>{% endif %}
                     <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: {{ c.monto_neto_transferido|ars }}"></span>
                   </span>
                 </a>
@@ -354,24 +353,30 @@
               </div>
             </td>
             <td data-label="Solicitudes" class="cnt font-tabular">
-              <b>{{ cc.cantidad_solicitudes }}</b>
-              <div class="cc-cell-sub font-tabular">{{ cc.monto_solicitado|ars }}</div>
+              <div class="cc-cell-val">
+                <b>{{ cc.cantidad_solicitudes }}</b>
+                <div class="cc-cell-sub font-tabular rep-money">{{ cc.monto_solicitado|ars }}</div>
+              </div>
             </td>
             <td data-label="Comprometido (por pagar)" class="num font-tabular">
-              {{ cc.monto_comprometido|ars }}
-              {% if cc.cantidad_comprometida > 0 %}
-                <div class="cc-cell-sub">{{ cc.cantidad_comprometida }} aceptada{{ cc.cantidad_comprometida|pluralize }}</div>
-              {% endif %}
+              <div class="cc-cell-val">
+                <span class="rep-money">{{ cc.monto_comprometido|ars }}</span>
+                {% if cc.cantidad_comprometida > 0 %}
+                  <div class="cc-cell-sub">{{ cc.cantidad_comprometida }} aceptada{{ cc.cantidad_comprometida|pluralize }}</div>
+                {% endif %}
+              </div>
             </td>
             <td data-label="Bruto Pagado" class="num font-tabular rep-col-bruto">
-              {{ cc.monto_erogado_bruto|ars }}
-              <div class="cc-cell-sub">{{ cc.cantidad_pagos }} pago{{ cc.cantidad_pagos|pluralize }}</div>
+              <div class="cc-cell-val">
+                <span class="rep-money">{{ cc.monto_erogado_bruto|ars }}</span>
+                <div class="cc-cell-sub">{{ cc.cantidad_pagos }} pago{{ cc.cantidad_pagos|pluralize }}</div>
+              </div>
             </td>
             <td data-label="Retención ATP" class="num font-tabular">
-              {{ cc.monto_retencion_atp|ars }}
+              <span class="rep-money">{{ cc.monto_retencion_atp|ars }}</span>
             </td>
             <td data-label="Neto transferido" class="num font-tabular">
-              {{ cc.monto_neto_transferido|ars }}
+              <span class="rep-money">{{ cc.monto_neto_transferido|ars }}</span>
             </td>
           </tr>
           {% empty %}
@@ -384,19 +389,19 @@
           <tr>
             <td data-label="Total">TOTAL DEL PERÍODO</td>
             <td data-label="Solicitudes" class="cnt font-tabular">
-              {{ reporte.totales.cantidad_solicitudes }} ({{ reporte.totales.monto_solicitado|ars }})
+              <span class="rep-money">{{ reporte.totales.cantidad_solicitudes }} ({{ reporte.totales.monto_solicitado|ars }})</span>
             </td>
             <td data-label="Comprometido (por pagar)" class="num font-tabular">
-              {{ reporte.totales.monto_comprometido|ars }}
+              <span class="rep-money">{{ reporte.totales.monto_comprometido|ars }}</span>
             </td>
             <td data-label="Bruto Pagado" class="num font-tabular">
-              {{ reporte.totales.monto_erogado_bruto|ars }} ({{ reporte.totales.cantidad_pagos }})
+              <span class="rep-money">{{ reporte.totales.monto_erogado_bruto|ars }} ({{ reporte.totales.cantidad_pagos }})</span>
             </td>
             <td data-label="Retención ATP" class="num font-tabular">
-              {{ reporte.totales.monto_retencion_atp|ars }}
+              <span class="rep-money">{{ reporte.totales.monto_retencion_atp|ars }}</span>
             </td>
             <td data-label="Neto transferido" class="num font-tabular">
-              {{ reporte.totales.monto_neto_transferido|ars }}
+              <span class="rep-money">{{ reporte.totales.monto_neto_transferido|ars }}</span>
             </td>
           </tr>
         </tfoot>
@@ -404,7 +409,7 @@
     </div>
   </div>
 
-  <p class="foot">Reporte Directivo de Gastos · PS Cooperadora · UTN FRRe</p>
+  <p class="foot">Reporte directivo de gastos · PS Cooperadora · UTN FRRe</p>
 </div>
 <script src="{% static 'gestion/filtros_reporte.js' %}" defer></script>
 {% endblock %}

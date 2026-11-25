@@ -11,14 +11,14 @@
 
 {% block content %}
 <div class="catalog-admin">
-    {% include "gestion/tabs_configuracion.html" with circuito="GASTO" %}
-
     <header class="catalog-heading">
         <div>
             <h1 class="catalog-title">Catálogos y parámetros</h1>
             <p class="catalog-intro">Administrá los centros de costo disponibles y los parámetros de referencia para retenciones ATP.</p>
         </div>
     </header>
+
+    {% include "gestion/tabs_configuracion.html" with circuito="GASTO" %}
 
     {% include "comunes/mensajes_flash.html" %}
     {% include "gastos/_catalogos_contenido.html" %}

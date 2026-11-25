@@ -186,6 +186,8 @@ def test_parametros_atp_form_validacion() -> None:
     assert not form_negativo.is_valid()
     assert "base_imponible_atp" in form_negativo.errors
     assert "alicuota_atp" in form_negativo.errors
+    assert "Ingresá un valor mayor o igual a 0." in form_negativo.errors["base_imponible_atp"]
+    assert "Ingresá un valor menor o igual a 100." in form_negativo.errors["alicuota_atp"]
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +230,7 @@ def test_gestion_catalogos_permisos(
     client.login(username="demo_o", password=password)
     resp_operadora = client.get(url)
     assert resp_operadora.status_code == 200
-    assert "Parámetros de Retención ATP" in resp_operadora.content.decode("utf-8")
+    assert "Parámetros de retención ATP" in resp_operadora.content.decode("utf-8")
 
     # 5. Usuario con gastos.registrar_pago -> 200 OK
     user_pago = User.objects.create_user(username="pagador", password=password)

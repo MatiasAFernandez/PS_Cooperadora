@@ -114,6 +114,9 @@ def test_catalogos_post_invalido_desde_configuracion_rerenderiza_configuracion_4
     assert '<details class="card gestion-card gestion-catalogos-details" open>' in html
     assert "Formulario de gastos" in html
     assert "errorlist" in html
+    assert "Ingresá un valor mayor o igual a 0." in html
+    assert "Ingresá un valor menor o igual a 100." in html
+    assert "Asegúrese" not in html
 
     # Un next externo malicioso se descarta y cae al listado directo de catálogos
     resp_externo = cliente.post(

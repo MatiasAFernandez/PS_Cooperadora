@@ -51,16 +51,24 @@ def test_reporte_gastos_sin_salto_de_url_tabs_segmentadas_y_eje_y(escenario):
     assert f'action="{url_gestion}"' in html
     assert f'href="{url_gestion}" class="btn ghost" id="btnResetFiltros"' in html
     assert 'class="ui-tabs-segmented"' in html
+    assert html.index('<h1 class="rep-title"') < html.index('class="gestion-tabs"')
+    assert "Reporte directivo de gastos" in html
+    assert "Reporte Directivo de Gastos" not in html
     assert "Ir al listado de gastos" not in html
     # Eje Y del gráfico vertical poblado desde el servidor (sin JS)
     assert "<span>$ 120.000,00</span>" in html
     assert "<span>$ 60.000,00</span>" in html
     assert "<span>$ 0,00</span>" in html
+    # Proporción real de ATP (4200 / 120000 = 3.50 %) sobre el bruto del cuatrimestre
+    assert "height: 3.50%;" in html
+    assert "height: calc(100% - 3.50%);" in html
     # Sin colores inline de arcoíris en KPIs ni tabla; negrita conservada en Bruto Pagado
     assert 'style="color:var(--blue)' not in html
     assert 'style="color:var(--warn)' not in html
     assert 'style="color:var(--ok)' not in html
     assert "rep-col-bruto" in html
+    assert "cc-cell-val" in html
+    assert "rep-money" in html
     assert "TOTAL DEL PERÍODO" in html
 
     # La ruta directa /gastos/reportes/cuatrimestral/ también conserva su propio request.path
@@ -86,6 +94,10 @@ def test_reporte_facturacion_usa_tabs_segmentadas_ars_y_font_tabular(escenario, 
 
     assert 'class="gestion-tabs"' in html
     assert 'class="ui-tabs-segmented"' in html
+    assert html.index('<h1 class="rep-title">') < html.index('class="gestion-tabs"')
+    assert 'class="fac-chevron"' in html
+    assert "Reporte de facturación · PS Cooperadora" in html
+    assert "Reporte de Facturación" not in html
     assert "$ 100,25" in html
     assert 'class="num font-tabular"' in html
 

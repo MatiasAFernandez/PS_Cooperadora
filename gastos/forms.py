@@ -1005,6 +1005,11 @@ class ParametrosATPForm(forms.Form):
             attrs={"class": "form-control", "step": "0.01", "placeholder": "90000.00"}
         ),
         help_text="Monto a partir del cual aplica retención impositiva.",
+        error_messages={
+            "required": "Ingresá la base imponible de retención ATP.",
+            "invalid": "Ingresá un monto numérico válido.",
+            "min_value": "Ingresá un valor mayor o igual a 0.",
+        },
     )
     alicuota_atp = forms.DecimalField(
         label="Alícuota de referencia ATP (%)",
@@ -1019,5 +1024,11 @@ class ParametrosATPForm(forms.Form):
             "Porcentaje de referencia para retención provincial "
             "(el importe retenido se carga manualmente al registrar cada pago)."
         ),
+        error_messages={
+            "required": "Ingresá la alícuota de referencia ATP.",
+            "invalid": "Ingresá un porcentaje numérico válido.",
+            "min_value": "Ingresá un valor mayor o igual a 0.",
+            "max_value": "Ingresá un valor menor o igual a 100.",
+        },
     )
 

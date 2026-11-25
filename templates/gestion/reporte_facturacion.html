@@ -8,8 +8,6 @@
 {% endblock %}
 {% block content %}
 <div class="rep-wrap">
-  {% include "gestion/tabs_reportes.html" with reporte_circuito="FACTURACION" %}
-
   <header class="top">
     <div>
       <h1 class="rep-title">Reporte de facturación</h1>
@@ -21,6 +19,8 @@
       </button>
     </div>
   </header>
+
+  {% include "gestion/tabs_reportes.html" with reporte_circuito="FACTURACION" %}
 
   <form class="card control-bar" method="get" action="{{ request.path }}" aria-label="Filtros del reporte" data-filtros-reporte>
     <input type="hidden" name="orden" value="{{ orden|default:'cantidad' }}">
@@ -90,7 +90,10 @@
         {% include "gestion/grafico_periodos.html" with titulo="Importes vinculados · ARS" grafico=reporte.importes moneda=True %}
       </div>
       <details class="card chart-card fac-detalle">
-        <summary>Ver cifras por período</summary>
+        <summary>
+          <span>Ver cifras por período</span>
+          <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
         <div class="tbl-wrap">
           <table class="dense mob-cards">
             <thead><tr><th scope="col">Período</th><th scope="col" class="cnt">Solicitudes</th><th scope="col" class="cnt">Facturas</th><th scope="col" class="num">Solicitado · ARS</th><th scope="col" class="num">Facturado neto · ARS</th><th scope="col" class="num">Cobrado confirmado · ARS</th></tr></thead>
@@ -148,7 +151,10 @@
     </form>
     {% include "gestion/ranking_reporte.html" with titulo="Grupos o centros" ranking=reporte.ranking_centros filas=reporte.centros %}
     <details class="card chart-card fac-detalle">
-      <summary>Demanda por correo solicitante</summary>
+      <summary>
+        <span>Demanda por correo solicitante</span>
+        <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
       <p class="chart-q">Un mismo correo puede representar a varias personas del grupo o área.</p>
       {% include "gestion/ranking_reporte.html" with ranking=reporte.ranking_correos filas=reporte.correos secundario=True %}
     </details>
@@ -176,7 +182,10 @@
   </section>
 
   <details class="card chart-card fac-detalle fac-formulas">
-    <summary>Cómo se calculan los resultados</summary>
+    <summary>
+      <span>Cómo se calculan los resultados</span>
+      <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
     <p>El período se determina por la fecha de presentación de la solicitud. Las facturas, notas y cobros se agrupan con la solicitud vinculada. El año completo se desglosa por cuatrimestre y los cortes por trimestre o cuatrimestre se desglosan por mes.</p>
 
     <h3>Evolución del período</h3>
@@ -227,7 +236,7 @@
       <dd>Por trámite abierto con factura: máximo entre cero y (cobrado confirmado − el mayor entre facturado neto y cero). Se suman esos excedentes y se cuentan los trámites con excedente positivo.</dd>
     </dl>
   </details>
-  <p class="foot">Reporte de Facturación · PS Cooperadora · UTN FRRe</p>
+  <p class="foot">Reporte de facturación · PS Cooperadora · UTN FRRe</p>
 {% endif %}
 </div>
 <script src="{% static 'gestion/filtros_reporte.js' %}" defer></script>

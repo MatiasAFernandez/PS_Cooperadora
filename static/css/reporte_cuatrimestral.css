@@ -332,6 +332,10 @@
   letter-spacing: 0;
 }
 
+.rep-wrap .rep-money {
+  white-space: nowrap;
+}
+
 .rep-wrap .kpi-num {
   font-size: clamp(1.2rem, 1.9vw, 1.45rem);
   font-weight: var(--font-bold);
@@ -344,13 +348,19 @@
   background: var(--bg-surface-muted);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-md);
-  padding: 6px 9px;
+  padding: 7px 10px;
   font-size: var(--text-xs);
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 3px;
   color: var(--ink-muted);
+}
+
+.rep-wrap .kpi-eq-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .rep-wrap .kpi-eq b {
@@ -413,7 +423,7 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   min-width: 0;
 }
@@ -574,12 +584,15 @@
 .rep-wrap .vcol-seg-atp {
   background: var(--st-warning-dot);
   width: 100%;
+  flex: 0 0 auto;
+  min-height: 3px;
   transition: height var(--transition-normal);
 }
 
 .rep-wrap .vcol-seg-neto {
   background: var(--brand-primary);
   width: 100%;
+  flex: 1 1 auto;
   transition: height var(--transition-normal);
 }
 
@@ -625,6 +638,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid var(--border-hairline);
   font-size: var(--text-xs);
@@ -904,6 +918,74 @@
   .rep-wrap .empty-acts .btn {
     min-height: 44px;
   }
+
+  .rep-wrap table.dense.mob-cards thead {
+    display: none;
+  }
+
+  .rep-wrap table.dense.mob-cards tbody tr,
+  .rep-wrap table.dense.mob-cards tfoot tr {
+    display: block;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .rep-wrap table.dense.mob-cards tbody td,
+  .rep-wrap table.dense.mob-cards tfoot td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 6px 12px;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .rep-wrap table.dense.mob-cards tbody td::before,
+  .rep-wrap table.dense.mob-cards tfoot td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+    text-align: left;
+    flex: 0 1 44%;
+    min-width: 0;
+  }
+
+  .rep-wrap table.dense.mob-cards tbody td > *,
+  .rep-wrap table.dense.mob-cards tfoot td > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .rep-wrap table.dense.mob-cards .cc-cell-title {
+    justify-content: flex-end;
+    text-align: right;
+    flex: 1 1 auto;
+  }
+
+  .rep-wrap table.dense.mob-cards .cc-cell-val {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .rep-wrap table.dense.mob-cards .rep-money {
+    white-space: nowrap;
+  }
+
+  .rep-wrap table.dense.mob-cards tfoot td:empty {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1013,56 +1095,6 @@
 
   .rep-wrap .hbar-label {
     white-space: normal;
-  }
-
-  .rep-wrap table.dense.mob-cards thead {
-    display: none;
-  }
-
-  .rep-wrap table.dense.mob-cards tbody tr,
-  .rep-wrap table.dense.mob-cards tfoot tr {
-    display: block;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .rep-wrap table.dense.mob-cards tbody td,
-  .rep-wrap table.dense.mob-cards tfoot td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 4px 8px;
-    padding: 4px 0;
-    border: 0;
-    text-align: right;
-    min-width: 0;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  .rep-wrap table.dense.mob-cards tbody td::before,
-  .rep-wrap table.dense.mob-cards tfoot td::before {
-    content: attr(data-label);
-    font-size: 11px;
-    font-weight: var(--font-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--ink-muted);
-    text-align: left;
-    flex: 0 0 auto;
-  }
-
-  .rep-wrap table.dense.mob-cards tbody td > * {
-    min-width: 0;
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .rep-wrap table.dense.mob-cards tfoot td:empty {
-    display: none;
   }
 }
 
