@@ -937,6 +937,14 @@ class ReporteCuatrimestralGastosView(View):
             or (centro.centro_costo_id is not None and (mostrar_sin_actividad or centro_costo_id))
         ]
 
+        max_bruto_cuatrimestre = max(
+            (c.monto_erogado_bruto for c in reporte.cuatrimestres),
+            default=Decimal("0.00"),
+        )
+        mitad_bruto_cuatrimestre = (max_bruto_cuatrimestre / Decimal("2")).quantize(
+            Decimal("0.01")
+        )
+
         return render(
             request,
             "gastos/reporte_cuatrimestral.html",
@@ -953,6 +961,8 @@ class ReporteCuatrimestralGastosView(View):
                 "mostrar_sin_actividad": mostrar_sin_actividad,
                 "periodo_label": reporte.periodo_label,
                 "pendientes_actuales": obtener_pendientes_actuales_gastos(),
+                "max_bruto_cuatrimestre": max_bruto_cuatrimestre,
+                "mitad_bruto_cuatrimestre": mitad_bruto_cuatrimestre,
             },
         )
 

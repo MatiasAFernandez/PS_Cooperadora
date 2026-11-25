@@ -1,37 +1,30 @@
 {% extends "base.html" %}
-{% load static %}
-{% load l10n %}
+{% load static l10n formato_ars %}
 
 {% block title %}Reporte Directivo de Gastos — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Reportes — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'gestion/gestion.css' %}">
 <link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">
-
 {% endblock %}
 
 {% block content %}
-{% include "gestion/tabs_reportes.html" with reporte_circuito="GASTO" %}
 <div class="rep-wrap">
-  <!-- Cabecera de Página y Accesos Rápidos -->
-  <div class="top">
+  {% include "gestion/tabs_reportes.html" with reporte_circuito="GASTO" %}
+
+  <header class="top">
     <div>
       <h1 class="rep-title" id="repTitle" tabindex="-1">Reporte Directivo de Gastos</h1>
-      <p class="lead">Ejecución financiera (Bruto = Neto transferido + Retención ATP), compromisos y distribución por Centro de Costo · ARS</p>
+      <p class="lead">Ejecución financiera (bruto = neto transferido + retención ATP), compromisos y distribución por centro de costo · ARS</p>
     </div>
     <div class="top-acts">
-      <button type="button" class="btn sec" onclick="window.print()">
+      <button type="button" class="btn btn-secondary" onclick="window.print()">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Imprimir A4
       </button>
-      <a href="{% url 'gastos:lista' %}" class="btn ghost" id="topBandejaLink">
-        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
-        Ir al listado de gastos
-      </a>
     </div>
-  </div>
+  </header>
 
-  <!-- 1. BARRA DE CONTROL SUPERIOR: Ejercicio + Período + Modalidad -->
-  <form class="card control-bar" id="repForm" method="get" action="{% url 'gastos:reporte_cuatrimestral' %}" aria-label="Filtros del reporte" data-filtros-reporte>
+  <form class="card control-bar" id="repForm" method="get" action="{{ request.path }}" aria-label="Filtros del reporte" data-filtros-reporte>
     <input type="hidden" name="corte" id="id_corte" value="{{ corte|default:'ANIO' }}">
     {% if mostrar_sin_actividad %}<input type="hidden" name="sin_actividad" value="1">{% endif %}
     <div class="control-main">
@@ -45,7 +38,7 @@
           </select>
         </div>
 
-        <div class="fld" style="flex:1 1 auto">
+        <div class="fld rep-fld-grow">
           <span class="fld-lbl" id="lblPeriodo">Período</span>
           <div class="period-pills" role="group" aria-labelledby="lblPeriodo">
             <a href="?anio={{ reporte.anio }}&amp;corte=ANIO{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if not corte or corte == 'ANIO' %}aria-current="page"{% endif %}>Año completo</a>
@@ -55,7 +48,6 @@
             <a href="?anio={{ reporte.anio }}&amp;corte=MES_ANT{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="pill" {% if corte == 'MES_ANT' %}aria-current="page"{% endif %}>Mes anterior</a>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -88,8 +80,8 @@
       </div>
     </details>
     <div class="rep-filter-actions">
-      <a href="{% url 'gastos:reporte_cuatrimestral' %}" class="btn ghost" id="btnResetFiltros">Limpiar filtros</a>
-      <noscript><button type="submit" class="btn">Actualizar reporte</button></noscript>
+      <a href="{{ request.path }}" class="btn ghost" id="btnResetFiltros">Limpiar filtros</a>
+      <noscript><button type="submit" class="btn btn-primary">Actualizar reporte</button></noscript>
     </div>
 
     <div class="control-meta">
@@ -100,47 +92,43 @@
     </div>
   </form>
 
-  <!-- 2. FILA ÚNICA DE 4 KPIs -->
   <div class="kpi-grid" role="region" aria-label="Indicadores clave del reporte">
-    <!-- KPI 1: Gasto Bruto Ejecutado -->
     <div class="card kpi primary">
       <div class="kpi-lbl">
-        <span>Gasto Bruto Ejecutado</span>
-        <span class="chip ok" id="kpiPagosCnt">{{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }}</span>
+        <span>Gasto bruto ejecutado</span>
+        <span class="status-pill status-success" id="kpiPagosCnt">{{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }}</span>
       </div>
-      <div class="kpi-num font-tabular" id="kpiBruto">$ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }}</div>
-      <div class="kpi-eq font-tabular" aria-label="Desglose en Neto transferido y Retención ATP">
-        <span>Neto: <b class="neto" id="kpiNeto">$ {{ reporte.totales.monto_neto_transferido|floatformat:"2g" }}</b></span>
+      <div class="kpi-num font-tabular" id="kpiBruto">{{ reporte.totales.monto_erogado_bruto|ars }}</div>
+      <div class="kpi-eq font-tabular" aria-label="Desglose en neto transferido y retención ATP">
+        <span>Neto: <b id="kpiNeto">{{ reporte.totales.monto_neto_transferido|ars }}</b></span>
         <span aria-hidden="true">·</span>
-        <span>Retención ATP: <b class="atp" id="kpiAtp">$ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}</b></span>
+        <span>Retención ATP: <b id="kpiAtp">{{ reporte.totales.monto_retencion_atp|ars }}</b></span>
       </div>
       <div class="kpi-sub">
         <span>Erogado en el período seleccionado</span>
       </div>
     </div>
 
-    <!-- KPI 2: Comprometido por Pagar -->
     <div class="card kpi">
       <div class="kpi-lbl">
-        <span>Comprometido por Pagar</span>
-        <span class="chip info" id="kpiCompCnt">{{ reporte.totales.cantidad_comprometida }} aceptada{{ reporte.totales.cantidad_comprometida|pluralize }}</span>
+        <span>Comprometido por pagar</span>
+        <span class="status-pill status-info" id="kpiCompCnt">{{ reporte.totales.cantidad_comprometida }} aceptada{{ reporte.totales.cantidad_comprometida|pluralize }}</span>
       </div>
-      <div class="kpi-num font-tabular" id="kpiCompMonto" style="color:var(--blue)">$ {{ reporte.totales.monto_comprometido|floatformat:"2g" }}</div>
+      <div class="kpi-num font-tabular" id="kpiCompMonto">{{ reporte.totales.monto_comprometido|ars }}</div>
       <div class="kpi-sub font-tabular">
-        <span>Solicitado del período ({{ reporte.totales.cantidad_solicitudes }}): <b>$ {{ reporte.totales.monto_solicitado|floatformat:"2g" }}</b></span>
+        <span>Solicitado del período ({{ reporte.totales.cantidad_solicitudes }}): <b>{{ reporte.totales.monto_solicitado|ars }}</b></span>
       </div>
       <div class="kpi-sub">
         <span>Autorizado pendiente de transferencia</span>
       </div>
     </div>
 
-    <!-- KPI 3: Retenciones ATP del Período -->
     <div class="card kpi">
       <div class="kpi-lbl">
-        <span>Retenciones ATP del Período</span>
-        <span class="chip warn" id="kpiAtpCnt">{{ reporte.totales.cantidad_pagos_atp }} con retención</span>
+        <span>Retenciones ATP del período</span>
+        <span class="status-pill status-warning" id="kpiAtpCnt">{{ reporte.totales.cantidad_pagos_atp }} con retención</span>
       </div>
-      <div class="kpi-num font-tabular" id="kpiAtpCard" style="color:var(--warn)">$ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}</div>
+      <div class="kpi-num font-tabular" id="kpiAtpCard">{{ reporte.totales.monto_retencion_atp|ars }}</div>
       <div class="kpi-sub" id="kpiAtpModSub">
         <span>Retención provincial sobre erogaciones</span>
       </div>
@@ -149,11 +137,10 @@
       </div>
     </div>
 
-    <!-- KPI 4: Pendientes Actuales al día de hoy (Stock abierto no condicionado al período) -->
     <div class="card kpi alert-card is-err" id="kpiPendCard">
       <div class="kpi-lbl">
         <span>Pendientes hoy</span>
-        <span class="chip err">Alcance global</span>
+        <span class="status-pill status-error">Alcance global</span>
       </div>
       <div class="kpi-pend-count" id="kpiPendMain">
         {% with cantidad=pendientes_actuales.sin_factura.cantidad %}
@@ -167,29 +154,26 @@
     </div>
   </div>
 
-  <!-- ESTADO VACÍO CUANDO NO HAY MOVIMIENTOS -->
   {% if reporte.totales.cantidad_solicitudes == 0 and reporte.totales.cantidad_pagos == 0 %}
   <div class="card empty-state" role="status" aria-live="polite">
-    <span class="chip warn">Sin movimientos registrados</span>
+    <span class="status-pill status-warning">Sin movimientos registrados</span>
     <h2>No se registraron movimientos con los criterios elegidos</h2>
     <p>No existen solicitudes ni pagos para el ejercicio y filtros seleccionados. Los pendientes actuales al día de hoy se mantienen visibles por separado.</p>
     <div class="empty-acts">
       {% if modalidad %}
-        <a href="?anio={{ reporte.anio }}&amp;corte={{ corte }}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn ghost">Mostrar todas las modalidades</a>
+        <a href="?anio={{ reporte.anio }}&amp;corte={{ corte }}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn btn-secondary">Mostrar todas las modalidades</a>
       {% endif %}
-      <a href="?anio={{ reporte.anio }}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn ghost">Restablecer filtros</a>
+      <a href="?anio={{ reporte.anio }}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}" class="btn btn-secondary">Restablecer filtros</a>
     </div>
   </div>
   {% endif %}
 
-  <!-- 3. GRÁFICOS COMPLEMENTARIOS (Columnas verticales apiladas + Barras horizontales) -->
   <div class="charts-grid">
-    <!-- Gráfico 1: Evolución por Cuatrimestre (Neto transferido + Retención ATP apilados) -->
     <div class="card chart-card" aria-labelledby="ch1Title" aria-describedby="ch1Desc ch1SrTable">
       <div class="chart-head">
         <div>
-          <h2 id="ch1Title">Evolución por Cuatrimestre ({{ reporte.anio }})</h2>
-          <p class="chart-q" id="ch1Desc">Gasto ejecutado apilado (Neto transferido + Retención ATP). Seleccioná una columna para filtrar el cuatrimestre.</p>
+          <h2 id="ch1Title">Evolución por cuatrimestre ({{ reporte.anio }})</h2>
+          <p class="chart-q" id="ch1Desc">Gasto ejecutado apilado (neto transferido + retención ATP). Seleccioná una columna para filtrar el cuatrimestre.</p>
         </div>
         <div class="legend" aria-hidden="true">
           <span class="leg-item"><span class="swatch sw-neto"></span>Neto transferido</span>
@@ -198,47 +182,49 @@
       </div>
 
       <div class="vchart-wrap">
-        <div class="vchart-yaxis font-tabular" aria-hidden="true"></div>
+        <div class="vchart-yaxis font-tabular{% if max_bruto_cuatrimestre == 0 %} vchart-yaxis--zero{% endif %}" aria-hidden="true">
+          {% if max_bruto_cuatrimestre > 0 %}
+            <span>{{ max_bruto_cuatrimestre|ars }}</span>
+            <span>{{ mitad_bruto_cuatrimestre|ars }}</span>
+            <span>$ 0,00</span>
+          {% else %}
+            <span>$ 0,00</span>
+          {% endif %}
+        </div>
         <div class="vchart-stage">
           <div class="vchart-plot" role="group" aria-label="Columnas de gasto ejecutado por cuatrimestre">
             {% for c in reporte.cuatrimestres %}
-              {% if c.cuatrimestre == 1 %}{% with c_code="C1" c_short="1° Cuatr." %}
+              {% if c.cuatrimestre == 1 %}{% with c_code="C1" %}
                 <a href="?anio={{ reporte.anio }}&amp;corte={% if corte == c_code %}ANIO{% else %}{{ c_code }}{% endif %}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}"
                    class="vcol-btn"
                    {% if corte == c_code %}aria-current="page"{% endif %}
-                   aria-label="{{ c.etiqueta }}: Gasto Bruto $ {{ c.monto_erogado_bruto|floatformat:'2g' }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Clic para filtrar este cuatrimestre.">
-                  <span class="vcol-val font-tabular">
-                    {% if c.monto_erogado_bruto > 0 %}$ {{ c.monto_erogado_bruto|floatformat:"2g" }}{% else %}$ 0{% endif %}
-                  </span>
+                   aria-label="{{ c.etiqueta }}: Gasto bruto {{ c.monto_erogado_bruto|ars }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Seleccioná para filtrar este cuatrimestre.">
+                  <span class="vcol-val font-tabular">{{ c.monto_erogado_bruto|ars }}</span>
                   <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
-                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: $ {{ c.monto_retencion_atp|floatformat:'2g' }}"></span>
-                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: $ {{ c.monto_neto_transferido|floatformat:'2g' }}"></span>
+                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>
+                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: {{ c.monto_neto_transferido|ars }}"></span>
                   </span>
                 </a>
-              {% endwith %}{% elif c.cuatrimestre == 2 %}{% with c_code="C2" c_short="2° Cuatr." %}
+              {% endwith %}{% elif c.cuatrimestre == 2 %}{% with c_code="C2" %}
                 <a href="?anio={{ reporte.anio }}&amp;corte={% if corte == c_code %}ANIO{% else %}{{ c_code }}{% endif %}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}"
                    class="vcol-btn"
                    {% if corte == c_code %}aria-current="page"{% endif %}
-                   aria-label="{{ c.etiqueta }}: Gasto Bruto $ {{ c.monto_erogado_bruto|floatformat:'2g' }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Clic para filtrar este cuatrimestre.">
-                  <span class="vcol-val font-tabular">
-                    {% if c.monto_erogado_bruto > 0 %}$ {{ c.monto_erogado_bruto|floatformat:"2g" }}{% else %}$ 0{% endif %}
-                  </span>
+                   aria-label="{{ c.etiqueta }}: Gasto bruto {{ c.monto_erogado_bruto|ars }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Seleccioná para filtrar este cuatrimestre.">
+                  <span class="vcol-val font-tabular">{{ c.monto_erogado_bruto|ars }}</span>
                   <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
-                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: $ {{ c.monto_retencion_atp|floatformat:'2g' }}"></span>
-                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: $ {{ c.monto_neto_transferido|floatformat:'2g' }}"></span>
+                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>
+                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: {{ c.monto_neto_transferido|ars }}"></span>
                   </span>
                 </a>
-              {% endwith %}{% else %}{% with c_code="C3" c_short="3° Cuatr." %}
+              {% endwith %}{% else %}{% with c_code="C3" %}
                 <a href="?anio={{ reporte.anio }}&amp;corte={% if corte == c_code %}ANIO{% else %}{{ c_code }}{% endif %}{% if modalidad %}&amp;modalidad={{ modalidad }}{% endif %}{% if centro_costo_seleccionado %}&amp;centro_costo={{ centro_costo_seleccionado }}{% endif %}{% if mostrar_sin_actividad %}&amp;sin_actividad=1{% endif %}"
                    class="vcol-btn"
                    {% if corte == c_code %}aria-current="page"{% endif %}
-                   aria-label="{{ c.etiqueta }}: Gasto Bruto $ {{ c.monto_erogado_bruto|floatformat:'2g' }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Clic para filtrar este cuatrimestre.">
-                  <span class="vcol-val font-tabular">
-                    {% if c.monto_erogado_bruto > 0 %}$ {{ c.monto_erogado_bruto|floatformat:"2g" }}{% else %}$ 0{% endif %}
-                  </span>
+                   aria-label="{{ c.etiqueta }}: Gasto bruto {{ c.monto_erogado_bruto|ars }} en {{ c.cantidad_pagos }} pago{{ c.cantidad_pagos|pluralize }}. Seleccioná para filtrar este cuatrimestre.">
+                  <span class="vcol-val font-tabular">{{ c.monto_erogado_bruto|ars }}</span>
                   <span class="vcol-stack" style="height: {{ c.porcentaje_bruto_grafico|default:0|unlocalize }}%;">
-                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: $ {{ c.monto_retencion_atp|floatformat:'2g' }}"></span>
-                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: $ {{ c.monto_neto_transferido|floatformat:'2g' }}"></span>
+                    <span class="vcol-seg-atp" style="height: {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%;" title="Retención ATP: {{ c.monto_retencion_atp|ars }}"></span>
+                    <span class="vcol-seg-neto" style="height: calc(100% - {{ c.porcentaje_atp_grafico|default:0|unlocalize }}%);" title="Neto transferido: {{ c.monto_neto_transferido|ars }}"></span>
                   </span>
                 </a>
               {% endwith %}{% endif %}
@@ -268,20 +254,19 @@
       </div>
 
       <div class="chart-foot font-tabular">
-        <span>Acumulado período ({{ reporte.anio }}): <b>$ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }}</b> ({{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }})</span>
-        <span>Neto: $ {{ reporte.totales.monto_neto_transferido|floatformat:"2g" }} · ATP: $ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}</span>
+        <span>Acumulado período ({{ reporte.anio }}): <b>{{ reporte.totales.monto_erogado_bruto|ars }}</b> ({{ reporte.totales.cantidad_pagos }} pago{{ reporte.totales.cantidad_pagos|pluralize }})</span>
+        <span>Neto: {{ reporte.totales.monto_neto_transferido|ars }} · ATP: {{ reporte.totales.monto_retencion_atp|ars }}</span>
       </div>
 
-      <!-- Alternativa textual accesible para lectores de pantalla -->
-      <div class="sr-only">
+      <div class="rep-sr-only">
         <table id="ch1SrTable">
           <caption>Valores exactos de evolución por cuatrimestre</caption>
           <thead>
             <tr>
               <th scope="col">Cuatrimestre</th>
               <th scope="col">Pagos</th>
-              <th scope="col">Gasto Bruto</th>
-              <th scope="col">Neto Transferido</th>
+              <th scope="col">Gasto bruto</th>
+              <th scope="col">Neto transferido</th>
               <th scope="col">Retención ATP</th>
             </tr>
           </thead>
@@ -290,9 +275,9 @@
             <tr>
               <td>{{ c.etiqueta }} ({{ c.fecha_inicio|date:"d/m/Y" }} al {{ c.fecha_fin|date:"d/m/Y" }})</td>
               <td>{{ c.cantidad_pagos }}</td>
-              <td>$ {{ c.monto_erogado_bruto|floatformat:"2g" }}</td>
-              <td>$ {{ c.monto_neto_transferido|floatformat:"2g" }}</td>
-              <td>$ {{ c.monto_retencion_atp|floatformat:"2g" }}</td>
+              <td>{{ c.monto_erogado_bruto|ars }}</td>
+              <td>{{ c.monto_neto_transferido|ars }}</td>
+              <td>{{ c.monto_retencion_atp|ars }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -300,11 +285,10 @@
       </div>
     </div>
 
-    <!-- Gráfico 2: Top Centros de Costo (Barras horizontales limpias) -->
     <div class="card chart-card" aria-labelledby="ch2Title" aria-describedby="ch2Desc">
       <div class="chart-head">
         <div>
-          <h2 id="ch2Title">Top Centros de Costo del Período</h2>
+          <h2 id="ch2Title">Top centros de costo del período</h2>
           <p class="chart-q" id="ch2Desc">Hasta seis centros, ordenados por gasto bruto pagado en el período.</p>
         </div>
       </div>
@@ -314,7 +298,7 @@
           <div class="hbar-row">
             <div class="hbar-head">
               <span class="hbar-label"><b>{{ cc.codigo }}</b> · {{ cc.nombre }}</span>
-              <span class="hbar-metric font-tabular">$ {{ cc.monto_erogado_bruto|floatformat:"2g" }}</span>
+              <span class="hbar-metric font-tabular">{{ cc.monto_erogado_bruto|ars }}</span>
             </div>
             <div class="hbar-track" aria-hidden="true">
               <span class="hbar-fill" style="width: {{ cc.porcentaje_bruto_grafico|default:0|unlocalize }}%;"></span>
@@ -325,18 +309,17 @@
         {% endfor %}
       </div>
 
-      <div class="chart-foot rep-chart-foot">
+      <div class="chart-foot rep-chart-foot font-tabular">
         <a href="#desglose-centros" class="btn ghost">Ver desglose por centro</a>
-        <span>Total erogado del período: <b>$ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }}</b></span>
+        <span>Total erogado del período: <b>{{ reporte.totales.monto_erogado_bruto|ars }}</b></span>
       </div>
     </div>
   </div>
 
-  <!-- 4. ÚNICA TABLA INFERIOR: Desglose por Centro de Costo -->
   <div class="card table-card" id="desglose-centros" tabindex="-1">
     <div class="table-head">
       <div>
-        <h2 id="tblCcTitle">Desglose por Centro de Costo</h2>
+        <h2 id="tblCcTitle">Desglose por centro de costo</h2>
         <p id="tblCcSub">Consolidado de solicitudes, compromisos pendientes y gasto ejecutado por área para el período seleccionado.</p>
       </div>
       {% if not centro_costo_seleccionado %}
@@ -350,45 +333,45 @@
       <table class="dense mob-cards" aria-labelledby="tblCcTitle">
         <thead>
           <tr>
-            <th scope="col">Centro de Costo</th>
+            <th scope="col">Centro de costo</th>
             <th scope="col" class="cnt">Solicitudes</th>
-            <th scope="col" class="num">Comprometido (Por pagar)</th>
+            <th scope="col" class="num">Comprometido (por pagar)</th>
             <th scope="col" class="num">Bruto Pagado</th>
             <th scope="col" class="num">Retención ATP</th>
-            <th scope="col" class="num">Neto Transferido</th>
+            <th scope="col" class="num">Neto transferido</th>
           </tr>
         </thead>
         <tbody>
           {% for cc in centros_costo_tabla %}
           <tr>
-            <td data-label="Centro de Costo">
+            <td data-label="Centro de costo">
               <div class="cc-cell-title">
                 <span class="cc-cell-code">{{ cc.codigo }}</span>
                 <span>{{ cc.nombre }}</span>
                 {% if not cc.activo %}
-                  <span class="chip neu">Inactivo</span>
+                  <span class="status-pill status-neutral">Inactivo</span>
                 {% endif %}
               </div>
             </td>
-            <td data-label="Solicitudes" class="cnt">
+            <td data-label="Solicitudes" class="cnt font-tabular">
               <b>{{ cc.cantidad_solicitudes }}</b>
-              <div class="cc-cell-sub font-tabular">$ {{ cc.monto_solicitado|floatformat:"2g" }}</div>
+              <div class="cc-cell-sub font-tabular">{{ cc.monto_solicitado|ars }}</div>
             </td>
-            <td data-label="Comprometido (Por pagar)" class="num" style="color:{% if cc.monto_comprometido > 0 %}var(--blue);font-weight:700{% else %}var(--sub){% endif %}">
-              $ {{ cc.monto_comprometido|floatformat:"2g" }}
+            <td data-label="Comprometido (por pagar)" class="num font-tabular">
+              {{ cc.monto_comprometido|ars }}
               {% if cc.cantidad_comprometida > 0 %}
                 <div class="cc-cell-sub">{{ cc.cantidad_comprometida }} aceptada{{ cc.cantidad_comprometida|pluralize }}</div>
               {% endif %}
             </td>
-            <td data-label="Bruto Pagado" class="num" style="font-weight:700">
-              $ {{ cc.monto_erogado_bruto|floatformat:"2g" }}
+            <td data-label="Bruto Pagado" class="num font-tabular rep-col-bruto">
+              {{ cc.monto_erogado_bruto|ars }}
               <div class="cc-cell-sub">{{ cc.cantidad_pagos }} pago{{ cc.cantidad_pagos|pluralize }}</div>
             </td>
-            <td data-label="Retención ATP" class="num" style="color:var(--warn)">
-              $ {{ cc.monto_retencion_atp|floatformat:"2g" }}
+            <td data-label="Retención ATP" class="num font-tabular">
+              {{ cc.monto_retencion_atp|ars }}
             </td>
-            <td data-label="Neto Transferido" class="num" style="color:var(--ok);font-weight:700">
-              $ {{ cc.monto_neto_transferido|floatformat:"2g" }}
+            <td data-label="Neto transferido" class="num font-tabular">
+              {{ cc.monto_neto_transferido|ars }}
             </td>
           </tr>
           {% empty %}
@@ -400,20 +383,20 @@
         <tfoot>
           <tr>
             <td data-label="Total">TOTAL DEL PERÍODO</td>
-            <td data-label="Solicitudes" class="cnt">
-              {{ reporte.totales.cantidad_solicitudes }} ($ {{ reporte.totales.monto_solicitado|floatformat:"2g" }})
+            <td data-label="Solicitudes" class="cnt font-tabular">
+              {{ reporte.totales.cantidad_solicitudes }} ({{ reporte.totales.monto_solicitado|ars }})
             </td>
-            <td data-label="Comprometido (Por pagar)" class="num" style="color:var(--blue)">
-              $ {{ reporte.totales.monto_comprometido|floatformat:"2g" }}
+            <td data-label="Comprometido (por pagar)" class="num font-tabular">
+              {{ reporte.totales.monto_comprometido|ars }}
             </td>
-            <td data-label="Bruto Pagado" class="num">
-              $ {{ reporte.totales.monto_erogado_bruto|floatformat:"2g" }} ({{ reporte.totales.cantidad_pagos }})
+            <td data-label="Bruto Pagado" class="num font-tabular">
+              {{ reporte.totales.monto_erogado_bruto|ars }} ({{ reporte.totales.cantidad_pagos }})
             </td>
-            <td data-label="Retención ATP" class="num" style="color:var(--warn)">
-              $ {{ reporte.totales.monto_retencion_atp|floatformat:"2g" }}
+            <td data-label="Retención ATP" class="num font-tabular">
+              {{ reporte.totales.monto_retencion_atp|ars }}
             </td>
-            <td data-label="Neto Transferido" class="num" style="color:var(--ok)">
-              $ {{ reporte.totales.monto_neto_transferido|floatformat:"2g" }}
+            <td data-label="Neto transferido" class="num font-tabular">
+              {{ reporte.totales.monto_neto_transferido|ars }}
             </td>
           </tr>
         </tfoot>
