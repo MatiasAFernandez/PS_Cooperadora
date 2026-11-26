@@ -1,5 +1,6 @@
 """Pruebas end-to-end en navegador aislado para los ajustes de UX de pago documentado #15."""
 
+import os
 from typing import Any
 
 import pytest
@@ -11,6 +12,23 @@ from gastos.models import EstadoSolicitud
 from tests.soporte_pagos import pdf_comprobante
 
 sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
+
+
+def _lanzar_navegador(p: Any) -> Any:
+    """Lanza Chromium de Playwright, opcionalmente vía env, o canales Chrome/Edge."""
+    exe = os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", "").strip()
+    if exe:
+        return p.chromium.launch(executable_path=exe, headless=True)
+    for kwargs in (
+        {"headless": True},
+        {"channel": "chrome", "headless": True},
+        {"channel": "msedge", "headless": True},
+    ):
+        try:
+            return p.chromium.launch(**kwargs)
+        except Exception:
+            continue
+    return p.chromium.launch(headless=True)
 
 CAPS_PAGO_UI = (
     "gastos.consultar_todas",
@@ -60,7 +78,7 @@ def test_recorrido_1_detalle_y_alta_sin_respaldo(
     host = live_server.url.split("://")[1].split(":")[0]
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
+        browser = _lanzar_navegador(p)
         context = browser.new_context(viewport={"width": ancho, "height": 900})
         context.add_cookies([
             {
@@ -145,7 +163,7 @@ def test_recorrido_2_alta_interactiva_novalidate_y_correcciones(
     pdf_path.write_bytes(pdf_comprobante().read())
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
+        browser = _lanzar_navegador(p)
         context = browser.new_context(viewport={"width": ancho, "height": 900})
         context.add_cookies([
             {

@@ -372,7 +372,7 @@
             <section class="sd-card" aria-labelledby="historial-heading">
                 <details class="sd-details sd-details-flush">
                     <summary id="historial-heading">Historial de decisiones, pagos y documentos</summary>
-                    {% include "comunes/historial_eventos.html" with historial=cronologia %}
+                    {% include "comunes/historial_eventos.html" with historial=cronologia_presentacion %}
                     {% for version in versiones_documentales %}
                         {% if not version.vigente %}
                             <p class="sd-small sd-replaced-row">

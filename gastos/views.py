@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
+from comunes.actores import presentar_historial, resolver_actores_visibles
 from comunes.models import Circuito
 from documentos.models import Documento
 from documentos.operaciones import operacion_documental
@@ -1297,6 +1298,14 @@ def _solicitud_detail_context(
         "ultima_decision": decisiones[-1] if decisiones else None,
         "pago_consulta": pago_consulta,
         "cronologia": cronologia,
+        "cronologia_presentacion": presentar_historial(
+            cronologia,
+            resolver_actores_visibles(
+                (evento.actor_id for evento in cronologia),
+                puede_ver_internos=has_capability(actor, "gastos.consultar_todas"),
+                titular_actor_id=solicitud.solicitante_id,
+            ),
+        ),
         "can_decide": can_decide,
         "acciones_decision": acciones_decision,
         "decision_form": decision_form,

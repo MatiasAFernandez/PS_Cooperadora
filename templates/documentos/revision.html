@@ -141,7 +141,7 @@
     <section class="card doc-rev-card" aria-labelledby="titulo-historial-documental">
         <h2 id="titulo-historial-documental" class="doc-rev-h2">Historial de esta versión</h2>
         {% if historial %}
-            {% include "comunes/historial_eventos.html" %}
+            {% include "comunes/historial_eventos.html" with historial=historial_presentacion %}
         {% else %}
             <p class="doc-rev-muted">Todavía no se registraron revisiones para esta versión.</p>
         {% endif %}

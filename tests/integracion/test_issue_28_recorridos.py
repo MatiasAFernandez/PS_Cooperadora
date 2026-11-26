@@ -244,11 +244,8 @@ def test_dos_recorridos_http_preservan_estados_documentos_e_historial(recorridos
         eventos = respuesta.context["cronologia" if cliente is a else "historial"]
         assert eventos
         for evento in eventos:
-            if cliente is a:
-                assert f"actor #{evento.actor_id}" in html
-            else:
-                assert f"actor #{evento.actor_id}" not in html
-                assert "Titular" in html or "Cooperadora" in html
+            assert f"actor #{evento.actor_id}" not in html
+            assert "Titular" in html or "Cooperadora" in html
             assert timezone.localtime(evento.fecha_hora).strftime("%d/%m/%Y %H:%M:%S") in html
             assert evento.tramite_ref == (
                 f"gastos:{e.gasto.pk}" if cliente is a else f"facturacion:{s.pk}"

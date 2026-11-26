@@ -4,7 +4,6 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import get_user_model
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
@@ -14,6 +13,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views import View
 
+from comunes.actores import resolver_actores_visibles
 from documentos.policy import ArchivoInvalido, TipoArchivoNoSoportado
 from documentos.revision import estado_revision_vigente
 from documentos.services import documentos_visibles
@@ -99,23 +99,11 @@ def _actores_visibles(actor, solicitud, *, comprobantes, cobros, historial):
             if verif is not None and verif.actor_id is not None:
                 ids_texto.add(str(verif.actor_id))
 
-    if has_capability(actor, "facturacion.consultar_todas"):
-        ids_int = [int(i) for i in ids_texto if i.isdigit()]
-        mapa = {}
-        if ids_int:
-            User = get_user_model()
-            for usuario in User.objects.filter(pk__in=ids_int).only(
-                "id", "username", "first_name", "last_name"
-            ):
-                nombre = usuario.get_full_name().strip() or usuario.get_username()
-                mapa[str(usuario.pk)] = nombre
-        return mapa
-
-    titular_id = str(solicitud.tramite_base.solicitante_actor_id)
-    return {
-        clave: ("Titular" if clave == titular_id else "Cooperadora")
-        for clave in ids_texto
-    }
+    return resolver_actores_visibles(
+        ids_texto,
+        puede_ver_internos=has_capability(actor, "facturacion.consultar_todas"),
+        titular_actor_id=solicitud.tramite_base.solicitante_actor_id,
+    )
 
 
 class FacturacionView(View):

@@ -121,3 +121,8 @@ class FormatoCuitYHistorialTests(SimpleTestCase):
         self.assertEqual(estado_historial("PENDIENTE"), "Pendiente")
         self.assertEqual(estado_historial("CERRADA"), "Cerrada")
         self.assertEqual(estado_historial("Cerrada"), "Cerrada")
+        self.assertEqual(estado_historial("aceptada"), "Aceptada")
+        self.assertEqual(estado_historial("pagada"), "Pagada")
+        self.assertEqual(estado_historial("observada"), "Observada")
+        self.assertEqual(estado_historial("ACEPTADO"), "Aceptado")
+        self.assertEqual(estado_historial("desconocido_custom"), "desconocido_custom")

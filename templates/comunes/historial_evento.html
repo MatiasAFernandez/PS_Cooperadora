@@ -33,10 +33,10 @@
                     {{ evento.tipo_evento }}
                 {% endif %}
             </strong>
-            — {{ evento.fecha_hora|date:"d/m/Y H:i:s" }}
+            — <span class="font-tabular">{{ evento.fecha_hora|date:"d/m/Y H:i:s" }}</span>
             — trámite {{ evento.tramite_ref }}
-            — actor #{{ evento.actor_id }}
-            — {% if evento.tipo_evento == "envio_informado" or evento.tipo_evento == "recepcion_confirmada" %}hecho de comunicación{% elif evento.tipo_evento == "revision_documental" %}resultado documental{% elif evento.tipo_evento == "aporte_documental" %}hecho documental{% elif evento.tipo_evento == "comprobante_externo_registrado" or evento.tipo_evento == "comprobante_externo_corregido" %}registro del comprobante{% elif evento.tipo_evento == "actualizacion_respaldo" %}vínculo documental{% elif evento.tipo_evento == "cobro_informado" or evento.tipo_evento == "cobro_verificado" or evento.tipo_evento == "cobro_rectificado" %}verificación del ingreso{% else %}estado del trámite{% endif %}: {{ evento.estado_resultante }}
+            — {% if evento.actor_visible %}{{ evento.actor_visible }}{% else %}actor #{{ evento.actor_id }}{% endif %}
+            — {% if evento.tipo_evento == "envio_informado" or evento.tipo_evento == "recepcion_confirmada" %}hecho de comunicación{% elif evento.tipo_evento == "revision_documental" %}resultado documental{% elif evento.tipo_evento == "aporte_documental" %}hecho documental{% elif evento.tipo_evento == "comprobante_externo_registrado" or evento.tipo_evento == "comprobante_externo_corregido" %}registro del comprobante{% elif evento.tipo_evento == "actualizacion_respaldo" %}vínculo documental{% elif evento.tipo_evento == "cobro_informado" or evento.tipo_evento == "cobro_verificado" or evento.tipo_evento == "cobro_rectificado" %}verificación del ingreso{% else %}estado del trámite{% endif %}: {% if evento.estado_visible %}{{ evento.estado_visible }}{% else %}{{ evento.estado_resultante }}{% endif %}
             {% if evento.motivo_o_detalle %}
                 <p>{{ evento.motivo_o_detalle }}</p>
             {% endif %}

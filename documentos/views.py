@@ -10,6 +10,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from comunes.actores import presentar_historial, resolver_actores_visibles
 from comunes.models import Circuito
 from facturacion.choices import ModalidadCobro
 from facturacion.models import CobroExterno
@@ -167,6 +168,20 @@ def documento_revision(request, documento_id: int):
             ).distinct()
             medios = dict(ModalidadCobro.choices)
             cobros_revision = [(cobro, medios.get(cobro.medio, cobro.medio)) for cobro in cobros]
+        historial = [r.como_historial() for r in revisiones]
+        cap_consulta_circuito = (
+            "facturacion.consultar_todas"
+            if base.circuito == Circuito.FACTURACION
+            else "gastos.consultar_todas"
+        )
+        actores_visibles = resolver_actores_visibles(
+            (evento.actor_id for evento in historial),
+            puede_ver_internos=(
+                has_capability(actor, "documentos.revisar")
+                or has_capability(actor, cap_consulta_circuito)
+            ),
+            titular_actor_id=base.solicitante_actor_id,
+        )
         respuesta = render(request, "documentos/revision.html", {
             "actor": actor, "documento": documento, "actual": actual, "vigente": vigente,
             "numero_solicitud": numero_solicitud, "solicitud_url": solicitud_url,
@@ -175,7 +190,8 @@ def documento_revision(request, documento_id: int):
             "cobros_revision": cobros_revision,
             "puede_revisar": puede_revisar, "form": form,
             "puede_descargar": has_capability(actor, "documentos.recuperar_contenido"),
-            "historial": [r.como_historial() for r in revisiones],
+            "historial": historial,
+            "historial_presentacion": presentar_historial(historial, actores_visibles),
         }, status=status)
     except DocumentoNoVisible as exc:
         raise Http404(str(exc)) from exc

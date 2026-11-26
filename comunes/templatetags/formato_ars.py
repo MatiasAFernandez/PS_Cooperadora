@@ -11,7 +11,11 @@ _CUIT_DIGITOS = re.compile(r"^\d{11}$")
 
 _ESTADOS_HISTORIAL = {
     "PRESENTADA": "Presentada",
+    "ACEPTADA": "Aceptada",
     "OBSERVADA": "Observada",
+    "RECHAZADA": "Rechazada",
+    "POSTERGADA": "Postergada",
+    "PAGADA": "Pagada",
     "FACTURADA_PENDIENTE_COBRO": "Facturada pendiente de cobro",
     "COBRADA_EN_REVISION": "Cobrada en revisión",
     "CERRADA": "Cerrada",
@@ -25,6 +29,10 @@ _ESTADOS_HISTORIAL = {
     "REGISTRADO": "Registrado",
     "CORREGIDO": "Corregido",
     "ACTUALIZADO": "Actualizado",
+    "APORTADO": "Aportado",
+    "REEMPLAZADO": "Reemplazado",
+    "REEMPLAZADA": "Reemplazada",
+    "VIGENTE": "Vigente",
     "ENVIADO": "Enviado",
     "RECIBIDO": "Recibido",
     "VINCULO_ACTUALIZADO": "Vínculo actualizado",
@@ -112,4 +120,4 @@ def estado_historial(valor):
     texto = str(valor).strip()
     if not texto:
         return "—"
-    return _ESTADOS_HISTORIAL.get(texto, texto)
+    return _ESTADOS_HISTORIAL.get(texto.upper(), texto)
