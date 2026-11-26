@@ -235,7 +235,7 @@
   align-items: center;
   gap: 0.35rem;
   flex: none;
-  color: var(--brand-primary);
+  color: var(--brand-link);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
 }

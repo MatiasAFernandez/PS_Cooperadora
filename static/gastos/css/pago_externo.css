@@ -61,7 +61,7 @@
 
 .registro-pago details > summary {
   cursor: pointer;
-  color: var(--brand-primary);
+  color: var(--brand-link);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
 }
@@ -542,7 +542,7 @@ html:not(.js) .registro-pago .rp-dropzone .rp-file-input {
 .registro-pago .rp-tooltip-trigger:focus-visible {
   border-color: var(--brand-primary);
   background: var(--brand-soft);
-  color: var(--brand-primary);
+  color: var(--brand-link);
 }
 
 .registro-pago .rp-tooltip-bubble {
@@ -553,8 +553,9 @@ html:not(.js) .registro-pago .rp-dropzone .rp-file-input {
   width: max-content;
   max-width: 260px;
   padding: 0.45rem 0.65rem;
-  background: var(--ink-strong);
-  color: var(--bg-surface);
+  border: 1px solid var(--tooltip-border);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
   font-size: var(--text-xs);
   font-weight: var(--font-normal);
   line-height: 1.35;

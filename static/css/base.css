@@ -80,7 +80,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; paddin
     border: 0;
     border-radius: var(--radius-md);
     background: var(--brand-primary);
-    color: var(--bg-surface);
+    color: var(--ink-on-accent);
     font-size: var(--text-sm);
     font-weight: var(--font-medium);
     cursor: pointer;
@@ -168,7 +168,7 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
 }
 .history-current {
     margin: 0 0 0.4rem;
-    color: var(--brand-primary);
+    color: var(--brand-link);
     font-weight: var(--font-semibold);
     font-size: var(--text-xs);
     text-transform: uppercase;
@@ -235,7 +235,7 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
     transition: color var(--transition-fast);
 }
 .page-back:hover {
-    color: var(--brand-primary);
+    color: var(--brand-link);
     text-decoration: underline;
 }
 .page-back--arrow::before {
@@ -401,8 +401,8 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
     text-decoration: none;
 }
 .ui-tabs-underline > a[aria-current="page"] {
-    color: var(--brand-primary);
-    border-bottom-color: var(--brand-primary);
+    color: var(--brand-link);
+    border-bottom-color: var(--brand-link);
     font-weight: var(--font-semibold);
 }
 
@@ -491,7 +491,7 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
     appearance: none;
     -webkit-appearance: none;
     padding-right: 34px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: var(--select-chevron);
     background-repeat: no-repeat;
     background-position: right 10px center;
     background-size: 15px 15px;
@@ -629,7 +629,7 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
     letter-spacing: 0.04em;
 }
 .gestion-respuestas-link {
-    color: var(--brand-primary);
+    color: var(--brand-link);
     font-weight: var(--font-medium);
     text-decoration: underline;
     text-underline-offset: 2px;

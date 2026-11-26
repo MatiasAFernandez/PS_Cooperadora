@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/navegacion.css' %}">
-    <script>document.documentElement.classList.add('js');try{if(localStorage.getItem('navRail')==='1'){document.documentElement.setAttribute('data-nav-rail','true');}}catch(e){}</script>
+    <script>document.documentElement.classList.add('js');try{if(localStorage.getItem('navRail')==='1'){document.documentElement.setAttribute('data-nav-rail','true');}var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}</script>
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>

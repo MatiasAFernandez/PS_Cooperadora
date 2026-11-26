@@ -179,7 +179,7 @@
 }
 
 .rep-wrap .fac-detalle > summary:hover {
-  color: var(--brand-primary);
+  color: var(--brand-link);
 }
 
 .rep-wrap .fac-chevron {

@@ -293,7 +293,7 @@
 
 .fac-fila-titulo:hover,
 .fac-fila-titulo:focus-visible {
-    color: var(--brand-primary);
+    color: var(--brand-link);
     text-decoration: underline;
     text-underline-offset: 2px;
     text-decoration-thickness: 1.2px;
@@ -454,7 +454,7 @@ body:has(.fac-drawer[open]) {
 }
 
 .fac-drawer::backdrop {
-    background: rgb(17 24 39 / 0.34);
+    background: var(--backdrop-bg);
     backdrop-filter: blur(2px);
 }
 

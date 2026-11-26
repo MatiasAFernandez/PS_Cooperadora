@@ -132,7 +132,7 @@
 }
 
 .cuentas-footer a {
-    color: var(--brand-primary);
+    color: var(--brand-link);
     text-decoration: none;
     font-weight: var(--font-medium);
 }
