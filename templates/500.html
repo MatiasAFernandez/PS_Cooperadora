@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error del servidor — PS Cooperadora</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #f7f7f5;
+            color: #374151;
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .topbar {
+            background: #fbfbfa;
+            border-bottom: 1px solid #e3e3de;
+            padding: 12px 24px;
+        }
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: #111827;
+            text-decoration: none;
+        }
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #162f52;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .brand-title {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .brand-sub {
+            display: block;
+            font-size: 11px;
+            color: #6b7280;
+            line-height: 1.2;
+        }
+        main {
+            max-width: 560px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #e3e3de;
+            border-radius: 12px;
+            padding: 28px 30px;
+            box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: #fef2f2;
+            color: #b91c1c;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .pill::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+        h1 {
+            margin: 14px 0 10px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.25;
+        }
+        p {
+            margin: 0 0 20px;
+            font-size: 14px;
+            line-height: 1.55;
+            color: #374151;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            padding: 0 16px;
+            border-radius: 8px;
+            background: #1e4273;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        .btn:hover { background: #153156; }
+        .btn:focus-visible { outline: 2px solid #3b6fd8; outline-offset: 2px; }
+        @media (max-width: 959px) {
+            main { margin: 20px auto; }
+            .card { padding: 22px 18px; }
+            .btn { width: 100%; min-height: 44px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a href="/cuentas/" class="brand">
+            <span class="brand-badge">UTN</span>
+            <span>
+                <span class="brand-title">Cooperadora</span>
+                <span class="brand-sub">UTN FRRe</span>
+            </span>
+        </a>
+    </header>
+    <main>
+        <section class="card" aria-labelledby="error-500-titulo">
+            <span class="pill">Error 500</span>
+            <h1 id="error-500-titulo">Ocurrió un error inesperado</h1>
+            <p>
+                No pudimos completar tu solicitud en este momento. Intentá nuevamente en unos minutos;
+                si el problema continúa, avisá al equipo de Cooperadora.
+            </p>
+            <a href="/cuentas/" class="btn">Volver al inicio</a>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,7 +1,35 @@
 {{ form.configuracion_revision.errors }}{{ form.configuracion_revision }}
-{% for clave, campo in form.fields.items %}{% if clave in form.campos_adicionales %}
-{% for field in form %}{% if field.name == clave %}
-{% if campo.es_seccion %}<section class="ns-section"><h3>{{ campo.label }}</h3><p>{{ campo.help_text }}</p></section>
-{% else %}<div class="form-group">{{ field.label_tag }}{{ field }}{% if field.help_text %}<p>{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>{% endif %}
-{% endif %}{% endfor %}
-{% endif %}{% endfor %}
+{% if form.campos_adicionales %}
+<section class="gestion-extra-card" aria-label="Campos adicionales">
+    <div class="gestion-extra-fields">
+    {% for clave, campo in form.fields.items %}{% if clave in form.campos_adicionales %}
+        {% for field in form %}{% if field.name == clave %}
+            {% if campo.es_seccion %}
+                <div class="gestion-extra-section">
+                    <h3 class="gestion-extra-heading">{{ campo.label }}</h3>
+                    {% if campo.help_text %}<p class="gestion-extra-lead">{{ campo.help_text }}</p>{% endif %}
+                </div>
+            {% elif field.field.widget.input_type == "checkbox" and not field.field.widget.allow_multiple_selected %}
+                <div class="gestion-extra-field gestion-extra-field--full{% if field.errors %} has-error{% endif %}">
+                    <label class="gestion-extra-check" for="{{ field.id_for_label }}">
+                        {{ field }}
+                        <span class="gestion-extra-check-copy">
+                            <span class="gestion-extra-check-title">{{ field.label }}{% if not field.field.required %} <span class="field-optional">(Opcional)</span>{% endif %}</span>
+                            {% if field.help_text %}<span class="gestion-extra-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</span>{% endif %}
+                        </span>
+                    </label>
+                    {% if field.errors %}<div id="{{ field.id_for_label }}_error" class="gestion-extra-error" role="alert">{{ field.errors }}</div>{% endif %}
+                </div>
+            {% else %}
+                <div class="gestion-extra-field{% if field.field.widget.input_type == 'radio' or field.field.widget.allow_multiple_selected or field.field.widget.input_type == 'file' %} gestion-extra-field--full{% endif %}{% if field.errors %} has-error{% endif %}">
+                    <label class="gestion-extra-label" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="field-optional">(Opcional)</span>{% endif %}</label>
+                    {{ field }}
+                    {% if field.help_text %}<p class="gestion-extra-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</p>{% endif %}
+                    {% if field.errors %}<div id="{{ field.id_for_label }}_error" class="gestion-extra-error" role="alert">{{ field.errors }}</div>{% endif %}
+                </div>
+            {% endif %}
+        {% endif %}{% endfor %}
+    {% endif %}{% endfor %}
+    </div>
+</section>
+{% endif %}

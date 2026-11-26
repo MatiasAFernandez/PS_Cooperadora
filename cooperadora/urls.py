@@ -13,3 +13,7 @@ urlpatterns = [
     path("demo/", include("identidad.urls")),
     path("cuentas/", include("identidad.urls_local")),
 ]
+
+handler403 = "comunes.error_views.error_403"
+handler404 = "comunes.error_views.error_404"
+handler500 = "comunes.error_views.error_500"

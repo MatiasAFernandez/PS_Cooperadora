@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Página no encontrada — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Página no encontrada — PS Cooperadora{% endblock %}
+
+{% block content %}
+<section class="error-page" aria-labelledby="error-404-titulo">
+    <div class="card error-page-card">
+        <span class="status-pill status-warning error-page-code">Error 404</span>
+        <h1 class="error-page-title" id="error-404-titulo">No encontramos la página que buscás</h1>
+        <p class="error-page-desc">
+            El enlace puede estar mal escrito, haber vencido o corresponder a un trámite que no está disponible para tu cuenta.
+        </p>
+        <div class="error-page-actions">
+            {% if actor %}
+                <a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="btn btn-primary">Volver al inicio</a>
+            {% else %}
+                <a href="{% if acceso_local %}{% url 'cuentas:login' %}{% else %}{% url 'identidad:login' %}{% endif %}" class="btn btn-primary">Iniciar sesión</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
