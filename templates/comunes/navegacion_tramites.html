@@ -3,15 +3,16 @@
 <div class="app-nav-scrim" id="app-nav-scrim" hidden></div>
 <aside class="app-nav" id="app-nav" aria-label="Navegación principal">
     <div class="app-nav-head">
-        <a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" title="Inicio de Cooperadora">
-            <span class="brand-badge">UTN</span>
+        <a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" id="app-brand-link" aria-label="Asociación Cooperadora — Universidad Tecnológica Nacional, Facultad Regional Resistencia">
+            {% include "comunes/_logo_utn.html" %}
             <span class="brand-copy">
                 <span class="brand-title">Cooperadora</span>
-                <span class="brand-sub">UTN FRRe</span>
+                <span class="brand-sub">UTN · FRRe</span>
             </span>
         </a>
-        <button type="button" class="btn-icon app-nav-toggle" id="app-nav-toggle" aria-controls="app-nav" aria-label="Plegar menú" title="Plegar menú">
-            <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path id="app-nav-toggle-icon" d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg>
+        <button type="button" class="btn-icon app-nav-toggle" id="app-nav-toggle" aria-controls="app-nav" aria-expanded="true" aria-label="Plegar menú">
+            <svg class="app-ic" id="app-nav-toggle-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+            <span class="app-tip" id="app-nav-toggle-tip" aria-hidden="true">Plegar menú</span>
         </button>
     </div>
     <nav class="app-nav-body" aria-label="Navegación de trámites">
@@ -56,26 +57,53 @@
             <ul>
                 <li><a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" title="Inicio"{% if ns == "identidad" and name == "inicio" or ns == "cuentas" and name == "inicio" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="app-nl">Inicio</span></a></li>
                 {% if "gastos.consultar_propias" in caps or "gastos.consultar_todas" in caps %}
-                <li><a href="{% url 'avisos:lista' %}" title="Avisos" data-avisos-contador-url="{% url 'avisos:contador' %}"{% if ns == "avisos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="app-nl">Avisos</span><span class="app-nav-badge" data-avisos-contador hidden></span></a></li>
-                {% endif %}
-                {% if request.user.cuenta_local %}
-                <li><a href="{% url 'cuentas:cambiar_clave' %}" title="Cambiar contraseña"{% if ns == 'cuentas' and name == 'cambiar_clave' %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="app-nl">Cambiar contraseña</span></a></li>
+                <li><a href="{% url 'avisos:lista' %}" title="Avisos" data-avisos-contador-url="{% url 'avisos:contador' %}"{% if ns == "avisos" %} aria-current="page"{% endif %}><svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="app-nl">Avisos</span><span class="app-nav-badge" data-avisos-contador hidden></span><span class="app-nav-dot" data-avisos-dot hidden aria-hidden="true"></span></a></li>
                 {% endif %}
             </ul>
         </div>
     </nav>
     <div class="app-nav-footer">
-        <span class="app-user-avatar" aria-hidden="true">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username|slice:":2"|upper }}{% else %}US{% endif %}</span>
-        <div class="app-user-meta">
-            <span class="app-user-name">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username }}{% else %}Cuenta activa{% endif %}</span>
-            <span class="app-user-role">{% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}Cooperadora{% elif "gastos.presentar" in caps or "facturacion.presentar" in caps %}Solicitante{% else %}Consulta{% endif %}</span>
-        </div>
-        <form method="post" action="{% if request.user.cuenta_local %}{% url 'cuentas:logout' %}{% else %}{% url 'identidad:logout' %}{% endif %}" class="app-logout-form">
-            {% csrf_token %}
-            <button class="btn-icon app-logout" type="submit" aria-label="Cerrar sesión" title="Cerrar sesión">
-                <svg class="app-ic app-ic-sm" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-            </button>
-        </form>
+        <details class="app-account-menu" id="app-account-menu">
+            <summary class="app-account-trigger" aria-label="Menú de cuenta de {% if request.user %}{{ request.user.get_full_name|default:request.user.get_username }}{% else %}Cuenta activa{% endif %}">
+                <span class="app-user-avatar" aria-hidden="true">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username|slice:":2"|upper }}{% else %}US{% endif %}</span>
+                <span class="app-user-meta">
+                    <span class="app-user-name">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username }}{% else %}Cuenta activa{% endif %}</span>
+                    <span class="app-user-role">{% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}Cooperadora{% elif "gastos.presentar" in caps or "facturacion.presentar" in caps %}Solicitante{% else %}Consulta{% endif %}</span>
+                </span>
+                <svg class="app-ic app-account-caret" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                <span class="app-tip" aria-hidden="true">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username }}{% else %}Cuenta activa{% endif %} · Cuenta</span>
+            </summary>
+            <div class="app-account-popover">
+                <div class="app-account-header">
+                    <div class="app-account-header-top">
+                        <span class="app-account-header-name">{% if request.user %}{{ request.user.get_full_name|default:request.user.get_username }}{% else %}Cuenta activa{% endif %}</span>
+                        <span class="app-account-role-tag">{% if "gastos.consultar_todas" in caps or "facturacion.consultar_todas" in caps %}Cooperadora{% elif "gastos.presentar" in caps or "facturacion.presentar" in caps %}Solicitante{% else %}Consulta{% endif %}</span>
+                    </div>
+                    {% if request.user and request.user.email %}
+                    <span class="app-account-header-email">{{ request.user.email }}</span>
+                    {% endif %}
+                </div>
+                {% if request.user and request.user.cuenta_local %}
+                <div class="app-account-sep" aria-hidden="true"></div>
+                <a href="{% url 'cuentas:estado' %}" class="app-account-item"{% if ns == 'cuentas' and name == 'estado' %} aria-current="page"{% endif %}>
+                    <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                    <span>Mi cuenta</span>
+                </a>
+                <a href="{% url 'cuentas:cambiar_clave' %}" class="app-account-item"{% if ns == 'cuentas' and name == 'cambiar_clave' %} aria-current="page"{% endif %}>
+                    <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Cambiar contraseña</span>
+                </a>
+                {% endif %}
+                <div class="app-account-sep" aria-hidden="true"></div>
+                <form method="post" action="{% if request.user.cuenta_local %}{% url 'cuentas:logout' %}{% else %}{% url 'identidad:logout' %}{% endif %}" class="app-logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="app-account-item app-account-item--danger app-logout">
+                        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        <span>Cerrar sesión</span>
+                    </button>
+                </form>
+            </div>
+        </details>
     </div>
 </aside>
 {% endwith %}

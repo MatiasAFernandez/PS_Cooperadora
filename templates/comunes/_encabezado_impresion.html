@@ -1,0 +1,15 @@
+<div class="print-letterhead" aria-hidden="true">
+    <div class="print-letterhead-brand">
+        {% include "comunes/_logo_utn.html" with logo_class="utn-logo--print" %}
+        <div class="print-letterhead-copy">
+            <div class="print-letterhead-org">Asociación Cooperadora</div>
+            <div class="print-letterhead-inst">Universidad Tecnológica Nacional · Facultad Regional Resistencia</div>
+        </div>
+    </div>
+    <div class="print-letterhead-meta">
+        <div class="print-letterhead-doc">{{ titulo_impresion }}</div>
+        {% if subtitulo_impresion %}
+        <div class="print-letterhead-period">Ejercicio {{ subtitulo_impresion }}</div>
+        {% endif %}
+    </div>
+</div>

@@ -1,10 +1,17 @@
-/* Navegación principal: sidebar full-height (>=1280px, plegable a riel 64px)
-   y topbar móvil + drawer superpuesto (<1280px; sin JS los enlaces quedan en flujo). */
+/* Navegación principal: sidebar full-height adaptable (248px / 260px en >=1440px,
+   plegable a riel 64px con cruce hover/focus), tooltips modernos, menú de cuenta
+   nativo con <details> y drawer móvil (<1280px; sin JS en flujo). */
 
 :root {
-    --nav-w: 228px;
+    --nav-w: 248px;
     --nav-rail-w: 64px;
     --nav-topbar-h: 56px;
+}
+
+@media (min-width: 1440px) {
+    :root {
+        --nav-w: 260px;
+    }
 }
 
 .app-ic,
@@ -77,16 +84,24 @@
 }
 
 .app-nav-head {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 15px 12px 13px 14px;
+    min-height: 60px;
+    padding: 12px 12px 12px 14px;
     border-bottom: 1px solid var(--border-hairline);
 }
 
 .app-nav-toggle {
     display: none;
+    position: relative;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
 }
 .js .app-nav-toggle {
     display: inline-flex;
@@ -95,18 +110,18 @@
 .app-nav-body {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding: 12px 10px;
+    padding: 14px 10px;
 }
 
 .app-nav-group + .app-nav-group {
-    margin-top: 16px;
+    margin-top: 18px;
 }
 
 .app-nav-section {
-    margin: 0 0 4px;
+    margin: 0 0 5px;
     padding: 0 10px;
     font-size: 11px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.045em;
     text-transform: uppercase;
     color: var(--ink-subtle);
     font-weight: var(--font-semibold);
@@ -121,7 +136,7 @@
     gap: 2px;
 }
 
-.app-nav a:not(.app-brand) {
+.app-nav-body a {
     position: relative;
     display: flex;
     align-items: center;
@@ -136,27 +151,27 @@
     transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.app-nav a:not(.app-brand) .app-ic {
+.app-nav-body a .app-ic {
     color: var(--ink-muted);
     transition: color var(--transition-fast);
 }
 
-.app-nav a:not(.app-brand):hover {
+.app-nav-body a:hover {
     background: var(--bg-subtle);
     color: var(--ink-strong);
 }
 
-.app-nav a:not(.app-brand):hover .app-ic {
+.app-nav-body a:hover .app-ic {
     color: var(--ink-strong);
 }
 
-.app-nav a[aria-current="page"] {
+.app-nav-body a[aria-current="page"] {
     background: var(--brand-soft);
     color: var(--brand-primary);
     font-weight: var(--font-semibold);
 }
 
-.app-nav a[aria-current="page"] .app-ic {
+.app-nav-body a[aria-current="page"] .app-ic {
     color: var(--brand-primary);
 }
 
@@ -178,43 +193,76 @@
     font-variant-numeric: tabular-nums;
 }
 
-.app-nav a[aria-current="page"] .app-nav-badge {
+.app-nav-body a[aria-current="page"] .app-nav-badge {
     background: var(--brand-badge-active);
     color: var(--brand-primary);
 }
 
-/* Pie del sidebar: cuenta + cerrar sesión */
+/* Punto discreto de avisos no leídos (visible solo en modo riel cuando hay >0) */
+.app-nav-dot {
+    display: none;
+}
+
+/* =========================================================================
+ * Pie del sidebar: menú interactivo de cuenta con <details> (paridad sin JS)
+ * ========================================================================= */
 .app-nav-footer {
     padding: 10px;
     border-top: 1px solid var(--border-hairline);
+}
+
+.app-account-menu {
+    position: relative;
+}
+
+.app-account-trigger {
+    list-style: none;
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 8px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+.app-account-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.app-account-trigger:hover,
+.app-account-menu[open] > .app-account-trigger {
+    background: var(--bg-subtle);
 }
 
 .app-user-avatar {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     flex: none;
     border-radius: var(--radius-full);
     background: var(--brand-avatar-bg);
     color: var(--brand-navy);
     font-size: 11.5px;
     font-weight: var(--font-semibold);
+    letter-spacing: 0.02em;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid rgb(22 47 82 / 0.08);
 }
 
 .app-user-meta {
     flex: 1 1 auto;
     min-width: 0;
-    line-height: 1.2;
+    line-height: 1.22;
 }
 
 .app-user-name {
     display: block;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: var(--font-semibold);
     color: var(--ink-strong);
     white-space: nowrap;
@@ -224,18 +272,231 @@
 
 .app-user-role {
     display: block;
-    font-size: 11px;
+    font-size: 11.5px;
     color: var(--ink-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.app-logout-form {
-    margin: 0;
+.app-account-caret {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    color: var(--ink-subtle);
+    transition: color var(--transition-fast);
+}
+
+.app-account-trigger:hover .app-account-caret,
+.app-account-menu[open] > .app-account-trigger .app-account-caret {
+    color: var(--ink-primary);
+}
+
+.app-account-popover {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 50;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    transform-origin: bottom center;
+    animation: app-popover-in var(--transition-pop);
+}
+
+@keyframes app-popover-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.app-account-header {
+    padding: 8px 10px 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.app-account-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.app-account-header-name {
+    font-size: 13px;
+    font-weight: var(--font-semibold);
+    color: var(--ink-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-account-role-tag {
+    font-size: 10.5px;
+    font-weight: var(--font-semibold);
+    color: var(--brand-primary);
+    background: var(--brand-soft);
+    padding: 1px 7px;
+    border-radius: var(--radius-full);
     flex: none;
 }
 
+.app-account-header-email {
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-account-sep {
+    height: 1px;
+    background: var(--border-hairline);
+    margin: 5px 4px;
+}
+
+.app-account-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--ink-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: var(--font-medium);
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.app-account-item .app-ic {
+    width: 15px;
+    height: 15px;
+    color: var(--ink-muted);
+    transition: color var(--transition-fast);
+}
+
+.app-account-item:hover {
+    background: var(--bg-subtle);
+    color: var(--ink-strong);
+    text-decoration: none;
+}
+
+.app-account-item:hover .app-ic {
+    color: var(--ink-strong);
+}
+
+.app-account-item[aria-current="page"] {
+    background: var(--brand-soft);
+    color: var(--brand-primary);
+    font-weight: var(--font-semibold);
+}
+
+.app-account-item[aria-current="page"] .app-ic {
+    color: var(--brand-primary);
+}
+
+.app-account-item--danger {
+    color: var(--st-danger-fg);
+}
+
+.app-account-item--danger .app-ic {
+    color: var(--st-danger-fg);
+}
+
+.app-account-item--danger:hover {
+    background: var(--st-danger-bg);
+    color: #991b1b;
+}
+
+.app-account-item--danger:hover .app-ic {
+    color: #991b1b;
+}
+
+.app-logout-form {
+    margin: 0;
+}
+
+/* =========================================================================
+ * Tooltips modernos CSS (sin doble tooltip nativo cuando JS está activo)
+ * ========================================================================= */
+.app-tip {
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translate(-4px, -50%);
+    background: var(--tooltip-bg);
+    color: var(--tooltip-fg);
+    font-size: 12px;
+    font-weight: var(--font-medium);
+    line-height: 1.2;
+    padding: 6px 10px;
+    border-radius: 7px;
+    box-shadow: var(--shadow-md);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 60;
+    transition: opacity var(--transition-pop), transform var(--transition-pop), visibility 0s linear 140ms;
+}
+
+.app-tip::before {
+    content: "";
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 5px solid transparent;
+    border-right-color: var(--tooltip-bg);
+}
+
+/* Tooltip del botón plegar en modo expandido */
+.app-nav-toggle .app-tip {
+    left: 50%;
+    top: calc(100% + 8px);
+    transform: translate(-50%, -4px);
+}
+
+.app-nav-toggle .app-tip::before {
+    right: auto;
+    left: 50%;
+    top: auto;
+    bottom: 100%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: var(--tooltip-bg);
+}
+
+.app-nav-toggle:hover .app-tip,
+.app-nav-toggle:focus-visible .app-tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    transition: opacity var(--transition-pop), transform var(--transition-pop), visibility 0s;
+}
+
+html:not([data-nav-rail="true"]) .app-account-trigger .app-tip {
+    display: none;
+}
+
+/* Scrim del drawer móvil */
 .app-nav-scrim {
     position: fixed;
     inset: 0;
@@ -254,7 +515,7 @@
     to { opacity: 1; }
 }
 
-/* Tablet y móvil (<1280px): drawer superpuesto con × limpia */
+/* Tablet y móvil (<1280px): drawer superpuesto; sin JS en flujo natural */
 @media (max-width: 1279px) {
     .js .app-nav {
         position: fixed;
@@ -262,35 +523,57 @@
         bottom: 0;
         left: 0;
         z-index: 60;
-        width: min(84vw, 272px);
+        width: min(84vw, 280px);
         border-right: 1px solid var(--border-subtle);
         border-bottom: 0;
         box-shadow: 12px 0 32px rgb(17 24 39 / 0.16);
         transform: translateX(-100%);
         visibility: hidden;
-        transition: transform 0.2s ease, visibility 0s linear 0.2s;
+        transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.2s;
     }
 
     .js[data-nav-open="true"] .app-nav {
         transform: none;
         visibility: visible;
-        transition: transform 0.2s ease;
+        transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .app-tip {
+        display: none;
+    }
+
+    /* Fallback sin JS en <1280px: ocultar topbar duplicada y abrir popover en flujo */
+    html:not(.js) .app-topbar--mobile-only {
+        display: none;
+    }
+
+    html:not(.js) .app-account-popover {
+        position: static;
+        margin-top: 6px;
+        box-shadow: var(--shadow-xs);
+        animation: none;
     }
 }
 
 @media (max-width: 959px), (pointer: coarse) {
-    .app-nav a:not(.app-brand) {
+    .app-nav-body a,
+    .app-account-item {
+        min-height: 44px;
         height: 44px;
         font-size: 14.5px;
     }
+
+    .app-nav-toggle {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
 }
 
-/* Escritorio (>=1280px): sidebar full-height sin topbar, plegable a riel 64px */
+/* Escritorio (>=1280px): sidebar full-height adaptable, plegable a riel 64px */
 @media (min-width: 1280px) {
-    .app-topbar--mobile-only {
-        display: none;
-    }
-
+    .app-topbar--mobile-only,
     .app-nav-scrim {
         display: none;
     }
@@ -308,37 +591,98 @@
         height: 100vh;
         border-bottom: 0;
         border-right: 1px solid var(--border-subtle);
-        z-index: 20;
-        transition: width 0.18s ease;
+        z-index: 25;
+        transition: width var(--transition-smooth);
     }
 
     .app-content > .app-main {
-        width: min(100% - 40px, var(--content-width));
+        width: min(100% - 48px, var(--content-width));
         margin: 26px auto 48px;
     }
 
-    /* Riel plegado (64px): mantiene tooltips y botón de cerrar sesión accesible */
+    /* ---------------- RIEL PLEGADO (64px) ---------------- */
     html[data-nav-rail="true"] .app-nav {
         width: var(--nav-rail-w);
     }
 
     html[data-nav-rail="true"] .app-nav-head {
-        flex-direction: column;
         justify-content: center;
-        padding: 14px 8px;
-        gap: 8px;
+        padding: 12px 8px;
     }
 
-    html[data-nav-rail="true"] .app-nav-head .brand-copy,
+    html[data-nav-rail="true"] .app-brand {
+        pointer-events: none;
+        padding: 0;
+        margin: 0;
+        justify-content: center;
+    }
+
+    html[data-nav-rail="true"] .app-brand .brand-copy,
     html[data-nav-rail="true"] .app-nav-section,
     html[data-nav-rail="true"] .app-nav-badge,
-    html[data-nav-rail="true"] .app-user-meta {
+    html[data-nav-rail="true"] .app-user-meta,
+    html[data-nav-rail="true"] .app-account-caret {
         display: none;
+    }
+
+    html[data-nav-rail="true"] .app-nav-toggle {
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        z-index: 2;
+        opacity: 0;
+        color: var(--ink-strong);
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+    }
+
+    html[data-nav-rail="true"] .app-nav-head:hover .app-brand,
+    html[data-nav-rail="true"] .app-nav-head:has(.app-nav-toggle:focus-visible) .app-brand {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+
+    html[data-nav-rail="true"] .app-nav-head:hover .app-nav-toggle,
+    html[data-nav-rail="true"] .app-nav-toggle:focus-visible {
+        opacity: 1;
+    }
+
+    html[data-nav-rail="true"] .app-nav-toggle:hover {
+        background: var(--bg-hover-strong);
+        border-color: var(--border-control);
+    }
+
+    html[data-nav-rail="true"] .app-nav-toggle .app-tip {
+        left: calc(100% + 12px);
+        top: 50%;
+        transform: translate(-4px, -50%);
+    }
+
+    html[data-nav-rail="true"] .app-nav-toggle .app-tip::before {
+        left: auto;
+        right: 100%;
+        bottom: auto;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 5px solid transparent;
+        border-right-color: var(--tooltip-bg);
+    }
+
+    html[data-nav-rail="true"] .app-nav-toggle:hover .app-tip,
+    html[data-nav-rail="true"] .app-nav-toggle:focus-visible .app-tip {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(0, -50%);
     }
 
     html[data-nav-rail="true"] .app-nav-body {
         overflow: visible;
-        padding: 12px 8px;
+        padding: 12px 10px;
     }
 
     html[data-nav-rail="true"] .app-nav-group + .app-nav-group {
@@ -347,48 +691,131 @@
         border-top: 1px solid var(--border-hairline);
     }
 
-    html[data-nav-rail="true"] .app-nav a:not(.app-brand) {
+    html[data-nav-rail="true"] .app-nav-body a {
         justify-content: center;
         padding: 0;
+        width: 44px;
+        height: 40px;
+        margin-inline: auto;
+    }
+
+    html[data-nav-rail="true"] .app-nav-dot {
+        display: block;
+        position: absolute;
+        top: 7px;
+        right: 8px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--brand-primary);
+        box-shadow: 0 0 0 2px var(--bg-sidebar);
     }
 
     html[data-nav-rail="true"] .app-nl {
         position: absolute;
-        left: calc(100% + 10px);
+        left: calc(100% + 12px);
         top: 50%;
-        transform: translateY(-50%);
-        background: var(--ink-strong);
-        color: var(--bg-surface);
+        transform: translate(-4px, -50%);
+        background: var(--tooltip-bg);
+        color: var(--tooltip-fg);
         font-size: 12px;
         font-weight: var(--font-medium);
-        padding: 4px 9px;
-        border-radius: var(--radius-sm);
+        line-height: 1.2;
+        padding: 6px 10px;
+        border-radius: 7px;
+        box-shadow: var(--shadow-md);
         white-space: nowrap;
         overflow: visible;
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
-        transition: opacity 0.12s ease;
-        z-index: 40;
+        z-index: 60;
+        transition: opacity var(--transition-pop), transform var(--transition-pop), visibility 0s linear 140ms;
     }
 
-    html[data-nav-rail="true"] .app-nav a:not(.app-brand):hover .app-nl,
-    html[data-nav-rail="true"] .app-nav a:not(.app-brand):focus-visible .app-nl {
+    html[data-nav-rail="true"] .app-nl::before {
+        content: "";
+        position: absolute;
+        right: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 5px solid transparent;
+        border-right-color: var(--tooltip-bg);
+    }
+
+    html[data-nav-rail="true"] .app-nav-body a:hover .app-nl,
+    html[data-nav-rail="true"] .app-nav-body a:focus-visible .app-nl {
         opacity: 1;
+        visibility: visible;
+        transform: translate(0, -50%);
+        transition: opacity var(--transition-pop), transform var(--transition-pop), visibility 0s;
     }
 
+    /* Footer y popover en modo riel: avatar centrado + popover hacia la derecha */
     html[data-nav-rail="true"] .app-nav-footer {
-        flex-direction: column;
-        justify-content: center;
-        gap: 6px;
         padding: 10px 8px;
+    }
+
+    html[data-nav-rail="true"] .app-account-trigger {
+        justify-content: center;
+        padding: 4px;
+        width: 44px;
+        height: 44px;
+        margin-inline: auto;
+    }
+
+    html[data-nav-rail="true"] .app-account-menu:not([open]) .app-account-trigger:hover .app-tip,
+    html[data-nav-rail="true"] .app-account-menu:not([open]) .app-account-trigger:focus-visible .app-tip {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(0, -50%);
+        transition: opacity var(--transition-pop), transform var(--transition-pop), visibility 0s;
+    }
+
+    html[data-nav-rail="true"] .app-account-popover {
+        left: calc(100% + 12px);
+        right: auto;
+        bottom: 0;
+        width: 248px;
+        transform-origin: bottom left;
+        animation: app-popover-right-in var(--transition-pop);
+    }
+
+    @keyframes app-popover-right-in {
+        from {
+            opacity: 0;
+            transform: translateX(-6px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .app-nav,
+    .app-brand,
+    .app-nav-toggle,
     .app-nav-scrim,
-    .app-nl {
+    .app-nl,
+    .app-tip,
+    .app-account-popover {
         transition: none !important;
         animation: none !important;
+    }
+}
+
+@media print {
+    .app-nav,
+    .app-topbar,
+    .app-nav-scrim {
+        display: none !important;
+    }
+
+    .app-content > .app-main {
+        width: 100%;
+        max-width: none;
+        margin: 0;
     }
 }

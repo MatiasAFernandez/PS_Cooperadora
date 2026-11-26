@@ -11,8 +11,13 @@
 {% block content %}
 <div class="cuentas-container">
     <div class="cuentas-card">
+        {% if not actor %}
+        {% include "comunes/_marca_institucional.html" %}
+        {% endif %}
         <div class="cuentas-header">
-            <p class="cuentas-eyebrow">Acceso a Cooperadora</p>
+            {% if actor %}
+            <p class="cuentas-eyebrow">Cuenta · UTN FRRe</p>
+            {% endif %}
             <h1 class="cuentas-title">{{ title }}</h1>
             {% if introduccion %}
             <p class="cuentas-intro">{{ introduccion }}</p>

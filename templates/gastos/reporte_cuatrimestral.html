@@ -10,6 +10,7 @@
 
 {% block content %}
 <div class="rep-wrap">
+  {% include "comunes/_encabezado_impresion.html" with titulo_impresion="Reporte directivo de gastos" subtitulo_impresion=reporte.anio %}
   <header class="top">
     <div>
       <h1 class="rep-title" id="repTitle" tabindex="-1">Reporte directivo de gastos</h1>

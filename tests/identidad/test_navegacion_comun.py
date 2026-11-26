@@ -143,3 +143,64 @@ def test_navegacion_marca_subrutas_de_usuarios_y_usa_sentence_case() -> None:
     assert '<span class="app-nl">Solicitud de facturación</span>' in html
     assert "Solicitud de Gasto" not in html
     assert "Solicitud de Facturación" not in html
+
+
+def test_shell_fase_a_popover_cuenta_sin_role_menu_y_separadores_protegidos() -> None:
+    actor = Actor(subject_id=17, capabilities=frozenset({"gastos.consultar_todas"}))
+    request_local = RequestFactory().get(reverse("cuentas:inicio"))
+    request_local.resolver_match = resolve(reverse("cuentas:inicio"))
+    request_local.user = SimpleNamespace(
+        cuenta_local=True,
+        email="elena.vargas@example.invalid",
+        get_full_name=lambda: "Elena Vargas",
+        get_username=lambda: "elena",
+    )
+
+    html_local = render_to_string(
+        "comunes/navegacion_tramites.html",
+        {"actor": actor},
+        request=request_local,
+    )
+    assert 'class="utn-logo"' in html_local
+    assert "UTN · FRRe" in html_local
+    assert "brand-badge" not in html_local
+    assert 'id="app-account-menu"' in html_local
+    assert 'role="menu"' not in html_local
+    assert 'role="menuitem"' not in html_local
+    assert f'href="{reverse("cuentas:estado")}"' in html_local
+    assert f'href="{reverse("cuentas:cambiar_clave")}"' in html_local
+    assert "data-avisos-dot" in html_local
+    assert html_local.count('class="app-account-sep"') == 2
+
+    # Cuenta demo (sin cuenta_local): un solo separador antes de Cerrar sesión.
+    request_demo = RequestFactory().get(reverse("identidad:inicio"))
+    request_demo.resolver_match = resolve(reverse("identidad:inicio"))
+    request_demo.user = SimpleNamespace(
+        cuenta_local=None,
+        email="",
+        get_full_name=lambda: "Demo Cooperadora",
+        get_username=lambda: "demo",
+    )
+    html_demo = render_to_string(
+        "comunes/navegacion_tramites.html",
+        {"actor": actor},
+        request=request_demo,
+    )
+    assert html_demo.count('class="app-account-sep"') == 1
+    assert f'href="{reverse("cuentas:estado")}"' not in html_demo
+    assert f'href="{reverse("cuentas:cambiar_clave")}"' not in html_demo
+
+
+def test_favicon_e_identidad_utn_en_base_y_500() -> None:
+    html_base = render_to_string("base.html", {})
+    assert 'rel="icon" type="image/svg+xml"' in html_base
+    assert "img/favicon.svg" in html_base
+    assert 'class="utn-logo"' in html_base
+
+    html_500 = render_to_string("500.html", {})
+    assert 'rel="icon" type="image/svg+xml" href="data:image/svg+xml,' in html_500
+    assert "Asociación Cooperadora" in html_500
+    assert '<span class="brand-lockup-inst">Universidad Tecnológica Nacional</span>' in html_500
+    assert '<span class="brand-lockup-inst">Facultad Regional Resistencia</span>' in html_500
+    assert "Universidad Tecnológica Nacional ·</span>" not in html_500
+
