@@ -1,5 +1,13 @@
 # SPEC-015 — Avisos y acceso a pendientes
 
+## Resaltado de pendientes en la bandeja
+
+El segmento «Requieren atención» está disponible para todos los perfiles con
+acceso a la bandeja. Usa el color de aviso cuando hay al menos una solicitud
+con una acción pendiente para la cuenta, independientemente de los filtros
+de búsqueda. Con cero pendientes conserva el estilo neutro. Los perfiles de
+sólo lectura ven el contador en cero y la vista de pendientes vacía.
+
 ## Ajuste de interfaz integrado el 26/11/2026 — Convergencia UX/UI (`D-3` / `D-5`)
 
 Con conformidad de Matías dentro de la convergencia al sistema visual común (`docs/visual-guide/README.md`), el acceso a pendientes de `/facturacion/` se unifica con `/gastos/` mediante pestañas segmentadas `Todas | Requieren atención (N)` sobre enlaces reales operables sin JavaScript (con contador únicamente en `Requieren atención`, ocultas para perfiles de sólo lectura), reemplazando el bloque superior de tarjetas acotado a 2/3 trámites para no ocultar pendientes antiguos. Se mantiene el aviso de cierre próximo en los últimos siete días naturales del mes, las reglas de elegibilidad y permisos, y la explicación de espera en el detalle (`mensaje_espera`), ajustando el copy para no prometer notificaciones automáticas mientras Facturación no incorpore avisos web o correo (`#128`).

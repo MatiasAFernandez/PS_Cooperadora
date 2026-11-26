@@ -248,18 +248,18 @@ class ListaSolicitudesView(FacturacionView):
         por_circuito = has_capability(self.actor, "facturacion.consultar_todas")
         puede_presentar = has_capability(self.actor, "facturacion.presentar")
         ofrece_atencion = puede_tener_atencion(self.actor)
-        solo_atencion = ofrece_atencion and request.GET.get("atencion") == "1"
+        solo_atencion = request.GET.get("atencion") == "1"
 
         filtro = FiltroFacturacionForm(request.GET)
         visibles = filtrar_solicitudes_visibles(self.actor)
         consulta = filtrar_solicitudes(visibles, filtro, por_circuito=por_circuito)
 
         atencion = solicitudes_atencion(self.actor, visibles) if ofrece_atencion else []
-        total_atencion = len(atencion) if ofrece_atencion else None
+        total_atencion = len(atencion)
         mapa_atencion = {tarjeta["solicitud"].pk: tarjeta for tarjeta in atencion}
 
         if solo_atencion:
-            pks_filtrados = set(consulta.values_list("pk", flat=True))
+            pks_filtrados = set(consulta.values_list("pk", flat=True)) if atencion else set()
             origen_pagina = [
                 tarjeta["solicitud"]
                 for tarjeta in atencion

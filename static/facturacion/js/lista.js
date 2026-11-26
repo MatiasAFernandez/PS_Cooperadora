@@ -1,13 +1,8 @@
 (() => {
     "use strict";
 
-    const pantallaAncha = window.matchMedia("(min-width: 960px)");
     const RESPALDO_CIERRE_MS = 80;
     const DEBOUNCE_BUSQUEDA_MS = 300;
-
-    // -------------------------------------------------------------------------
-    // Panel lateral único (<dialog>) en escritorio >= 960 px
-    // -------------------------------------------------------------------------
 
     function duracionSalida(panel) {
         const estilo = window.getComputedStyle(panel);
@@ -108,20 +103,29 @@
             return true;
         }
 
+        resultados.classList.add("bandeja-resumen-interactivo");
         resultados.addEventListener("click", (evento) => {
             const target = evento.target;
             if (!(target instanceof Element)) return;
-            const enlace = target.closest("[data-abrir-resumen]");
+            const fila = target.closest("[data-resumen]");
             if (
-                !enlace ||
-                !pantallaAncha.matches ||
+                !fila ||
+                evento.defaultPrevented ||
                 evento.ctrlKey ||
                 evento.metaKey ||
                 evento.shiftKey ||
                 evento.altKey ||
                 evento.button !== 0
             ) return;
-            if (abrirDesdeEnlace(enlace)) {
+            const control = target.closest("a, button, input, select, textarea");
+            if (control && !control.matches("[data-abrir-resumen]")) return;
+
+            const seleccion = window.getSelection();
+            if (!control && seleccion && !seleccion.isCollapsed &&
+                (fila.contains(seleccion.anchorNode) || fila.contains(seleccion.focusNode))) return;
+
+            const enlace = control || fila.querySelector("[data-abrir-resumen]");
+            if (enlace && abrirDesdeEnlace(enlace)) {
                 evento.preventDefault();
             }
         });
@@ -161,13 +165,35 @@
             ultimoDisparador = null;
         });
 
-        pantallaAncha.addEventListener("change", () => {
-            if (!pantallaAncha.matches && panel.open) {
-                cerrarPanel(panel);
-            }
-        });
-
         return panel;
+    }
+
+    function iniciarDesplazamiento(resultados) {
+        const contenedor = resultados.querySelector(".bandeja-desplazamiento");
+        const tabla = contenedor?.querySelector("table");
+        const filas = tabla?.tBodies[0].rows;
+        const cantidadVisible = 5;
+        if (!filas || filas.length <= cantidadVisible) return;
+
+        const ultimaVisible = filas[cantidadVisible - 1];
+        function ajustarAltura() {
+            const altura = ultimaVisible.getBoundingClientRect().bottom -
+                tabla.getBoundingClientRect().top;
+            contenedor.style.setProperty("--bandeja-alto-visible", `${altura}px`);
+        }
+
+        contenedor.classList.add("bandeja-desplazamiento--activo");
+        contenedor.tabIndex = 0;
+        contenedor.setAttribute("role", "region");
+        contenedor.setAttribute("aria-label", "Listado desplazable de solicitudes");
+        ajustarAltura();
+
+        const observador = new ResizeObserver(ajustarAltura);
+        observador.observe(tabla.tHead);
+        for (const fila of Array.from(filas).slice(0, cantidadVisible)) {
+            observador.observe(fila);
+        }
+        return observador;
     }
 
     // -------------------------------------------------------------------------
@@ -225,6 +251,7 @@
     }
 
     function iniciarBusqueda(formulario, resultados, estado, panelDrawer) {
+        let observadorDesplazamiento = iniciarDesplazamiento(resultados);
         const buscador = formulario.elements.namedItem("q");
         if (!buscador) return;
 
@@ -290,7 +317,9 @@
                 }
 
                 window.history.replaceState(window.history.state, "", url);
+                observadorDesplazamiento?.disconnect();
                 resultados.replaceChildren(...resultadosOrigen.childNodes);
+                observadorDesplazamiento = iniciarDesplazamiento(resultados);
 
                 const limpiarActual = formulario.querySelector("[data-bandeja-limpiar]");
                 const limpiarOrigen = pagina.querySelector("[data-bandeja-limpiar]");
@@ -307,8 +336,10 @@
                         const destino = tabsActuales.querySelector(
                             `[data-bandeja-tab="${origen.dataset.bandejaTab}"]`
                         );
-                        const href = origen.getAttribute("href");
-                        if (destino && href) destino.setAttribute("href", href);
+                        if (!destino) return;
+                        destino.setAttribute("href", origen.getAttribute("href"));
+                        destino.className = origen.className;
+                        destino.replaceChildren(...origen.childNodes);
                     });
                 }
 
@@ -347,6 +378,10 @@
         formulario.addEventListener("submit", cancelarBusqueda);
 
         formulario.closest(".bandeja")?.addEventListener("click", (evento) => {
+            if (evento.defaultPrevented && panelDrawer?.open) {
+                cancelarBusqueda();
+                return;
+            }
             const enlace = evento.target.closest?.("a[href]");
             if (enlace && !evento.ctrlKey && !evento.metaKey && !evento.shiftKey && !evento.altKey) {
                 if (enlace.matches("[data-bandeja-tab]")) {

@@ -18,12 +18,10 @@
         {% endif %}
     </header>
 
-    {% if ofrece_atencion %}
-        <nav class="ui-tabs-segmented" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
-            <a data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
-            <a data-bandeja-tab="atencion" href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-tab-count bandeja-tab-count--attn">{{ total_atencion }}</span>{% endif %}</a>
-        </nav>
-    {% endif %}
+    <nav class="ui-tabs-segmented" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
+        <a data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
+        <a data-bandeja-tab="atencion"{% if total_atencion %} class="bandeja-tab-con-pendientes"{% endif %} href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención <span class="bandeja-tab-count">{{ total_atencion }}</span></a>
+    </nav>
 
     <form class="bandeja-filtros" data-bandeja-filtros{% if solo_atencion %} data-solo-atencion="1"{% endif %} method="get" action="{% url 'facturacion:lista' %}">
         {% if solo_atencion %}<input type="hidden" name="atencion" value="1">{% endif %}
@@ -40,6 +38,7 @@
     {% if pagina %}
         <p class="bandeja-conteo">Mostrando {{ pagina.paginator.count }} solicitud{{ pagina.paginator.count|pluralize:",es" }}{% if tiene_filtros_activos %} (filtrado){% endif %}</p>
         <div class="bandeja-resultados">
+            <div class="bandeja-desplazamiento">
             <table class="bandeja-tabla" aria-label="Solicitudes de facturación">
                 <thead>
                     <tr>
@@ -93,6 +92,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% if is_paginated %}
                 <nav class="bandeja-paginacion" aria-label="Paginación de solicitudes">
                     <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>

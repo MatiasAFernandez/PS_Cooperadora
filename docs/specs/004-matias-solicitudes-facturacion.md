@@ -1,5 +1,14 @@
 # SPEC-004 — Presentación y revisión de solicitudes de facturación
 
+## Ajuste de bandeja para #80
+
+Con JavaScript, la bandeja muestra inicialmente hasta cinco solicitudes y permite
+recorrer las demás de la misma página con desplazamiento vertical. La paginación
+conserva 25 solicitudes por página. En escritorio y móvil, un clic o toque en la
+fila abre el resumen lateral, y el enlace del título permite abrirlo por teclado.
+Las acciones de fila conservan sus destinos. Sin JavaScript se muestra la página
+completa y el enlace del título lleva al detalle.
+
 ## Ajuste de interfaz integrado el 26/11/2026 — Convergencia UX/UI (`D-3` / `D-5`)
 
 Con conformidad de Matías dentro de la convergencia al sistema visual común (`docs/visual-guide/README.md`), la bandeja `/facturacion/` muestra las 25 filas completas de la página en escritorio (retirando el recorte vertical a 4 filas) y pasa a tarjetas apiladas sin desplazamiento horizontal en `< 960 px`, preservando la paginación, la numeración por perfil, el buscador por número/CUIT y el funcionamiento sin JavaScript. Las columnas distinguen solicitante y correo de envío, las acciones de fila usan `Ver detalle ›` más la acción operativa correspondiente, y los selectores de `/facturacion/nueva/` incorporan opción inicial `"Seleccioná…"` sin alterar las validaciones de servidor. Los cortes históricos de abajo conservan su contexto y reglas de dominio vigentes.

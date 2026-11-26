@@ -43,7 +43,7 @@ class Accion:
 
 
 def puede_tener_atencion(actor) -> bool:
-    """Indica si la cuenta puede ejecutar acciones en facturación (oculta tabs a Lectura)."""
+    """Indica si la cuenta puede tener pendientes de facturación."""
     if has_capability(actor, "facturacion.consultar_todas"):
         return any(
             has_capability(actor, cap)

@@ -49,11 +49,12 @@ def test_tabs_y_contadores_por_rol(escenario, datos):
     html_op = op.get(lista_url).content.decode()
     assert ">Todas</a>" in html_op
     assert 'data-bandeja-tab="atencion"' in html_op
-    assert '<span class="bandeja-tab-count bandeja-tab-count--attn">4</span>' in html_op
+    assert 'data-bandeja-tab="atencion" class="bandeja-tab-con-pendientes"' in html_op
+    assert '<span class="bandeja-tab-count">4</span>' in html_op
 
     html_op_atn = op.get(lista_url, {"atencion": "1"}).content.decode()
     assert html_op_atn.count('data-resumen="') == 4
-    assert "maxHeight" not in html_op
+    assert 'data-bandeja-tab="atencion" class="bandeja-tab-con-pendientes"' in html_op_atn
     assert "Constatar Ingreso" not in html_op_atn
     assert "Ver Detalle" not in html_op_atn
 
@@ -62,21 +63,33 @@ def test_tabs_y_contadores_por_rol(escenario, datos):
     sol.force_login(escenario.usuarios["a"])
     html_sol = sol.get(lista_url).content.decode()
     assert ">Todas</a>" in html_sol
-    assert '<span class="bandeja-tab-count bandeja-tab-count--attn">3</span>' in html_sol
+    assert 'data-bandeja-tab="atencion" class="bandeja-tab-con-pendientes"' in html_sol
+    assert '<span class="bandeja-tab-count">3</span>' in html_sol
     html_sol_atn = sol.get(lista_url, {"atencion": "1"}).content.decode()
     assert html_sol_atn.count('data-resumen="') == 3
     assert "Corregir solicitud" in html_sol_atn
 
-    # Lectura no ve pestañas e ignora ?atencion=1
+    # Lectura ve un filtro neutro con cero pendientes y puede volver a Todas.
     lec = Client()
     lec.force_login(escenario.usuarios["l"])
-    resp_lec = lec.get(lista_url, {"atencion": "1"})
+    resp_lec = lec.get(lista_url)
     html_lec = resp_lec.content.decode()
     assert resp_lec.context["ofrece_atencion"] is False
-    assert resp_lec.context["solo_atencion"] is False
-    assert "data-bandeja-tabs" not in html_lec
+    assert 'data-bandeja-tab="atencion"' in html_lec
+    assert '<span class="bandeja-tab-count">0</span>' in html_lec
+    assert "bandeja-tab-con-pendientes" not in html_lec
     assert html_lec.count('data-resumen="') == 7
     assert "Ver detalle" in html_lec
+    html_lec_atn = lec.get(lista_url, {"atencion": "1"}).content.decode()
+    assert 'data-resumen="' not in html_lec_atn
+    assert "No tenés solicitudes que requieran atención" in html_lec_atn
+    assert "bandeja-tab-con-pendientes" not in html_lec_atn
+
+    otro_titular = Client()
+    otro_titular.force_login(escenario.usuarios["b"])
+    html_otro = otro_titular.get(lista_url).content.decode()
+    assert '<span class="bandeja-tab-count">0</span>' in html_otro
+    assert "bandeja-tab-con-pendientes" not in html_otro
 
 
 def test_aviso_proximidad_cierre_solo_para_solicitante(escenario, datos, monkeypatch):
