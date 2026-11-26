@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Error del servidor — PS Cooperadora</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23162f52'/%3E%3Cg transform='translate(13.68 10) scale(0.1991)' fill='%23ffffff'%3E%3Crect x='73.5' y='0' width='37' height='221'/%3E%3Crect x='0' y='92' width='184' height='37'/%3E%3Cpath d='M0 0H37A55 55 0 0 0 147 0H184A92 92 0 0 1 0 0Z'/%3E%3Cpath d='M0 221H37A55 55 0 0 1 147 221H184A92 92 0 0 0 0 221Z'/%3E%3C/g%3E%3C/svg%3E">
     <style>
         *, *::before, *::after { box-sizing: border-box; }
         body {
@@ -26,30 +27,31 @@
             color: #111827;
             text-decoration: none;
         }
-        .brand-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: #162f52;
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.03em;
+        .utn-logo {
+            display: block;
+            flex: none;
+            color: #162f52;
+            width: 22px;
+            height: 26.5px;
+        }
+        .utn-logo--lg {
+            width: 34px;
+            height: 41px;
+            margin-bottom: 10px;
         }
         .brand-title {
             display: block;
-            font-size: 14px;
-            font-weight: 700;
-            line-height: 1.2;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.18;
         }
         .brand-sub {
             display: block;
             font-size: 11px;
+            font-weight: 500;
             color: #6b7280;
-            line-height: 1.2;
+            letter-spacing: 0.02em;
+            line-height: 1.18;
         }
         main {
             max-width: 560px;
@@ -62,6 +64,28 @@
             border-radius: 12px;
             padding: 28px 30px;
             box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+        }
+        .brand-lockup-full {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin: 0 0 20px;
+            padding: 0 0 18px;
+            border-bottom: 1px solid #ecece8;
+        }
+        .brand-lockup-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #111827;
+            letter-spacing: -0.015em;
+            line-height: 1.25;
+            margin-bottom: 3px;
+        }
+        .brand-lockup-inst {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.38;
         }
         .pill {
             display: inline-flex;
@@ -118,16 +142,22 @@
 </head>
 <body>
     <header class="topbar">
-        <a href="/cuentas/" class="brand">
-            <span class="brand-badge">UTN</span>
+        <a href="/cuentas/" class="brand" aria-label="Asociación Cooperadora — Universidad Tecnológica Nacional, Facultad Regional Resistencia">
+            <svg class="utn-logo" viewBox="0 0 184 221" fill="currentColor" aria-hidden="true" focusable="false"><rect x="73.5" y="0" width="37" height="221"/><rect x="0" y="92" width="184" height="37"/><path d="M0 0H37A55 55 0 0 0 147 0H184A92 92 0 0 1 0 0Z"/><path d="M0 221H37A55 55 0 0 1 147 221H184A92 92 0 0 0 0 221Z"/></svg>
             <span>
                 <span class="brand-title">Cooperadora</span>
-                <span class="brand-sub">UTN FRRe</span>
+                <span class="brand-sub">UTN · FRRe</span>
             </span>
         </a>
     </header>
     <main>
         <section class="card" aria-labelledby="error-500-titulo">
+            <div class="brand-lockup-full">
+                <svg class="utn-logo utn-logo--lg" viewBox="0 0 184 221" fill="currentColor" aria-hidden="true" focusable="false"><rect x="73.5" y="0" width="37" height="221"/><rect x="0" y="92" width="184" height="37"/><path d="M0 0H37A55 55 0 0 0 147 0H184A92 92 0 0 1 0 0Z"/><path d="M0 221H37A55 55 0 0 1 147 221H184A92 92 0 0 0 0 221Z"/></svg>
+                <span class="brand-lockup-title">Asociación Cooperadora</span>
+                <span class="brand-lockup-inst">Universidad Tecnológica Nacional</span>
+                <span class="brand-lockup-inst">Facultad Regional Resistencia</span>
+            </div>
             <span class="pill">Error 500</span>
             <h1 id="error-500-titulo">Ocurrió un error inesperado</h1>
             <p>

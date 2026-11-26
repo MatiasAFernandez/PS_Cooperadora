@@ -1,4 +1,5 @@
-/* Menú lateral: pliegue a riel (>=1280px) y superposición modal (<1280px). JS nativo, sin dependencias. */
+/* Menú lateral: pliegue a riel (>=1280px), superposición modal (<1280px),
+   tooltips modernos sin doble title nativo y cierre progresivo del popover de cuenta. */
 (function () {
     "use strict";
 
@@ -6,20 +7,29 @@
     var nav = document.getElementById("app-nav");
     if (!nav) { return; }
 
+    var brandLink = document.getElementById("app-brand-link");
     var menuBtn = document.getElementById("app-menu-btn");
     var toggle = document.getElementById("app-nav-toggle");
-    var icon = document.getElementById("app-nav-toggle-icon");
+    var toggleSvg = document.getElementById("app-nav-toggle-svg");
+    var toggleTip = document.getElementById("app-nav-toggle-tip");
     var scrim = document.getElementById("app-nav-scrim");
+    var accountMenu = document.getElementById("app-account-menu");
     var header = document.querySelector(".app-topbar");
     var content = document.querySelector(".app-content");
     var wide = window.matchMedia("(min-width: 1280px)");
-    var ICONS = {
-        close: "M18 6 6 18M6 6l12 12",
-        fold: "m11 17-5-5 5-5M18 17l-5-5 5-5",
-        unfold: "m6 17 5-5-5-5M13 17l5-5-5-5"
+    var ICON_MARKUP = {
+        close: '<path d="M18 6 6 18M6 6l12 12"/>',
+        fold: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>',
+        unfold: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/>'
     };
     var overlayOpen = false;
     var opener = null;
+
+    // Suprimir tooltips nativos del navegador cuando los tooltips CSS modernos están activos.
+    nav.querySelectorAll(".app-nav-body a[title]").forEach(function (link) {
+        link.setAttribute("data-tooltip", link.getAttribute("title"));
+        link.removeAttribute("title");
+    });
 
     function isRail() { return root.getAttribute("data-nav-rail") === "true"; }
 
@@ -30,20 +40,32 @@
 
     function setToggleLabel(label, iconKey) {
         toggle.setAttribute("aria-label", label);
-        toggle.setAttribute("title", label);
-        icon.setAttribute("d", ICONS[iconKey]);
+        if (toggleTip) { toggleTip.textContent = label; }
+        if (toggleSvg) { toggleSvg.innerHTML = ICON_MARKUP[iconKey]; }
     }
 
     function syncToggle() {
+        var inRail = wide.matches && isRail();
         if (!wide.matches) {
             setToggleLabel("Cerrar menú", "close");
             toggle.removeAttribute("aria-expanded");
-        } else if (isRail()) {
+        } else if (inRail) {
             setToggleLabel("Desplegar menú", "unfold");
             toggle.setAttribute("aria-expanded", "false");
         } else {
             setToggleLabel("Plegar menú", "fold");
             toggle.setAttribute("aria-expanded", "true");
+        }
+
+        // En riel colapsado el único objetivo interactivo de la cabecera es el botón expandir.
+        if (brandLink) {
+            if (inRail) {
+                brandLink.setAttribute("tabindex", "-1");
+                brandLink.setAttribute("aria-hidden", "true");
+            } else {
+                brandLink.removeAttribute("tabindex");
+                brandLink.removeAttribute("aria-hidden");
+            }
         }
     }
 
@@ -52,8 +74,17 @@
     }
 
     function focusables() {
-        return Array.prototype.slice.call(nav.querySelectorAll("a[href], button:not([disabled])"))
+        return Array.prototype.slice.call(nav.querySelectorAll("a[href], button:not([disabled]), summary"))
             .filter(function (el) { return el.offsetParent !== null || el === document.activeElement; });
+    }
+
+    function closeAccountMenu(restoreFocus) {
+        if (!accountMenu || !accountMenu.open) { return; }
+        accountMenu.open = false;
+        if (restoreFocus) {
+            var summary = accountMenu.querySelector("summary");
+            if (summary) { summary.focus(); }
+        }
     }
 
     function openOverlay() {
@@ -68,11 +99,12 @@
         if (menuBtn) { menuBtn.setAttribute("aria-expanded", "true"); }
         var target = nav.querySelector('a[aria-current="page"]') || toggle;
         target.focus();
-        document.addEventListener("keydown", onKeydown);
+        document.addEventListener("keydown", onOverlayKeydown);
     }
 
     function closeOverlay(restoreFocus) {
         if (!overlayOpen) { return; }
+        closeAccountMenu(false);
         overlayOpen = false;
         root.removeAttribute("data-nav-open");
         scrim.hidden = true;
@@ -80,14 +112,18 @@
         nav.removeAttribute("aria-modal");
         setInert(false);
         if (menuBtn) { menuBtn.setAttribute("aria-expanded", "false"); }
-        document.removeEventListener("keydown", onKeydown);
+        document.removeEventListener("keydown", onOverlayKeydown);
         if (restoreFocus && opener && document.body.contains(opener)) { opener.focus(); }
         opener = null;
     }
 
-    function onKeydown(event) {
+    function onOverlayKeydown(event) {
         if (event.key === "Escape") {
             event.preventDefault();
+            if (accountMenu && accountMenu.open) {
+                closeAccountMenu(true);
+                return;
+            }
             closeOverlay(true);
             return;
         }
@@ -106,6 +142,7 @@
     }
 
     function setRail(on) {
+        closeAccountMenu(false);
         if (on) { root.setAttribute("data-nav-rail", "true"); } else { root.removeAttribute("data-nav-rail"); }
         try { localStorage.setItem("navRail", on ? "1" : "0"); } catch (e) { /* almacenamiento no disponible */ }
         syncToggle();
@@ -120,6 +157,21 @@
         if (wide.matches) { setRail(!isRail()); } else { closeOverlay(true); }
     });
     scrim.addEventListener("click", function () { closeOverlay(true); });
+
+    // Mejora progresiva para <details> de cuenta: click fuera y Escape en escritorio.
+    if (accountMenu) {
+        document.addEventListener("click", function (event) {
+            if (accountMenu.open && !accountMenu.contains(event.target)) {
+                accountMenu.open = false;
+            }
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && accountMenu.open && !overlayOpen) {
+                event.preventDefault();
+                closeAccountMenu(true);
+            }
+        });
+    }
 
     var onModeChange = function () {
         if (wide.matches) { closeOverlay(false); }

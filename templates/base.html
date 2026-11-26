@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}PS Cooperadora{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -22,11 +23,11 @@
             <button type="button" class="btn-icon app-menu-btn" id="app-menu-btn" aria-controls="app-nav" aria-expanded="false" aria-label="Abrir menú" title="Abrir menú">
                 <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" title="Inicio de Cooperadora">
-                <span class="brand-badge">UTN</span>
+            <a href="{% if request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" aria-label="Asociación Cooperadora — Universidad Tecnológica Nacional, Facultad Regional Resistencia">
+                {% include "comunes/_logo_utn.html" %}
                 <span class="brand-copy">
                     <span class="brand-title">Cooperadora</span>
-                    <span class="brand-sub">UTN FRRe</span>
+                    <span class="brand-sub">UTN · FRRe</span>
                 </span>
             </a>
             <span class="app-topbar-balance" aria-hidden="true"></span>
@@ -36,11 +37,11 @@
     {% else %}
     <header class="app-topbar">
         <div class="app-topbar-inner">
-            <a href="{% if acceso_local or request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" title="Inicio de Cooperadora">
-                <span class="brand-badge">UTN</span>
+            <a href="{% if acceso_local or request.user.cuenta_local %}{% url 'cuentas:inicio' %}{% else %}{% url 'identidad:inicio' %}{% endif %}" class="app-brand" aria-label="Asociación Cooperadora — Universidad Tecnológica Nacional, Facultad Regional Resistencia">
+                {% include "comunes/_logo_utn.html" %}
                 <span class="brand-copy">
                     <span class="brand-title">Cooperadora</span>
-                    <span class="brand-sub">UTN FRRe</span>
+                    <span class="brand-sub">UTN · FRRe</span>
                 </span>
             </a>
             <h2 class="visually-hidden-module-title">PS Cooperadora</h2>

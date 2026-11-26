@@ -129,11 +129,16 @@
   --shadow-xs: 0 1px 2px rgb(17 24 39 / 0.04);
   --shadow-sm: 0 1px 3px rgb(17 24 39 / 0.06), 0 1px 2px rgb(17 24 39 / 0.03);
   --shadow-md: 0 4px 10px -2px rgb(17 24 39 / 0.08), 0 2px 4px -2px rgb(17 24 39 / 0.04);
-  --shadow-lg: 0 12px 24px -4px rgb(17 24 39 / 0.12);
+  --shadow-lg: 0 12px 28px -4px rgb(17 24 39 / 0.14), 0 4px 10px -2px rgb(17 24 39 / 0.06);
   --shadow-drawer: -8px 0 32px rgb(17 24 39 / 0.12);
+
+  --tooltip-bg: #18181b;
+  --tooltip-fg: #fafafa;
 
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 190ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-pop: 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Ergonomía táctil obligatoria (44px) en móvil y pantallas táctiles */
@@ -760,18 +765,41 @@ table td,
 }
 
 /* ---------------------------------------------------------------------------
- * Marca Institucional
+ * Marca Institucional (Isotipo oficial UTN FRRe + lockups)
  * --------------------------------------------------------------------------- */
+.utn-logo {
+  display: block;
+  flex: none;
+  color: var(--brand-navy);
+  width: 22px;
+  height: 26.5px;
+}
+
+.utn-logo--lg {
+  width: 34px;
+  height: 41px;
+}
+
+.utn-logo--print {
+  width: 30px;
+  height: 36px;
+}
+
 .app-brand {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   text-decoration: none;
   font-family: var(--font-sans);
   min-width: 0;
+  border-radius: var(--radius-md);
+  padding: 3px 4px;
+  margin: -3px -4px;
+  transition: opacity var(--transition-fast), transform var(--transition-fast), background-color var(--transition-fast);
 }
 
 .app-brand:hover {
+  background-color: var(--bg-subtle);
   text-decoration: none;
 }
 
@@ -794,14 +822,14 @@ table td,
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 1.15;
+  line-height: 1.18;
 }
 
 .brand-title {
   font-weight: var(--font-semibold);
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink-strong);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -816,7 +844,90 @@ table td,
   font-weight: var(--font-medium);
   font-size: 11px;
   color: var(--ink-muted);
+  letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+/* Lockup vertical institucional (acceso, registro, estado y 500) */
+.brand-lockup-full {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: 0 0 18px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.brand-lockup-full .utn-logo {
+  margin-bottom: 10px;
+}
+
+.brand-lockup-title {
+  font-size: 15px;
+  font-weight: var(--font-semibold);
+  color: var(--ink-strong);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  margin-bottom: 3px;
+}
+
+.brand-lockup-inst {
+  font-size: 12px;
+  font-weight: var(--font-normal);
+  color: var(--ink-muted);
+  line-height: 1.38;
+}
+
+/* Encabezado horizontal institucional exclusivo para impresión A4 */
+.print-letterhead {
+  display: none;
+}
+
+@media print {
+  .print-letterhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 0 12px;
+    margin: 0 0 16px;
+    border-bottom: 2px solid var(--brand-navy);
+    break-inside: avoid;
+    print-color-adjust: exact;
+  }
+
+  .print-letterhead-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .print-letterhead-org {
+    font-size: 14px;
+    font-weight: var(--font-bold);
+    color: var(--brand-navy);
+    line-height: 1.2;
+  }
+
+  .print-letterhead-inst {
+    font-size: 11px;
+    color: var(--ink-primary);
+    line-height: 1.35;
+    margin-top: 2px;
+  }
+
+  .print-letterhead-meta {
+    text-align: right;
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+
+  .print-letterhead-doc {
+    font-weight: var(--font-semibold);
+    color: var(--ink-strong);
+  }
 }
 
 /* ---------------------------------------------------------------------------

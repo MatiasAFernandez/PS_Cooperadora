@@ -48,9 +48,10 @@ Esta es la referencia visual y de interacción vigente para diseñar, implementa
 
 ## Shell, navegación y controles comunes
 
-- **Navegación lateral full-height (`>= 1280 px`):** sidebar fijo de `228 px` con marca institucional arriba, módulos agrupados al centro y cuenta + acción de cierre de sesión al pie (sin topbar burocrática con «Sesión activa» en escritorio). Plegable a riel de `64 px` conservando:
-  - atributo `title` (y etiqueta visible al foco/hover) en cada enlace `.nav-link`;
-  - el botón de cierre de sesión siempre accesible en el pie del riel.
+- **Navegación lateral full-height (`>= 1280 px`):** sidebar fijo adaptable (`248 px` en `1280–1439 px` y `260 px` en `>= 1440 px`) con isotipo oficial UTN FRRe en SVG inline (`templates/comunes/_logo_utn.html` + `Cooperadora` / `UTN · FRRe`), favicon SVG (`static/img/favicon.svg`), módulos agrupados al centro y menú interactivo de cuenta nativo con `<details>` al pie (perfil, «Mi cuenta», «Cambiar contraseña» y «Cerrar sesión» `POST`, en flujo en `< 1280 px` sin JS). Plegable a riel de `64 px` conservando:
+  - cabecera con isotipo centrado que al pasar el cursor o enfocar por teclado (`:focus-visible`) se reemplaza por el botón único de expandir (`panel-left-open`), sin solaparse con enlaces;
+  - tooltips CSS modernos (conservando `title` en HTML como respaldo sin JS), punto discreto sincronizado con `avisos/contador.js` en `Avisos` y popover de cuenta desplegable hacia la derecha.
+- **Identidad institucional en pantallas con aire e impresión A4:** lockup vertical (`templates/comunes/_marca_institucional.html` y `500.html` autosuficiente) con «Asociación Cooperadora» y dos líneas separadas («Universidad Tecnológica Nacional» / «Facultad Regional Resistencia»), y encabezado horizontal exclusivo para `@media print` (`templates/comunes/_encabezado_impresion.html`) en reportes.
 - **Navegación en `< 1280 px` (tablets y móvil):** topbar móvil compacta (`56 px`) con botón menú de `44×44` y marca; al abrir el drawer lateral superpuesto, el cierre usa un botón limpio de **sólo ícono `×` de `44×44 px`** (`aria-label="Cerrar menú"`, sin texto visible «Cerrar»), con soporte de `Escape`, clic en el scrim, trampa de foco `Tab` y devolución de foco al botón que lo abrió.
 - **Jerarquía de acciones (4 niveles):**
   1. **Primario (`.btn-primary`):** marino sólido, reservado al CTA dominante de la pantalla («Nueva solicitud») y a filas que exigen intervención operativa («Revisar solicitud», «Revisar pago», «Corregir solicitud»).

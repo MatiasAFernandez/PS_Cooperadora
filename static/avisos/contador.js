@@ -4,6 +4,7 @@
 
     const url = link.getAttribute("data-avisos-contador-url");
     const badge = link.querySelector("[data-avisos-contador]");
+    const dot = link.querySelector("[data-avisos-dot]");
     if (!url || !badge || typeof window.fetch !== "function") return;
 
     function ocultar() {
@@ -11,6 +12,7 @@
         badge.textContent = "";
         badge.removeAttribute("aria-label");
         badge.className = "app-nav-badge";
+        if (dot) dot.hidden = true;
     }
 
     fetch(url, {
@@ -38,6 +40,7 @@
                 n === 1 ? "1 aviso sin leer" : n + " avisos sin leer"
             );
             badge.hidden = false;
+            if (dot) dot.hidden = false;
         })
         .catch(function () {
             ocultar();
