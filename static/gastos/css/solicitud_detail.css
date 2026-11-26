@@ -112,7 +112,7 @@
 }
 
 .solicitud-detalle .sd-chip-link {
-  min-height: 28px;
+  min-height: var(--ctrl-h-sm);
   padding: 0.2rem 0.7rem;
   text-decoration: none;
 }

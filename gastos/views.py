@@ -1183,6 +1183,8 @@ def _solicitud_detail_context(
         for v in versiones_vigentes
     )
     detalle_pendientes = []
+    if can_decide:
+        detalle_pendientes.append(("Pendiente de decisión", "#decision-solicitud"))
     if solicitud.estado == EstadoSolicitud.OBSERVADA and detalle_es_solicitante:
         detalle_pendientes.append(("Observada para corregir", "#observacion-solicitud"))
     if solicitud.estado == EstadoSolicitud.ACEPTADA:

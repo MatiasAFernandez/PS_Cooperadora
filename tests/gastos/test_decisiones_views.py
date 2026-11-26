@@ -961,6 +961,7 @@ def test_t04_26_consulta_historial_decisiones_y_aislamiento(
     assert "Aprobación definitiva" in resp_o.content.decode()
     # La solicitud ya está aceptada (terminal), por lo que tampoco O puede decidir
     assert resp_o.context["can_decide"] is False
+    assert "Pendiente de decisión" not in resp_o.content.decode()
 
     # Consulta por solicitante B sobre solicitud ajena no visible
     client_b = auth_client(user_b)
@@ -969,18 +970,17 @@ def test_t04_26_consulta_historial_decisiones_y_aislamiento(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("estado", (EstadoSolicitud.PRESENTADA, EstadoSolicitud.POSTERGADA))
 def test_formulario_decision_renderizado_segun_permisos(
     auth_client: Any,
     demo_accounts: tuple[dict[str, Any], str],
     solicitud_a: SolicitudGasto,
+    estado: EstadoSolicitud,
 ) -> None:
-    """Verifica el renderizado condicional del formulario de decisión.
-
-    - Operadora O sobre solicitud de A en 'presentada': can_decide=True, formulario visible.
-    - Cuenta L sobre solicitud de A en 'presentada': can_decide=False, formulario no visible.
-    - Solicitante A sobre su propia solicitud: can_decide=False, formulario no visible.
-    """
+    """El indicador y el formulario aparecen sólo si el actor puede decidir."""
     accounts, _ = demo_accounts
+    solicitud_a.estado = estado
+    solicitud_a.save(update_fields=["estado"])
     url_detalle = reverse("gastos:detalle", kwargs={"pk": solicitud_a.pk})
 
     # Operadora O: ve formulario
@@ -991,6 +991,7 @@ def test_formulario_decision_renderizado_segun_permisos(
     assert resp_o.context["decision_form"] is not None
     assert 'id="decision-heading"' in resp_o.content.decode()
     assert 'name="action" value="aceptar"' in resp_o.content.decode()
+    assert 'href="#decision-solicitud">Pendiente de decisión</a>' in resp_o.content.decode()
 
     # Cuenta de solo lectura L: no ve formulario
     client_l = auth_client(accounts["demo_l"])
@@ -999,6 +1000,7 @@ def test_formulario_decision_renderizado_segun_permisos(
     assert resp_l.context["can_decide"] is False
     assert resp_l.context["decision_form"] is None
     assert 'id="decision-heading"' not in resp_l.content.decode()
+    assert "Pendiente de decisión" not in resp_l.content.decode()
 
     # Solicitante A: no ve formulario sobre solicitud propia
     client_a = auth_client(accounts["demo_a"])
@@ -1007,3 +1009,4 @@ def test_formulario_decision_renderizado_segun_permisos(
     assert resp_a.context["can_decide"] is False
     assert resp_a.context["decision_form"] is None
     assert 'id="decision-heading"' not in resp_a.content.decode()
+    assert "Pendiente de decisión" not in resp_a.content.decode()
