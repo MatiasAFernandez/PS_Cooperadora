@@ -83,7 +83,7 @@ def test_sin_filtro_conserva_resultados_y_orden(
     assert list(response.context["solicitudes"]) == expected
     content = response.content.decode()
     assert 'method="get" action="/gastos/">' in content
-    assert '<label for="id_estado">Estado:</label>' in content
+    assert '<label for="id_estado">Estado</label>' in content
     assert 'href="/gastos/">Quitar filtros</a>' in content
 
 

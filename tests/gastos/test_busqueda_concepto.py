@@ -238,7 +238,7 @@ def test_consulta_combinada_y_recarga_no_escriben_solicitudes_o_decisiones(
     assert list(response.context["solicitudes"]) == list(reload.context["solicitudes"])
     assert list(response.context["solicitudes"]) == [gastos_busqueda["a_presentada"]]
     content = response.content.decode()
-    assert '<label for="id_q">Buscar por concepto o número:</label>' in content
+    assert '<label for="id_q">Buscar por concepto o número</label>' in content
     assert 'value="  insumos  "' in content
     assert '<option value="postergada" selected>Postergada</option>' in content
     assert list(SolicitudGasto.objects.order_by("pk").values()) == before_solicitudes
