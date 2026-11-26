@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Barrier
 
@@ -22,7 +23,7 @@ from facturacion.workflow import (
     emitir_token,
     presentar_solicitud_facturacion,
 )
-from tests.facturacion.test_cierre import aceptar
+from tests.facturacion.test_cierre import aceptar, factura
 
 
 def pdf():
@@ -138,6 +139,30 @@ def test_alta_confirmada_http_y_solicitante_no_puede_confirmar(escenario, solici
     assert CobroExterno.objects.get().resultado == "CONFIRMADO"
     respuesta = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     assert not respuesta.context["pendientes_revision"]
+
+
+def test_alta_http_sugiere_fecha_local_y_neto_facturado(escenario, solicitud, entrada, monkeypatch):
+    monkeypatch.setattr("django.utils.timezone.now", lambda: datetime(2026, 11, 27, 1, tzinfo=UTC))
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["a"])
+    url = reverse("facturacion:registrar_cobro", args=[solicitud.pk])
+
+    sin_factura = cliente.get(url)
+    assert 'value="2026-11-26"' in str(sin_factura.context["form"]["fecha_operacion"])
+    assert sin_factura.context["form"]["importe"].value() is None
+
+    factura(escenario, solicitud, importe="120.50")
+    con_factura = cliente.get(url)
+    assert 'value="120.50"' in str(con_factura.context["form"]["importe"])
+
+    factura(escenario, solicitud, tipo="NOTA_CREDITO", numero="2", importe="20.25")
+    con_nota = cliente.get(url)
+    assert 'value="100.25"' in str(con_nota.context["form"]["importe"])
+
+    sin_respaldo = cliente.post(url, entrada)
+    assert sin_respaldo.status_code == 400
+    assert sin_respaldo.context["form"]["importe"].value() == entrada["importe"]
+    assert sin_respaldo.context["form"]["fecha_operacion"].value() == entrada["fecha_operacion"]
 
 
 def test_alta_confirmada_error_conserva_casilla_y_datos(escenario, solicitud, entrada):

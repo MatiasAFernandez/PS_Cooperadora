@@ -680,7 +680,7 @@ class SolicitudGastoListView(View):
                 "documentos.ver_metadatos", "documentos.incorporar",
             )
         )
-        vista_rapida = puede_decidir or has_capability(actor, "gastos.registrar_pago")
+        es_operador = puede_decidir or has_capability(actor, "gastos.registrar_pago")
         puede_presentar = has_capability(actor, "gastos.presentar")
         puede_incorporar = has_capability(actor, "documentos.incorporar")
         ofrece_atencion = puede_decidir or puede_pagar or puede_presentar
@@ -727,22 +727,18 @@ class SolicitudGastoListView(View):
 
         base_solicitudes = visible_expenses(actor)
         total_atencion = (
-            base_solicitudes.filter(atencion).count() if ofrece_atencion else None
+            base_solicitudes.filter(atencion).count() if ofrece_atencion else 0
         )
 
+        motivo = DecisionGasto.objects.filter(
+            solicitud_id=OuterRef("pk"), estado_resultante=OuterRef("estado")
+        ).order_by("-fecha", "-pk").values("motivo")[:1]
         solicitudes = base_solicitudes.select_related(
-            "centro_costo", "pago_externo", "cierre"
-        )
-        solo_atencion = ofrece_atencion and request.GET.get("atencion") == "1"
+            "centro_costo", "pago_externo", "cierre", "solicitante"
+        ).annotate(motivo_bandeja=Subquery(motivo))
+        solo_atencion = request.GET.get("atencion") == "1"
         if solo_atencion:
             solicitudes = solicitudes.filter(atencion)
-        if vista_rapida:
-            motivo = DecisionGasto.objects.filter(
-                solicitud_id=OuterRef("pk"), estado_resultante=OuterRef("estado")
-            ).order_by("-fecha", "-pk").values("motivo")[:1]
-            solicitudes = solicitudes.select_related("solicitante").annotate(
-                motivo_bandeja=Subquery(motivo)
-            )
         opciones_pendiente = [
             (clave, etiqueta)
             for clave, etiqueta in (
@@ -877,7 +873,7 @@ class SolicitudGastoListView(View):
                 "actor": actor,
                 "filtro_form": filtro_form,
                 "resumen_deuda": resumen_deuda,
-                "vista_rapida": vista_rapida,
+                "es_operador": es_operador,
                 "puede_presentar": puede_presentar,
                 "solo_atencion": solo_atencion,
                 "ofrece_atencion": ofrece_atencion,

@@ -70,13 +70,13 @@ def _crear_solicitud_con_transferencia(
 
 
 def test_solicitud_list_renderiza_cuatro_columnas(create_actor: Any) -> None:
-    """El lector ve una tabla compacta y accesos directos al detalle."""
+    """El lector ve la tabla compacta, el resumen y los enlaces al detalle."""
     user, _ = create_actor("usuario_consulta", ["gastos.consultar_todas"])
     client = Client()
     client.force_login(user)
 
     centro = CentroCosto.objects.create(codigo="cc-quimica", nombre="Química")
-    _crear_solicitud_con_transferencia(
+    solicitud = _crear_solicitud_con_transferencia(
         solicitante=user,
         concepto="Microscopio electrónico",
         monto=Decimal("150000.00"),
@@ -101,8 +101,12 @@ def test_solicitud_list_renderiza_cuatro_columnas(create_actor: Any) -> None:
     assert "$ 150.000,00" in content
     assert "Microscopio electrónico" in content
     assert "Ver detalle" in content
-    assert "data-vista-rapida" not in content
-    assert "Química" not in content
+    assert f'data-vista-rapida="resumen-{solicitud.pk}"' in content
+    assert "<dt>Centro de costo</dt><dd>Química</dd>" in content
+    panel = content.split(f'id="resumen-{solicitud.pk}"', 1)[1].split("</dialog>", 1)[0]
+    assert '<a class="btn btn-primary"' in panel
+    assert panel.count(">Ver detalle</a>") == 1
+    assert 'class="btn btn-secondary"' not in panel
 
 
 def test_solicitud_list_drawer_privacidad_ssr_sin_datos_bancarios(create_actor: Any) -> None:
@@ -112,7 +116,7 @@ def test_solicitud_list_drawer_privacidad_ssr_sin_datos_bancarios(create_actor: 
 
     cbu_secreto = "0110599540000012345678"
     titular_secreto = "Proveedor Confidencial SA"
-    _crear_solicitud_con_transferencia(
+    solicitud = _crear_solicitud_con_transferencia(
         solicitante=user_titular,
         concepto="Servidor de cómputo",
         cbu_alias=cbu_secreto,
@@ -133,7 +137,7 @@ def test_solicitud_list_drawer_privacidad_ssr_sin_datos_bancarios(create_actor: 
     assert "Copiar CBU" not in html
     assert "btn-copy" not in html
 
-    assert "data-vista-rapida" not in html
+    assert f'data-vista-rapida="resumen-{solicitud.pk}"' in html
 
 
 def test_solicitud_list_vista_rapida_sin_datos_bancarios_para_tesoreria(create_actor: Any) -> None:
@@ -166,7 +170,7 @@ def test_solicitud_list_vista_rapida_sin_datos_bancarios_para_tesoreria(create_a
 
 
 def test_solicitud_list_sin_datos_bancarios_para_titular(create_actor: Any) -> None:
-    """El titular tiene un enlace al detalle y no recibe datos bancarios en la lista."""
+    """El titular recibe la vista rápida de sus gastos, sin datos bancarios."""
     user_titular, _ = create_actor(
         "titular_propio", ["gastos.presentar", "gastos.consultar_propias"]
     )
@@ -178,6 +182,8 @@ def test_solicitud_list_sin_datos_bancarios_para_titular(create_actor: Any) -> N
         cbu_alias=cbu_propio,
         titular="Docente Investigador",
     )
+    otro_titular, _ = create_actor("otro_titular", ["gastos.presentar"])
+    ajena = crear_gasto_sintetico(solicitante=otro_titular, concepto="Solicitud ajena")
 
     client = Client()
     client.force_login(user_titular)
@@ -188,7 +194,9 @@ def test_solicitud_list_sin_datos_bancarios_para_titular(create_actor: Any) -> N
     html = response.content.decode()
     assert cbu_propio not in html
     assert "Copiar CBU" not in html
-    assert "data-vista-rapida" not in html
+    assert f'data-vista-rapida="resumen-{solicitud.pk}"' in html
+    assert f'id="resumen-{ajena.pk}"' not in html
+    assert "Solicitud ajena" not in html
     assert reverse("gastos:detalle", kwargs={"pk": solicitud.pk}) in html
 
 
@@ -838,9 +846,10 @@ def test_solicitante_ve_pestana_atencion_observada_y_deuda_con_cta_adjuntar(
     assert resp_todas.context["total_atencion"] == 2
     html_todas = resp_todas.content.decode()
     assert "Requieren atención" in html_todas
-    assert '<span class="bandeja-tab-count bandeja-tab-count--attn">2</span>' in html_todas
+    assert 'data-bandeja-tab="atencion" class="bandeja-tab-con-pendientes"' in html_todas
+    assert '<span class="bandeja-tab-count">2</span>' in html_todas
     # A2: solo en Requieren atención (clase base + modificador --attn)
-    assert html_todas.count("bandeja-tab-count") == 2
+    assert html_todas.count('class="bandeja-tab-count"') == 1
 
     resp_atencion = client.get(reverse("gastos:lista"), {"atencion": "1"})
     assert resp_atencion.status_code == 200
@@ -851,6 +860,12 @@ def test_solicitante_ve_pestana_atencion_observada_y_deuda_con_cta_adjuntar(
     href_obs = f'href="/gastos/{observada.pk}/?bandeja=atencion%3D1#observacion-solicitud"'
     assert href_obs in html_atencion
     assert "Corregir solicitud" in html_atencion
+    panel = html_atencion.split(f'id="resumen-{observada.pk}"', 1)[1].split("</dialog>", 1)[0]
+    assert (
+        f'<a class="btn btn-secondary" href="/gastos/{observada.pk}/?bandeja=atencion%3D1">'
+        "Ver detalle</a>" in panel
+    )
+    assert f'<a class="btn btn-primary" {href_obs}>Corregir solicitud</a>' in panel
 
     # Filtros compatibles vs incompatibles al cambiar de pestaña
     r_obs = client.get(reverse("gastos:lista"), {"estado": "observada", "q": "propio"})
@@ -865,8 +880,8 @@ def test_solicitante_ve_pestana_atencion_observada_y_deuda_con_cta_adjuntar(
     assert f'href="/gastos/{deuda.pk}/?bandeja=atencion%3D1#seguimiento-factura"' in html_sin_aporte
 
 
-def test_solicitante_atencion_vacia_y_lectura_sin_pestanas(create_actor: Any) -> None:
-    """Solicitante sin pendientes ve estado vacío de atención; Lectura no ve pestañas."""
+def test_atencion_vacia_para_solicitante_y_lectura(create_actor: Any) -> None:
+    """Las cuentas sin pendientes tienen un contador neutro y una vista vacía."""
     solicitante, _ = create_actor("solicitante_sin_pendientes", ["gastos.presentar"])
     crear_gasto_sintetico(
         solicitante=solicitante,
@@ -881,10 +896,15 @@ def test_solicitante_atencion_vacia_y_lectura_sin_pestanas(create_actor: Any) ->
     assert list(resp.context["solicitudes"]) == []
     assert "No tenés solicitudes que requieran atención en este momento." in resp.content.decode()
 
-    lector, _ = create_actor("lector_sin_pestanas", ["gastos.consultar_todas"])
+    lector, _ = create_actor("lector_sin_pendientes", ["gastos.consultar_todas"])
     client.force_login(lector)
-    resp_lector = client.get(reverse("gastos:lista"), {"atencion": "1"})
+    lista_url = reverse("gastos:lista")
+    resp_lector = client.get(lista_url)
     assert resp_lector.status_code == 200
     assert resp_lector.context["ofrece_atencion"] is False
-    assert "Requieren atención" not in resp_lector.content.decode()
     assert len(resp_lector.context["solicitudes"]) == 1
+    html_lector = resp_lector.content.decode()
+    assert 'Requieren atención <span class="bandeja-tab-count">0</span>' in html_lector
+    assert "bandeja-tab-con-pendientes" not in html_lector
+    pendientes_lector = client.get(lista_url, {"atencion": "1"})
+    assert list(pendientes_lector.context["solicitudes"]) == []

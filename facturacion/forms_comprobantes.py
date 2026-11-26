@@ -44,7 +44,7 @@ class ComprobanteExternoForm(EnvioForm):
     numero = forms.IntegerField(label="Número", min_value=1, max_value=99999999)
     fecha_emision = forms.DateField(
         label="Fecha de emisión",
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     importe = forms.DecimalField(
         label="Importe del comprobante",
@@ -122,7 +122,6 @@ class ModificarComprobanteForm(ComprobanteExternoForm):
         self.fields["tipo"].disabled = True
         for campo in DATOS_COMPROBANTE:
             self.fields[campo].disabled = not puede_corregir
-        self.fields["fecha_emision"].widget.format = "%Y-%m-%d"
         if puede_adjuntar:
             self.fields["archivo_pdf"].required = False
             self.fields["archivo_pdf"].label = "Nuevo PDF del comprobante"

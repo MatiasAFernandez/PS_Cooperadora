@@ -112,6 +112,7 @@ def test_http_tipo_de_comprobante_invalido_se_indica_junto_al_archivo(
     mensaje = "Tipo de archivo no soportado. Adjuntá un archivo en formato PDF (.pdf)."
     form = respuesta.context["form"]
     assert form["archivo_pdf"].errors == [mensaje]
+    assert form["fecha_emision"].value() == entrada["fecha_emision"]
     assert not form.non_field_errors()
     html = respuesta.content.decode()
     assert html.index('id="id_archivo_pdf"') < html.index(mensaje)

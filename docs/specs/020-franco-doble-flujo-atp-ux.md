@@ -12,6 +12,21 @@
 
 La bandeja de la Issue #92 pasa a cuatro columnas y se apila en móvil. Conserva filtros y paginación. Los perfiles con capacidad de decidir o registrar pagos pueden abrir una vista rápida de solo lectura en escritorio desde el concepto. La acción lleva al detalle, donde se verifican los requisitos del próximo paso. Este diseño reemplaza los criterios iniciales de ocho columnas y copiado bancario en el panel. Los datos bancarios se consultan en las superficies autorizadas de SPEC-013.
 
+La bandeja muestra hasta cinco solicitudes a la vez con JavaScript. Cuando hay
+más, el desplazamiento vertical permite recorrer los 25 registros de la página.
+Cada perfil puede abrir la vista rápida de las solicitudes que tiene permiso
+para consultar, con un clic o toque en la fila tanto en escritorio como en móvil.
+El resumen conserva la privacidad de los datos de transferencia. El concepto
+permite abrir el panel por teclado y las acciones de fila conservan su destino.
+Cuando hay una acción pendiente disponible, el panel ofrece «Ver detalle»
+como acceso secundario y la acción como botón principal.
+Sin JavaScript, la página se muestra completa y el concepto abre el detalle.
+
+Todos los perfiles con acceso a la bandeja ven «Todas» y «Requieren atención».
+El contador refleja los pendientes de la cuenta. Con pendientes, el texto usa
+el color de aviso y el fondo amarillo aparece al seleccionar la pestaña. Con
+cero pendientes, incluido el acceso de solo lectura, la pestaña queda neutra.
+
 ---
 
 ## 1. Problema y valor

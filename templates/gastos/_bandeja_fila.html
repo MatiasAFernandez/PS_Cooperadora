@@ -1,8 +1,8 @@
-<tr>
+<tr data-resumen="{{ s.pk }}">
     <td class="bandeja-solicitud">
-        <a class="bandeja-concepto" href="{{ detalle_href }}"{% if vista_rapida %} data-vista-rapida="resumen-{{ s.pk }}"{% endif %}>
+        <a class="bandeja-concepto" href="{{ detalle_href }}" data-vista-rapida="resumen-{{ s.pk }}" aria-controls="resumen-{{ s.pk }}" aria-haspopup="dialog">
             <span class="bandeja-concepto-texto">{{ s.concepto }}</span>
-            <span class="bandeja-meta"><strong>#{{ s.pk }}</strong> · {{ s.fecha_creacion|date:"d/m/Y" }}{% if vista_rapida %} · {{ s.solicitante.get_full_name|default:s.solicitante.get_username }}{% endif %}</span>
+            <span class="bandeja-meta"><strong>#{{ s.pk }}</strong> · {{ s.fecha_creacion|date:"d/m/Y" }}{% if es_operador %} · {{ s.solicitante.get_full_name|default:s.solicitante.get_username }}{% endif %}</span>
         </a>
     </td>
     <td class="bandeja-importe"><span class="bandeja-importe-etiqueta">Importe estimado</span> $ {{ s.monto_estimado|floatformat:"2g" }}</td>
@@ -21,41 +21,42 @@
         {% else %}
             <a class="btn btn-primary btn-row" href="{{ detalle_href }}{{ s.ancla_bandeja }}" aria-label="{{ s.accion_bandeja }} de la solicitud {{ s.pk }}">{{ s.accion_bandeja }}</a>
         {% endif %}
-        {% if vista_rapida %}
-            <dialog class="bandeja-panel" id="resumen-{{ s.pk }}" aria-labelledby="resumen-titulo-{{ s.pk }}">
-                <div class="bandeja-panel-head">
-                    <div class="bandeja-panel-heading">
-                        <p class="bandeja-panel-eyebrow">Solicitud #{{ s.pk }}</p>
-                        <h2 id="resumen-titulo-{{ s.pk }}">{{ s.concepto }}</h2>
-                    </div>
-                    <form method="dialog" class="bandeja-panel-cierre"><button type="submit" class="btn-icon bandeja-panel-cerrar" aria-label="Cerrar vista rápida" autofocus><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></form>
+        <dialog class="bandeja-panel" id="resumen-{{ s.pk }}" aria-labelledby="resumen-titulo-{{ s.pk }}">
+            <div class="bandeja-panel-head">
+                <div class="bandeja-panel-heading">
+                    <p class="bandeja-panel-eyebrow">Solicitud #{{ s.pk }}</p>
+                    <h2 id="resumen-titulo-{{ s.pk }}">{{ s.concepto }}</h2>
                 </div>
-                <div class="bandeja-panel-body">
-                    <div class="bandeja-chips">
-                        <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
-                        {% if s.cerrada_bandeja %}<span class="bandeja-chip bandeja-chip-cerrada">Cerrada</span>{% endif %}
-                    </div>
-                    <div class="bandeja-panel-importe">
-                        <span>Importe estimado</span>
-                        <strong>$ {{ s.monto_estimado|floatformat:"2g" }}</strong>
-                    </div>
-                    {% if s.pendiente_bandeja %}
-                        <p class="bandeja-pendiente{% if s.pendiente_bandeja == 'Falta factura definitiva' %} bandeja-pendiente--err{% endif %}">{{ s.pendiente_bandeja }}</p>
-                    {% endif %}
-                    {% if s.motivo_bandeja and s.estado == "observada" or s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
-                        <p class="bandeja-panel-motivo"><strong>Motivo:</strong> {{ s.motivo_bandeja }}</p>
-                    {% endif %}
-                    <dl class="bandeja-panel-dl">
-                        <div><dt>Solicitante</dt><dd>{{ s.solicitante.get_full_name|default:s.solicitante.get_username }}</dd></div>
-                        <div><dt>Fecha</dt><dd>{{ s.fecha_creacion|date:"d/m/Y" }}</dd></div>
-                        <div><dt>Centro de costo</dt><dd>{{ s.centro_costo.nombre|default:"Sin asignar" }}</dd></div>
-                        <div><dt>Modalidad</dt><dd>{{ s.get_tipo_flujo_display }}</dd></div>
-                    </dl>
+                <form method="dialog" class="bandeja-panel-cierre"><button type="submit" class="btn-icon bandeja-panel-cerrar" aria-label="Cerrar vista rápida" autofocus><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></form>
+            </div>
+            <div class="bandeja-panel-body">
+                <div class="bandeja-chips">
+                    <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
+                    {% if s.cerrada_bandeja %}<span class="bandeja-chip bandeja-chip-cerrada">Cerrada</span>{% endif %}
                 </div>
-                <div class="bandeja-panel-foot">
-                    <a class="btn btn-primary" href="{{ detalle_href }}{{ s.ancla_bandeja }}">{{ s.accion_bandeja }}</a>
+                <div class="bandeja-panel-importe">
+                    <span>Importe estimado</span>
+                    <strong>$ {{ s.monto_estimado|floatformat:"2g" }}</strong>
                 </div>
-            </dialog>
-        {% endif %}
+                {% if s.pendiente_bandeja %}
+                    <p class="bandeja-pendiente{% if s.pendiente_bandeja == 'Falta factura definitiva' %} bandeja-pendiente--err{% endif %}">{{ s.pendiente_bandeja }}</p>
+                {% endif %}
+                {% if s.motivo_bandeja and s.estado == "observada" or s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
+                    <p class="bandeja-panel-motivo"><strong>Motivo:</strong> {{ s.motivo_bandeja }}</p>
+                {% endif %}
+                <dl class="bandeja-panel-dl">
+                    <div><dt>Solicitante</dt><dd>{{ s.solicitante.get_full_name|default:s.solicitante.get_username }}</dd></div>
+                    <div><dt>Fecha</dt><dd>{{ s.fecha_creacion|date:"d/m/Y" }}</dd></div>
+                    <div><dt>Centro de costo</dt><dd>{{ s.centro_costo.nombre|default:"Sin asignar" }}</dd></div>
+                    <div><dt>Modalidad</dt><dd>{{ s.get_tipo_flujo_display }}</dd></div>
+                </dl>
+            </div>
+            <div class="bandeja-panel-foot">
+                {% if s.accion_bandeja != 'Ver detalle' %}
+                    <a class="btn btn-secondary" href="{{ detalle_href }}">Ver detalle</a>
+                {% endif %}
+                <a class="btn btn-primary" href="{{ detalle_href }}{{ s.ancla_bandeja }}">{{ s.accion_bandeja }}</a>
+            </div>
+        </dialog>
     </td>
 </tr>
