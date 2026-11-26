@@ -274,9 +274,9 @@ def enviar_verificacion(cuenta: CuentaLocal, *, base_url: str) -> bool:
     subject = "Verificación de correo electrónico"
     message = (
         f"Hola {cuenta.nombre_completo},\n\n"
-        "Para verificar su correo electrónico y continuar con la solicitud de acceso, "
-        f"ingrese al siguiente enlace:\n\n{url}\n\n"
-        "Si no solicitó esta cuenta, ignore este mensaje.\n"
+        "Para verificar tu correo electrónico y continuar con la solicitud de acceso, "
+        f"ingresá al siguiente enlace:\n\n{url}\n\n"
+        "Si no solicitaste esta cuenta, podés ignorar este mensaje.\n"
     )
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
 

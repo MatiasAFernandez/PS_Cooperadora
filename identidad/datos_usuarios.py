@@ -72,7 +72,7 @@ def _verificar_referencia_edicion(cuenta: CuentaLocal, referencia: str) -> None:
     if any(valores_referencia.get(campo) != valores_actuales[campo] for campo in CAMPOS_EDITABLES):
         raise ValidationError(
             "Los datos de la cuenta cambiaron desde que abrió el formulario. "
-            "Recargue la ficha para revisar los valores actuales antes de guardar."
+            "Recargá la ficha para revisar los valores actuales antes de guardar."
         )
 
 
@@ -89,7 +89,7 @@ def _limpiar_y_validar_datos(datos: Mapping[str, Any]) -> dict[str, str]:
         if bruto is None:
             bruto = ""
         if not isinstance(bruto, str):
-            errores[campo] = ["Ingrese un texto válido."]
+            errores[campo] = ["Ingresá un texto válido."]
             continue
 
         valor = bruto.strip()

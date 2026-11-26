@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static formato_ars %}
 {% block titulo_modulo %}Ficha de usuario local — PS Cooperadora{% endblock %}
-{% block title %}{{ cuenta.nombre_completo }} — Usuarios locales — PS Cooperadora{% endblock %}
+{% block title %}{{ cuenta.nombre_completo|default:cuenta.email }} — Usuarios locales — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
@@ -14,8 +14,8 @@
 
     <header class="usuarios-head">
         <div class="usuarios-head-texto">
-            <h1 class="cuentas-title">{{ cuenta.nombre_completo }}</h1>
-            <p class="cuentas-intro">{{ cuenta.email }}</p>
+            <h1 class="cuentas-title">{{ cuenta.nombre_completo|default:cuenta.email }}</h1>
+            {% if cuenta.nombre_completo %}<p class="cuentas-intro">{{ cuenta.email }}</p>{% endif %}
         </div>
         <div class="usuarios-head-acciones">
             <a class="btn btn-primary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Editar datos</a>

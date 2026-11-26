@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block titulo_modulo %}Gestionar perfiles — PS Cooperadora{% endblock %}
-{% block title %}Gestionar perfiles — {{ cuenta.nombre_completo }} — PS Cooperadora{% endblock %}
+{% block title %}Gestionar perfiles — {{ cuenta.nombre_completo|default:cuenta.email }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
@@ -14,7 +14,7 @@
 
     <header class="cuentas-header">
         <h1 class="cuentas-title">Gestionar perfiles</h1>
-        <p class="cuentas-intro">{{ cuenta.nombre_completo }}</p>
+        <p class="cuentas-intro">{{ cuenta.nombre_completo|default:cuenta.email }}</p>
     </header>
 
     <section class="cuentas-card usuarios-ficha-card" aria-labelledby="gestionar-perfiles-titulo">
@@ -23,7 +23,7 @@
         <dl class="kv-list usuarios-editar-consulta">
             <div>
                 <dt>Nombre completo</dt>
-                <dd>{{ cuenta.nombre_completo }}</dd>
+                <dd>{{ cuenta.nombre_completo|default:"Sin informar" }}</dd>
             </div>
             <div>
                 <dt>Correo electrónico</dt>

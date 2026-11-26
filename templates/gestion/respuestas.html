@@ -1,10 +1,29 @@
 {% with respuestas=solicitud.tramite_base.respuestas_formulario.all %}
-{% if respuestas %}<details class="card gestion-card"><summary>Datos del formulario configurable e historial</summary>
-{% for respuesta in respuestas %}<section><h3>Versión {{ respuesta.revision }} · {{ respuesta.fecha|date:"d/m/Y H:i" }}</h3>
-<dl>{% for item in respuesta.datos.values %}<dt>{{ item.etiqueta }}</dt><dd>
-{% if item.tipo == "documento" %}
-{% if "documentos.consultar_metadatos" in actor.capabilities %}{{ item.valor|default:"—" }}{% if item.documento_id and "documentos.descargar" in actor.capabilities %} · <a href="{% url 'documentos:archivo' item.documento_id %}">Descargar adjunto</a>{% endif %}
-{% else %}Información documental no disponible para esta cuenta.{% endif %}
-{% else %}{{ item.valor|default:"—" }}{% endif %}
-</dd>{% endfor %}</dl></section>{% endfor %}
-</details>{% endif %}{% endwith %}
+{% if respuestas %}
+<details class="card gestion-respuestas">
+    <summary class="gestion-respuestas-summary">
+        <span>Datos del formulario configurable e historial</span>
+        <svg class="gestion-respuestas-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <div class="gestion-respuestas-body">
+        {% for respuesta in respuestas %}
+        <section class="gestion-respuestas-version">
+            <h3 class="gestion-respuestas-ver">Versión {{ respuesta.revision }} · <span class="font-tabular">{{ respuesta.fecha|date:"d/m/Y H:i" }}</span></h3>
+            <dl class="kv-list">
+                {% for item in respuesta.datos.values %}
+                <div>
+                    <dt>{{ item.etiqueta }}</dt>
+                    <dd>
+                        {% if item.tipo == "documento" %}
+                            {% if "documentos.consultar_metadatos" in actor.capabilities %}{{ item.valor|default:"—" }}{% if item.documento_id and "documentos.descargar" in actor.capabilities %} · <a class="gestion-respuestas-link" href="{% url 'documentos:archivo' item.documento_id %}">Descargar adjunto</a>{% endif %}{% else %}Información documental no disponible para esta cuenta.{% endif %}
+                        {% else %}{{ item.valor|default:"—" }}{% endif %}
+                    </dd>
+                </div>
+                {% endfor %}
+            </dl>
+        </section>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}
+{% endwith %}

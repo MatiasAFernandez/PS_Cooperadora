@@ -130,7 +130,7 @@ def test_titular_ve_aviso_pago_historico_cuenta_y_marca_con_timestamp_estable():
     evento = _crear_pago_y_evento(
         solicitud,
         operadora,
-        fecha_pago=date(2026, 11, 25),
+        fecha_pago=date(2025, 4, 17),
         fecha_evento=fecha_evento,
         monto_bruto=Decimal("98765.43"),
         monto_retencion_atp=Decimal("4321.10"),
@@ -159,7 +159,7 @@ def test_titular_ve_aviso_pago_historico_cuenta_y_marca_con_timestamp_estable():
     assert (
         "El 13/11/2026 23:15 se registró un pago externo para la solicitud #2101." in texto_visible
     )
-    assert "25/11/2026" not in html
+    assert "17/04/2025" not in html
     for prohibido in (
         "Concepto confidencial #2101",
         "98765",
