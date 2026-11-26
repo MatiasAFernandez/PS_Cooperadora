@@ -41,14 +41,14 @@
 .visor-doc-dialog .visor-doc-btn-primary {
   background-color: var(--brand-primary, #1e4273);
   border-color: var(--brand-primary, #1e4273);
-  color: var(--bg-surface, #ffffff);
+  color: var(--ink-on-accent, #ffffff);
 }
 
 .visor-doc-acciones .visor-doc-btn-primary:hover,
 .visor-doc-dialog .visor-doc-btn-primary:hover {
   background-color: var(--brand-primary-hover, #153156);
   border-color: var(--brand-primary-hover, #153156);
-  color: var(--bg-surface, #ffffff);
+  color: var(--ink-on-accent, #ffffff);
   text-decoration: none;
 }
 
@@ -120,7 +120,7 @@ body:has(.visor-doc-dialog[open]) {
 }
 
 .visor-doc-dialog::backdrop {
-  background: rgb(17 24 39 / 0.34);
+  background: var(--backdrop-bg, rgb(17 24 39 / 0.34));
   backdrop-filter: blur(2px);
 }
 
@@ -221,7 +221,8 @@ body:has(.visor-doc-dialog[open]) {
   height: auto;
   border: 1px solid var(--border-subtle, #e3e3de);
   border-radius: var(--radius-md, 8px);
-  background: var(--bg-surface, #ffffff);
+  /* Lienzo siempre claro para proteger comprobantes PNG con fondo transparente y texto negro */
+  background: var(--media-canvas-bg, #ffffff);
 }
 
 .visor-doc-dialog .visor-doc-pdf-box {

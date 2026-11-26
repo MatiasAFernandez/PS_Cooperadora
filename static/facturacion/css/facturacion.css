@@ -616,7 +616,7 @@
     cursor: pointer;
     font-size: var(--text-sm);
     font-weight: var(--font-medium);
-    color: var(--brand-primary);
+    color: var(--brand-link);
     min-height: var(--ctrl-h-sm);
     display: flex;
     align-items: center;
@@ -639,7 +639,7 @@
 }
 
 .facturacion .fd-check-list a {
-    color: var(--brand-primary);
+    color: var(--brand-link);
     text-decoration: underline;
 }
 
@@ -860,8 +860,9 @@
     width: min(18rem, 72vw);
     padding: 8px 10px;
     border-radius: var(--radius-md);
-    background: var(--ink-strong);
-    color: var(--bg-surface);
+    border: 1px solid var(--tooltip-border);
+    background: var(--tooltip-bg);
+    color: var(--tooltip-fg);
     font-size: var(--text-xs);
     line-height: 1.4;
     box-shadow: var(--shadow-md);

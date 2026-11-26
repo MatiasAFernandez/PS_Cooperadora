@@ -173,6 +173,36 @@
         });
     }
 
+    // Selector de tema (Claro / Oscuro / Sistema) persistido en localStorage.
+    var themeBtns = nav.querySelectorAll("[data-theme-choice]");
+    function readThemePref() {
+        try {
+            var saved = localStorage.getItem("theme");
+            if (saved === "light" || saved === "dark" || saved === "system") { return saved; }
+        } catch (e) { /* almacenamiento no disponible */ }
+        return "system";
+    }
+    function applyTheme(pref) {
+        if (pref === "light" || pref === "dark") {
+            root.setAttribute("data-theme", pref);
+        } else {
+            root.removeAttribute("data-theme");
+            pref = "system";
+        }
+        try { localStorage.setItem("theme", pref); } catch (e) { /* almacenamiento no disponible */ }
+        themeBtns.forEach(function (btn) {
+            btn.setAttribute("aria-pressed", btn.getAttribute("data-theme-choice") === pref ? "true" : "false");
+        });
+    }
+    if (themeBtns.length) {
+        applyTheme(readThemePref());
+        themeBtns.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                applyTheme(btn.getAttribute("data-theme-choice") || "system");
+            });
+        });
+    }
+
     var onModeChange = function () {
         if (wide.matches) { closeOverlay(false); }
         syncToggle();

@@ -177,7 +177,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--brand-primary);
+    color: var(--brand-link);
     font-size: var(--text-xs);
     font-weight: var(--font-medium);
 }

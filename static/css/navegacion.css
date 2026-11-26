@@ -167,12 +167,12 @@
 
 .app-nav-body a[aria-current="page"] {
     background: var(--brand-soft);
-    color: var(--brand-primary);
+    color: var(--brand-link);
     font-weight: var(--font-semibold);
 }
 
 .app-nav-body a[aria-current="page"] .app-ic {
-    color: var(--brand-primary);
+    color: var(--brand-link);
 }
 
 .app-nl {
@@ -195,7 +195,7 @@
 
 .app-nav-body a[aria-current="page"] .app-nav-badge {
     background: var(--brand-badge-active);
-    color: var(--brand-primary);
+    color: var(--brand-link);
 }
 
 /* Punto discreto de avisos no leídos (visible solo en modo riel cuando hay >0) */
@@ -251,7 +251,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgb(22 47 82 / 0.08);
+    border: 1px solid var(--border-hairline);
 }
 
 .app-user-meta {
@@ -344,7 +344,7 @@
 .app-account-role-tag {
     font-size: 10.5px;
     font-weight: var(--font-semibold);
-    color: var(--brand-primary);
+    color: var(--brand-link);
     background: var(--brand-soft);
     padding: 1px 7px;
     border-radius: var(--radius-full);
@@ -404,12 +404,12 @@
 
 .app-account-item[aria-current="page"] {
     background: var(--brand-soft);
-    color: var(--brand-primary);
+    color: var(--brand-link);
     font-weight: var(--font-semibold);
 }
 
 .app-account-item[aria-current="page"] .app-ic {
-    color: var(--brand-primary);
+    color: var(--brand-link);
 }
 
 .app-account-item--danger {
@@ -422,11 +422,79 @@
 
 .app-account-item--danger:hover {
     background: var(--st-danger-bg);
-    color: #991b1b;
+    color: var(--st-danger-fg-hover);
 }
 
 .app-account-item--danger:hover .app-ic {
-    color: #991b1b;
+    color: var(--st-danger-fg-hover);
+}
+
+/* Selector segmentado de Apariencia (Claro / Oscuro / Sistema) dentro del popover */
+html:not(.js) .app-theme-only-js {
+    display: none;
+}
+
+.app-theme-block {
+    padding: 4px 6px 6px;
+}
+
+.app-theme-label {
+    display: block;
+    margin: 0 0 6px 4px;
+    font-size: 11px;
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+.app-theme-segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-tabs);
+}
+
+.app-theme-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 44px;
+    padding: 5px 4px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: var(--font-medium);
+    line-height: 1.15;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-theme-btn .app-ic {
+    width: 14px;
+    height: 14px;
+    color: currentColor;
+}
+
+.app-theme-btn:hover {
+    color: var(--ink-strong);
+    background: var(--bg-hover);
+}
+
+.app-theme-btn[aria-pressed="true"] {
+    background: var(--bg-tab-active);
+    color: var(--ink-strong);
+    border-color: var(--border-control);
+    font-weight: var(--font-semibold);
+    box-shadow: var(--shadow-xs);
 }
 
 .app-logout-form {
@@ -443,6 +511,7 @@
     transform: translate(-4px, -50%);
     background: var(--tooltip-bg);
     color: var(--tooltip-fg);
+    border: 1px solid var(--tooltip-border);
     font-size: 12px;
     font-weight: var(--font-medium);
     line-height: 1.2;
@@ -500,7 +569,7 @@ html:not([data-nav-rail="true"]) .app-account-trigger .app-tip {
 .app-nav-scrim {
     position: fixed;
     inset: 0;
-    background: rgb(17 24 39 / 0.36);
+    background: var(--scrim-bg);
     backdrop-filter: blur(2px);
     z-index: 55;
     animation: app-nav-fade 0.18s ease;
@@ -526,7 +595,7 @@ html:not([data-nav-rail="true"]) .app-account-trigger .app-tip {
         width: min(84vw, 280px);
         border-right: 1px solid var(--border-subtle);
         border-bottom: 0;
-        box-shadow: 12px 0 32px rgb(17 24 39 / 0.16);
+        box-shadow: var(--shadow-nav-drawer);
         transform: translateX(-100%);
         visibility: hidden;
         transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.2s;
@@ -707,7 +776,7 @@ html:not([data-nav-rail="true"]) .app-account-trigger .app-tip {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: var(--brand-primary);
+        background: var(--brand-link);
         box-shadow: 0 0 0 2px var(--bg-sidebar);
     }
 
@@ -718,6 +787,7 @@ html:not([data-nav-rail="true"]) .app-account-trigger .app-tip {
         transform: translate(-4px, -50%);
         background: var(--tooltip-bg);
         color: var(--tooltip-fg);
+        border: 1px solid var(--tooltip-border);
         font-size: 12px;
         font-weight: var(--font-medium);
         line-height: 1.2;

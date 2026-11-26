@@ -187,6 +187,10 @@ def test_shell_fase_a_popover_cuenta_sin_role_menu_y_separadores_protegidos() ->
         request=request_demo,
     )
     assert html_demo.count('class="app-account-sep"') == 1
+    assert html_demo.count('class="app-account-sep app-theme-only-js"') == 1
+    assert 'data-theme-choice="light"' in html_demo
+    assert 'data-theme-choice="dark"' in html_demo
+    assert 'data-theme-choice="system"' in html_demo
     assert f'href="{reverse("cuentas:estado")}"' not in html_demo
     assert f'href="{reverse("cuentas:cambiar_clave")}"' not in html_demo
 
@@ -196,9 +200,11 @@ def test_favicon_e_identidad_utn_en_base_y_500() -> None:
     assert 'rel="icon" type="image/svg+xml"' in html_base
     assert "img/favicon.svg" in html_base
     assert 'class="utn-logo"' in html_base
+    assert "localStorage.getItem('theme')" in html_base
 
     html_500 = render_to_string("500.html", {})
     assert 'rel="icon" type="image/svg+xml" href="data:image/svg+xml,' in html_500
+    assert "prefers-color-scheme: dark" in html_500
     assert "Asociación Cooperadora" in html_500
     assert '<span class="brand-lockup-inst">Universidad Tecnológica Nacional</span>' in html_500
     assert '<span class="brand-lockup-inst">Facultad Regional Resistencia</span>' in html_500

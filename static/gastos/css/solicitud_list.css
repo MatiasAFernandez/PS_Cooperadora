@@ -119,6 +119,7 @@
     padding: 3px;
     margin: 0 0 14px;
     border-radius: 9px;
+    border: 1px solid var(--border-subtle);
     background: var(--bg-tabs);
 }
 
@@ -143,7 +144,7 @@
 }
 
 .bandeja-tab[aria-current="page"] {
-    background: var(--bg-surface);
+    background: var(--bg-tab-active);
     color: var(--ink-strong);
     font-weight: var(--font-semibold);
     box-shadow: var(--shadow-xs);
@@ -377,7 +378,7 @@
 
 a.bandeja-concepto:hover .bandeja-concepto-texto,
 a.bandeja-concepto:focus-visible .bandeja-concepto-texto {
-    color: var(--brand-primary);
+    color: var(--brand-link);
     text-decoration: underline;
     text-underline-offset: 2px;
     text-decoration-thickness: 1.2px;
@@ -553,7 +554,7 @@ body:has(.bandeja-panel[open]) {
 }
 
 .bandeja-panel::backdrop {
-    background: rgb(17 24 39 / 0.34);
+    background: var(--backdrop-bg);
     backdrop-filter: blur(2px);
 }
 
