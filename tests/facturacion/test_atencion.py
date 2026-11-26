@@ -95,10 +95,9 @@ def test_listado_escapado_panel_independiente_de_filtros(escenario, datos):
     assert len(respuesta.context["atencion"]) == 1
     assert respuesta.context["total_atencion"] == 1
     assert len(respuesta.context["pagina"]) == 0
-    assert (
-        '<span class="bandeja-tab-count bandeja-tab-count--attn">1</span>'
-        in respuesta.content.decode()
-    )
+    html_lista = respuesta.content.decode()
+    assert 'data-bandeja-tab="atencion" class="bandeja-tab-con-pendientes"' in html_lista
+    assert '<span class="bandeja-tab-count">1</span>' in html_lista
     atencion_resp = cliente.get(reverse("facturacion:lista"), {"atencion": "1"})
     assert atencion_resp.status_code == 200
     assert f'id="resumen-solicitud-{s.pk}"' in atencion_resp.content.decode()

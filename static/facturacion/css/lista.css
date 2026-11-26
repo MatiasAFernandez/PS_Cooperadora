@@ -76,9 +76,18 @@
     font-variant-numeric: tabular-nums;
 }
 
-.ui-tabs-segmented > a[aria-current="page"] .bandeja-tab-count--attn {
-    background: var(--st-warning-bg);
+.bandeja .ui-tabs-segmented > .bandeja-tab-con-pendientes {
+    background: color-mix(in srgb, var(--st-warning-bg) 92%, var(--st-warning-dot));
     color: var(--st-warning-fg);
+}
+
+.bandeja .ui-tabs-segmented > .bandeja-tab-con-pendientes:hover {
+    text-decoration: underline;
+}
+
+.bandeja-tab-con-pendientes .bandeja-tab-count {
+    background: var(--st-warning-bg);
+    color: inherit;
 }
 
 /* Toolbar plana de filtros */
@@ -208,6 +217,15 @@
     overflow: hidden;
 }
 
+.bandeja-desplazamiento--activo {
+    max-height: var(--bandeja-alto-visible);
+    overflow-y: auto;
+}
+
+.bandeja-desplazamiento--activo:focus-visible {
+    outline-offset: -2px;
+}
+
 .bandeja-tabla {
     width: 100%;
     border-collapse: collapse;
@@ -249,6 +267,11 @@
 
 .bandeja-tabla tbody tr:hover {
     background: var(--bg-hover);
+}
+
+.bandeja-resumen-interactivo tr[data-resumen] {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Proporciones de columnas en escritorio >= 960px */
@@ -600,6 +623,12 @@ body:has(.fac-drawer[open]) {
 
 /* Escritorio (>= 960px): toolbar plana en una línea */
 @media (min-width: 960px) {
+    .bandeja-desplazamiento--activo thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
     .bandeja-filtros {
         display: flex;
         flex-wrap: wrap;
