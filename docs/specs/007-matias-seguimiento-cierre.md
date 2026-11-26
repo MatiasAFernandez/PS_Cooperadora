@@ -1,5 +1,9 @@
 # SPEC-007 — Estados, historial, pendientes y cierre de facturación
 
+## Ajuste de interfaz integrado el 26/11/2026 — Convergencia UX/UI (`D-5`)
+
+Con conformidad de Matías dentro de la convergencia al sistema visual común (`docs/visual-guide/README.md`), «Cerrar trámite» en `/facturacion/<n>/` se muestra deshabilitado con explicación cuando subsisten pendientes y solicita una confirmación explícita en dos pasos (`<details>` «Confirmar cierre del trámite») cuando el trámite está listo, manteniendo sin cambios la regla de no exigir motivo de cierre ni modificar los controles SQL o de concurrencia. En la presentación del historial (Facturación, Gastos y Documentos) se conservan intactos los `actor_id` del contrato `EventoHistorialDTO` y se muestran nombres visibles para perfiles con consulta general o revisión, o rótulos neutros (`Titular` / `Cooperadora`) para solicitantes.
+
 ## Actualización local — 10/11/2026
 
 El registro de facturas/notas Xubio admite PDF opcional con la migración 0023.
