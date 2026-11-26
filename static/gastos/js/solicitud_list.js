@@ -1,12 +1,13 @@
+import { enlaceResumenDeFila, iniciarDesplazamiento, sincronizarPestanas } from "../../js/bandejas.js";
+
 (() => {
     "use strict";
 
-    const pantallaAncha = window.matchMedia("(min-width: 960px)");
     const RESPALDO_CIERRE_MS = 80;
     const DEBOUNCE_BUSQUEDA_MS = 300;
 
     // -------------------------------------------------------------------------
-    // Panel de vista rápida (escritorio >= 960 px)
+    // Panel de vista rápida
     // -------------------------------------------------------------------------
 
     function duracionSalida(panel) {
@@ -64,20 +65,6 @@
         raiz.querySelectorAll("[data-vista-rapida]").forEach((enlace) => {
             const panel = document.getElementById(enlace.dataset.vistaRapida);
             if (!panel || typeof panel.showModal !== "function") return;
-
-            enlace.addEventListener("click", (evento) => {
-                if (
-                    !pantallaAncha.matches ||
-                    evento.ctrlKey ||
-                    evento.metaKey ||
-                    evento.shiftKey ||
-                    evento.altKey
-                ) return;
-                evento.preventDefault();
-                if (panel.open) return;
-                panel.classList.remove("is-closing");
-                panel.showModal();
-            });
 
             let empezoEnFondo = false;
             panel.addEventListener("pointerdown", (evento) => {
@@ -169,7 +156,9 @@
 
     function iniciarBusqueda(formulario, resultados, estado) {
         const buscador = formulario.elements.namedItem("q");
+        const bandeja = formulario.closest(".bandeja");
         const avisoError = "No se pudo actualizar la búsqueda. Se muestran los resultados anteriores. Podés reintentar con «Filtrar».";
+        let observadorDesplazamiento = iniciarDesplazamiento(resultados);
         let temporizador;
         let consulta;
         let componiendo = false;
@@ -227,7 +216,9 @@
                 }
 
                 window.history.replaceState(window.history.state, "", url);
+                observadorDesplazamiento?.disconnect();
                 resultados.replaceChildren(...resultadosOrigen.childNodes);
+                observadorDesplazamiento = iniciarDesplazamiento(resultados);
                 inicializarVistasRapidas(resultados);
 
                 const limpiarActual = formulario.querySelector("[data-bandeja-limpiar]");
@@ -238,17 +229,7 @@
                     if (hrefLimpio) limpiarActual.setAttribute("href", hrefLimpio);
                 }
 
-                const tabsActuales = formulario.closest(".bandeja")?.querySelector("[data-bandeja-tabs]");
-                const tabsOrigen = pagina.querySelector("[data-bandeja-tabs]");
-                if (tabsActuales && tabsOrigen) {
-                    tabsOrigen.querySelectorAll("[data-bandeja-tab]").forEach((origen) => {
-                        const destino = tabsActuales.querySelector(
-                            `[data-bandeja-tab="${origen.dataset.bandejaTab}"]`
-                        );
-                        const href = origen.getAttribute("href");
-                        if (destino && href) destino.setAttribute("href", href);
-                    });
-                }
+                sincronizarPestanas(bandeja, pagina);
 
                 const total = Number(resultadosOrigen.dataset.totalResultados);
                 informar(total ? `${total} solicitud${total === 1 ? "" : "es"}` : "No se encontraron solicitudes.");
@@ -286,7 +267,11 @@
 
         // La respuesta pendiente no debe reemplazar una fila que el usuario acaba de abrir.
         // Si cambia de pestaña durante el debounce de búsqueda, conserva el término vigente.
-        formulario.closest(".bandeja").addEventListener("click", (evento) => {
+        bandeja.addEventListener("click", (evento) => {
+            if (evento.defaultPrevented && resultados.querySelector(".bandeja-panel[open]")) {
+                cancelarBusqueda();
+                return;
+            }
             const enlace = evento.target.closest?.("a[href]");
             if (enlace && !evento.ctrlKey && !evento.metaKey && !evento.shiftKey && !evento.altKey) {
                 if (enlace.matches("[data-bandeja-tab]")) {
@@ -309,10 +294,14 @@
 
     if (resultados) {
         inicializarVistasRapidas(resultados);
-        pantallaAncha.addEventListener("change", () => {
-            if (!pantallaAncha.matches) {
-                resultados.querySelectorAll(".bandeja-panel[open]").forEach(cerrarPanel);
-            }
+        resultados.classList.add("bandeja-resumen-interactivo");
+        resultados.addEventListener("click", (evento) => {
+            const enlace = enlaceResumenDeFila(evento, "[data-vista-rapida]");
+            if (!enlace) return;
+            const panel = document.getElementById(enlace.dataset.vistaRapida);
+            if (!panel || typeof panel.showModal !== "function") return;
+            evento.preventDefault();
+            if (!panel.open) panel.showModal();
         });
     }
     if (formulario && resultados && estado) iniciarBusqueda(formulario, resultados, estado);

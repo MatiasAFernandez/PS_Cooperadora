@@ -2,7 +2,10 @@
 {% load static formato_ars %}
 {% block title %}Solicitudes de facturación — PS Cooperadora{% endblock %}
 {% block titulo_modulo %}Solicitudes de facturación — PS Cooperadora{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'facturacion/css/lista.css' %}">{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/bandejas.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/lista.css' %}">
+{% endblock %}
 
 {% block content %}
 <section class="bandeja" aria-labelledby="bandeja-titulo">
@@ -18,10 +21,7 @@
         {% endif %}
     </header>
 
-    <nav class="ui-tabs-segmented" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
-        <a data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
-        <a data-bandeja-tab="atencion"{% if total_atencion %} class="bandeja-tab-con-pendientes"{% endif %} href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención <span class="bandeja-tab-count">{{ total_atencion }}</span></a>
-    </nav>
+    {% include "comunes/pestanas_bandeja.html" %}
 
     <form class="bandeja-filtros" data-bandeja-filtros{% if solo_atencion %} data-solo-atencion="1"{% endif %} method="get" action="{% url 'facturacion:lista' %}">
         {% if solo_atencion %}<input type="hidden" name="atencion" value="1">{% endif %}
@@ -137,10 +137,10 @@
         </div>
         <div class="fac-drawer-body" data-contenido-resumen></div>
         <div class="fac-drawer-foot">
-            <a class="btn btn-secondary" data-drawer-detalle href="#">Ir al detalle completo</a>
+            <a class="btn btn-secondary" data-drawer-detalle href="#">Ver detalle</a>
             <a class="btn btn-primary" data-drawer-accion href="#" hidden></a>
         </div>
     </dialog>
 </section>
-<script src="{% static 'facturacion/js/lista.js' %}" defer></script>
+<script type="module" src="{% static 'facturacion/js/lista.js' %}"></script>
 {% endblock %}

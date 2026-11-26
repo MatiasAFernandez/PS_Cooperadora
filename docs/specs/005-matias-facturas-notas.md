@@ -114,6 +114,8 @@ cobros. Registrar esa relación evita búsquedas manuales entre sistemas.
 
 - Datos requeridos: solicitud, identidad global, fecha de emisión, importe y PDF;
   procedencia EXTERNO_XUBIO, actor y fecha de registro se fijan en servidor.
+  En el formulario de alta se propone la fecha local actual como fecha de
+  emisión. El operador puede editarla para que coincida con el comprobante.
 - Registrar exige acceso al trámite y capacidades
   `facturacion.registrar_factura_externa` y `documentos.incorporar`.
   La consulta respeta visibilidad del trámite; descargar exige su capacidad

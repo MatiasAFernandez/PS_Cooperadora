@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Solicitudes de gasto — PS Cooperadora{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'gastos/css/solicitud_list.css' %}">{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/bandejas.css' %}">
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_list.css' %}">
+{% endblock %}
 
 {% block content %}
 <section class="bandeja" aria-labelledby="bandeja-titulo">
     <header class="bandeja-header">
         <div class="bandeja-titulo-wrap">
-            <h1 id="bandeja-titulo">{% if puede_presentar and not vista_rapida and "gastos.consultar_todas" not in actor.capabilities %}Mis solicitudes{% else %}Solicitudes de gasto{% endif %}</h1>
-            <p class="bandeja-subtitulo">{% if puede_presentar and not vista_rapida and "gastos.consultar_todas" not in actor.capabilities %}Seguimiento de tus trámites presentados ante Cooperadora.{% else %}Decisiones, pagos registrados y seguimiento documental.{% endif %}</p>
+            <h1 id="bandeja-titulo">{% if puede_presentar and not es_operador and "gastos.consultar_todas" not in actor.capabilities %}Mis solicitudes{% else %}Solicitudes de gasto{% endif %}</h1>
+            <p class="bandeja-subtitulo">{% if puede_presentar and not es_operador and "gastos.consultar_todas" not in actor.capabilities %}Seguimiento de tus trámites presentados ante Cooperadora.{% else %}Decisiones, pagos registrados y seguimiento documental.{% endif %}</p>
         </div>
         {% if puede_presentar and not resumen_deuda.tiene_bloqueo %}
             <div class="bandeja-acciones">
@@ -31,12 +34,7 @@
         </section>
     {% endif %}
 
-    {% if ofrece_atencion %}
-        <nav class="bandeja-tabs" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
-            <a class="bandeja-tab" data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
-            <a class="bandeja-tab" data-bandeja-tab="atencion" href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-tab-count bandeja-tab-count--attn">{{ total_atencion }}</span>{% endif %}</a>
-        </nav>
-    {% endif %}
+    {% include "comunes/pestanas_bandeja.html" %}
 
     <form class="bandeja-filtros" data-bandeja-filtros{% if solo_atencion %} data-solo-atencion="1"{% endif %} method="get" action="{% url 'gastos:lista' %}">
         {% if solo_atencion %}<input type="hidden" name="atencion" value="1">{% endif %}
@@ -53,6 +51,7 @@
     {% if solicitudes %}
         <p class="bandeja-conteo">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if tiene_filtros_activos %} (filtrado){% endif %}</p>
         <div class="bandeja-resultados">
+            <div class="bandeja-desplazamiento">
             <table class="bandeja-tabla" aria-label="Solicitudes de gasto">
                 <thead>
                     <tr><th scope="col">Solicitud</th><th scope="col">Importe estimado</th><th scope="col">Estado</th><th scope="col">Acción</th></tr>
@@ -70,6 +69,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% if is_paginated %}
                 <nav class="bandeja-paginacion" aria-label="Paginación de solicitudes">
                     <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
@@ -99,5 +99,5 @@
     {% endif %}
     </div>
 </section>
-<script src="{% static 'gastos/js/solicitud_list.js' %}" defer></script>
+<script type="module" src="{% static 'gastos/js/solicitud_list.js' %}"></script>
 {% endblock %}

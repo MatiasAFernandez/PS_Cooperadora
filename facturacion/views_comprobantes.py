@@ -45,10 +45,14 @@ class RegistrarComprobanteView(FacturacionView):
 
     def get(self, request, numero):
         solicitud = autorizar_registro(self.actor, numero)
+        hoy = timezone.localdate()
         form = ComprobanteExternoForm(
-            initial={"importe": solicitud.importe_factura,
-                     "destinatario": solicitud.email_envio_factura,
-                     "fecha_envio": timezone.localdate()},
+            initial={
+                "importe": solicitud.importe_factura,
+                "destinatario": solicitud.email_envio_factura,
+                "fecha_emision": hoy,
+                "fecha_envio": hoy,
+            },
             puede_aceptar=puede_aceptar_al_registrar(self.actor),
         )
         return self.mostrar(request, solicitud, form)

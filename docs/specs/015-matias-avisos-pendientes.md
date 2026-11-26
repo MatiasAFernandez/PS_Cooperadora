@@ -3,9 +3,10 @@
 ## Resaltado de pendientes en la bandeja
 
 El segmento «Requieren atención» está disponible para todos los perfiles con
-acceso a la bandeja. Usa el color de aviso cuando hay al menos una solicitud
-con una acción pendiente para la cuenta, independientemente de los filtros
-de búsqueda. Con cero pendientes conserva el estilo neutro. Los perfiles de
+acceso a la bandeja. El texto usa el color de aviso cuando hay al menos una
+solicitud con una acción pendiente para la cuenta, independientemente de los
+filtros de búsqueda. El fondo amarillo se aplica sólo al seleccionar el segmento
+con pendientes. Con cero pendientes conserva el estilo neutro. Los perfiles de
 sólo lectura ven el contador en cero y la vista de pendientes vacía.
 
 ## Ajuste de interfaz integrado el 26/11/2026 — Convergencia UX/UI (`D-3` / `D-5`)

@@ -117,12 +117,13 @@ def test_declarar_sin_capacidad_denegado(escenario, solicitud, entrada):
         declarar_envio(actor=actor, comprobante=comprobante, datos=entrada)
 
 
-def test_fecha_precargada_usa_formato_html(escenario, solicitud):
+def test_fechas_precargadas_usan_formato_html(escenario, solicitud):
     cliente = Client()
     cliente.force_login(escenario.usuarios["o"])
     respuesta = cliente.get(reverse("facturacion:registrar_comprobante", args=[solicitud.pk]))
-    campo = str(respuesta.context["form"]["fecha_envio"])
-    assert f'value="{timezone.localdate().isoformat()}"' in campo
+    hoy = timezone.localdate().isoformat()
+    for nombre in ("fecha_emision", "fecha_envio"):
+        assert f'value="{hoy}"' in str(respuesta.context["form"][nombre])
 
 
 def test_declarar_envio_invalido_conserva_navegacion_y_mensaje_legible(

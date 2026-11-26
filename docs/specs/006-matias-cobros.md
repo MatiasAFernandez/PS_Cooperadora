@@ -79,6 +79,10 @@ y su respaldo para reconstruir su situación sin conciliar archivos manualmente.
   conserva mayúsculas, ceros y separadores; sólo se recortan espacios exteriores.
 - Fecha e importe recibido son explícitos. El importe solicitado en el formulario
   inicial no se interpreta automáticamente como recibido.
+  Al abrir «Informar cobro externo» se sugiere la fecha local actual y, si hay
+  factura con neto positivo, el neto facturado considerando las notas. Ambos
+  valores se pueden editar para que coincidan con la operación informada. Sin
+  factura, el campo de importe queda vacío y admite el registro de anticipos.
 - Respaldo PDF/JPEG/PNG hasta 10 MiB obligatorio: carga nueva o versión existente
   COMPROBANTE_COBRO del mismo trámite. Se puede reutilizar el respaldo inicial sin
   copiar bytes; una versión sólo respalda un cobro. El vínculo conserva esa versión

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from documentos.policy import ArchivoInvalido
 from documentos.revision import version_aceptada
@@ -53,10 +54,15 @@ class RegistrarCobroView(FacturacionView):
 
     def get(self, request, numero):
         solicitud = autorizar_cobro(self.actor, numero)
+        importes = importes_cobro(solicitud.comprobantes.all(), ())
+        initial = {"fecha_operacion": timezone.localdate()}
+        if importes["hay_factura"] and importes["neto"] > 0:
+            initial["importe"] = importes["neto"]
         return self.mostrar(
             request,
             solicitud,
             CobroForm(
+                initial=initial,
                 documentos=respaldos_cobro(self.actor, solicitud),
                 puede_confirmar=puede_confirmar_al_registrar(self.actor),
             ),

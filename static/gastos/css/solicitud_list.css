@@ -111,60 +111,6 @@
     text-decoration: underline;
 }
 
-/* Pestañas segmentadas <a> (funcionales con y sin JS; reemplazan banner + botón redundantes) */
-.bandeja-tabs {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 3px;
-    margin: 0 0 14px;
-    border-radius: 9px;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-tabs);
-}
-
-.bandeja-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    height: 30px;
-    padding: 0 12px;
-    border-radius: 7px;
-    color: var(--ink-muted);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    text-decoration: none;
-    white-space: nowrap;
-    transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.bandeja-tab:hover {
-    color: var(--ink-strong);
-    text-decoration: none;
-}
-
-.bandeja-tab[aria-current="page"] {
-    background: var(--bg-tab-active);
-    color: var(--ink-strong);
-    font-weight: var(--font-semibold);
-    box-shadow: var(--shadow-xs);
-}
-
-.bandeja-tab-count {
-    padding: 1px 6px;
-    border-radius: var(--radius-full);
-    background: var(--bg-badge-muted);
-    color: var(--ink-primary);
-    font-size: 11px;
-    font-weight: var(--font-semibold);
-    font-variant-numeric: tabular-nums;
-}
-
-.bandeja-tab[aria-current="page"] .bandeja-tab-count--attn {
-    background: var(--st-warning-bg);
-    color: var(--st-warning-fg);
-}
-
 /* Toolbar plana de filtros (sin tarjeta blanca pesada envolviendo los controles) */
 .bandeja-filtros {
     display: grid;
@@ -729,6 +675,7 @@ body:has(.bandeja-panel[open]) {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
@@ -790,18 +737,6 @@ body:has(.bandeja-panel[open]) {
     .bandeja-header .bandeja-acciones,
     .bandeja-header .btn {
         width: 100%;
-    }
-
-    .bandeja-tabs {
-        display: flex;
-        width: 100%;
-    }
-
-    .bandeja-tab {
-        flex: 1 1 0;
-        justify-content: center;
-        min-height: 44px;
-        height: auto;
     }
 
     .bandeja-filtros .filter-fields {

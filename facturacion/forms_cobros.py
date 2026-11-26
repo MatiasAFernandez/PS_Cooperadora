@@ -20,7 +20,8 @@ class CobroForm(forms.Form):
     )
     numero_operacion = forms.CharField(label="Número de operación", max_length=100)
     fecha_operacion = forms.DateField(
-        label="Fecha de operación", widget=forms.DateInput(attrs={"type": "date"})
+        label="Fecha de operación",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     importe = forms.DecimalField(
         label="Importe recibido (ARS)", max_digits=12, decimal_places=2, min_value=Decimal("0.01")
