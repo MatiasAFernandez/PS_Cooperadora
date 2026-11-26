@@ -19,6 +19,7 @@
   --bg-hover: #f7f7f4;
   --bg-hover-strong: #eaeae5;
   --bg-tabs: #ecece7;
+  --bg-tab-active: #ffffff;
   --bg-badge-muted: #e7e7e2;
 
   --border-hairline: #ecece8;
@@ -176,7 +177,8 @@
     --bg-subtle: #232936;
     --bg-hover: #212632;
     --bg-hover-strong: #2c3342;
-    --bg-tabs: #1f2430;
+    --bg-tabs: #13161e;
+    --bg-tab-active: #272f40;
     --bg-badge-muted: #2a3140;
 
     --border-hairline: #232834;
@@ -256,7 +258,8 @@
   --bg-subtle: #232936;
   --bg-hover: #212632;
   --bg-hover-strong: #2c3342;
-  --bg-tabs: #1f2430;
+  --bg-tabs: #13161e;
+  --bg-tab-active: #272f40;
   --bg-badge-muted: #2a3140;
 
   --border-hairline: #232834;
@@ -339,6 +342,7 @@
     --bg-subtle: #f2f2ef;
     --bg-hover: #f7f7f4;
     --bg-tabs: #ecece7;
+    --bg-tab-active: #ffffff;
     --bg-badge-muted: #e7e7e2;
 
     --border-hairline: #ecece8;

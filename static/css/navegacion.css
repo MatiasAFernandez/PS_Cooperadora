@@ -453,6 +453,7 @@ html:not(.js) .app-theme-only-js {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
     padding: 3px;
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     background: var(--bg-tabs);
 }
@@ -489,9 +490,9 @@ html:not(.js) .app-theme-only-js {
 }
 
 .app-theme-btn[aria-pressed="true"] {
-    background: var(--bg-surface);
+    background: var(--bg-tab-active);
     color: var(--ink-strong);
-    border-color: var(--border-subtle);
+    border-color: var(--border-control);
     font-weight: var(--font-semibold);
     box-shadow: var(--shadow-xs);
 }

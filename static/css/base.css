@@ -337,6 +337,7 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
     gap: 2px;
     padding: 3px;
     margin: 0 0 14px;
+    border: 1px solid var(--border-subtle);
     border-radius: 9px;
     background: var(--bg-tabs);
 }
@@ -359,7 +360,7 @@ dd { margin-bottom: 1rem; color: var(--ink-strong); }
     text-decoration: none;
 }
 .ui-tabs-segmented > a[aria-current="page"] {
-    background: var(--bg-surface);
+    background: var(--bg-tab-active);
     color: var(--ink-strong);
     font-weight: var(--font-semibold);
     box-shadow: var(--shadow-xs);
