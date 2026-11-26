@@ -1,33 +1,84 @@
-<section class="panel fac-has-help fac-pendiente-destino" id="cobros-externos" tabindex="-1">
-<h3>Cobros externos (ARS)</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-cobros" etiqueta="Cobros externos" texto="Consultá los ingresos y anticipos. Para confirmar un ingreso, el documento de respaldo vigente debe estar aceptado. Con los permisos correspondientes, podés registrar ambos hechos al cargar un cobro interno." only %}
-{% if puede_informar_cobro and not diagnostico.terminal %}<p><a class="btn" href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a></p>{% endif %}
-<dl class="fac-totals" aria-label="Totales de cobros por resultado">
-<div class="fac-total fac-total-success"><dt>Confirmado:</dt><dd>{{ totales_cobros.CONFIRMADO }} ARS</dd></div>
-<div class="fac-total fac-total-warning"><dt>Pendiente:</dt><dd>{{ totales_cobros.PENDIENTE }} ARS</dd></div>
-<div class="fac-total fac-total-error"><dt>Rechazado:</dt><dd>{{ totales_cobros.RECHAZADO }} ARS</dd></div>
-</dl>
-{% if not comprobantes and cobros %}<p>Los ingresos registrados se conservan como anticipos hasta que se cargue la factura.</p>{% endif %}
-<ul class="record-list">{% for cobro in cobros %}<li class="record-card fac-pendiente-destino" id="cobro-{{ cobro.pk }}" tabindex="-1">
-<div class="fac-record-heading"><p><strong>Cobro #{{ cobro.numero_en_solicitud }}: {{ cobro.importe }} ARS</strong></p>
-<div class="fac-statuses">
-{% if cobro.estado_revision %}<p>Revisión documental: {% include "facturacion/estado.html" with estado=cobro.estado_revision only %}</p>{% endif %}
-<p>Ingreso: {% include "facturacion/estado.html" with estado=cobro.resultado only %}</p>
-</div></div>
-<p>{{ cobro.medio }} — operación {{ cobro.numero_operacion }} — fecha {{ cobro.fecha_operacion|date:"d/m/Y" }}.</p>
-{% if cobro.resultado == "PENDIENTE" and cobro.estado_revision == "ACEPTADO" %}<p>Falta constatar el ingreso externo.</p>{% endif %}
-<p>Origen {{ cobro.procedencia }}. Registrado por actor #{{ cobro.actor_id }} el {{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}.</p>
-{% if cobro.resultado != "PENDIENTE" %}<p>Verificado por actor #{{ cobro.verificacion.actor_id }} el {{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}. {{ cobro.verificacion.motivo }}</p>{% endif %}
-{% if cobro.resultado == "RECTIFICADO" %}<p>Motivo de rectificación: {{ cobro.verificacion.rectificacion.motivo }}</p>{% endif %}
-<div class="record-actions" role="group" aria-label="Acciones del cobro {{ cobro.numero_en_solicitud }}">
-{% if cobro.puede_corregir or puede_actualizar_respaldo and not diagnostico.terminal and cobro.resultado != "RECTIFICADO" %}<a class="btn btn-secondary" href="{% url 'facturacion:corregir_cobro' solicitud.pk cobro.pk %}">Modificar cobro</a>{% endif %}
-{% if puede_descargar %}<a class="btn btn-secondary" href="{% url 'documentos:archivo' cobro.respaldo_vinculado.pk %}">Descargar documento de respaldo vinculado</a>{% endif %}
-{% if puede_ver_revision %}<a class="btn btn-secondary" href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}">{% if puede_revisar_documentos and cobro.estado_revision == "PENDIENTE" %}Realizar revisión documental{% else %}Consultar revisión documental{% endif %}</a>{% endif %}
-{% if puede_verificar_cobro and cobro.resultado == "CONFIRMADO" and not diagnostico.terminal %}<a class="btn btn-secondary" href="{% url 'facturacion:rectificar_cobro' solicitud.pk cobro.pk %}">Rectificar ingreso</a>{% endif %}
-{% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" and not diagnostico.terminal %}
-<a class="btn{% if cobro.estado_revision and cobro.estado_revision != 'ACEPTADO' %} btn-secondary{% endif %}" href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Constatar Ingreso</a>
-{% endif %}
-</div>
-</li>{% empty %}<li>Sin cobros registrados.</li>{% endfor %}</ul>
+{% load formato_ars %}
+<section class="card fac-pendiente-destino" id="cobros-externos" tabindex="-1" aria-labelledby="titulo-cobros">
+    <div class="fd-card-head">
+        <div>
+            <h2 id="titulo-cobros" class="fd-h2">Cobros externos (ARS)</h2>
+            <p class="fd-sub">Ingresos y anticipos informados. Confirmar un ingreso exige el documento de respaldo aceptado.</p>
+        </div>
+        {% if puede_informar_cobro and not diagnostico.terminal %}
+        <a class="btn btn-secondary btn-row" href="{% url 'facturacion:registrar_cobro' solicitud.pk %}">Informar cobro o anticipo</a>
+        {% endif %}
+    </div>
 
+    <div class="fd-cobro-strip font-tabular" aria-label="Totales de cobros por resultado">
+        <span>Confirmado: <strong>{{ totales_cobros.CONFIRMADO|ars }}</strong></span>
+        <span>Pendiente: <strong>{{ totales_cobros.PENDIENTE|ars }}</strong></span>
+        <span>Rechazado: <strong>{{ totales_cobros.RECHAZADO|ars }}</strong></span>
+    </div>
+
+    {% if not comprobantes and cobros %}
+    <p class="fd-sub fd-mb-sm">Los ingresos registrados se conservan como anticipos hasta que se cargue la factura.</p>
+    {% endif %}
+
+    {% if cobros %}
+    <ul class="fd-records">
+        {% for cobro in cobros %}
+        <li class="fd-record fac-pendiente-destino" id="cobro-{{ cobro.pk }}" tabindex="-1">
+            <div class="fd-record-top">
+                <div>
+                    <p class="fd-record-title">Cobro #{{ cobro.numero_en_solicitud }}: {{ cobro.medio_mostrado }}</p>
+                    <p class="fd-record-meta">
+                        Operación <span class="font-mono">{{ cobro.numero_operacion }}</span> · Fecha <span class="font-tabular">{{ cobro.fecha_operacion|date:"d/m/Y" }}</span> · Origen <strong>{{ cobro.procedencia_mostrado }}</strong>
+                    </p>
+                </div>
+                <span class="fd-record-amount font-tabular">{{ cobro.importe|ars }}</span>
+            </div>
+
+            <div class="fd-record-pills">
+                {% if cobro.estado_revision %}
+                <span class="fd-pill-group"><span class="fd-pill-label">Revisión documental:</span> {% include "facturacion/estado.html" with estado=cobro.estado_revision only %}</span>
+                {% endif %}
+                <span class="fd-pill-group"><span class="fd-pill-label">Ingreso:</span> {% include "facturacion/estado.html" with estado=cobro.resultado only %}</span>
+            </div>
+
+            {% if cobro.resultado == "PENDIENTE" and cobro.estado_revision == "ACEPTADO" %}
+            <p class="fd-record-meta fd-warn-text">Falta verificar el ingreso externo.</p>
+            {% endif %}
+
+            <p class="fd-record-meta">
+                Registrado por <strong>{{ cobro.actor_id|actor_visible:actores_visibles }}</strong> el <span class="font-tabular">{{ cobro.fecha_registro|date:"d/m/Y H:i:s" }}</span>.
+            </p>
+            {% if cobro.resultado != "PENDIENTE" %}
+            <p class="fd-record-meta">
+                Verificado por <strong>{{ cobro.verificacion.actor_id|actor_visible:actores_visibles }}</strong> el <span class="font-tabular">{{ cobro.verificacion.fecha|date:"d/m/Y H:i:s" }}</span>.{% if cobro.verificacion.motivo %} {{ cobro.verificacion.motivo }}{% endif %}
+            </p>
+            {% endif %}
+            {% if cobro.resultado == "RECTIFICADO" %}
+            <p class="fd-record-meta"><strong>Motivo de rectificación:</strong> {{ cobro.verificacion.rectificacion.motivo }}</p>
+            {% endif %}
+
+            <div class="fd-record-actions" role="group" aria-label="Acciones del cobro {{ cobro.numero_en_solicitud }}">
+                {% if puede_verificar_cobro and cobro.resultado == "PENDIENTE" and not diagnostico.terminal %}
+                <a class="btn {% if not cobro.estado_revision or cobro.estado_revision == 'ACEPTADO' %}btn-primary{% else %}btn-secondary{% endif %} btn-row" href="{% url 'facturacion:verificar_cobro' solicitud.pk cobro.pk %}">Verificar ingreso</a>
+                {% endif %}
+                {% if puede_descargar and cobro.respaldo_vinculado %}
+                    {% url 'documentos:archivo' cobro.respaldo_vinculado.pk as url_archivo %}
+                    {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf-imagen" titulo="Respaldo de cobro" nombre=cobro.respaldo_vinculado.nombre_original ver_label="Ver respaldo de cobro" descargar_label="Descargar documento de respaldo vinculado" only %}
+                {% endif %}
+                {% if puede_ver_revision and cobro.respaldo_vinculado %}
+                <a class="btn btn-secondary btn-row" href="{% url 'documentos:revision' cobro.respaldo_vinculado.pk %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{% if puede_revisar_documentos and cobro.estado_revision == "PENDIENTE" %}Revisar documento{% else %}Ver revisión{% endif %}</a>
+                {% endif %}
+                {% if puede_verificar_cobro and cobro.resultado == "CONFIRMADO" and not diagnostico.terminal %}
+                <a class="btn btn-secondary btn-row" href="{% url 'facturacion:rectificar_cobro' solicitud.pk cobro.pk %}">Rectificar ingreso</a>
+                {% endif %}
+                {% if cobro.puede_corregir or puede_actualizar_respaldo and not diagnostico.terminal and cobro.resultado != "RECTIFICADO" %}
+                <a class="btn btn-ghost btn-row" href="{% url 'facturacion:corregir_cobro' solicitud.pk cobro.pk %}">Modificar cobro</a>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="fd-muted">Sin cobros registrados.</p>
+    {% endif %}
 </section>

@@ -102,7 +102,7 @@ def cambiar_actividad_cuenta(
 
         if not activar:
             if target_user.pk == actor_user.pk:
-                raise ValidationError("No puede desactivar su propia cuenta.")
+                raise ValidationError("No podés desactivar tu propia cuenta.")
 
             if not existen_otros_admins_habilitados(contexto, excluir_user_id=target_user.pk):
                 raise ValidationError(

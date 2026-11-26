@@ -24,12 +24,13 @@ from .seguimiento import (
     respaldo_actual,
     sucesores_respaldo_comprobante,
 )
-from .views import FacturacionView, _errores
+from .views import FacturacionView, _errores, _marcar_campos_invalidos
 from .workflow import ConflictoConcurrenciaError
 
 
 class RegistrarComprobanteView(FacturacionView):
     def mostrar(self, request, solicitud, form, status=200):
+        _marcar_campos_invalidos(form)
         return render(
             request,
             "facturacion/comprobante_form.html",
@@ -138,6 +139,7 @@ class ModificarComprobanteView(FacturacionView):
             _errores(form, exc, campo_archivo="archivo_pdf")
             if isinstance(exc, ConflictoConcurrenciaError):
                 status = 409
+        _marcar_campos_invalidos(form)
         return render(request, "facturacion/comprobante_form.html", contexto, status=status)
 
     def guardar(self, numero, contexto):

@@ -6,6 +6,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views import View
 
+from identidad.inicio import contexto_inicio
 from identidad.services import resolve_actor
 
 
@@ -37,4 +38,8 @@ class DemoHomeView(DemoOnlyMixin, View):
         actor = resolve_actor(request)
         if actor is None:
             return redirect_to_login(request.get_full_path())
-        return render(request, "identidad/inicio.html", {"actor": actor})
+        return render(
+            request,
+            "identidad/inicio.html",
+            contexto_inicio(request, actor, acceso_local=False),
+        )

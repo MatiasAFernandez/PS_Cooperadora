@@ -490,10 +490,6 @@ def obtener_reporte_cuatrimestral_gastos(
         (dto.monto_erogado_bruto for dto in centros_costo_dto),
         default=CERO,
     )
-    max_atp_centro = max(
-        (dto.monto_retencion_atp for dto in centros_costo_dto),
-        default=CERO,
-    )
     centros_costo_dto = [
         replace(
             dto,
@@ -507,7 +503,7 @@ def obtener_reporte_cuatrimestral_gastos(
             ),
             porcentaje_atp_grafico=_porcentaje_grafico(
                 dto.monto_retencion_atp,
-                max_atp_centro,
+                dto.monto_erogado_bruto,
             ),
         )
         for dto in centros_costo_dto
@@ -561,10 +557,6 @@ def obtener_reporte_cuatrimestral_gastos(
         (dto.monto_erogado_bruto for dto in cuatrimestres_dto),
         default=CERO,
     )
-    max_atp_cuatrimestre = max(
-        (dto.monto_retencion_atp for dto in cuatrimestres_dto),
-        default=CERO,
-    )
     cuatrimestres_dto = [
         replace(
             dto,
@@ -574,7 +566,7 @@ def obtener_reporte_cuatrimestral_gastos(
             ),
             porcentaje_atp_grafico=_porcentaje_grafico(
                 dto.monto_retencion_atp,
-                max_atp_cuatrimestre,
+                dto.monto_erogado_bruto,
             ),
         )
         for dto in cuatrimestres_dto

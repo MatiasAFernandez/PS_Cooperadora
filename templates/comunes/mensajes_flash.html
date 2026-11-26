@@ -1,0 +1,15 @@
+{% if messages %}
+  <div class="flash-messages">
+    {% for message in messages %}
+      {% if message.tags and "error" in message.tags %}
+        <div class="message message-error" role="alert">{{ message }}</div>
+      {% elif message.tags and "warning" in message.tags %}
+        <div class="message message-warning" role="status">{{ message }}</div>
+      {% elif message.tags and "success" in message.tags %}
+        <div class="message message-success" role="status">{{ message }}</div>
+      {% else %}
+        <div class="message message-info" role="status">{{ message }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}

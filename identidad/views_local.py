@@ -37,6 +37,7 @@ from identidad.forms_local import (
     RegistroForm,
     VerificacionForm,
 )
+from identidad.inicio import contexto_inicio
 from identidad.models import CuentaLocal
 from identidad.services import has_capability, resolve_actor
 from identidad.tokens_local import token_recuperacion_local
@@ -148,7 +149,7 @@ class VerificarView(LocalOnlyMixin, View):
             "cuentas/formulario.html",
             {
                 "title": "Confirmar verificación de correo",
-                "introduccion": "Presione el botón para confirmar la verificación de su correo.",
+                "introduccion": "Presioná el botón para confirmar la verificación de tu correo.",
                 "form": form,
                 "submit_label": "Verificar mi correo",
                 "acceso_local": True,
@@ -214,7 +215,7 @@ class ReenviarView(LocalOnlyMixin, FormView):
         context["submit_label"] = "Reenviar correo"
         context["acceso_local"] = True
         context["introduccion"] = (
-            "Ingrese su correo electrónico para recibir un nuevo enlace de verificación."
+            "Ingresá tu correo electrónico para recibir un nuevo enlace de verificación."
         )
         return context
 
@@ -222,7 +223,7 @@ class ReenviarView(LocalOnlyMixin, FormView):
         ip = request.META.get("REMOTE_ADDR") or "127.0.0.1"
         if not limitar(f"reenvio-ip:{ip}", maximo=10, segundos=300):
             form = self.get_form()
-            form.add_error(None, "Se ha superado el límite de intentos. Intente más tarde.")
+            form.add_error(None, "Se superó el límite de intentos. Intentá más tarde.")
             return self.form_invalid(form)
         return super().post(request, *args, **kwargs)
 
@@ -331,11 +332,7 @@ class InicioView(LocalOnlyMixin, View):
         return render(
             request,
             "cuentas/inicio.html",
-            {
-                "actor": actor,
-                "cuenta": cuenta,
-                "acceso_local": True,
-            },
+            contexto_inicio(request, actor, cuenta=cuenta, acceso_local=True),
         )
 
 
@@ -352,13 +349,13 @@ class EstadoView(LocalOnlyMixin, View):
 
             actor = resolve_actor(request)
             title = "Estado de cuenta"
-            mensaje = "Información sobre el estado administrativo de su cuenta local."
+            mensaje = "Información sobre el estado administrativo de tu cuenta local."
 
             if modo == "verificado":
                 title = "Correo verificado"
                 mensaje = (
-                    "Su correo electrónico ha sido verificado. "
-                    "La cuenta se encuentra pendiente de aprobación administrativa."
+                    "Tu correo electrónico fue verificado. "
+                    "La cuenta queda pendiente de aprobación administrativa."
                 )
 
             return render(
@@ -379,8 +376,8 @@ class EstadoView(LocalOnlyMixin, View):
             "verificado": (
                 "Correo verificado",
                 (
-                    "Su correo electrónico ha sido verificado. "
-                    "La cuenta se encuentra pendiente de aprobación administrativa."
+                    "Tu correo electrónico fue verificado. "
+                    "La cuenta queda pendiente de aprobación administrativa."
                 ),
             ),
             "recibido": (
@@ -400,19 +397,19 @@ class EstadoView(LocalOnlyMixin, View):
             "reset_completo": (
                 "Contraseña restablecida",
                 (
-                    "Su contraseña ha sido restablecida correctamente. "
-                    "Ya puede ingresar con su nueva clave."
+                    "Tu contraseña se restableció correctamente. "
+                    "Ya podés ingresar con tu nueva clave."
                 ),
             ),
             "clave_cambiada": (
                 "Contraseña actualizada",
-                "Su contraseña ha sido modificada con éxito.",
+                "Tu contraseña se modificó con éxito.",
             ),
         }
 
         title, mensaje = mensajes_modo.get(
             modo,
-            ("Estado de solicitud", "Información sobre el estado de su trámite de cuenta."),
+            ("Estado de solicitud", "Información sobre el estado de tu trámite de cuenta."),
         )
 
         return render(
@@ -524,7 +521,7 @@ class LocalPasswordResetView(LocalOnlyMixin, PasswordResetView):
         context["submit_label"] = "Enviar instrucciones"
         context["acceso_local"] = True
         context["introduccion"] = (
-            "Ingrese su correo electrónico registrado para recibir las "
+            "Ingresá tu correo electrónico registrado para recibir las "
             "instrucciones de recuperación."
         )
         return context
@@ -537,7 +534,7 @@ class LocalPasswordResetView(LocalOnlyMixin, PasswordResetView):
             dest_raw and not limitar(f"reset-dest:{dest_raw}", maximo=10, segundos=300)
         ):
             form = self.get_form()
-            form.add_error(None, "Se ha superado el límite de intentos. Intente más tarde.")
+            form.add_error(None, "Se superó el límite de intentos. Intentá más tarde.")
             response = self.form_invalid(form)
             response.status_code = 400
             return response
@@ -596,8 +593,8 @@ class LocalPasswordResetConfirmView(LocalOnlyMixin, PasswordResetConfirmView):
                     "title": "Enlace no válido",
                     "modo": "error",
                     "mensaje": (
-                        "El enlace de recuperación es inválido o ha vencido. "
-                        "Puede solicitar un nuevo enlace desde la sección de recuperación."
+                        "El enlace de recuperación es inválido o venció. "
+                        "Podés solicitar un nuevo enlace desde la sección de recuperación."
                     ),
                     "acceso_local": True,
                 },
@@ -636,8 +633,8 @@ class ResetCompletoView(LocalOnlyMixin, TemplateView):
         context["title"] = "Contraseña restablecida"
         context["modo"] = "reset_completo"
         context["mensaje"] = (
-            "Su contraseña ha sido restablecida correctamente. "
-            "Ya puede ingresar con su nueva clave."
+            "Tu contraseña se restableció correctamente. "
+            "Ya podés ingresar con tu nueva clave."
         )
         context["acceso_local"] = True
         return context
@@ -684,6 +681,6 @@ class ClaveCambiadaView(LocalOnlyMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Contraseña actualizada"
         context["modo"] = "clave_cambiada"
-        context["mensaje"] = "Su contraseña ha sido modificada con éxito."
+        context["mensaje"] = "Tu contraseña se modificó con éxito."
         context["acceso_local"] = True
         return context

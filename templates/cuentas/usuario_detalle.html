@@ -1,7 +1,6 @@
 {% extends "base.html" %}
-{% load static %}
-{% block titulo_modulo %}Ficha de usuario local — Cooperadora{% endblock %}
-
+{% load static formato_ars %}
+{% block titulo_modulo %}Ficha de usuario local — PS Cooperadora{% endblock %}
 {% block title %}{{ cuenta.nombre_completo }} — Usuarios locales — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
@@ -11,39 +10,23 @@
 
 {% block content %}
 <div class="cuentas-wide usuarios-page">
-    <a class="usuarios-volver" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-        <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>
-        Volver al listado
-    </a>
+    <a class="page-back page-back--arrow" href="{% url 'cuentas:usuarios' %}{% if listado_query %}?{{ listado_query }}{% endif %}">Volver al listado</a>
 
     <header class="usuarios-head">
         <div class="usuarios-head-texto">
-            <p class="cuentas-eyebrow">Administración / Usuarios locales</p>
             <h1 class="cuentas-title">{{ cuenta.nombre_completo }}</h1>
-            <p class="cuentas-intro usuarios-email">{{ cuenta.email }}</p>
+            <p class="cuentas-intro">{{ cuenta.email }}</p>
         </div>
         <div class="usuarios-head-acciones">
-            <a class="btn btn-primary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-                Editar datos
-            </a>
+            <a class="btn btn-primary" href="{% url 'cuentas:usuario_editar' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Editar datos</a>
             {% if not es_cuenta_propia %}
-            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_perfiles' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-                Gestionar perfiles
-            </a>
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_perfiles' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Gestionar perfiles</a>
             {% endif %}
             {% if not cuenta.user.is_active %}
-            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-                Reactivar cuenta
-            </a>
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Reactivar cuenta</a>
             {% elif not es_cuenta_propia %}
-            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">
-                Desactivar cuenta
-            </a>
+            <a class="btn btn-secondary" href="{% url 'cuentas:usuario_actividad' cuenta.pk %}{% if listado_query %}?{{ listado_query }}{% endif %}">Desactivar cuenta</a>
             {% endif %}
-            <a class="btn btn-secondary" href="{% url 'cuentas:altas' %}">
-                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6"/></svg>
-                Solicitudes de cuenta
-            </a>
         </div>
     </header>
 
@@ -54,87 +37,85 @@
     </div>
     {% endif %}
 
-    {% for message in messages %}
-    <div class="cuentas-status{% if 'error' in message.tags %} cuentas-status--error{% elif 'warning' in message.tags %} cuentas-status--pending{% elif 'success' in message.tags %} cuentas-status--success{% endif %}" role="status">{{ message }}</div>
-    {% endfor %}
+    {% include "comunes/mensajes_flash.html" %}
 
     <div class="usuarios-ficha-grid">
         <div class="usuarios-ficha-principal">
             <section class="cuentas-card usuarios-ficha-card" aria-labelledby="datos-cuenta">
                 <h2 class="usuarios-ficha-titulo" id="datos-cuenta">Datos de la cuenta</h2>
-                <dl class="usuarios-datos">
-                    <div class="usuarios-dato">
+                <dl class="kv-list">
+                    <div>
                         <dt>Área habitual</dt>
                         <dd>{{ cuenta.area_habitual|default:"Sin informar" }}</dd>
                     </div>
-                    <div class="usuarios-dato">
+                    <div>
                         <dt>CUIT / CUIL</dt>
-                        <dd>{{ cuenta.cuit_cuil|default:"Sin informar" }}</dd>
+                        <dd class="font-mono">{% if cuenta.cuit_cuil %}{{ cuenta.cuit_cuil|cuit }}{% else %}Sin informar{% endif %}</dd>
                     </div>
-                    <div class="usuarios-dato">
+                    <div>
                         <dt>Legajo</dt>
-                        <dd>{{ cuenta.legajo|default:"Sin informar" }}</dd>
+                        <dd class="font-tabular">{{ cuenta.legajo|default:"Sin informar" }}</dd>
                     </div>
-                    <div class="usuarios-dato">
+                    <div>
                         <dt>Fecha de alta</dt>
-                        <dd>{{ cuenta.creada_en|date:"d/m/Y H:i"|default:"Sin informar" }}</dd>
+                        <dd class="font-tabular">{{ cuenta.creada_en|date:"d/m/Y H:i"|default:"Sin informar" }}</dd>
                     </div>
                 </dl>
 
                 <section class="usuarios-ficha-seccion" aria-labelledby="decision-cuenta">
                     <h2 class="usuarios-ficha-titulo" id="decision-cuenta">Decisión administrativa</h2>
-                    <dl class="usuarios-datos">
-                        <div class="usuarios-dato">
+                    <dl class="kv-list">
+                        <div>
                             <dt>Fecha de decisión</dt>
-                            <dd>{{ cuenta.decidida_en|date:"d/m/Y H:i"|default:"Sin informar" }}</dd>
+                            <dd class="font-tabular">{{ cuenta.decidida_en|date:"d/m/Y H:i"|default:"Sin informar" }}</dd>
                         </div>
-                        <div class="usuarios-dato">
+                        <div>
                             <dt>Decidida por</dt>
                             <dd>{% if cuenta.decidida_por %}{{ cuenta.decidida_por.get_full_name|default:cuenta.decidida_por.username }}{% else %}Sin informar{% endif %}</dd>
                         </div>
-                        <div class="usuarios-dato usuarios-dato--ancho">
+                        <div>
                             <dt>Motivo</dt>
-                            <dd class="usuarios-motivo">{{ cuenta.motivo|default:"Sin informar" }}</dd>
+                            <dd>{{ cuenta.motivo|default:"Sin informar" }}</dd>
                         </div>
                     </dl>
                 </section>
 
                 <section class="usuarios-ficha-seccion" aria-labelledby="invitacion-cuenta">
                     <h2 class="usuarios-ficha-titulo" id="invitacion-cuenta">Origen e invitación</h2>
-                    <dl class="usuarios-datos">
-                        <div class="usuarios-dato">
+                    <dl class="kv-list">
+                        <div>
                             <dt>Origen de la cuenta</dt>
                             <dd>{% if invitacion %}Alta administrativa por invitación{% else %}Registro público{% endif %}</dd>
                         </div>
                         {% if invitacion %}
-                        <div class="usuarios-dato">
+                        <div>
                             <dt>Invitación creada por</dt>
                             <dd>{{ invitacion.creada_por.get_full_name|default:invitacion.creada_por.username }}</dd>
                         </div>
-                        <div class="usuarios-dato">
+                        <div>
                             <dt>Fecha de creación</dt>
-                            <dd>{{ invitacion.creada_en|date:"d/m/Y H:i" }}</dd>
+                            <dd class="font-tabular">{{ invitacion.creada_en|date:"d/m/Y H:i" }}</dd>
                         </div>
-                        <div class="usuarios-dato">
+                        <div>
                             <dt>Último envío</dt>
                             <dd>
                                 {% if invitacion.estado_envio == "ENVIADA" %}
-                                <span class="badge badge-success">Enviada</span>
+                                <span class="status-pill status-success">Enviada</span>
                                 <span class="usuarios-invitacion-nota">Aceptada por el servidor de correo (no confirma entrega externa).</span>
                                 {% elif invitacion.estado_envio == "ERROR" %}
-                                <span class="badge badge-error">Error al enviar</span>
+                                <span class="status-pill status-error">Error al enviar</span>
                                 {% else %}
-                                <span class="badge badge-warning">Pendiente de envío</span>
+                                <span class="status-pill status-warning">Pendiente de envío</span>
                                 {% endif %}
                             </dd>
                         </div>
-                        <div class="usuarios-dato">
+                        <div>
                             <dt>Último intento</dt>
-                            <dd>{{ invitacion.ultimo_intento_en|date:"d/m/Y H:i"|default:"Sin intentos registrados" }}</dd>
+                            <dd class="font-tabular">{{ invitacion.ultimo_intento_en|date:"d/m/Y H:i"|default:"Sin intentos registrados" }}</dd>
                         </div>
-                        <div class="usuarios-dato">
+                        <div>
                             <dt>Aceptación</dt>
-                            <dd>{{ invitacion.aceptada_en|date:"d/m/Y H:i"|default:"Pendiente de aceptación" }}</dd>
+                            <dd class="font-tabular">{{ invitacion.aceptada_en|date:"d/m/Y H:i"|default:"Pendiente de aceptación" }}</dd>
                         </div>
                         {% endif %}
                     </dl>
@@ -147,7 +128,7 @@
                 </section>
             </section>
 
-            <section class="cuentas-card usuarios-ficha-card usuarios-historial-card" aria-labelledby="historial-cambios">
+            <section class="cuentas-card usuarios-ficha-card" aria-labelledby="historial-cambios">
                 <h2 class="usuarios-ficha-titulo" id="historial-cambios">Historial de cambios</h2>
                 {% if historial_items %}
                 <ul class="usuarios-historial-lista">
@@ -173,15 +154,13 @@
 
                 {% if historial_page.has_other_pages %}
                 <nav class="usuarios-paginacion" aria-label="Paginación del historial de cambios">
-                    <p class="usuarios-paginacion-resumen">
-                        Página {{ historial_page.number }} de {{ historial_page.paginator.num_pages }}
-                    </p>
+                    <p class="usuarios-paginacion-resumen">Página {{ historial_page.number }} de {{ historial_page.paginator.num_pages }}</p>
                     <div class="usuarios-paginacion-acciones">
                         {% if historial_page.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Anterior</a>
+                        <a class="btn btn-secondary btn-row" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.previous_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Anterior</a>
                         {% endif %}
                         {% if historial_page.has_next %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Siguiente</a>
+                        <a class="btn btn-secondary btn-row" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}historia_page={{ historial_page.next_page_number }}{% if actividad_page.number > 1 %}&amp;actividad_page={{ actividad_page.number }}{% endif %}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Siguiente</a>
                         {% endif %}
                     </div>
                 </nav>
@@ -191,7 +170,7 @@
                 {% endif %}
             </section>
 
-            <section class="cuentas-card usuarios-ficha-card usuarios-historial-card" aria-labelledby="historial-acceso">
+            <section class="cuentas-card usuarios-ficha-card" aria-labelledby="historial-acceso">
                 <h2 class="usuarios-ficha-titulo" id="historial-acceso">Historial de acceso</h2>
                 {% if actividad_page.object_list %}
                 <ul class="usuarios-historial-lista">
@@ -206,22 +185,20 @@
                             <span aria-hidden="true">→</span>
                             <strong>{% if item.actividad_nueva %}Activa{% else %}Inactiva{% endif %}</strong>
                         </p>
-                        <p class="usuarios-motivo usuarios-actividad-motivo">{{ item.motivo }}</p>
+                        <p class="usuarios-motivo">{{ item.motivo }}</p>
                     </li>
                     {% endfor %}
                 </ul>
 
                 {% if actividad_page.has_other_pages %}
                 <nav class="usuarios-paginacion" aria-label="Paginación del historial de acceso">
-                    <p class="usuarios-paginacion-resumen">
-                        Página {{ actividad_page.number }} de {{ actividad_page.paginator.num_pages }}
-                    </p>
+                    <p class="usuarios-paginacion-resumen">Página {{ actividad_page.number }} de {{ actividad_page.paginator.num_pages }}</p>
                     <div class="usuarios-paginacion-acciones">
                         {% if actividad_page.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.previous_page_number }}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Anterior</a>
+                        <a class="btn btn-secondary btn-row" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.previous_page_number }}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Anterior</a>
                         {% endif %}
                         {% if actividad_page.has_next %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.next_page_number }}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Siguiente</a>
+                        <a class="btn btn-secondary btn-row" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}actividad_page={{ actividad_page.next_page_number }}{% if perfiles_page.number > 1 %}&amp;perfiles_page={{ perfiles_page.number }}{% endif %}">Siguiente</a>
                         {% endif %}
                     </div>
                 </nav>
@@ -231,7 +208,7 @@
                 {% endif %}
             </section>
 
-            <section class="cuentas-card usuarios-ficha-card usuarios-historial-card" aria-labelledby="historial-perfiles">
+            <section class="cuentas-card usuarios-ficha-card" aria-labelledby="historial-perfiles">
                 <h2 class="usuarios-ficha-titulo" id="historial-perfiles">Historial de perfiles</h2>
                 {% if perfiles_historial_items %}
                 <ul class="usuarios-historial-lista">
@@ -246,25 +223,23 @@
                             <span>{% if item.anteriores %}{{ item.anteriores|join:", " }}{% else %}Ninguno{% endif %}</span>
                         </p>
                         <p class="usuarios-actividad-cambio">
-                            <strong>Nuevas:</strong>
+                            <strong>Nuevos:</strong>
                             <span>{% if item.nuevos %}{{ item.nuevos|join:", " }}{% else %}Ninguno{% endif %}</span>
                         </p>
-                        <p class="usuarios-motivo usuarios-actividad-motivo"><strong>Motivo:</strong> {{ item.motivo }}</p>
+                        <p class="usuarios-motivo"><strong>Motivo:</strong> {{ item.motivo }}</p>
                     </li>
                     {% endfor %}
                 </ul>
 
                 {% if perfiles_page.has_other_pages %}
                 <nav class="usuarios-paginacion" aria-label="Paginación del historial de perfiles">
-                    <p class="usuarios-paginacion-resumen">
-                        Página {{ perfiles_page.number }} de {{ perfiles_page.paginator.num_pages }}
-                    </p>
+                    <p class="usuarios-paginacion-resumen">Página {{ perfiles_page.number }} de {{ perfiles_page.paginator.num_pages }}</p>
                     <div class="usuarios-paginacion-acciones">
                         {% if perfiles_page.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}{% if actividad_page.number > 1 %}actividad_page={{ actividad_page.number }}&amp;{% endif %}perfiles_page={{ perfiles_page.previous_page_number }}">Anterior</a>
+                        <a class="btn btn-secondary btn-row" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}{% if actividad_page.number > 1 %}actividad_page={{ actividad_page.number }}&amp;{% endif %}perfiles_page={{ perfiles_page.previous_page_number }}">Anterior</a>
                         {% endif %}
                         {% if perfiles_page.has_next %}
-                        <a class="btn btn-secondary" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}{% if actividad_page.number > 1 %}actividad_page={{ actividad_page.number }}&amp;{% endif %}perfiles_page={{ perfiles_page.next_page_number }}">Siguiente</a>
+                        <a class="btn btn-secondary btn-row" href="?{% if listado_query %}{{ listado_query }}&amp;{% endif %}{% if historial_page.number > 1 %}historia_page={{ historial_page.number }}&amp;{% endif %}{% if actividad_page.number > 1 %}actividad_page={{ actividad_page.number }}&amp;{% endif %}perfiles_page={{ perfiles_page.next_page_number }}">Siguiente</a>
                         {% endif %}
                     </div>
                 </nav>
@@ -280,22 +255,22 @@
             <ul class="usuarios-estado-lista">
                 <li class="usuarios-estado-item">
                     <span class="usuarios-meta-label">Aprobación</span>
-                    <span class="badge {% if cuenta.estado == 'APROBADA' %}badge-success{% elif cuenta.estado == 'PENDIENTE' %}badge-warning{% else %}badge-error{% endif %}">{{ cuenta.get_estado_display|upper }}</span>
+                    <span class="status-pill {% if cuenta.estado == 'APROBADA' %}status-success{% elif cuenta.estado == 'PENDIENTE' %}status-warning{% else %}status-error{% endif %}">{{ cuenta.get_estado_display }}</span>
                 </li>
                 <li class="usuarios-estado-item">
                     <span class="usuarios-meta-label">Correo</span>
                     {% if cuenta.email_verificado_en %}
-                    <span class="badge badge-success">Verificado</span>
+                    <span class="status-pill status-success">Verificado</span>
                     {% else %}
-                    <span class="badge badge-warning">Sin verificar</span>
+                    <span class="status-pill status-warning">Sin verificar</span>
                     {% endif %}
                 </li>
                 <li class="usuarios-estado-item">
                     <span class="usuarios-meta-label">Actividad</span>
                     {% if cuenta.user.is_active %}
-                    <span class="badge badge-success">Activa</span>
+                    <span class="status-pill status-success">Activa</span>
                     {% else %}
-                    <span class="badge badge-neutral">Inactiva</span>
+                    <span class="status-pill status-neutral">Inactiva</span>
                     {% endif %}
                 </li>
             </ul>

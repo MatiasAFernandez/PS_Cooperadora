@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Corregir Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
+{% block title %}Corregir solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
@@ -11,42 +11,48 @@
 
 {% block content %}
 <div class="solicitud-detalle nueva-solicitud">
-    <p class="ns-breadcrumb"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a></p>
+    <a class="page-back" href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a>
 
     <header class="ns-head">
         <h1>Corregir solicitud #{{ solicitud.pk }}</h1>
-        <p class="sd-small">Actualizá los datos observados y reenviá la solicitud para una nueva evaluación.</p>
+        <p class="ns-subtitle">Actualizá los datos observados y reenviá la solicitud para una nueva evaluación.</p>
     </header>
 
     {% if ultima_observacion %}
-    <section class="sd-alert sd-alert-warning" aria-labelledby="obs-motivo-heading">
+    <section class="sd-decision-banner sd-decision-banner--warning" aria-labelledby="obs-motivo-heading">
         <h2 id="obs-motivo-heading" class="sd-h2">Observación vigente</h2>
-        <p class="sd-small">{{ ultima_observacion.fecha|date:"d/m/Y H:i" }}</p>
+        <p class="sd-small font-tabular">{{ ultima_observacion.fecha|date:"d/m/Y H:i" }}</p>
         <p><strong>Motivo:</strong> {{ ultima_observacion.motivo }}</p>
     </section>
     {% endif %}
 
-    {% if error_subsanacion %}
-    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
-        <strong>No se pudo completar el reenvío:</strong> {{ error_subsanacion }}
-    </div>
-    {% endif %}
-
-    {% if form.non_field_errors %}
-    <div class="sd-alert sd-alert-error" role="alert" tabindex="-1">
-        {{ form.non_field_errors }}
+    {% if error_subsanacion or form.errors %}
+    <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+        {% if error_subsanacion %}
+            <p>No se pudo completar el reenvío: {{ error_subsanacion }}</p>
+        {% else %}
+            <p>Revisá los datos antes de reenviar la solicitud:</p>
+        {% endif %}
+        {% if form.errors %}
+            <ul>
+                {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+                {% for field in form.visible_fields %}
+                    {% for err in field.errors %}<li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ err }}</a></li>{% endfor %}
+                {% endfor %}
+            </ul>
+        {% endif %}
     </div>
     {% endif %}
 
     <section class="sd-card" aria-labelledby="datos-fijos-heading">
         <h2 id="datos-fijos-heading" class="sd-h2">Datos inmutables del trámite</h2>
-        <dl class="sd-dl sd-dl-flat">
-            <dt>Número</dt><dd>#{{ solicitud.pk }}</dd>
-            <dt>Modalidad</dt><dd>{{ solicitud.get_tipo_flujo_display }}</dd>
-            <dt>Unidad requirente</dt><dd>{{ solicitud.unidad_requirente }}</dd>
-            <dt>Estado actual</dt><dd>{{ solicitud.get_estado_display }}</dd>
+        <dl class="kv-list">
+            <div><dt>Número</dt><dd class="font-tabular">#{{ solicitud.pk }}</dd></div>
+            <div><dt>Modalidad</dt><dd>{{ solicitud.get_tipo_flujo_display }}</dd></div>
+            <div><dt>Unidad requirente</dt><dd>{{ solicitud.unidad_requirente }}</dd></div>
+            <div><dt>Estado actual</dt><dd><span class="status-pill status-warning">{{ solicitud.get_estado_display }}</span></dd></div>
         </dl>
-        <p class="sd-small">
+        <p class="sd-muted sd-small">
             Si necesitás corregir datos bancarios o archivos respaldatorios, hacelo desde
             <a href="{% url 'gastos:datos-transferencia' pk=solicitud.pk %}">Datos de transferencia</a>
             o <a href="{% url 'gastos:documentos' pk=solicitud.pk %}">Documentos del trámite</a>.
@@ -60,27 +66,23 @@
             {{ form.version }}
 
             <div class="ns-grid-primary">
-                <div class="ns-field">
+                <div class="ns-field{% if form.concepto.errors %} has-error{% endif %}">
                     <div class="ns-label-row">
-                        <label for="{{ form.concepto.id_for_label }}">
-                            {{ form.concepto.label }} <span class="ns-required" aria-hidden="true">*</span>
-                        </label>
+                        <label for="{{ form.concepto.id_for_label }}">{{ form.concepto.label }}</label>
                     </div>
                     {{ form.concepto }}
                     {% if form.concepto.errors %}
-                        <div class="ns-field-error" role="alert">{{ form.concepto.errors }}</div>
+                        <div id="{{ form.concepto.id_for_label }}_error" class="ns-field-error" role="alert">{{ form.concepto.errors }}</div>
                     {% endif %}
                 </div>
 
-                <div class="ns-field">
+                <div class="ns-field{% if form.monto_estimado.errors %} has-error{% endif %}">
                     <div class="ns-label-row">
-                        <label for="{{ form.monto_estimado.id_for_label }}">
-                            {{ form.monto_estimado.label }} <span class="ns-required" aria-hidden="true">*</span>
-                        </label>
+                        <label for="{{ form.monto_estimado.id_for_label }}">{{ form.monto_estimado.label }}</label>
                     </div>
                     {{ form.monto_estimado }}
                     {% if form.monto_estimado.errors %}
-                        <div class="ns-field-error" role="alert">{{ form.monto_estimado.errors }}</div>
+                        <div id="{{ form.monto_estimado.id_for_label }}_error" class="ns-field-error" role="alert">{{ form.monto_estimado.errors }}</div>
                     {% endif %}
                     <div class="ns-field-error" id="monto-inline-error" role="alert" hidden>
                         <p>Ingresá un monto válido mayor a cero (por ejemplo, 1250,50).</p>
@@ -88,23 +90,26 @@
                 </div>
             </div>
 
-            <div class="ns-field">
+            <div class="ns-field{% if form.centro_costo.errors %} has-error{% endif %}">
                 <div class="ns-label-row">
-                    <label for="{{ form.centro_costo.id_for_label }}">{{ form.centro_costo.label }}</label>
+                    <label for="{{ form.centro_costo.id_for_label }}">{{ form.centro_costo.label }} <span class="field-optional">(Opcional)</span></label>
                 </div>
                 {{ form.centro_costo }}
                 {% if form.centro_costo.errors %}
-                    <div class="ns-field-error" role="alert">{{ form.centro_costo.errors }}</div>
+                    <div id="{{ form.centro_costo.id_for_label }}_error" class="ns-field-error" role="alert">{{ form.centro_costo.errors }}</div>
                 {% endif %}
             </div>
 
             <div class="sd-actions">
-                <button type="submit" class="sd-btn sd-btn-primary">Guardar y reenviar</button>
-                <a href="{% url 'gastos:detalle' pk=solicitud.pk %}" class="sd-btn sd-btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar y reenviar</button>
+                <a href="{% url 'gastos:detalle' pk=solicitud.pk %}" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </section>
 </div>
+{% if error_subsanacion or form.errors %}
+<script src="{% static 'js/foco_errores.js' %}" defer></script>
+{% endif %}
 <script>
 (function () {
   const input = document.getElementById("id_monto_estimado");

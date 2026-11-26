@@ -1,4 +1,4 @@
-{% load l10n %}
+{% load l10n formato_ars %}
 <article{% if not secundario %} class="card chart-card"{% endif %}>
   {% if titulo %}<header class="chart-head"><h3>{{ titulo }}</h3></header>{% endif %}
   {% if ranking.filas %}
@@ -7,7 +7,7 @@
         <li class="hbar-row">
           <div class="hbar-head">
             <span class="hbar-label">{{ fila.nombre }}</span>
-            <strong class="font-tabular">{% if orden == "cantidad" %}{{ fila.valor|floatformat:"0g" }}{% else %}$ {{ fila.valor|floatformat:"2g" }}{% endif %}</strong>
+            <strong class="font-tabular">{% if orden == "cantidad" %}{{ fila.valor|floatformat:"0g" }}{% else %}{{ fila.valor|ars }}{% endif %}</strong>
           </div>
           <div class="hbar-track fac-pista" aria-hidden="true">
             <span class="hbar-fill fac-color-azul" style="--inicio: {{ fila.inicio|unlocalize }}%; --largo: {{ fila.largo|unlocalize }}%"></span>
@@ -16,7 +16,10 @@
       {% endfor %}
     </ol>
     <details class="fac-detalle">
-      <summary>Ver tabla completa</summary>
+      <summary>
+        <span>Ver tabla completa</span>
+        <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
       {% include "gestion/tabla_reporte.html" with filas=filas %}
     </details>
   {% else %}

@@ -6,12 +6,15 @@
 {% block content %}
 <section class="bandeja" aria-labelledby="bandeja-titulo">
     <header class="bandeja-header">
-        <h1 id="bandeja-titulo">{% if puede_presentar and not vista_rapida and "gastos.consultar_todas" not in actor.capabilities %}Mis solicitudes{% else %}Solicitudes de gasto{% endif %}</h1>
-        <div class="bandeja-acciones">
-            {% if puede_presentar and not resumen_deuda.tiene_bloqueo %}
-                <a class="btn btn-primary" href="{% url 'gastos:presentar' %}"><span aria-hidden="true">+</span> Nueva solicitud</a>
-            {% endif %}
+        <div class="bandeja-titulo-wrap">
+            <h1 id="bandeja-titulo">{% if puede_presentar and not vista_rapida and "gastos.consultar_todas" not in actor.capabilities %}Mis solicitudes{% else %}Solicitudes de gasto{% endif %}</h1>
+            <p class="bandeja-subtitulo">{% if puede_presentar and not vista_rapida and "gastos.consultar_todas" not in actor.capabilities %}Seguimiento de tus trámites presentados ante Cooperadora.{% else %}Decisiones, pagos registrados y seguimiento documental.{% endif %}</p>
         </div>
+        {% if puede_presentar and not resumen_deuda.tiene_bloqueo %}
+            <div class="bandeja-acciones">
+                <a class="btn btn-primary" href="{% url 'gastos:presentar' %}"><svg class="bandeja-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Nueva solicitud</a>
+            </div>
+        {% endif %}
     </header>
 
     {% if resumen_deuda.tiene_deuda %}
@@ -28,30 +31,27 @@
         </section>
     {% endif %}
 
-    {% if ofrece_atencion and not solo_atencion and total_atencion != 0 %}
-        <div class="bandeja-atencion" role="status">
-            <div class="bandeja-atencion-texto"><strong>Hoy requieren tu atención</strong><span>Hay decisiones y pagos esperando a Cooperadora.</span></div>
-            <a class="btn btn-secondary" href="{% url 'gastos:lista' %}?atencion=1">Ver las que requieren atención</a>
-        </div>
+    {% if ofrece_atencion %}
+        <nav class="bandeja-tabs" data-bandeja-tabs aria-label="Vista rápida de solicitudes">
+            <a class="bandeja-tab" data-bandeja-tab="todas" href="{{ url_tab_todas }}"{% if not solo_atencion %} aria-current="page"{% endif %}>Todas</a>
+            <a class="bandeja-tab" data-bandeja-tab="atencion" href="{{ url_tab_atencion }}"{% if solo_atencion %} aria-current="page"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-tab-count bandeja-tab-count--attn">{{ total_atencion }}</span>{% endif %}</a>
+        </nav>
     {% endif %}
 
-    <form class="bandeja-filtros" method="get" action="{% url 'gastos:lista' %}">
+    <form class="bandeja-filtros" data-bandeja-filtros{% if solo_atencion %} data-solo-atencion="1"{% endif %} method="get" action="{% url 'gastos:lista' %}">
+        {% if solo_atencion %}<input type="hidden" name="atencion" value="1">{% endif %}
         {% include "comunes/campos_filtro.html" with form=filtro_form %}
         <div class="bandeja-filtros-acciones">
-            {% if solo_atencion %}
-                <button class="btn btn-primary" name="atencion" value="1" type="submit">Filtrar pendientes</button>
-            {% else %}
-                <button class="btn btn-primary" type="submit">Filtrar</button>
-            {% endif %}
-            <a class="bandeja-enlace" href="{% url 'gastos:lista' %}">Quitar filtros</a>
+            <button class="btn btn-secondary bandeja-btn-filtrar" type="submit">Filtrar</button>
+            <a class="btn btn-ghost bandeja-enlace" data-bandeja-limpiar{% if not tiene_filtros_activos %} hidden{% endif %} href="{{ limpiar_filtros_url }}">Quitar filtros</a>
         </div>
-            {% if ofrece_atencion %}
-                <button class="bandeja-atencion-control" type="submit"{% if not solo_atencion %} name="atencion" value="1"{% endif %} aria-pressed="{% if solo_atencion %}true{% else %}false{% endif %}"{% if solo_atencion %} title="Ver todas"{% endif %}>Requieren atención{% if total_atencion != None %} <span class="bandeja-atencion-n">{{ total_atencion }}</span>{% endif %}</button>
-            {% endif %}
     </form>
 
+    <p class="bandeja-estado-busqueda bandeja-estado-busqueda--sr" data-bandeja-estado role="status" aria-live="polite" aria-atomic="true"></p>
+
+    <div class="bandeja-contenido" data-bandeja-resultados data-total-resultados="{% if solicitudes %}{{ page_obj.paginator.count }}{% else %}0{% endif %}" data-tiene-errores="{% if filtro_form.errors %}1{% else %}0{% endif %}">
     {% if solicitudes %}
-        <p class="bandeja-conteo" aria-live="polite">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if consulta_bandeja %} (filtrado){% endif %}</p>
+        <p class="bandeja-conteo">{{ page_obj.paginator.count }} solicitud{{ page_obj.paginator.count|pluralize:",es" }}{% if tiene_filtros_activos %} (filtrado){% endif %}</p>
         <div class="bandeja-resultados">
             <table class="bandeja-tabla" aria-label="Solicitudes de gasto">
                 <thead>
@@ -70,33 +70,34 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% if is_paginated %}
+                <nav class="bandeja-paginacion" aria-label="Paginación de solicitudes">
+                    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    <div class="bandeja-acciones">
+                        {% if page_obj.has_previous %}
+                            <a class="btn btn-secondary btn-row" href="?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                            <a class="btn btn-secondary btn-row" href="?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Siguiente</a>
+                        {% endif %}
+                    </div>
+                </nav>
+            {% endif %}
         </div>
-        {% if is_paginated %}
-            <nav class="bandeja-paginacion" aria-label="Paginación de solicitudes">
-                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-                <div class="bandeja-acciones">
-                    {% if page_obj.has_previous %}
-                        <a class="btn btn-secondary" href="?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
-                    {% endif %}
-                    {% if page_obj.has_next %}
-                        <a class="btn btn-secondary" href="?{% if filtros_query %}{{ filtros_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Siguiente</a>
-                    {% endif %}
-                </div>
-            </nav>
-        {% endif %}
     {% elif filtro_form.errors %}
         <p class="bandeja-vacio">Corregí los filtros para consultar las solicitudes.</p>
     {% elif filtro_form.cleaned_data.q %}
         <p class="bandeja-vacio">No se encontraron solicitudes visibles con el concepto buscado y los filtros seleccionados.</p>
     {% elif filtro_form.cleaned_data.estado %}
         <p class="bandeja-vacio">No se encontraron solicitudes visibles con el estado seleccionado.</p>
+    {% elif solo_atencion and not tiene_filtros_activos %}
+        <p class="bandeja-vacio">No tenés solicitudes que requieran atención en este momento.</p>
     {% elif consulta_bandeja %}
         <p class="bandeja-vacio">No hay solicitudes que coincidan con esta búsqueda.</p>
     {% else %}
-        <p class="bandeja-vacio">No se encontraron solicitudes de gasto visibles para su cuenta.</p>
+        <p class="bandeja-vacio">No se encontraron solicitudes de gasto visibles para tu cuenta.</p>
     {% endif %}
+    </div>
 </section>
-{% if vista_rapida %}
 <script src="{% static 'gastos/js/solicitud_list.js' %}" defer></script>
-{% endif %}
 {% endblock %}

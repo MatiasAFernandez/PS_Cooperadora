@@ -1,4 +1,4 @@
-/* Menú lateral: pliegue a riel (>=1440px) y superposición modal (<1440px). JS nativo, sin dependencias. */
+/* Menú lateral: pliegue a riel (>=1280px) y superposición modal (<1280px). JS nativo, sin dependencias. */
 (function () {
     "use strict";
 
@@ -12,11 +12,11 @@
     var scrim = document.getElementById("app-nav-scrim");
     var header = document.querySelector(".app-topbar");
     var content = document.querySelector(".app-content");
-    var wide = window.matchMedia("(min-width: 1440px)");
+    var wide = window.matchMedia("(min-width: 1280px)");
     var ICONS = {
-        close: "M18 6L6 18M6 6l12 12",
-        fold: "M11 17l-5-5 5-5M18 17l-5-5 5-5",
-        unfold: "M6 17l5-5-5-5M13 17l5-5-5-5"
+        close: "M18 6 6 18M6 6l12 12",
+        fold: "m11 17-5-5 5-5M18 17l-5-5 5-5",
+        unfold: "m6 17 5-5-5-5M13 17l5-5-5-5"
     };
     var overlayOpen = false;
     var opener = null;

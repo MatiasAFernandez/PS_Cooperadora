@@ -1,5 +1,4 @@
-{{ form.non_field_errors }}
-{% for field in form.hidden_fields %}{% if field.name != "configuracion_revision" %}{% if not form.campos_adicionales or field.name not in form.campos_adicionales %}{{ field.errors }}{{ field }}{% endif %}{% endif %}{% endfor %}
+{% for field in form.hidden_fields %}{% if field.name != "configuracion_revision" %}{% if not form.campos_adicionales or field.name not in form.campos_adicionales %}{{ field }}{% endif %}{% endif %}{% endfor %}
 <div class="fac-form-fields">
 {% for field in form.visible_fields %}
 {% if not form.campos_adicionales or field.name not in form.campos_adicionales %}
@@ -7,20 +6,29 @@
     {% if solicitud.documento_comprobante_inicial_id %}
         {% include "facturacion/respaldo_inicial.html" %}
     {% elif field.errors %}
-        {{ field.errors }}
+        <div class="form-group fac-field-full">
+            <div id="{{ field.id_for_label }}_error" class="fac-field-error" role="alert">{{ field.errors }}</div>
+        </div>
     {% endif %}
+{% elif field.field.widget.input_type == "checkbox" %}
+<div class="form-group"{% if field.name == "fecha_operacion_declarada" or field.name == "numero_operacion_declarado" or field.name == "archivo_comprobante" %} data-pago-declarado{% endif %}{% if field.name == "procedencia" or field.name == "origen_aclaracion" %} data-origen-comprobante{% endif %}>
+    <label class="fac-checkbox-card" for="{{ field.id_for_label }}">
+        {{ field }}
+        <span class="fac-checkbox-copy">
+            <span class="fac-checkbox-title">{{ field.label }}</span>
+            {% if field.help_text %}<span class="fac-field-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</span>{% endif %}
+        </span>
+    </label>
+    {% if field.errors %}<div id="{{ field.id_for_label }}_error" class="fac-field-error" role="alert">{{ field.errors }}</div>{% endif %}
+</div>
 {% else %}
 <div class="form-group"{% if field.name == "fecha_operacion_declarada" or field.name == "numero_operacion_declarado" or field.name == "archivo_comprobante" %} data-pago-declarado{% endif %}{% if field.name == "procedencia" or field.name == "origen_aclaracion" %} data-origen-comprobante{% endif %}>
-    {% if field.field.widget.input_type != "file" %}{{ field.errors }}{% endif %}
-    <div class="fac-field-label{% if field.help_text %} fac-has-help{% endif %}{% if field.field.widget.input_type == 'checkbox' %} fac-checkbox-label{% endif %}">
-        {% if field.field.widget.input_type == "checkbox" %}{{ field }}{% endif %}
-        {{ field.label_tag }}
-        {% if field.help_text %}{% with id=field.auto_id|add:"_helptext" %}
-        {% include "facturacion/ayuda.html" with id=id etiqueta=field.label texto=field.help_text only %}
-        {% endwith %}{% endif %}
+    <div class="fac-field-label">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="field-optional">(Opcional)</span>{% endif %}</label>
     </div>
-    {% if field.field.widget.input_type != "checkbox" %}{{ field }}{% endif %}
-    {% if field.field.widget.input_type == "file" %}{{ field.errors }}{% endif %}
+    {{ field }}
+    {% if field.help_text %}<p class="fac-field-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</p>{% endif %}
+    {% if field.errors %}<div id="{{ field.id_for_label }}_error" class="fac-field-error" role="alert">{{ field.errors }}</div>{% endif %}
 </div>
 {% endif %}
 {% endif %}

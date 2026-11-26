@@ -67,9 +67,9 @@ def test_numeracion_por_titular_filtros_y_accesos(escenario, datos):
     respuesta = cliente.get(url, {"q": str(b1.pk)})
     assert [s.pk for s in respuesta.context["pagina"]] == [b1.pk]
     html = respuesta.content.decode()
-    assert f'<td class="fac-number">#{b1.pk}</td>' in html
+    assert f'<span class="fac-fila-num">#{b1.pk}</span>' in html
     assert f'data-titulo="Solicitud #{b1.pk}"' in html
-    assert f"Solicitud #{b1.pk}</strong>" in html
+    assert f'data-abrir-resumen="{b1.pk}"' in html
     contenido = cliente.get(reverse("facturacion:detalle", args=[b1.pk])).content.decode()
     assert f"Solicitud {b1.pk} de {b1.correo_solicitante}" in contenido
     pdf = cliente.get(reverse("facturacion:exportar_pdf", args=[b1.pk]))

@@ -1,13 +1,66 @@
 {% extends "gestion/base.html" %}
 {% load static %}
-{% block title %}Configuración — Cooperadora{% endblock %}
+{% block title %}Configuración — PS Cooperadora{% endblock %}
 {% block gestion_content %}
-<header class="gestion-heading"><div><p class="gestion-eyebrow">Gestión</p><h1>Configuración</h1></div></header>
+<header class="gestion-heading">
+  <div>
+    <h1 class="gestion-title">Configuración</h1>
+    <p class="gestion-intro">Administrá campos del formulario y parámetros operativos por circuito.</p>
+  </div>
+</header>
+
 {% include "gestion/tabs_configuracion.html" %}
-{% if circuito == 'GASTO' %}<details class="gestion-card"><summary>Catálogos y parámetros · Centros de costo y ATP</summary><div class="catalog-admin">{% include "gastos/_catalogos_contenido.html" %}</div></details>{% endif %}
-<section class="gestion-card"><header class="gestion-heading"><div><h2>Formulario de {% if circuito == 'GASTO' %}gastos{% else %}facturación{% endif %}</h2><p>Versión {{ revision }}. Los cambios rigen para nuevas presentaciones. Las respuestas anteriores se conservan.</p></div><a class="btn" href="{% url 'gestion:campo_nuevo' circuito %}">Agregar campo o sección</a></header>
-<p>Los campos esenciales están protegidos. Podés editar sus textos; los códigos que controlan el circuito se conservan. Retirar un campo adicional no borra su historial.</p>
-<div class="gestion-field-list">{% for campo in campos %}<article class="gestion-field"><div><h3>{{ campo.etiqueta }}</h3><p>{{ campo.ayuda }}</p><span class="badge">{% if campo.protegido %}Esencial · protegido{% elif campo.requerido %}Obligatorio{% else %}Opcional{% endif %}</span> {% if not campo.activo %}<span class="badge">Retirado</span>{% endif %}</div><a class="btn btn-secondary" href="{% url 'gestion:campo' circuito campo.clave %}">Editar<span class="sr-only"> {{ campo.etiqueta }}</span></a></article>{% endfor %}</div>
+{% include "comunes/mensajes_flash.html" %}
+
+{% if circuito == 'GASTO' %}
+<details class="card gestion-card gestion-catalogos-details"{% if catalogos_abierto %} open{% endif %}>
+  <summary class="gestion-catalogos-summary">
+    <span>Catálogos y parámetros · Centros de costo y ATP</span>
+    <svg class="gestion-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+  </summary>
+  <div class="catalog-admin gestion-catalogos-body">
+    {% include "gastos/_catalogos_contenido.html" %}
+  </div>
+</details>
+{% endif %}
+
+<section class="card gestion-card" aria-labelledby="config-formulario-titulo">
+  <header class="gestion-section-head">
+    <div>
+      <h2 id="config-formulario-titulo">Formulario de {% if circuito == 'GASTO' %}gastos{% else %}facturación{% endif %}</h2>
+      <p class="gestion-section-sub font-tabular">Versión {{ revision }}. Los cambios rigen para nuevas presentaciones; las respuestas anteriores se conservan.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'gestion:campo_nuevo' circuito %}">Agregar campo o sección</a>
+  </header>
+
+  <p class="gestion-note">Los campos esenciales están protegidos. Podés editar sus textos; los códigos que controlan el circuito se conservan. Retirar un campo adicional no borra su historial.</p>
+
+  <div class="gestion-field-list">
+    {% for campo in campos %}
+    <article class="gestion-field">
+      <div class="gestion-field-info">
+        <h3>{{ campo.etiqueta }}</h3>
+        {% if campo.ayuda %}<p>{{ campo.ayuda }}</p>{% endif %}
+        <div class="gestion-field-pills">
+          {% if campo.protegido %}
+            <span class="status-pill status-info">Esencial · protegido</span>
+          {% elif campo.requerido %}
+            <span class="status-pill status-neutral">Obligatorio</span>
+          {% else %}
+            <span class="status-pill status-neutral">Opcional</span>
+          {% endif %}
+          {% if not campo.activo %}
+            <span class="status-pill status-warning">Retirado</span>
+          {% endif %}
+        </div>
+      </div>
+      <a class="btn btn-secondary btn-row" href="{% url 'gestion:campo' circuito campo.clave %}">Editar<span class="gestion-sr-only"> {{ campo.etiqueta }}</span></a>
+    </article>
+    {% endfor %}
+  </div>
 </section>
-{% if circuito == 'GASTO' %}<script src="{% static 'gastos/js/gestion_catalogos.js' %}" defer></script>{% endif %}
+
+{% if circuito == 'GASTO' %}
+<script src="{% static 'gastos/js/gestion_catalogos.js' %}" defer></script>
+{% endif %}
 {% endblock %}

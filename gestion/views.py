@@ -1,6 +1,8 @@
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from facturacion.views import FacturacionView
@@ -26,6 +28,10 @@ class ConfiguracionView(FacturacionView):
 
             extra = contexto_catalogos(self.actor)
             extra.pop("actor")
+            extra["catalogos_abierto"] = request.GET.get("seccion") == "catalogos"
+            extra["catalogos_next_url"] = (
+                f"{reverse('gestion:configuracion', args=['GASTO'])}?seccion=catalogos"
+            )
         return render(
             request,
             "gestion/configuracion.html",
@@ -75,6 +81,7 @@ class CampoView(ConfiguracionView):
             else:
                 form.add_error(None, " ".join(exc.messages))
             return self.mostrar(request, circuito, clave, form, 400)
+        messages.success(request, "Configuración del formulario guardada.")
         return redirect("gestion:configuracion", circuito=circuito)
 
 

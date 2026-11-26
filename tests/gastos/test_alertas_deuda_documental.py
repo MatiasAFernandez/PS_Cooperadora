@@ -528,7 +528,7 @@ def test_vista_alta_muestra_banner_warning_preventivo_dentro_de_gracia(
     assert "Aviso preventivo de rendición documental" in html
     assert "Compra en plazo de gracia" in html
     assert "message-error" not in html
-    assert 'button type="submit" class="btn">Enviar Solicitud</button>' in html
+    assert 'button type="submit" class="btn btn-primary">Enviar solicitud</button>' in html
 
 
 def test_vista_alta_muestra_banner_error_critico_y_bloquea_boton(
@@ -556,7 +556,7 @@ def test_vista_alta_muestra_banner_error_critico_y_bloquea_boton(
     assert "Bloqueo de nuevas solicitudes por comprobantes adeudados" in html
     assert "Registrás <strong>3</strong> compra(s) directa(s)" in html
     assert "disabled" in html
-    assert "Presentación Bloqueada" in html
+    assert "Presentación bloqueada" in html
 
 
 def test_vista_alta_post_bloqueado_retorna_400(

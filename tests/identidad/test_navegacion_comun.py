@@ -1,10 +1,12 @@
 """La navegación común sólo ofrece circuitos autorizados por capacidades."""
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from django.template.loader import render_to_string
-from django.urls import reverse
+from django.test import RequestFactory
+from django.urls import resolve, reverse
 
 from comunes.contracts import EventoHistorialDTO
 from identidad.services import Actor
@@ -108,3 +110,36 @@ def test_parcial_comun_renderiza_campos_del_dto_y_escapa_el_detalle() -> None:
     assert "Fecha del hecho: 14/10/2026" in html
     assert "&lt;script&gt;falso&lt;/script&gt;" in html
     assert "<script>falso</script>" not in html
+
+
+def test_navegacion_marca_subrutas_de_usuarios_y_usa_sentence_case() -> None:
+    actor = Actor(
+        subject_id=17,
+        capabilities=frozenset(
+            {
+                "identidad.administrar_cuentas",
+                "gastos.presentar",
+                "facturacion.presentar",
+            }
+        ),
+    )
+    ruta_editar = reverse("cuentas:usuario_editar", kwargs={"pk": 9})
+    request = RequestFactory().get(ruta_editar)
+    request.resolver_match = resolve(ruta_editar)
+    request.user = SimpleNamespace(
+        cuenta_local=True,
+        get_full_name=lambda: "Admin QA",
+        get_username=lambda: "admin_qa",
+    )
+
+    html = render_to_string(
+        "comunes/navegacion_tramites.html",
+        {"actor": actor},
+        request=request,
+    )
+
+    assert f'<a href="{reverse("cuentas:usuarios")}" title="Usuarios" aria-current="page">' in html
+    assert '<span class="app-nl">Solicitud de gasto</span>' in html
+    assert '<span class="app-nl">Solicitud de facturación</span>' in html
+    assert "Solicitud de Gasto" not in html
+    assert "Solicitud de Facturación" not in html

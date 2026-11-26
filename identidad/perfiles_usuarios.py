@@ -258,7 +258,7 @@ def cambiar_perfiles_cuenta(
             )
 
         if target_user.pk == actor_user.pk:
-            raise ValidationError("No puede modificar sus propios perfiles.")
+            raise ValidationError("No podés modificar tus propios perfiles.")
 
         grupos_solicitados = {PERFILES_POR_CLAVE[clave].grupo for clave in perfiles_solicitados}
         grupos_conservados = grupos_actuales - GRUPOS_GESTIONADOS

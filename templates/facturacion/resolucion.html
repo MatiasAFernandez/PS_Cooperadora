@@ -1,32 +1,82 @@
-<section class="panel fac-has-help" id="resolucion">
-<h3>Pendientes y resolución</h3>
-{% include "facturacion/ayuda.html" with id="ayuda-resolucion" etiqueta="Pendientes y resolución" texto="La resolución es definitiva y conserva el historial y los documentos de respaldo. Si corresponde, podés mencionar una devolución externa en el motivo de anulación." only %}
-{% if diagnostico.terminal %}<div class="fac-total">La resolución es definitiva. Podés consultarla en el historial.</div>
-{% else %}
-<div class="fac-resolution-grid">
-<div class="fac-total"><h4>Para cerrar</h4>
-{% if diagnostico.pendientes_cierre %}<ul>{% for mensaje, destino in diagnostico.pendientes_cierre %}<li>{% if destino %}<a href="{{ destino }}">{{ mensaje }}</a>{% else %}{{ mensaje }}{% endif %}</li>{% endfor %}</ul>
-{% else %}<span class="status-pill status-success">Sin pendientes para el cierre normal</span>{% endif %}
-{% if puede_cerrar %}
-<form class="record-actions" method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
-<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
-<button class="btn" name="accion" value="cerrar">Cerrar trámite</button>
-</form>{% endif %}
-</div>
-<div class="fac-total"><h4>Para anular</h4>
-{% if diagnostico.pendientes_anulacion %}<ul>{% for mensaje, destino in diagnostico.pendientes_anulacion %}<li>{% if destino %}<a href="{{ destino }}">{{ mensaje }}</a>{% else %}{{ mensaje }}{% endif %}</li>{% endfor %}</ul>
-{% else %}<span class="status-pill status-success">Sin pendientes para la anulación</span>{% endif %}
-{% if puede_anular %}
-<details class="record-maintenance">
-<summary>Anular trámite</summary>
-<form method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">{% csrf_token %}
-<input type="hidden" name="revision" value="{{ diagnostico.revision }}">
-<label for="motivo-anulacion">Motivo de anulación</label>
-<textarea id="motivo-anulacion" name="motivo" required maxlength="2000"></textarea>
-<button class="btn btn-danger" name="accion" value="anular">Confirmar anulación</button>
-</form></details>{% endif %}
-</div>
-</div>
-{% endif %}
+<section class="card" id="resolucion" aria-labelledby="titulo-resolucion">
+    <div class="fd-card-head">
+        <h2 id="titulo-resolucion" class="fd-h2">Pendientes y resolución</h2>
+    </div>
 
+    {% if diagnostico.terminal %}
+    <div class="message message-info" role="status">La resolución es definitiva. Podés consultarla en el historial.</div>
+    {% else %}
+    <div class="fd-res-block">
+        <h3 class="fd-h3">Para cerrar</h3>
+        {% if diagnostico.pendientes_cierre %}
+        <ul class="fd-check-list">
+            {% for mensaje, destino in diagnostico.pendientes_cierre %}
+            <li>{% if destino %}<a href="{{ destino }}">{{ mensaje }}</a>{% else %}{{ mensaje }}{% endif %}</li>
+            {% endfor %}
+        </ul>
+        {% if puede_cerrar %}
+        <button type="button" class="btn btn-secondary fd-btn-block" disabled aria-disabled="true">Cerrar trámite (faltan requisitos)</button>
+        {% endif %}
+        {% else %}
+        <p class="fd-res-ready"><span class="status-pill status-success">Sin pendientes para el cierre normal</span></p>
+        {% if puede_cerrar %}
+        <details class="fd-details">
+            <summary>
+                <span>Cerrar trámite</span>
+                <span class="fd-details-right">
+                    <span>Confirmación</span>
+                    <svg class="fd-ic fd-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                </span>
+            </summary>
+            <div class="fd-details-body">
+                <p class="fd-sub fd-mb-sm">El cierre es definitivo y conserva el historial y los respaldos.</p>
+                <form method="post" action="{% url 'facturacion:resolver' solicitud.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="revision" value="{{ diagnostico.revision }}">
+                    <button type="submit" class="btn btn-primary fd-btn-block" name="accion" value="cerrar">Confirmar cierre del trámite</button>
+                </form>
+            </div>
+        </details>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <hr class="fd-divider">
+
+    <div class="fd-res-block">
+        <h3 class="fd-h3">Para anular</h3>
+        {% if diagnostico.pendientes_anulacion %}
+        <ul class="fd-check-list">
+            {% for mensaje, destino in diagnostico.pendientes_anulacion %}
+            <li>{% if destino %}<a href="{{ destino }}">{{ mensaje }}</a>{% else %}{{ mensaje }}{% endif %}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="fd-res-ready"><span class="status-pill status-success">Sin pendientes para la anulación</span></p>
+        {% endif %}
+        {% if puede_anular %}
+        <details class="fd-details">
+            <summary>
+                <span>Anular trámite</span>
+                <span class="fd-details-right">
+                    <span>Acción irreversible</span>
+                    <svg class="fd-ic fd-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                </span>
+            </summary>
+            <div class="fd-details-body">
+                <p class="fd-sub fd-mb-sm">La anulación es definitiva y conserva el historial. Si hubo devolución externa, podés indicarlo en el motivo.</p>
+                <form method="post" action="{% url 'facturacion:resolver' solicitud.pk %}" class="fd-inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="revision" value="{{ diagnostico.revision }}">
+                    <div class="form-group">
+                        <label for="motivo-anulacion">Motivo de anulación</label>
+                        <textarea id="motivo-anulacion" name="motivo" rows="3" required maxlength="2000" placeholder="Explicá el motivo de la anulación."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger fd-btn-block" name="accion" value="anular">Confirmar anulación</button>
+                </form>
+            </div>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
 </section>

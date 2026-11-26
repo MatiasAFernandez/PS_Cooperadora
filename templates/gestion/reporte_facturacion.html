@@ -1,13 +1,12 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Reporte de facturación — Cooperadora{% endblock %}
-{% block titulo_modulo %}PS Cooperadora — Gestión{% endblock %}
+{% load static formato_ars %}
+{% block title %}Reporte de facturación — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Reportes — PS Cooperadora{% endblock %}
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'css/reporte_cuatrimestral.css' %}">
   <link rel="stylesheet" href="{% static 'gestion/reporte_facturacion.css' %}">
 {% endblock %}
 {% block content %}
-{% include "gestion/tabs_reportes.html" with reporte_circuito="FACTURACION" %}
 <div class="rep-wrap">
   <header class="top">
     <div>
@@ -15,12 +14,15 @@
       <p class="lead">Solicitudes, facturación neta e ingresos confirmados · ARS</p>
     </div>
     <div class="top-acts">
-      <button type="button" class="btn sec" onclick="window.print()">
+      <button type="button" class="btn btn-secondary" onclick="window.print()">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Imprimir A4
       </button>
     </div>
   </header>
-  <form class="card control-bar" method="get" action="{% url 'gestion:reporte_facturacion' %}" aria-label="Filtros del reporte" data-filtros-reporte>
+
+  {% include "gestion/tabs_reportes.html" with reporte_circuito="FACTURACION" %}
+
+  <form class="card control-bar" method="get" action="{{ request.path }}" aria-label="Filtros del reporte" data-filtros-reporte>
     <input type="hidden" name="orden" value="{{ orden|default:'cantidad' }}">
     {% if cuatrimestre %}<input type="hidden" name="cuatrimestre" value="{{ cuatrimestre }}">{% endif %}
     {% if trimestre %}<input type="hidden" name="trimestre" value="{{ trimestre }}">{% endif %}
@@ -47,18 +49,20 @@
     </div>
     <div class="rep-filter-actions fac-acciones">
       <a href="{% url 'gestion:reporte_facturacion' %}" class="btn ghost">Limpiar filtros</a>
-      <noscript><button type="submit" class="btn">Actualizar reporte</button></noscript>
+      <noscript><button type="submit" class="btn btn-primary">Actualizar reporte</button></noscript>
     </div>
     {% if not error %}<div class="control-meta"><span>Período consultado: <b>{% if cuatrimestre %}{{ cuatrimestre }}° cuatrimestre{% elif trimestre %}{{ trimestre }}° trimestre{% else %}Año completo{% endif %} {{ anio }} ({{ reporte.inicio|date:"d/m/Y" }} al {{ reporte.fin|date:"d/m/Y" }})</b> · Fecha de presentación de las solicitudes</span></div>{% endif %}
   </form>
+
 {% if error %}
-  <p role="alert" class="alert-error">{{ error }}</p>
+  <p role="alert" class="message message-error rep-alert">{{ error }}</p>
 {% else %}
   <nav class="fac-indice" aria-label="Secciones del reporte">
     <a class="btn ghost" href="#evolucion">Evolución</a>
     <a class="btn ghost" href="#demanda">Demanda por grupo</a>
     <a class="btn ghost" href="#seguimiento">Seguimiento</a>
   </nav>
+
   <section class="fac-seccion" id="evolucion" aria-labelledby="titulo-evolucion">
     <h2 id="titulo-evolucion">Evolución del período</h2>
     <p class="lead">Cada barra corresponde a solicitudes presentadas en ese tramo y sus facturas y cobros vinculados al día de hoy.</p>
@@ -69,15 +73,15 @@
       </article>
       <article class="card kpi">
         <h3 class="kpi-lbl">Importe solicitado</h3>
-        <strong class="kpi-num font-tabular">$ {{ reporte.solicitado|floatformat:"2g" }}</strong>
+        <strong class="kpi-num font-tabular">{{ reporte.solicitado|ars }}</strong>
       </article>
       <article class="card kpi">
         <h3 class="kpi-lbl">Facturado neto</h3>
-        <strong class="kpi-num font-tabular">$ {{ reporte.neto|floatformat:"2g" }}</strong>
+        <strong class="kpi-num font-tabular">{{ reporte.neto|ars }}</strong>
       </article>
       <article class="card kpi">
         <h3 class="kpi-lbl">Cobrado confirmado</h3>
-        <strong class="kpi-num font-tabular">$ {{ reporte.confirmado|floatformat:"2g" }}</strong>
+        <strong class="kpi-num font-tabular">{{ reporte.confirmado|ars }}</strong>
       </article>
     </div>
     {% if reporte.cantidad %}
@@ -86,19 +90,22 @@
         {% include "gestion/grafico_periodos.html" with titulo="Importes vinculados · ARS" grafico=reporte.importes moneda=True %}
       </div>
       <details class="card chart-card fac-detalle">
-        <summary>Ver cifras por período</summary>
-        <div class="gestion-table">
+        <summary>
+          <span>Ver cifras por período</span>
+          <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="tbl-wrap">
           <table class="dense mob-cards">
-            <thead><tr><th scope="col">Período</th><th scope="col">Solicitudes</th><th scope="col">Facturas</th><th scope="col">Solicitado · ARS</th><th scope="col">Facturado neto · ARS</th><th scope="col">Cobrado confirmado · ARS</th></tr></thead>
+            <thead><tr><th scope="col">Período</th><th scope="col" class="cnt">Solicitudes</th><th scope="col" class="cnt">Facturas</th><th scope="col" class="num">Solicitado · ARS</th><th scope="col" class="num">Facturado neto · ARS</th><th scope="col" class="num">Cobrado confirmado · ARS</th></tr></thead>
             <tbody>
               {% for fila in reporte.periodos %}
                 <tr>
                   <th scope="row">{{ fila.nombre }}</th>
-                  <td data-label="Solicitudes"><span>{{ fila.cantidad }}</span></td>
-                  <td data-label="Facturas"><span>{{ fila.facturas }}</span></td>
-                  <td data-label="Solicitado · ARS"><span>{{ fila.solicitado|floatformat:"2g" }}</span></td>
-                  <td data-label="Facturado neto · ARS"><span>{{ fila.neto|floatformat:"2g" }}</span></td>
-                  <td data-label="Cobrado confirmado · ARS"><span>{{ fila.confirmado|floatformat:"2g" }}</span></td>
+                  <td data-label="Solicitudes" class="cnt font-tabular"><span>{{ fila.cantidad }}</span></td>
+                  <td data-label="Facturas" class="cnt font-tabular"><span>{{ fila.facturas }}</span></td>
+                  <td data-label="Solicitado · ARS" class="num font-tabular"><span>{{ fila.solicitado|ars }}</span></td>
+                  <td data-label="Facturado neto · ARS" class="num font-tabular"><span>{{ fila.neto|ars }}</span></td>
+                  <td data-label="Cobrado confirmado · ARS" class="num font-tabular"><span>{{ fila.confirmado|ars }}</span></td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -111,23 +118,24 @@
     <div class="fac-promedios">
       <article class="card kpi">
         <h3 class="kpi-lbl">Solicitud promedio</h3>
-        <strong class="kpi-num font-tabular">{% if reporte.cantidad %}$ {{ reporte.promedio_solicitud|floatformat:"2g" }}{% else %}—{% endif %}</strong>
+        <strong class="kpi-num font-tabular">{% if reporte.cantidad %}{{ reporte.promedio_solicitud|ars }}{% else %}—{% endif %}</strong>
       </article>
       <article class="card kpi">
         <h3 class="kpi-lbl">Factura promedio</h3>
-        <strong class="kpi-num font-tabular">{% if reporte.facturas %}$ {{ reporte.promedio_factura|floatformat:"2g" }}{% else %}—{% endif %}</strong>
-        <p class="kpi-sub">{{ reporte.facturas }} factura{{ reporte.facturas|pluralize }} vigente{{ reporte.facturas|pluralize }}</p>
+        <strong class="kpi-num font-tabular">{% if reporte.facturas %}{{ reporte.promedio_factura|ars }}{% else %}—{% endif %}</strong>
+        <p class="kpi-sub font-tabular">{{ reporte.facturas }} factura{{ reporte.facturas|pluralize }} vigente{{ reporte.facturas|pluralize }}</p>
       </article>
       <article class="card kpi">
         <h3 class="kpi-lbl">Mediana de factura</h3>
-        <strong class="kpi-num font-tabular">{% if reporte.facturas %}$ {{ reporte.mediana_factura|floatformat:"2g" }}{% else %}—{% endif %}</strong>
+        <strong class="kpi-num font-tabular">{% if reporte.facturas %}{{ reporte.mediana_factura|ars }}{% else %}—{% endif %}</strong>
         <p class="kpi-sub">Valor central de los importes de factura.</p>
       </article>
     </div>
   </section>
+
   <section class="fac-seccion" id="demanda" aria-labelledby="titulo-demanda">
     <h2 id="titulo-demanda">Demanda por grupo</h2>
-    <form class="fac-orden" method="get" action="{% url 'gestion:reporte_facturacion' %}#demanda" data-filtros-reporte>
+    <form class="fac-orden" method="get" action="{{ request.path }}#demanda" data-filtros-reporte>
       <input type="hidden" name="anio" value="{{ anio }}">
       {% if cuatrimestre %}<input type="hidden" name="cuatrimestre" value="{{ cuatrimestre }}">{% endif %}
       {% if trimestre %}<input type="hidden" name="trimestre" value="{{ trimestre }}">{% endif %}
@@ -139,15 +147,19 @@
           <option value="neto"{% if orden == "neto" %} selected{% endif %}>Facturado neto</option>
         </select>
       </div>
-      <noscript><button type="submit" class="btn">Actualizar ranking</button></noscript>
+      <noscript><button type="submit" class="btn btn-primary">Actualizar ranking</button></noscript>
     </form>
     {% include "gestion/ranking_reporte.html" with titulo="Grupos o centros" ranking=reporte.ranking_centros filas=reporte.centros %}
     <details class="card chart-card fac-detalle">
-      <summary>Demanda por correo solicitante</summary>
+      <summary>
+        <span>Demanda por correo solicitante</span>
+        <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
       <p class="chart-q">Un mismo correo puede representar a varias personas del grupo o área.</p>
       {% include "gestion/ranking_reporte.html" with ranking=reporte.ranking_correos filas=reporte.correos secundario=True %}
     </details>
   </section>
+
   <section class="fac-seccion" id="seguimiento" aria-labelledby="titulo-seguimiento">
     <h2 id="titulo-seguimiento">Seguimiento operativo</h2>
     <p class="lead">Pendientes al día de hoy de las solicitudes abiertas del período seleccionado.</p>
@@ -158,18 +170,22 @@
     <div class="fac-graficos">
       <article class="card kpi">
         <h3 class="kpi-lbl">Saldo por confirmar · ARS</h3>
-        <strong class="kpi-num font-tabular">$ {{ reporte.saldo_por_confirmar|floatformat:"2g" }}</strong>
-        <p class="kpi-sub">En {{ reporte.tramites_con_saldo }} trámite{{ reporte.tramites_con_saldo|pluralize }} con factura.</p>
+        <strong class="kpi-num font-tabular">{{ reporte.saldo_por_confirmar|ars }}</strong>
+        <p class="kpi-sub font-tabular">En {{ reporte.tramites_con_saldo }} trámite{{ reporte.tramites_con_saldo|pluralize }} con factura.</p>
       </article>
       <article class="card kpi">
         <h3 class="kpi-lbl">Excedente confirmado · ARS</h3>
-        <strong class="kpi-num font-tabular">$ {{ reporte.excedente_confirmado|floatformat:"2g" }}</strong>
-        <p class="kpi-sub">En {{ reporte.tramites_con_excedente }} trámite{{ reporte.tramites_con_excedente|pluralize }} con factura.</p>
+        <strong class="kpi-num font-tabular">{{ reporte.excedente_confirmado|ars }}</strong>
+        <p class="kpi-sub font-tabular">En {{ reporte.tramites_con_excedente }} trámite{{ reporte.tramites_con_excedente|pluralize }} con factura.</p>
       </article>
     </div>
   </section>
+
   <details class="card chart-card fac-detalle fac-formulas">
-    <summary>Cómo se calculan los resultados</summary>
+    <summary>
+      <span>Cómo se calculan los resultados</span>
+      <svg class="fac-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
     <p>El período se determina por la fecha de presentación de la solicitud. Las facturas, notas y cobros se agrupan con la solicitud vinculada. El año completo se desglosa por cuatrimestre y los cortes por trimestre o cuatrimestre se desglosan por mes.</p>
 
     <h3>Evolución del período</h3>
@@ -220,6 +236,7 @@
       <dd>Por trámite abierto con factura: máximo entre cero y (cobrado confirmado − el mayor entre facturado neto y cero). Se suman esos excedentes y se cuentan los trámites con excedente positivo.</dd>
     </dl>
   </details>
+  <p class="foot">Reporte de facturación · PS Cooperadora · UTN FRRe</p>
 {% endif %}
 </div>
 <script src="{% static 'gestion/filtros_reporte.js' %}" defer></script>

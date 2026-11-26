@@ -1,15 +1,16 @@
-<div class="gestion-table">
+{% load formato_ars %}
+<div class="tbl-wrap">
   <table class="dense mob-cards">
     <thead>
-      <tr><th scope="col">Grupo</th><th scope="col">Solicitudes</th><th scope="col">Solicitado · ARS</th><th scope="col">Facturado neto · ARS</th></tr>
+      <tr><th scope="col">Grupo</th><th scope="col" class="cnt">Solicitudes</th><th scope="col" class="num">Solicitado · ARS</th><th scope="col" class="num">Facturado neto · ARS</th></tr>
     </thead>
     <tbody>
       {% for fila in filas %}
         <tr>
           <th scope="row">{{ fila.nombre }}</th>
-          <td data-label="Solicitudes"><span>{{ fila.cantidad }}</span></td>
-          <td data-label="Solicitado · ARS"><span>{{ fila.solicitado|floatformat:"2g" }}</span></td>
-          <td data-label="Facturado neto · ARS"><span>{{ fila.neto|floatformat:"2g" }}</span></td>
+          <td data-label="Solicitudes" class="cnt font-tabular"><span>{{ fila.cantidad }}</span></td>
+          <td data-label="Solicitado · ARS" class="num font-tabular"><span>{{ fila.solicitado|ars }}</span></td>
+          <td data-label="Facturado neto · ARS" class="num font-tabular"><span>{{ fila.neto|ars }}</span></td>
         </tr>
       {% endfor %}
     </tbody>

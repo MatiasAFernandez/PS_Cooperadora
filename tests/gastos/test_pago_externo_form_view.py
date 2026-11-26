@@ -1605,3 +1605,37 @@ def test_cierre_ux_elementos_formulario_y_post_con_errores(
     assert 'data-has-server-errors="true"' in html_post
     assert 'id="rp-submit-error-notice"' in html_post
     assert "Hay datos que requieren revisión antes de registrar el pago" in html_post
+
+
+def test_pago_form_usa_selector_compartido_y_aviso_perdida_si_falla_post(
+    actor_pago: Any,
+    csrf_auth_client: Any,
+    solicitud_factory: Any,
+    provider_pago: Any,
+    capacidad_registrar_pago: Any,
+) -> None:
+    """El alta de pago integra selector_comprobante, visor local y aviso de reelección."""
+    user, actor = actor_pago
+    solicitud = solicitud_factory(estado=EstadoSolicitud.ACEPTADA, solicitante=user)
+    client, token = csrf_auth_client(user, actor)
+
+    get_resp = client.get(_url_pagar(solicitud))
+    assert get_resp.status_code == 200
+    html_get = get_resp.content.decode("utf-8")
+    assert 'id="rp-banco-selector"' in html_get
+    assert "data-file-drop-custom" in html_get
+    assert 'id="visor-documento-dialogo"' in html_get
+    assert "selector_comprobante.css" in html_get
+    assert "selector_comprobante.js" in html_get
+    assert "data-sc-aviso-perdida" not in html_get
+
+    payload = {
+        **_payload_pago(),
+        "csrfmiddlewaretoken": token,
+        "monto_bruto": "1.2.3",
+    }
+    post_resp = client.post(_url_pagar(solicitud), payload)
+    assert post_resp.status_code == 400
+    html_post = post_resp.content.decode("utf-8")
+    assert "data-sc-aviso-perdida" in html_post
+    assert "Seleccioná nuevamente el comprobante bancario." in html_post

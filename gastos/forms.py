@@ -39,7 +39,7 @@ class FiltroEstadoGastoForm(FiltroFechaForm):
             ("pagada", "Pagada"),
         ],
         widget=forms.Select(attrs={"class": "form-control"}),
-        error_messages={"invalid_choice": "Seleccione un estado válido."},
+        error_messages={"invalid_choice": "Seleccioná un estado válido."},
     )
     q = forms.CharField(
         label="Buscar por concepto o número",
@@ -58,7 +58,7 @@ class FiltroEstadoGastoForm(FiltroFechaForm):
         required=False,
         choices=(),
         widget=forms.Select(attrs={"class": "form-control"}),
-        error_messages={"invalid_choice": "Seleccione un pendiente válido."},
+        error_messages={"invalid_choice": "Seleccioná un pendiente válido."},
     )
 
     def __init__(
@@ -81,7 +81,7 @@ class FiltroEstadoGastoForm(FiltroFechaForm):
             self.fields["pendiente"].choices = [("", "")]
             self.fields["pendiente"].widget = forms.HiddenInput()
             self.fields["pendiente"].label = ""
-        self.order_fields(["estado", "q", "pendiente", "periodo", "dia", "mes", "anio"])
+        self.order_fields(["q", "estado", "pendiente", "periodo", "dia", "mes", "anio"])
 
 
 class OptionalCentroCostoChoiceField(forms.ModelChoiceField):
@@ -125,7 +125,7 @@ class SolicitudGastoForm(FormularioConfigurableMixin, forms.ModelForm):
         label="Centro de costo",
         queryset=CentroCosto.objects.filter(activo=True),
         required=False,
-        empty_label="-- Seleccionar centro de costo --",
+        empty_label="Sin centro de costo",
         widget=forms.Select(attrs={"class": "form-control"}),
     )
 
@@ -175,7 +175,7 @@ class SolicitudGastoForm(FormularioConfigurableMixin, forms.ModelForm):
         if not flujo:
             return TipoFlujoGasto.COMPRA_DIRECTA
         if flujo not in TipoFlujoGasto.values:
-            raise ValidationError("Seleccione una modalidad de gasto válida.")
+            raise ValidationError("Seleccioná una modalidad de gasto válida.")
         return flujo
 
     def clean_concepto(self) -> str:
@@ -315,7 +315,7 @@ class DatosTransferenciaForm(FormularioConfigurableMixin, forms.Form):
             for campo in exc.campos_faltantes:
                 self.add_error(
                     campo,
-                    "Este dato es obligatorio si completa el bloque de transferencia.",
+                    "Este dato es obligatorio si completás el bloque de transferencia.",
                 )
             self.add_error(None, str(exc))
             self.datos_transferencia = None
@@ -342,7 +342,7 @@ class DecisionGastoForm(forms.Form):
                 "class": "form-control",
                 "rows": 3,
                 "placeholder": (
-                    "Ingrese el motivo de la decisión "
+                    "Ingresá el motivo de la decisión "
                     "(obligatorio para observar, postergar o rechazar)..."
                 ),
             }
@@ -378,7 +378,7 @@ class CorregirSolicitudGastoForm(forms.Form):
         label="Centro de costo",
         queryset=CentroCosto.objects.none(),
         required=False,
-        empty_label="-- Sin centro de costo --",
+        empty_label="Sin centro de costo",
         widget=forms.Select(attrs={"class": "form-control"}),
     )
 
@@ -420,7 +420,7 @@ class CerrarSolicitudGastoForm(forms.Form):
         },
     )
     observacion = forms.CharField(
-        label="Observación de cierre (opcional)",
+        label="Observación de cierre",
         required=False,
         max_length=2000,
         widget=forms.Textarea(
@@ -428,7 +428,7 @@ class CerrarSolicitudGastoForm(forms.Form):
                 "class": "form-control",
                 "rows": 3,
                 "placeholder": (
-                    "Opcional: aclaración administrativa sobre la documentación verificada."
+                    "Aclaración administrativa sobre la documentación verificada."
                 ),
             }
         ),
@@ -446,7 +446,7 @@ class DocumentoGastoForm(forms.Form):
 
     archivo = forms.FileField(
         label="Documento de respaldo",
-        error_messages={"required": "Seleccione un documento de respaldo."},
+        error_messages={"required": "Seleccioná un documento de respaldo."},
         widget=forms.ClearableFileInput(
             attrs={"accept": ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"}
         ),
@@ -455,8 +455,8 @@ class DocumentoGastoForm(forms.Form):
         label="Tipo de documento",
         choices=(),
         error_messages={
-            "required": "Seleccione un tipo de documento.",
-            "invalid_choice": "Seleccione un tipo de documento válido para gastos.",
+            "required": "Seleccioná un tipo de documento.",
+            "invalid_choice": "Seleccioná un tipo de documento válido para gastos.",
         },
         widget=forms.Select(attrs={"class": "form-control"}),
     )
@@ -464,8 +464,8 @@ class DocumentoGastoForm(forms.Form):
         label="Procedencia",
         choices=(),
         error_messages={
-            "required": "Seleccione la procedencia del documento.",
-            "invalid_choice": "Seleccione una procedencia válida.",
+            "required": "Seleccioná la procedencia del documento.",
+            "invalid_choice": "Seleccioná una procedencia válida.",
         },
         widget=forms.Select(attrs={"class": "form-control"}),
     )
@@ -475,7 +475,7 @@ class DocumentoGastoForm(forms.Form):
         choices=(("", "Cargar como documento nuevo"),),
         error_messages={
             "invalid_choice": (
-                "Seleccione una versión vigente de este gasto o incorpore un documento nuevo."
+                "Seleccioná una versión vigente de este gasto o incorporá un documento nuevo."
             ),
         },
         widget=forms.Select(attrs={"class": "form-control"}),
@@ -507,7 +507,7 @@ class DocumentoGastoForm(forms.Form):
             str(version.documento_id): version for version in versiones_reemplazables
         }
         self.fields["tipo"].choices = [
-            ("", "Seleccione un tipo"),
+            ("", "Seleccioná un tipo"),
             *((tipo, etiquetas_tipo[tipo]) for tipo in tipos),
         ]
         if len(procedencias) == 1:
@@ -526,7 +526,7 @@ class DocumentoGastoForm(forms.Form):
         else:
             self.procedencia_unica = None
             self.fields["procedencia"].choices = [
-                ("", "Seleccione una procedencia"),
+                ("", "Seleccioná una procedencia"),
                 *((codigo, etiquetas_procedencia[codigo]) for codigo in procedencias),
             ]
         self.fields["reemplaza_id"].choices = [
@@ -585,7 +585,7 @@ class DocumentoGastoForm(forms.Form):
         reemplaza_id = datos.get("reemplaza_id")
         version = self.versiones_reemplazables.get(reemplaza_id)
         if version is not None and tipo and version.tipo != tipo:
-            self.add_error("tipo", "Al reemplazar, conserve el tipo de la versión seleccionada.")
+            self.add_error("tipo", "Al reemplazar, conservá el tipo de la versión seleccionada.")
         return datos
 
 
@@ -715,7 +715,7 @@ class PagoExternoForm(forms.Form):
             "No es el comprobante bancario."
         ),
         error_messages={
-            "required": "Seleccione un documento de respaldo.",
+            "required": "Seleccioná un documento de respaldo.",
             "invalid_choice": (
                 "La opción documental seleccionada no está disponible para este gasto."
             ),
@@ -1005,9 +1005,14 @@ class ParametrosATPForm(forms.Form):
             attrs={"class": "form-control", "step": "0.01", "placeholder": "90000.00"}
         ),
         help_text="Monto a partir del cual aplica retención impositiva.",
+        error_messages={
+            "required": "Ingresá la base imponible de retención ATP.",
+            "invalid": "Ingresá un monto numérico válido.",
+            "min_value": "Ingresá un valor mayor o igual a 0.",
+        },
     )
     alicuota_atp = forms.DecimalField(
-        label="Alícuota sugerida ATP (%)",
+        label="Alícuota de referencia ATP (%)",
         min_value=Decimal("0.00"),
         max_value=Decimal("100.00"),
         max_digits=5,
@@ -1015,6 +1020,15 @@ class ParametrosATPForm(forms.Form):
         widget=forms.NumberInput(
             attrs={"class": "form-control", "step": "0.01", "placeholder": "3.50"}
         ),
-        help_text="Porcentaje de retención provincial aplicado por defecto.",
+        help_text=(
+            "Porcentaje de referencia para retención provincial "
+            "(el importe retenido se carga manualmente al registrar cada pago)."
+        ),
+        error_messages={
+            "required": "Ingresá la alícuota de referencia ATP.",
+            "invalid": "Ingresá un porcentaje numérico válido.",
+            "min_value": "Ingresá un valor mayor o igual a 0.",
+            "max_value": "Ingresá un valor menor o igual a 100.",
+        },
     )
 

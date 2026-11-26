@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block titulo_modulo %}Avisos — Cooperadora{% endblock %}
-
+{% block titulo_modulo %}Avisos — PS Cooperadora{% endblock %}
 {% block title %}Avisos — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
@@ -9,53 +8,37 @@
 {% endblock %}
 
 {% block content %}
-<div class="avisos-page">
+<section class="avisos-page" aria-labelledby="avisos-titulo">
     <header class="avisos-head">
         <div class="avisos-head-texto">
-            <h1 class="avisos-title">Avisos</h1>
+            <h1 class="avisos-title" id="avisos-titulo">Avisos</h1>
             <p class="avisos-intro">Avisos de trámites de Gastos según tus permisos vigentes.</p>
-        </div>
-        <div class="avisos-head-acciones">
-            <a class="btn btn-secondary" href="{% url 'gastos:lista' %}">
-                <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>
-                Ir al listado de gastos
-            </a>
         </div>
     </header>
 
-    {% if messages %}
-    <div class="avisos-mensajes">
-        {% for message in messages %}
-        <div class="avisos-status{% if 'success' in message.tags %} avisos-status--success{% endif %}" role="status">
-            <p>{{ message }}</p>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+    {% include "comunes/mensajes_flash.html" %}
 
-    <nav class="avisos-filtros" aria-label="Filtrar avisos">
-        <a class="avisos-tab{% if not estado_invalido and estado == 'todos' %} is-active{% endif %}"
-           href="{% url 'avisos:lista' %}?estado=todos"
+    <nav class="ui-tabs-segmented avisos-tabs" aria-label="Filtrar avisos">
+        <a href="{% url 'avisos:lista' %}?estado=todos"
            {% if not estado_invalido and estado == 'todos' %}aria-current="page"{% endif %}>
             Todos
         </a>
-        <a class="avisos-tab{% if not estado_invalido and estado == 'no_leidos' %} is-active{% endif %}"
-           href="{% url 'avisos:lista' %}?estado=no_leidos"
+        <a href="{% url 'avisos:lista' %}?estado=no_leidos"
            {% if not estado_invalido and estado == 'no_leidos' %}aria-current="page"{% endif %}>
-            No leídos
+            No leídos{% if total_no_leidos %}<span class="avisos-tab-count">{{ total_no_leidos }}</span>{% endif %}
         </a>
     </nav>
 
     {% if estado_invalido %}
-    <section class="avisos-status avisos-status--error" role="alert" aria-labelledby="avisos-error-titulo">
+    <section class="card avisos-error-card" role="alert" aria-labelledby="avisos-error-titulo">
         <h2 class="avisos-vacio-titulo" id="avisos-error-titulo">Filtro no válido</h2>
-        <p>El estado indicado no es válido. Elegí «Todos» o «No leídos» para ver tus avisos.</p>
+        <p class="avisos-vacio-texto">El estado indicado no es válido. Elegí «Todos» o «No leídos» para ver tus avisos.</p>
         <div class="avisos-vacio-acciones">
-            <a class="btn btn-primary" href="{% url 'avisos:lista' %}?estado=todos">Ver todos los avisos</a>
+            <a class="btn btn-secondary" href="{% url 'avisos:lista' %}?estado=todos">Ver todos los avisos</a>
         </div>
     </section>
     {% else %}
-    <p class="avisos-resumen" aria-live="polite">
+    <p class="avisos-resumen font-tabular" aria-live="polite">
         {{ total }} aviso{{ total|pluralize:",s" }}{% if estado == 'no_leidos' %} sin leer{% else %} en total{% endif %}
     </p>
 
@@ -74,45 +57,45 @@
                     <h2 class="avisos-evento">Nueva solicitud de gasto #{{ aviso.solicitud_id }}</h2>
                     {% endif %}
                     {% if aviso.leida_en %}
-                    <span class="badge badge-neutral">Leído</span>
+                    <span class="status-pill status-neutral">Leído</span>
                     {% else %}
-                    <span class="badge badge-info">No leído</span>
+                    <span class="status-pill status-info">No leído</span>
                     {% endif %}
                 </div>
                 {% if item.es_decision and item.fecha_evento %}
                 <p class="avisos-fecha">
-                    El <time datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró la decisión {{ item.resultado_evento }} sobre la solicitud #{{ aviso.solicitud_id }}.
+                    El <time class="font-tabular" datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró la decisión {{ item.resultado_evento }} sobre la solicitud #{{ aviso.solicitud_id }}.
                 </p>
-                <p class="avisos-fecha">
-                    Aviso recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
+                <p class="avisos-fecha avisos-fecha--meta">
+                    Aviso recibido el <time class="font-tabular" datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
                 </p>
                 {% elif item.es_pago and item.fecha_evento %}
                 <p class="avisos-fecha">
-                    El <time datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró un pago externo para la solicitud #{{ aviso.solicitud_id }}.
+                    El <time class="font-tabular" datetime="{{ item.fecha_evento|date:'c' }}">{{ item.fecha_evento|date:"d/m/Y H:i" }}</time> se registró un pago externo para la solicitud #{{ aviso.solicitud_id }}.
                 </p>
-                <p class="avisos-fecha">
-                    Aviso recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
+                <p class="avisos-fecha avisos-fecha--meta">
+                    Aviso recibido el <time class="font-tabular" datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
                 </p>
                 {% else %}
                 <p class="avisos-fecha">
-                    Recibido el <time datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
+                    Recibido el <time class="font-tabular" datetime="{{ aviso.creada_en|date:'c' }}">{{ aviso.creada_en|date:"d/m/Y H:i" }}</time>
                 </p>
                 {% endif %}
             </div>
 
             <div class="avisos-acciones">
-                <a class="btn btn-secondary" href="{{ aviso.get_absolute_url }}">
-                    Ver solicitud
-                    <svg class="app-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 18l6-6-6-6"/></svg>
-                </a>
                 {% if not aviso.leida_en %}
                 <form method="post" action="{% url 'avisos:leer' aviso.pk %}" class="avisos-leer-form">
                     {% csrf_token %}
                     <input type="hidden" name="estado" value="{{ estado }}">
                     <input type="hidden" name="page" value="{{ page_obj.number }}">
-                    <button type="submit" class="btn btn-primary">Marcar como leído</button>
+                    <button type="submit" class="btn btn-ghost btn-row">Marcar como leído</button>
                 </form>
                 {% endif %}
+                <a class="btn btn-secondary btn-row" href="{{ aviso.get_absolute_url }}">
+                    Ver solicitud
+                    <svg class="avisos-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
+                </a>
             </div>
         </li>
         {% endwith %}
@@ -121,13 +104,13 @@
 
     {% if page_obj.paginator.num_pages > 1 %}
     <nav class="avisos-paginacion" aria-label="Paginación de avisos">
-        <p class="avisos-paginacion-resumen">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</p>
+        <p class="avisos-paginacion-resumen font-tabular">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</p>
         <div class="avisos-paginacion-acciones">
             {% if page_obj.has_previous %}
-            <a class="btn btn-secondary" rel="prev" href="{% url 'avisos:lista' %}?estado={{ estado }}&amp;page={{ page_obj.previous_page_number }}">Anterior</a>
+            <a class="btn btn-secondary btn-row" rel="prev" href="{% url 'avisos:lista' %}?estado={{ estado }}&amp;page={{ page_obj.previous_page_number }}">Anterior</a>
             {% endif %}
             {% if page_obj.has_next %}
-            <a class="btn btn-secondary" rel="next" href="{% url 'avisos:lista' %}?estado={{ estado }}&amp;page={{ page_obj.next_page_number }}">Siguiente</a>
+            <a class="btn btn-secondary btn-row" rel="next" href="{% url 'avisos:lista' %}?estado={{ estado }}&amp;page={{ page_obj.next_page_number }}">Siguiente</a>
             {% endif %}
         </div>
     </nav>
@@ -138,18 +121,15 @@
         {% if estado == 'no_leidos' %}
         <h2 class="avisos-vacio-titulo" id="avisos-vacio-titulo">No tenés avisos sin leer</h2>
         <p class="avisos-vacio-texto">Todos tus avisos de Gastos ya fueron marcados como leídos.</p>
+        <div class="avisos-vacio-acciones">
+            <a class="btn btn-secondary" href="{% url 'avisos:lista' %}?estado=todos">Ver todos</a>
+        </div>
         {% else %}
         <h2 class="avisos-vacio-titulo" id="avisos-vacio-titulo">No tenés avisos registrados</h2>
         <p class="avisos-vacio-texto">Cuando tengas novedades habilitadas sobre solicitudes de gasto, aparecerán acá para su seguimiento.</p>
         {% endif %}
-        <div class="avisos-vacio-acciones">
-            {% if estado == 'no_leidos' %}
-            <a class="btn btn-secondary" href="{% url 'avisos:lista' %}?estado=todos">Ver todos</a>
-            {% endif %}
-            <a class="btn btn-secondary" href="{% url 'gastos:lista' %}">Ir al listado de gastos</a>
-        </div>
     </section>
     {% endif %}
     {% endif %}
-</div>
+</section>
 {% endblock %}

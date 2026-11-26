@@ -1,5 +1,9 @@
 # SPEC-015 — Avisos y acceso a pendientes
 
+## Ajuste de interfaz integrado el 26/11/2026 — Convergencia UX/UI (`D-3` / `D-5`)
+
+Con conformidad de Matías dentro de la convergencia al sistema visual común (`docs/visual-guide/README.md`), el acceso a pendientes de `/facturacion/` se unifica con `/gastos/` mediante pestañas segmentadas `Todas | Requieren atención (N)` sobre enlaces reales operables sin JavaScript (con contador únicamente en `Requieren atención`, ocultas para perfiles de sólo lectura), reemplazando el bloque superior de tarjetas acotado a 2/3 trámites para no ocultar pendientes antiguos. Se mantiene el aviso de cierre próximo en los últimos siete días naturales del mes, las reglas de elegibilidad y permisos, y la explicación de espera en el detalle (`mensaje_espera`), ajustando el copy para no prometer notificaciones automáticas mientras Facturación no incorpore avisos web o correo (`#128`).
+
 ## Tramo interno solicitado el 02/11/2026 — #78/#80
 
 Sin enviar correos, el listado muestra por encima de los filtros hasta dos

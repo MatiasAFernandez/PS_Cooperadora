@@ -3,20 +3,29 @@
 import logging
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import DatabaseError
-from django.http import Http404
+from django.http import Http404, QueryDict
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views import View
 
+from comunes.actores import resolver_actores_visibles
 from documentos.policy import ArchivoInvalido, TipoArchivoNoSoportado
 from documentos.revision import estado_revision_vigente
 from documentos.services import documentos_visibles
 from identidad.services import has_capability, resolve_actor
 
-from .atencion import acciones_inmediatas, mensaje_espera, solicitudes_atencion
+from .atencion import (
+    acciones_inmediatas,
+    mensaje_espera,
+    puede_tener_atencion,
+    solicitudes_atencion,
+)
+from .choices import ModalidadCobro
 from .cobros import puede_corregir_cobro, resumen_cobros
 from .comprobantes import puede_registrar_comprobante, resumen_comprobantes
 from .consultas import filtrar_solicitudes
@@ -43,6 +52,58 @@ from .workflow import (
 )
 
 logger = logging.getLogger(__name__)
+
+_TIPOS_VERSION = {
+    "PRESENTACION": "Presentación inicial",
+    "OBSERVACION": "Observación",
+    "CORRECCION": "Corrección",
+    "CIERRE": "Cierre",
+    "ANULACION": "Anulación",
+}
+_PROCEDENCIAS_COBRO = {
+    "SOLICITANTE": "Solicitante",
+    "INTERNO_COOPERADORA": "Cooperadora",
+}
+
+
+def _marcar_campos_invalidos(form):
+    """Agrega aria-invalid y aria-describedby en campos con errores de validación."""
+    if form is None or not getattr(form, "errors", None):
+        return
+    for nombre in form.errors:
+        if nombre in form.fields:
+            campo = form.fields[nombre]
+            campo.widget.attrs["aria-invalid"] = "true"
+            id_campo = form[nombre].id_for_label
+            if id_campo:
+                actual = campo.widget.attrs.get("aria-describedby", "")
+                id_err = f"{id_campo}_error"
+                if id_err not in actual.split():
+                    campo.widget.attrs["aria-describedby"] = f"{actual} {id_err}".strip()
+
+
+def _actores_visibles(actor, solicitud, *, comprobantes, cobros, historial):
+    """Resuelve nombres legibles para perfiles internos y rótulos neutrales para solicitantes."""
+    ids_texto = {str(evento.actor_id) for evento in historial if evento.actor_id is not None}
+    for comprobante in comprobantes:
+        if comprobante.actor_id is not None:
+            ids_texto.add(str(comprobante.actor_id))
+    for cobro in cobros:
+        if cobro.actor_id is not None:
+            ids_texto.add(str(cobro.actor_id))
+        if cobro.resultado != "PENDIENTE":
+            try:
+                verif = cobro.verificacion
+            except Exception:  # noqa: BLE001
+                verif = None
+            if verif is not None and verif.actor_id is not None:
+                ids_texto.add(str(verif.actor_id))
+
+    return resolver_actores_visibles(
+        ids_texto,
+        puede_ver_internos=has_capability(actor, "facturacion.consultar_todas"),
+        titular_actor_id=solicitud.tramite_base.solicitante_actor_id,
+    )
 
 
 class FacturacionView(View):
@@ -116,9 +177,9 @@ def _errores(form, exc, *, campo_archivo=None):
         errores = {
             NON_FIELD_ERRORS: exc.messages if isinstance(exc, ValidationError) else [str(exc)]
         }
-    for field, messages in errores.items():
+    for field, mensajes in errores.items():
         destino = field if field in form.fields else None
-        for mensaje in messages:
+        for mensaje in mensajes:
             if mensaje not in form.errors.get(destino or NON_FIELD_ERRORS, []):
                 form.add_error(destino, mensaje)
 
@@ -140,6 +201,40 @@ def _version_visible(datos):
     return filas
 
 
+def _construir_query_bandeja(
+    parametros: QueryDict,
+    *,
+    incluir_atencion: bool = False,
+    estados_compatibles: set[str] | None = None,
+    campos_excluidos: set[str] | None = None,
+) -> QueryDict:
+    """Arma parámetros de la bandeja sin paginación, vacíos ni criterios incompatibles."""
+    excluidos = campos_excluidos or set()
+    limpios = QueryDict(mutable=True)
+    if incluir_atencion:
+        limpios["atencion"] = "1"
+    for campo in ("q", "estado", "periodo", "dia", "mes", "anio"):
+        if campo in excluidos:
+            continue
+        valor = parametros.get(campo, "")
+        if not valor or (campo == "q" and not valor.strip()):
+            continue
+        if (
+            campo == "estado"
+            and estados_compatibles is not None
+            and valor not in estados_compatibles
+        ):
+            continue
+        limpios[campo] = valor
+    periodo = limpios.get("periodo", "")
+    activos_fecha = {"dia": {"dia"}, "mes": {"mes", "anio"}, "anio": {"anio"}}.get(
+        periodo, set()
+    )
+    for campo_fecha in {"dia", "mes", "anio"} - activos_fecha:
+        limpios.pop(campo_fecha, None)
+    return limpios
+
+
 class ListaSolicitudesView(FacturacionView):
     def get(self, request):
         if not any(
@@ -150,36 +245,98 @@ class ListaSolicitudesView(FacturacionView):
             )
         ):
             raise PermissionDenied
+        por_circuito = has_capability(self.actor, "facturacion.consultar_todas")
+        puede_presentar = has_capability(self.actor, "facturacion.presentar")
+        ofrece_atencion = puede_tener_atencion(self.actor)
+        solo_atencion = ofrece_atencion and request.GET.get("atencion") == "1"
+
         filtro = FiltroFacturacionForm(request.GET)
         visibles = filtrar_solicitudes_visibles(self.actor)
-        consulta = filtrar_solicitudes(
-            visibles, filtro, por_circuito=has_capability(self.actor, "facturacion.consultar_todas")
-        )
-        pagina = Paginator(
-            consulta.prefetch_related(
+        consulta = filtrar_solicitudes(visibles, filtro, por_circuito=por_circuito)
+
+        atencion = solicitudes_atencion(self.actor, visibles) if ofrece_atencion else []
+        total_atencion = len(atencion) if ofrece_atencion else None
+        mapa_atencion = {tarjeta["solicitud"].pk: tarjeta for tarjeta in atencion}
+
+        if solo_atencion:
+            pks_filtrados = set(consulta.values_list("pk", flat=True))
+            origen_pagina = [
+                tarjeta["solicitud"]
+                for tarjeta in atencion
+                if tarjeta["solicitud"].pk in pks_filtrados
+            ]
+        else:
+            origen_pagina = consulta.prefetch_related(
                 "comprobantes", "cobros__verificacion__rectificacion"
-            ).order_by("-fecha_presentacion", "-pk"),
-            25,
-        ).get_page(request.GET.get("pagina"))
-        atencion = solicitudes_atencion(self.actor, visibles)
-        solicitudes = {tarjeta["solicitud"].pk: tarjeta["solicitud"] for tarjeta in atencion}
-        solicitudes.update((solicitud.pk, solicitud) for solicitud in pagina)
-        resumenes = [
-            (solicitud, importes_cobro(solicitud.comprobantes.all(), solicitud.cobros.all()))
-            for solicitud in solicitudes.values()
-        ]
+            ).order_by("-fecha_presentacion", "-pk")
+
+        page_number = request.GET.get("page") or request.GET.get("pagina")
+        pagina = Paginator(origen_pagina, 25).get_page(page_number)
+
+        for solicitud in pagina:
+            info = mapa_atencion.get(solicitud.pk)
+            solicitud.accion_bandeja = info["accion"] if info else None
+            solicitud.cierre_mes_bandeja = bool(info and info["cierre_mes"])
+            solicitud.importes_bandeja = importes_cobro(
+                solicitud.comprobantes.all(), solicitud.cobros.all()
+            )
+
+        resumenes = [(solicitud, solicitud.importes_bandeja) for solicitud in pagina]
+
         parametros = request.GET.copy()
+        parametros.pop("page", None)
         parametros.pop("pagina", None)
+
+        campos_con_error = set(filtro.errors.keys())
+        if campos_con_error & {"periodo", "dia", "mes", "anio"}:
+            campos_con_error |= {"periodo", "dia", "mes", "anio"}
+
+        estados_compatibles_atencion = (
+            {"PRESENTADA", "FACTURADA_PENDIENTE_COBRO", "COBRADA_EN_REVISION"}
+            if por_circuito
+            else {"PRESENTADA", "OBSERVADA", "FACTURADA_PENDIENTE_COBRO", "COBRADA_EN_REVISION"}
+        )
+
+        base_url = reverse("facturacion:lista")
+        query_criterios = _construir_query_bandeja(parametros)
+        tiene_filtros_activos = bool(query_criterios) or bool(filtro.errors)
+        limpiar_filtros_url = f"{base_url}?atencion=1" if solo_atencion else base_url
+
+        query_tab_todas = _construir_query_bandeja(
+            parametros, campos_excluidos=campos_con_error
+        )
+        query_tab_atencion = _construir_query_bandeja(
+            parametros,
+            incluir_atencion=True,
+            estados_compatibles=estados_compatibles_atencion,
+            campos_excluidos=campos_con_error,
+        )
+        url_tab_todas = (
+            f"{base_url}?{query_tab_todas.urlencode()}" if query_tab_todas else base_url
+        )
+        url_tab_atencion = f"{base_url}?{query_tab_atencion.urlencode()}"
+
         return render(
             request,
             "facturacion/lista.html",
             {
                 "actor": self.actor,
                 "pagina": pagina,
+                "is_paginated": pagina.has_other_pages(),
                 "filtro_form": filtro,
                 "filtros_query": parametros.urlencode(),
                 "atencion": atencion,
                 "resumenes": resumenes,
+                "es_operador": por_circuito,
+                "puede_presentar": puede_presentar,
+                "ofrece_atencion": ofrece_atencion,
+                "solo_atencion": solo_atencion,
+                "total_atencion": total_atencion,
+                "tiene_filtros_activos": tiene_filtros_activos,
+                "limpiar_filtros_url": limpiar_filtros_url,
+                "url_tab_todas": url_tab_todas,
+                "url_tab_atencion": url_tab_atencion,
+                "consulta_bandeja": request.GET.urlencode(),
             },
         )
 
@@ -194,6 +351,7 @@ class PresentarSolicitudView(FacturacionView):
         return self.mostrar(request, SolicitudFacturacionForm(), emitir_token(self.actor))
 
     def mostrar(self, request, form, token, status=200):
+        _marcar_campos_invalidos(form)
         return render(
             request,
             "facturacion/formulario.html",
@@ -201,7 +359,7 @@ class PresentarSolicitudView(FacturacionView):
                 "actor": self.actor,
                 "form": form,
                 "token": token,
-                "titulo": "Presentar solicitud",
+                "titulo": "Presentar solicitud de facturación",
             },
             status=status,
         )
@@ -226,171 +384,198 @@ class PresentarSolicitudView(FacturacionView):
         return redirect("facturacion:detalle", numero=solicitud.pk)
 
 
+def _contexto_detalle(actor, solicitud, *, error_observacion="", motivo_observacion=""):
+    respuesta_config = solicitud.tramite_base.respuestas_formulario.order_by("-pk").first()
+    valores_configurados = respuesta_config.datos if respuesta_config else {}
+    datos_configurados = {
+        clave: item["valor"] for clave, item in valores_configurados.items()
+        if item.get("tipo") != "documento"
+    }
+    diagnostico_actual = diagnostico_visible(actor, solicitud)
+    eventos = list(solicitud.eventos.all())
+    motivo_anulacion = ""
+    if solicitud.estado == Estado.ANULADA:
+        motivo_anulacion = next(
+            (e.motivo_o_detalle for e in eventos if e.tipo_evento == "ANULACION"), ""
+        )
+    comprobantes, _ = resumen_comprobantes(solicitud)
+    from django.utils import timezone
+
+    from .envios import EnvioForm
+    from .models import ConfirmacionRecepcion, EnvioComprobante
+
+    titular = solicitud.tramite_base.solicitante_actor_id == str(actor.subject_id)
+    envios = list(EnvioComprobante.objects.filter(
+        comprobante__solicitud=solicitud
+    ).select_related("comprobante", "confirmacion").order_by("pk"))
+    for comprobante in comprobantes:
+        comprobante.ultimo_envio = next(
+            (e for e in reversed(envios) if e.comprobante_id == comprobante.pk), None
+        )
+        comprobante.form_envio = EnvioForm(initial={
+            "destinatario": solicitud.email_envio_factura, "fecha_envio": timezone.localdate(),
+        })
+    cobros, totales_cobros, eventos_cobros = resumen_cobros(solicitud)
+    from django.db.models import Q
+
+    from .models import ActualizacionRespaldo
+
+    actualizaciones = ActualizacionRespaldo.objects.filter(
+        Q(comprobante__solicitud=solicitud) | Q(cobro__solicitud=solicitud)
+    ).select_related("comprobante", "cobro")
+    medios = dict(ModalidadCobro.choices)
+    for objeto in [*comprobantes, *cobros]:
+        objeto.respaldo_vinculado = respaldo_actual(objeto)
+        if has_capability(actor, "documentos.consultar_metadatos"):
+            objeto.estado_revision = (
+                estado_revision_vigente(objeto.respaldo_vinculado)
+                if objeto.respaldo_vinculado else None
+            )
+    for cobro in cobros:
+        cobro.puede_corregir = puede_corregir_cobro(actor, cobro)
+        cobro.medio_mostrado = medios.get(cobro.medio, cobro.medio)
+        cobro.procedencia_mostrado = _PROCEDENCIAS_COBRO.get(
+            cobro.procedencia, cobro.procedencia
+        )
+    historial = [e.como_historial() for e in eventos] + [
+        c.como_historial() for c in ComprobanteExterno.todos.filter(solicitud=solicitud)
+    ]
+    historial.extend(e.como_historial() for e in envios)
+    historial.extend(c.como_historial() for c in ConfirmacionRecepcion.objects.filter(
+        envio__comprobante__solicitud=solicitud
+    ).select_related("envio__comprobante"))
+    historial.extend(eventos_cobros)
+    if has_capability(actor, "documentos.consultar_metadatos"):
+        historial.extend(a.como_historial() for a in actualizaciones)
+    pendientes_revision = []
+    if has_capability(actor, "documentos.consultar_metadatos"):
+        from django.db.models import OuterRef, Subquery
+
+        from documentos.models import RevisionDocumento
+
+        pendientes_revision = (
+            documentos_visibles(actor)
+            .filter(
+                tramite_base=solicitud.tramite_base,
+                sucesor__isnull=True,
+            )
+            .exclude(pk__in=respaldos_solo_rectificados(cobros))
+            .annotate(
+                resultado_revision=Subquery(
+                    RevisionDocumento.objects.filter(documento_id=OuterRef("pk"))
+                    .order_by("-id")
+                    .values("resultado")[:1]
+                )
+            )
+            .filter(Q(resultado_revision__isnull=True) | ~Q(resultado_revision="ACEPTADO"))
+        )
+    historial.sort(key=lambda e: (e.fecha_hora, e.evento_id, e.tipo_evento))
+    actores_visibles = _actores_visibles(
+        actor, solicitud, comprobantes=comprobantes, cobros=cobros, historial=historial
+    )
+    return {
+        "actor": actor,
+        "solicitud": solicitud,
+        "historial": historial,
+        "actores_visibles": actores_visibles,
+        "motivo_anulacion": motivo_anulacion,
+        "acciones_inmediatas": acciones_inmediatas(actor, solicitud),
+        "mensaje_espera": mensaje_espera(actor, solicitud, diagnostico_actual),
+        "pendientes_revision": pendientes_revision,
+        "diagnostico": diagnostico_actual,
+        "datos_configurados": datos_configurados,
+        "puede_cerrar": has_capability(actor, "facturacion.cerrar")
+        and has_capability(actor, "documentos.consultar_metadatos"),
+        "puede_anular": has_capability(actor, "facturacion.anular")
+        and has_capability(actor, "documentos.consultar_metadatos"),
+        "puede_actualizar_respaldo": has_capability(
+            actor, "facturacion.actualizar_respaldo"
+        )
+        and has_capability(actor, "documentos.consultar_metadatos"),
+        "cobros": cobros,
+        "totales_cobros": totales_cobros,
+        "puede_informar_cobro": any(
+            has_capability(actor, c)
+            for c in ("facturacion.informar_cobro", "facturacion.registrar_cobro")
+        ),
+        "puede_verificar_cobro": has_capability(actor, "facturacion.verificar_cobro"),
+        "comprobantes": comprobantes,
+        "es_titular": titular,
+        "factura_vigente": next((c for c in comprobantes if c.tipo == "FACTURA"), None),
+        "puede_registrar_comprobante": puede_registrar_comprobante(actor),
+        "versiones": [
+            {
+                "tipo": e.tipo_evento,
+                "tipo_mostrado": _TIPOS_VERSION.get(e.tipo_evento, e.tipo_evento),
+                "fecha": e.fecha_hora,
+                "antes": _version_visible(e.snapshot_datos.get("antes")),
+                "despues": _version_visible(e.snapshot_datos.get("despues")),
+            }
+            for e in eventos
+        ],
+        "respaldos": documentos_visibles(actor)
+        .filter(tramite_base=solicitud.tramite_base)
+        .order_by("fecha_incorporacion", "pk")
+        if has_capability(actor, "documentos.consultar_metadatos")
+        else [],
+        "puede_observar": has_capability(actor, "facturacion.observar")
+        and solicitud.estado == Estado.PRESENTADA,
+        "puede_corregir": has_capability(actor, "facturacion.corregir")
+        and solicitud.tramite_base.solicitante_actor_id == str(actor.subject_id)
+        and solicitud.estado == Estado.OBSERVADA,
+        "puede_descargar": has_capability(actor, "documentos.recuperar_contenido"),
+        "puede_ver_revision": has_capability(actor, "documentos.consultar_metadatos"),
+        "puede_revisar_documentos": not diagnostico_actual["terminal"]
+        and has_capability(actor, "documentos.revisar"),
+        "error_observacion": error_observacion,
+        "motivo_observacion": motivo_observacion,
+    }
+
+
 class DetalleSolicitudView(FacturacionView):
     def get(self, request, numero):
         solicitud = self.objeto(numero)
-        respuesta_config = solicitud.tramite_base.respuestas_formulario.order_by("-pk").first()
-        valores_configurados = respuesta_config.datos if respuesta_config else {}
-        datos_configurados = {
-            clave: item["valor"] for clave, item in valores_configurados.items()
-            if item.get("tipo") != "documento"
-        }
-        diagnostico_actual = diagnostico_visible(self.actor, solicitud)
-        eventos = list(solicitud.eventos.all())
-        motivo_anulacion = ""
-        if solicitud.estado == Estado.ANULADA:
-            motivo_anulacion = next(
-                (e.motivo_o_detalle for e in eventos if e.tipo_evento == "ANULACION"), ""
-            )
-        comprobantes, _ = resumen_comprobantes(solicitud)
-        from django.utils import timezone
-
-        from .envios import EnvioForm
-        from .models import ConfirmacionRecepcion, EnvioComprobante
-
-        titular = solicitud.tramite_base.solicitante_actor_id == str(self.actor.subject_id)
-        envios = list(EnvioComprobante.objects.filter(
-            comprobante__solicitud=solicitud
-        ).select_related("comprobante", "confirmacion").order_by("pk"))
-        for comprobante in comprobantes:
-            comprobante.ultimo_envio = next(
-                (e for e in reversed(envios) if e.comprobante_id == comprobante.pk), None
-            )
-            comprobante.form_envio = EnvioForm(initial={
-                "destinatario": solicitud.email_envio_factura, "fecha_envio": timezone.localdate(),
-            })
-        cobros, totales_cobros, eventos_cobros = resumen_cobros(solicitud)
-        from django.db.models import Q
-
-        from .models import ActualizacionRespaldo
-
-        actualizaciones = ActualizacionRespaldo.objects.filter(
-            Q(comprobante__solicitud=solicitud) | Q(cobro__solicitud=solicitud)
-        ).select_related("comprobante", "cobro")
-        for objeto in [*comprobantes, *cobros]:
-            objeto.respaldo_vinculado = respaldo_actual(objeto)
-            if has_capability(self.actor, "documentos.consultar_metadatos"):
-                objeto.estado_revision = (
-                    estado_revision_vigente(objeto.respaldo_vinculado)
-                    if objeto.respaldo_vinculado else None
-                )
-        for cobro in cobros:
-            cobro.puede_corregir = puede_corregir_cobro(self.actor, cobro)
-        historial = [e.como_historial() for e in eventos] + [
-            c.como_historial() for c in ComprobanteExterno.todos.filter(solicitud=solicitud)
-        ]
-        historial.extend(e.como_historial() for e in envios)
-        historial.extend(c.como_historial() for c in ConfirmacionRecepcion.objects.filter(
-            envio__comprobante__solicitud=solicitud
-        ).select_related("envio__comprobante"))
-        historial.extend(eventos_cobros)
-        if has_capability(self.actor, "documentos.consultar_metadatos"):
-            historial.extend(a.como_historial() for a in actualizaciones)
-        pendientes_revision = []
-        if has_capability(self.actor, "documentos.consultar_metadatos"):
-            from django.db.models import OuterRef, Subquery
-
-            from documentos.models import RevisionDocumento
-
-            pendientes_revision = (
-                documentos_visibles(self.actor)
-                .filter(
-                    tramite_base=solicitud.tramite_base,
-                    sucesor__isnull=True,
-                )
-                .exclude(pk__in=respaldos_solo_rectificados(cobros))
-                .annotate(
-                    resultado_revision=Subquery(
-                        RevisionDocumento.objects.filter(documento_id=OuterRef("pk"))
-                        .order_by("-id")
-                        .values("resultado")[:1]
-                    )
-                )
-                .filter(Q(resultado_revision__isnull=True) | ~Q(resultado_revision="ACEPTADO"))
-            )
-        historial.sort(key=lambda e: (e.fecha_hora, e.evento_id, e.tipo_evento))
-        return render(
-            request,
-            "facturacion/detalle.html",
-            {
-                "actor": self.actor,
-                "solicitud": solicitud,
-                "historial": historial,
-                "motivo_anulacion": motivo_anulacion,
-                "acciones_inmediatas": acciones_inmediatas(self.actor, solicitud),
-                "mensaje_espera": mensaje_espera(self.actor, solicitud, diagnostico_actual),
-                "pendientes_revision": pendientes_revision,
-                "diagnostico": diagnostico_actual,
-                "datos_configurados": datos_configurados,
-                "puede_cerrar": has_capability(self.actor, "facturacion.cerrar")
-                and has_capability(self.actor, "documentos.consultar_metadatos"),
-                "puede_anular": has_capability(self.actor, "facturacion.anular")
-                and has_capability(self.actor, "documentos.consultar_metadatos"),
-                "puede_actualizar_respaldo": has_capability(
-                    self.actor, "facturacion.actualizar_respaldo"
-                )
-                and has_capability(self.actor, "documentos.consultar_metadatos"),
-                "cobros": cobros,
-                "totales_cobros": totales_cobros,
-                "puede_informar_cobro": any(
-                    has_capability(self.actor, c)
-                    for c in ("facturacion.informar_cobro", "facturacion.registrar_cobro")
-                ),
-                "puede_verificar_cobro": has_capability(self.actor, "facturacion.verificar_cobro"),
-                "comprobantes": comprobantes,
-                "es_titular": titular,
-                "factura_vigente": next((c for c in comprobantes if c.tipo == "FACTURA"), None),
-                "puede_registrar_comprobante": puede_registrar_comprobante(self.actor),
-                "versiones": [
-                    {
-                        "tipo": e.tipo_evento,
-                        "fecha": e.fecha_hora,
-                        "antes": _version_visible(e.snapshot_datos.get("antes")),
-                        "despues": _version_visible(e.snapshot_datos.get("despues")),
-                    }
-                    for e in eventos
-                ],
-                "respaldos": documentos_visibles(self.actor)
-                .filter(
-                    tramite_base=solicitud.tramite_base,
-                )
-                .order_by("fecha_incorporacion", "pk")
-                if has_capability(self.actor, "documentos.consultar_metadatos")
-                else [],
-                "puede_observar": has_capability(self.actor, "facturacion.observar")
-                and solicitud.estado == Estado.PRESENTADA,
-                "puede_corregir": has_capability(self.actor, "facturacion.corregir")
-                and solicitud.tramite_base.solicitante_actor_id == str(self.actor.subject_id)
-                and solicitud.estado == Estado.OBSERVADA,
-                "puede_descargar": has_capability(self.actor, "documentos.recuperar_contenido"),
-                "puede_ver_revision": has_capability(self.actor, "documentos.consultar_metadatos"),
-                "puede_revisar_documentos": not diagnostico_actual["terminal"]
-                and has_capability(self.actor, "documentos.revisar"),
-            },
-        )
+        return render(request, "facturacion/detalle.html", _contexto_detalle(self.actor, solicitud))
 
 
 class ObservarSolicitudView(FacturacionView):
     def post(self, request, numero):
         solicitud = self.objeto(numero)
         verificar_accion(self.actor, solicitud, "observar")
+        motivo = request.POST.get("motivo", "")
         try:
             observar_solicitud_facturacion(
                 actor=self.actor,
                 numero_publico=numero,
-                motivo=request.POST.get("motivo", ""),
+                motivo=motivo,
                 version_esperada=_version_post(request),
             )
         except ValidationError as exc:
             return render(
                 request,
-                "facturacion/error.html",
-                {
-                    "actor": self.actor,
-                    "error": " ".join(exc.messages),
-                },
+                "facturacion/detalle.html",
+                _contexto_detalle(
+                    self.actor,
+                    solicitud,
+                    error_observacion=" ".join(exc.messages),
+                    motivo_observacion=motivo,
+                ),
                 status=400,
             )
+        except ConflictoConcurrenciaError as exc:
+            solicitud_actual = self.objeto(numero)
+            return render(
+                request,
+                "facturacion/detalle.html",
+                _contexto_detalle(
+                    self.actor,
+                    solicitud_actual,
+                    error_observacion=str(exc),
+                    motivo_observacion=motivo,
+                ),
+                status=409,
+            )
+        messages.success(request, "Observación registrada.")
         return redirect("facturacion:detalle", numero=numero)
 
 
@@ -401,13 +586,14 @@ class CorregirSolicitudView(FacturacionView):
         return solicitud
 
     def mostrar(self, request, solicitud, form, status=200):
+        _marcar_campos_invalidos(form)
         return render(
             request,
             "facturacion/formulario.html",
             {
                 "actor": self.actor,
                 "form": form,
-                "titulo": "Corregir solicitud",
+                "titulo": f"Corregir solicitud #{solicitud.numero_visible}",
                 "solicitud": solicitud,
                 "nombre_respaldo_inicial": solicitud.documento_comprobante_inicial.nombre_original
                 if solicitud.documento_comprobante_inicial_id

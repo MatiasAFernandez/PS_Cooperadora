@@ -53,7 +53,7 @@ class ComprobanteExternoForm(EnvioForm):
         min_value=Decimal("0.01"),
     )
     archivo_pdf = forms.FileField(
-        label="PDF del comprobante (opcional para Xubio)", required=False,
+        label="PDF del comprobante", required=False,
         help_text="Si ya está en Xubio, registrá sus datos sin volver a cargar el PDF. "
         "Para Otro origen, el archivo es obligatorio.",
     )

@@ -15,6 +15,7 @@
   const netoInput = $("rp-neto");
   const errores = $("rp-errores");
   const avisoAtp = $("rp-aviso-atp");
+  const bancoSelectorEl = modo === "alta" ? $("rp-banco-selector") : null;
 
   const estado = {
     banco: null,
@@ -92,6 +93,14 @@
   }
 
   function setEstadoDocumento(kind, texto, esError) {
+    if (kind === "banco" && bancoSelectorEl?._selectorComprobante) {
+      if (esError && texto) {
+        bancoSelectorEl._selectorComprobante.setError(texto);
+      } else {
+        bancoSelectorEl._selectorComprobante.clearError();
+      }
+      return;
+    }
     const nodo = $(kind === "banco" ? "rp-banco-status" : "rp-atp-status");
     if (!nodo) return;
     nodo.hidden = !texto;
@@ -310,8 +319,8 @@
     sum(
       "rp-sum-banco",
       estado.banco
-        ? '<span class="rp-chip rp-chip-success">Seleccionado</span>'
-        : '<span class="rp-chip rp-chip-warning">Falta adjuntar</span>'
+        ? '<span class="badge badge-success">Seleccionado</span>'
+        : '<span class="badge badge-warning">Falta adjuntar</span>'
     );
 
     const cardAtp = $("rp-atp-card");
@@ -344,7 +353,7 @@
           refAtpInput.disabled = true;
         }
         if (atpFileInput) atpFileInput.disabled = true;
-        sum("rp-sum-atp", '<span class="rp-chip rp-chip-warning">Constancia ATP pendiente</span>');
+        sum("rp-sum-atp", '<span class="badge badge-warning">Constancia ATP pendiente</span>');
       } else {
         if (refAtpInput) refAtpInput.disabled = false;
         if (atpFileInput) atpFileInput.disabled = false;
@@ -352,15 +361,15 @@
         sum(
           "rp-sum-atp",
           adjunta
-            ? '<span class="rp-chip rp-chip-success">Seleccionado</span>'
-            : '<span class="rp-chip rp-chip-warning">Falta adjuntar</span>'
+            ? '<span class="badge badge-success">Seleccionado</span>'
+            : '<span class="badge badge-warning">Falta adjuntar</span>'
         );
       }
     }
 
     const respaldoSelect = $("id_referencia_documental");
     if (!respaldoSelect || !respaldoSelect.options || respaldoSelect.options.length === 0) {
-      sum("rp-sum-respaldo", '<span class="rp-chip rp-chip-warning">Falta cargar</span>');
+      sum("rp-sum-respaldo", '<span class="badge badge-warning">Falta cargar</span>');
     } else {
       const idx = respaldoSelect.selectedIndex >= 0 ? respaldoSelect.selectedIndex : 0;
       const opt = respaldoSelect.options[idx];
@@ -478,7 +487,27 @@
     }
   }
 
+  if (bancoSelectorEl) {
+    bancoSelectorEl.addEventListener("selector-comprobante:change", (evento) => {
+      const file = evento.detail?.file || null;
+      estado.banco = file
+        ? { nombre: file.name, tamano: file.size, file }
+        : null;
+      actualizarResumen();
+      sincronizarAvisoAlCorregir("banco");
+    });
+    const archivoActual = bancoSelectorEl._selectorComprobante?.getFile?.() || null;
+    if (archivoActual) {
+      estado.banco = {
+        nombre: archivoActual.name,
+        tamano: archivoActual.size,
+        file: archivoActual,
+      };
+    }
+  }
+
   ["banco", "atp"].forEach((kind) => {
+    if (kind === "banco" && bancoSelectorEl) return;
     const existente = existenteDesdeHtml(kind);
     if (existente) {
       if (kind === "banco") estado.banco = existente;
@@ -674,38 +703,6 @@
     });
   });
 
-  // Copiado de CBU / alias con feedback accesible
-  const copyBtn = $("btn-copy-cbu");
-  if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      const textToCopy = copyBtn.dataset.copy || $("rp-cbu-val")?.textContent?.trim() || "";
-      if (!textToCopy) return;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(textToCopy);
-        } else {
-          const ta = document.createElement("textarea");
-          ta.value = textToCopy;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-        }
-        copyBtn.classList.add("copied");
-        const textNode = copyBtn.querySelector(".btn-copy-text");
-        if (textNode) textNode.textContent = "Copiado";
-        setTimeout(() => {
-          copyBtn.classList.remove("copied");
-          if (textNode) textNode.textContent = "Copiar";
-        }, 2000);
-      } catch (err) {
-        // Ignorar fallos de permisos de portapapeles
-      }
-    });
-  }
-
   function validarAlta() {
     const problemas = [];
     const marcar = (id, mensaje) => problemas.push({ id, mensaje });
@@ -799,7 +796,8 @@
       setEstadoDocumento("banco", "", false);
       const input = $("id_comprobante_bancario");
       if (input) input.removeAttribute("aria-invalid");
-      const errEl = $("rp-banco-drop")?.parentElement?.querySelector(".rp-error:not(#rp-errores)");
+      const contenedorBanco = ($("rp-banco-drop") || $("rp-banco-selector"))?.parentElement;
+      const errEl = contenedorBanco?.querySelector(".rp-error:not(#rp-errores):not(#rp-banco-status)");
       if (errEl) errEl.hidden = true;
     }
 
@@ -856,14 +854,14 @@
       primerElemento.id === "id_constancia_atp"
     ) {
       const dropzone =
-        primerElemento.closest(".rp-dropzone") ||
+        primerElemento.closest(".sc-dropzone, .rp-dropzone") ||
         (primerElemento.id === "id_comprobante_bancario"
           ? $("rp-banco-drop")
           : $("rp-atp-drop"));
       if (dropzone) {
         elementoScroll = dropzone;
         const labelBtn = dropzone.querySelector(
-          `label[for="${primerElemento.id}"], label.rp-button, button`
+          `label[for="${primerElemento.id}"], [data-sc-trigger], label.rp-button, button`
         );
         if (labelBtn) {
           elementoFoco = labelBtn;

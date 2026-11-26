@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}{{ title }} — PS Cooperadora{% endblock %}
-{% block titulo_modulo %}{{ title }} — Cooperadora{% endblock %}
+{% block titulo_modulo %}{{ title }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'identidad/cuentas.css' %}">
@@ -20,7 +20,7 @@
         </div>
 
         {% if form and form.errors %}
-        <div id="cuentas-errores" class="cuentas-error-summary" role="alert" tabindex="-1">
+        <div id="cuentas-errores" class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
             <p><strong>Revisá los datos indicados.</strong></p>
             {% for error in form.non_field_errors %}
             <p>{{ error }}</p>
@@ -43,17 +43,14 @@
             {% for field in form.visible_fields %}
             <div class="cuentas-field">
                 <label for="{{ field.id_for_label }}">
-                    {{ field.label }}
-                    {% if not field.field.required %}
-                    <span class="cuentas-optional">(Opcional)</span>
-                    {% endif %}
+                    {{ field.label }}{% if not field.field.required %} <span class="field-optional">(Opcional)</span>{% endif %}
                 </label>
                 {{ field }}
                 {% if field.help_text %}
                 <small class="cuentas-help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</small>
                 {% endif %}
                 {% if field.errors %}
-                <div class="cuentas-field-error" id="{{ field.auto_id }}_error">{{ field.errors.0 }}</div>
+                <div class="cuentas-field-error" id="{{ field.auto_id }}_error" role="alert">{{ field.errors.0 }}</div>
                 {% endif %}
             </div>
             {% endfor %}
@@ -65,7 +62,7 @@
         </form>
         {% else %}
         <div class="cuentas-status cuentas-status--error" role="alert">
-            <p>El enlace de recuperación es inválido o ha vencido.</p>
+            <p>El enlace de recuperación es inválido o venció.</p>
         </div>
         <div class="cuentas-actions">
             <a href="{% url 'cuentas:recuperar' %}" class="btn btn-primary">Solicitar nuevo enlace</a>
@@ -90,16 +87,5 @@
         </div>
     </div>
 </div>
-
-{% if form and form.errors %}
-<script>
-(function(){
-    var el = document.getElementById('cuentas-errores');
-    if (el) {
-        el.scrollIntoView({behavior: 'smooth', block: 'center'});
-        el.focus();
-    }
-})();
-</script>
-{% endif %}
+<script src="{% static 'js/foco_errores.js' %}"></script>
 {% endblock %}

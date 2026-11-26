@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 from typing import Any
+from urllib.parse import urlsplit
 
 from django import forms
 from django.conf import settings
@@ -10,11 +11,13 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import OuterRef, Q, Subquery
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
+from comunes.actores import presentar_historial, resolver_actores_visibles
 from comunes.models import Circuito
 from documentos.models import Documento
 from documentos.operaciones import operacion_documental
@@ -291,6 +294,7 @@ def _contexto_formulario_aporte(
     form: DocumentoGastoForm,
     versiones_reemplazables: tuple[Any, ...],
 ) -> dict[str, Any]:
+    _marcar_campos_invalidos(form)
     return {
         "actor": actor,
         "solicitud": solicitud,
@@ -323,6 +327,23 @@ def _max_upload_mib() -> int:
     return max(1, int(max_bytes / (1024 * 1024)))
 
 
+def _marcar_campos_invalidos(*formularios: Any) -> None:
+    """Agrega aria-invalid y aria-describedby a campos visibles con errores."""
+    for formulario in formularios:
+        if formulario is None or not getattr(formulario, "errors", None):
+            continue
+        for nombre in formulario.errors:
+            if nombre in formulario.fields:
+                campo = formulario.fields[nombre]
+                campo.widget.attrs["aria-invalid"] = "true"
+                id_campo = formulario[nombre].id_for_label
+                if id_campo:
+                    actual = campo.widget.attrs.get("aria-describedby", "")
+                    id_err = f"{id_campo}_error"
+                    if id_err not in actual.split():
+                        campo.widget.attrs["aria-describedby"] = f"{actual} {id_err}".strip()
+
+
 class SolicitudGastoCreateView(View):
     """Presentación de una nueva solicitud de gasto."""
 
@@ -334,6 +355,7 @@ class SolicitudGastoCreateView(View):
         respaldo_form: RespaldoSolicitudForm,
         resumen_deuda: Any,
     ) -> dict[str, Any]:
+        _marcar_campos_invalidos(form, datos_form, respaldo_form)
         return {
             "form": form,
             "datos_form": datos_form,
@@ -600,6 +622,47 @@ def _numero_de_solicitud_buscado(texto: str) -> int | None:
     return numero
 
 
+def _construir_query_bandeja(
+    parametros: QueryDict,
+    *,
+    incluir_atencion: bool = False,
+    estados_compatibles: set[str] | None = None,
+    pendientes_compatibles: set[str] | None = None,
+    campos_excluidos: set[str] | None = None,
+) -> QueryDict:
+    """Arma parámetros de la bandeja sin paginación, vacíos ni criterios incompatibles."""
+    excluidos = campos_excluidos or set()
+    limpios = QueryDict(mutable=True)
+    if incluir_atencion:
+        limpios["atencion"] = "1"
+    for campo in ("q", "estado", "pendiente", "periodo", "dia", "mes", "anio"):
+        if campo in excluidos:
+            continue
+        valor = parametros.get(campo, "")
+        if not valor or (campo == "q" and not valor.strip()):
+            continue
+        if (
+            campo == "estado"
+            and estados_compatibles is not None
+            and valor not in estados_compatibles
+        ):
+            continue
+        if (
+            campo == "pendiente"
+            and pendientes_compatibles is not None
+            and valor not in pendientes_compatibles
+        ):
+            continue
+        limpios[campo] = valor
+    periodo = limpios.get("periodo", "")
+    activos_fecha = {"dia": {"dia"}, "mes": {"mes", "anio"}, "anio": {"anio"}}.get(
+        periodo, set()
+    )
+    for campo_fecha in {"dia", "mes", "anio"} - activos_fecha:
+        limpios.pop(campo_fecha, None)
+    return limpios
+
+
 class SolicitudGastoListView(View):
     """Listado de solicitudes de gasto visibles para el actor (panel compacto Master-Detail)."""
 
@@ -619,7 +682,8 @@ class SolicitudGastoListView(View):
         )
         vista_rapida = puede_decidir or has_capability(actor, "gastos.registrar_pago")
         puede_presentar = has_capability(actor, "gastos.presentar")
-        ofrece_atencion = puede_decidir or puede_pagar
+        puede_incorporar = has_capability(actor, "documentos.incorporar")
+        ofrece_atencion = puede_decidir or puede_pagar or puede_presentar
 
         resumen_deuda = verificar_deuda_documental_solicitante(actor) if puede_presentar else None
         deuda_ids = (
@@ -645,11 +709,15 @@ class SolicitudGastoListView(View):
             condiciones_pendiente["atp"] = sin_atp
             atencion |= sin_pago | sin_atp
         if puede_presentar:
-            condiciones_pendiente["deuda"] = Q(pk__in=deuda_ids)
-            condiciones_pendiente["subsanacion"] = Q(
+            deuda_q = Q(pk__in=deuda_ids)
+            subsanacion_q = Q(
                 estado=EstadoSolicitud.OBSERVADA,
                 solicitante_id=actor.subject_id,
+                cierre__isnull=True,
             )
+            condiciones_pendiente["deuda"] = deuda_q
+            condiciones_pendiente["subsanacion"] = subsanacion_q
+            atencion |= deuda_q | subsanacion_q
 
         cualquier_pendiente = Q(pk__in=[])
         for condicion in condiciones_pendiente.values():
@@ -665,7 +733,7 @@ class SolicitudGastoListView(View):
         solicitudes = base_solicitudes.select_related(
             "centro_costo", "pago_externo", "cierre"
         )
-        solo_atencion = vista_rapida and request.GET.get("atencion") == "1"
+        solo_atencion = ofrece_atencion and request.GET.get("atencion") == "1"
         if solo_atencion:
             solicitudes = solicitudes.filter(atencion)
         if vista_rapida:
@@ -726,7 +794,11 @@ class SolicitudGastoListView(View):
                 continue
             if s.pk in deuda_ids:
                 s.pendiente_bandeja = "Falta factura definitiva"
-                s.ancla_bandeja = "#seguimiento-factura"
+                if puede_incorporar:
+                    s.accion_bandeja = "Adjuntar factura"
+                    s.ancla_bandeja = "#cargar-respaldo"
+                else:
+                    s.ancla_bandeja = "#seguimiento-factura"
             elif s.estado == EstadoSolicitud.OBSERVADA and s.solicitante_id == actor.subject_id:
                 s.pendiente_bandeja = "Observada para corregir"
                 s.accion_bandeja = "Corregir solicitud" if puede_presentar else "Ver detalle"
@@ -752,6 +824,48 @@ class SolicitudGastoListView(View):
         parametros.pop("page", None)
         parametros.pop("pagina", None)
 
+        campos_con_error = set(filtro_form.errors.keys())
+        if campos_con_error & {"periodo", "dia", "mes", "anio"}:
+            campos_con_error |= {"periodo", "dia", "mes", "anio"}
+
+        estados_compatibles_atencion: set[str] = set()
+        pendientes_compatibles_atencion: set[str] = set()
+        if puede_decidir:
+            estados_compatibles_atencion.update(
+                {EstadoSolicitud.PRESENTADA, EstadoSolicitud.POSTERGADA}
+            )
+            pendientes_compatibles_atencion.add("decision")
+        if puede_pagar:
+            estados_compatibles_atencion.update({EstadoSolicitud.ACEPTADA, "pagada"})
+            pendientes_compatibles_atencion.update({"pago", "atp"})
+        if puede_presentar:
+            estados_compatibles_atencion.update(
+                {EstadoSolicitud.OBSERVADA, EstadoSolicitud.ACEPTADA, "pagada"}
+            )
+            pendientes_compatibles_atencion.update({"subsanacion", "deuda"})
+        if pendientes_compatibles_atencion and "cualquiera" in condiciones_pendiente:
+            pendientes_compatibles_atencion.add("cualquiera")
+
+        base_url = reverse("gastos:lista")
+        query_criterios = _construir_query_bandeja(parametros)
+        tiene_filtros_activos = bool(query_criterios) or bool(filtro_form.errors)
+        limpiar_filtros_url = f"{base_url}?atencion=1" if solo_atencion else base_url
+
+        query_tab_todas = _construir_query_bandeja(
+            parametros, campos_excluidos=campos_con_error
+        )
+        query_tab_atencion = _construir_query_bandeja(
+            parametros,
+            incluir_atencion=True,
+            estados_compatibles=estados_compatibles_atencion,
+            pendientes_compatibles=pendientes_compatibles_atencion,
+            campos_excluidos=campos_con_error,
+        )
+        url_tab_todas = (
+            f"{base_url}?{query_tab_todas.urlencode()}" if query_tab_todas else base_url
+        )
+        url_tab_atencion = f"{base_url}?{query_tab_atencion.urlencode()}"
+
         return render(
             request,
             "gastos/solicitud_list.html",
@@ -768,6 +882,10 @@ class SolicitudGastoListView(View):
                 "solo_atencion": solo_atencion,
                 "ofrece_atencion": ofrece_atencion,
                 "total_atencion": total_atencion,
+                "tiene_filtros_activos": tiene_filtros_activos,
+                "limpiar_filtros_url": limpiar_filtros_url,
+                "url_tab_todas": url_tab_todas,
+                "url_tab_atencion": url_tab_atencion,
                 "consulta_bandeja": request.GET.urlencode(),
             },
         )
@@ -822,6 +940,14 @@ class ReporteCuatrimestralGastosView(View):
             or (centro.centro_costo_id is not None and (mostrar_sin_actividad or centro_costo_id))
         ]
 
+        max_bruto_cuatrimestre = max(
+            (c.monto_erogado_bruto for c in reporte.cuatrimestres),
+            default=Decimal("0.00"),
+        )
+        mitad_bruto_cuatrimestre = (max_bruto_cuatrimestre / Decimal("2")).quantize(
+            Decimal("0.01")
+        )
+
         return render(
             request,
             "gastos/reporte_cuatrimestral.html",
@@ -838,6 +964,8 @@ class ReporteCuatrimestralGastosView(View):
                 "mostrar_sin_actividad": mostrar_sin_actividad,
                 "periodo_label": reporte.periodo_label,
                 "pendientes_actuales": obtener_pendientes_actuales_gastos(),
+                "max_bruto_cuatrimestre": max_bruto_cuatrimestre,
+                "mitad_bruto_cuatrimestre": mitad_bruto_cuatrimestre,
             },
         )
 
@@ -1170,6 +1298,14 @@ def _solicitud_detail_context(
         "ultima_decision": decisiones[-1] if decisiones else None,
         "pago_consulta": pago_consulta,
         "cronologia": cronologia,
+        "cronologia_presentacion": presentar_historial(
+            cronologia,
+            resolver_actores_visibles(
+                (evento.actor_id for evento in cronologia),
+                puede_ver_internos=has_capability(actor, "gastos.consultar_todas"),
+                titular_actor_id=solicitud.solicitante_id,
+            ),
+        ),
         "can_decide": can_decide,
         "acciones_decision": acciones_decision,
         "decision_form": decision_form,
@@ -1300,15 +1436,18 @@ class SolicitudGastoCorregirView(View):
         self,
         request: HttpRequest,
         *,
+        actor: Any,
         solicitud: SolicitudGasto,
         form: CorregirSolicitudGastoForm,
         error_subsanacion: str | None = None,
         status: int = 200,
     ) -> HttpResponse:
+        _marcar_campos_invalidos(form)
         return render(
             request,
             self.template_name,
             {
+                "actor": actor,
                 "solicitud": solicitud,
                 "form": form,
                 "ultima_observacion": self._ultima_observacion(solicitud),
@@ -1341,7 +1480,7 @@ class SolicitudGastoCorregirView(View):
                 "centro_costo": solicitud.centro_costo_id,
             },
         )
-        return self._render_form(request, solicitud=solicitud, form=form)
+        return self._render_form(request, actor=actor, solicitud=solicitud, form=form)
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         result = _enforce_actor(request)
@@ -1355,6 +1494,7 @@ class SolicitudGastoCorregirView(View):
         if solicitud.estado != EstadoSolicitud.OBSERVADA or tiene_pago:
             return self._render_form(
                 request,
+                actor=actor,
                 solicitud=solicitud,
                 form=form,
                 error_subsanacion=(
@@ -1365,7 +1505,9 @@ class SolicitudGastoCorregirView(View):
             )
 
         if not form.is_valid():
-            return self._render_form(request, solicitud=solicitud, form=form, status=400)
+            return self._render_form(
+                request, actor=actor, solicitud=solicitud, form=form, status=400
+            )
 
         try:
             corregir_solicitud_gasto(
@@ -1382,11 +1524,14 @@ class SolicitudGastoCorregirView(View):
             raise PermissionDenied(str(exc)) from exc
         except InvalidSubsanacionInputError as exc:
             form.add_error(None, str(exc))
-            return self._render_form(request, solicitud=solicitud, form=form, status=400)
+            return self._render_form(
+                request, actor=actor, solicitud=solicitud, form=form, status=400
+            )
         except (ConcurrencyConflictError, InvalidTransitionError):
             solicitud.refresh_from_db()
             return self._render_form(
                 request,
+                actor=actor,
                 solicitud=solicitud,
                 form=form,
                 error_subsanacion=(
@@ -1446,10 +1591,12 @@ class SolicitudGastoCerrarView(View):
             if pago_consulta is not None
             else None
         )
+        _marcar_campos_invalidos(form)
         return render(
             request,
             "gastos/solicitud_cerrar_confirm.html",
             {
+                "actor": actor,
                 "solicitud": solicitud,
                 "form": form,
                 "evaluacion": evaluacion,
@@ -1595,6 +1742,7 @@ class SolicitudGastoDatosTransferenciaView(View):
         revisiones = (
             consultar_revisiones_datos_transferencia(actor, solicitud.pk) or ()
         )
+        _marcar_campos_invalidos(form)
         return {
             "actor": actor,
             "solicitud": solicitud,
@@ -1772,7 +1920,7 @@ class SolicitudGastoDocumentosView(View):
             ):
                 form.add_error(
                     "reemplaza_id",
-                    "Seleccione una versión vigente de este gasto o incorpore un documento nuevo.",
+                    "Seleccioná una versión vigente de este gasto o incorporá un documento nuevo.",
                 )
             else:
                 try:
@@ -2652,6 +2800,54 @@ def contexto_catalogos(actor):
     return dict(actor=actor, centros_costo=centros, centro_form=centro_form, atp_form=atp_form)
 
 
+def _resolver_retorno_catalogos(request: HttpRequest, actor: Any) -> tuple[str, bool]:
+    """Devuelve (url_destino, desde_configuracion) validando `next` de forma estricta."""
+    default_url = reverse("gastos:gestion_catalogos")
+    raw_next = request.POST.get("next", "").strip()
+    if not raw_next or not has_capability(actor, "gestion.configurar"):
+        return default_url, False
+    if not url_has_allowed_host_and_scheme(
+        raw_next,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return default_url, False
+    parsed = urlsplit(raw_next)
+    config_gasto_path = reverse("gestion:configuracion", args=["GASTO"])
+    if parsed.scheme or parsed.netloc or parsed.path != config_gasto_path:
+        return default_url, False
+    return f"{config_gasto_path}?seccion=catalogos", True
+
+
+def _render_error_catalogos(
+    request: HttpRequest,
+    actor: Any,
+    contexto_catalogos_error: dict[str, Any],
+) -> HttpResponse:
+    """Re-renderiza Configuración (con <details> abierto) o Catálogos según el origen del POST."""
+    destino, desde_configuracion = _resolver_retorno_catalogos(request, actor)
+    if desde_configuracion:
+        from gestion.formularios import esquema_editor
+
+        revision, campos = esquema_editor("GASTO")
+        contexto = {
+            "actor": actor,
+            "circuito": "GASTO",
+            "revision": revision,
+            "campos": campos,
+            "catalogos_abierto": True,
+            "catalogos_next_url": destino,
+            **contexto_catalogos_error,
+        }
+        return render(request, "gestion/configuracion.html", contexto, status=400)
+    return render(
+        request,
+        "gastos/gestion_catalogos.html",
+        {"actor": actor, **contexto_catalogos_error},
+        status=400,
+    )
+
+
 class GestionCatalogosView(View):
     """Administración de catálogos (centros de costo) y parámetros de Cooperadora."""
 
@@ -2671,6 +2867,7 @@ class GestionCatalogosView(View):
     def post(self, request: HttpRequest) -> HttpResponse:
         action = request.POST.get("action", "").strip()
         centros = CentroCosto.objects.all().order_by("nombre")
+        destino, _ = _resolver_retorno_catalogos(request, self.actor)
 
         if action == "crear_centro":
             centro_form = CentroCostoForm(request.POST)
@@ -2686,17 +2883,15 @@ class GestionCatalogosView(View):
                     request,
                     f"Centro de costo '{centro_form.instance.nombre}' creado exitosamente.",
                 )
-                return redirect(reverse("gastos:gestion_catalogos"))
-            return render(
+                return redirect(destino)
+            return _render_error_catalogos(
                 request,
-                "gastos/gestion_catalogos.html",
+                self.actor,
                 {
-                    "actor": self.actor,
                     "centros_costo": centros,
                     "centro_form": centro_form,
                     "atp_form": atp_form,
                 },
-                status=400,
             )
 
         if action == "editar_centro":
@@ -2712,12 +2907,11 @@ class GestionCatalogosView(View):
                 centro.nombre = edicion_form.cleaned_data["nombre"]
                 centro.save(update_fields=["nombre"])
                 messages.success(request, "Nombre del centro de costo actualizado.")
-                return redirect(reverse("gastos:gestion_catalogos"))
-            return render(
+                return redirect(destino)
+            return _render_error_catalogos(
                 request,
-                "gastos/gestion_catalogos.html",
+                self.actor,
                 {
-                    "actor": self.actor,
                     "centros_costo": centros,
                     "centro_form": CentroCostoForm(),
                     "atp_form": ParametrosATPForm(
@@ -2729,7 +2923,6 @@ class GestionCatalogosView(View):
                     "centro_editado_id": centro.pk,
                     "centro_edicion_form": edicion_form,
                 },
-                status=400,
             )
 
         if action == "actualizar_atp":
@@ -2745,20 +2938,18 @@ class GestionCatalogosView(View):
                     request,
                     "Parámetros de retención ATP actualizados exitosamente.",
                 )
-                return redirect(reverse("gastos:gestion_catalogos"))
-            return render(
+                return redirect(destino)
+            return _render_error_catalogos(
                 request,
-                "gastos/gestion_catalogos.html",
+                self.actor,
                 {
-                    "actor": self.actor,
                     "centros_costo": centros,
                     "centro_form": centro_form,
                     "atp_form": atp_form,
                 },
-                status=400,
             )
 
-        return redirect(reverse("gastos:gestion_catalogos"))
+        return redirect(destino)
 
 
 class CentroCostoToggleActivoView(View):
@@ -2777,5 +2968,6 @@ class CentroCostoToggleActivoView(View):
         centro.save(update_fields=["activo"])
         estado_desc = "activado" if centro.activo else "desactivado"
         messages.info(request, f"Centro de costo '{centro.nombre}' {estado_desc}.")
-        return redirect(reverse("gastos:gestion_catalogos"))
+        destino, _ = _resolver_retorno_catalogos(request, actor)
+        return redirect(destino)
 

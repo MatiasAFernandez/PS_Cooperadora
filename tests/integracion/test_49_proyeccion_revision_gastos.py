@@ -119,7 +119,7 @@ def test_detalle_proyecta_versiones_revisiones_y_enlaces_autorizados(escenario_c
     respuesta_v1 = cliente_a.get(reverse("documentos:revision", args=[v1.pk]))
     assert respuesta_v1.status_code == 200
     contenido_v1 = respuesta_v1.content.decode()
-    assert "ACEPTADO" in contenido_v1
+    assert "Aceptado" in contenido_v1
     assert "Versión reemplazada" in contenido_v1
     respuesta_v2 = cliente_a.get(reverse("documentos:revision", args=[v2.pk]))
     assert respuesta_v2.status_code == 200

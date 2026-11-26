@@ -1,36 +1,37 @@
-<dialog class="fac-drawer" id="resumen-facturacion" aria-labelledby="titulo-resumen-facturacion">
-    <div class="drawer-header">
-        <h3 id="titulo-resumen-facturacion"></h3>
-        <form method="dialog"><button type="submit" class="drawer-close" aria-label="Cerrar resumen" autofocus>✕</button></form>
-    </div>
-    <div class="drawer-body" data-contenido-resumen></div>
-</dialog>
+{% load formato_ars %}
 {% for solicitud, importes in resumenes %}
-<template id="resumen-solicitud-{{ solicitud.pk }}" data-titulo="Solicitud #{{ solicitud.numero_visible }}">
-    <div class="fac-statuses">
+{% url 'facturacion:detalle' solicitud.pk as detalle_url %}
+<template id="resumen-solicitud-{{ solicitud.pk }}" data-titulo="Solicitud #{{ solicitud.numero_visible }}" data-receptor="{{ solicitud.nombre_receptor }}" data-detalle-url="{{ detalle_url }}{% if consulta_bandeja %}?bandeja={{ consulta_bandeja|urlencode }}{% endif %}" data-accion-url="{{ solicitud.accion_bandeja.url|default:'' }}" data-accion-texto="{{ solicitud.accion_bandeja.texto_fila|default:'' }}">
+    <div>
         {% include "facturacion/estado.html" with estado=solicitud.estado_seguimiento only %}
     </div>
-    <dl class="detail-grid">
-        <dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd>
-        <dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd>
-        <dt>Centro de costo</dt><dd>{{ solicitud.centro_costo|default:"—" }}</dd>
-        <dt>Producto o servicio</dt><dd>{{ solicitud.get_producto_servicio_display }}</dd>
-        <dt>Importe solicitado</dt><dd>$ {{ solicitud.importe_factura|floatformat:2 }}</dd>
-        <dt>Fecha de creación</dt><dd>{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</dd>
+    {% if solicitud.cierre_mes_bandeja %}
+        <div class="fac-drawer-cierre-aviso">
+            <svg class="bandeja-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>Se aproxima el cierre de mes: completá la acción pendiente.</span>
+        </div>
+    {% endif %}
+    <dl class="fac-drawer-kpi">
+        <div>
+            <dt>Neto facturado</dt>
+            <dd>{% if importes.hay_factura %}{{ importes.neto|ars }}{% else %}Pendiente de factura{% endif %}</dd>
+        </div>
+        <div>
+            <dt>Cobros registrados</dt>
+            <dd>{% if importes.hay_factura and importes.registrado > 0 and importes.registrado > importes.neto %}<span class="status-pill status-warning">{{ importes.registrado|ars }} · Excedente</span>{% else %}<span{% if importes.hay_factura and importes.registrado == importes.neto %} class="fac-covered"{% endif %}>{{ importes.registrado|ars }}</span>{% endif %}</dd>
+        </div>
     </dl>
-    <div class="fac-total">
-        <p class="fac-muted">Neto / cobros registrados</p>
-        <p class="fac-ratio">
-            {% if importes.hay_factura %}<strong>$ {{ importes.neto|floatformat:2 }}</strong>
-            {% else %}<span>Pendiente de factura</span>{% endif %}
-            <span aria-hidden="true">/</span>
-            {% if importes.hay_factura and importes.registrado > 0 and importes.registrado > importes.neto %}
-            <span class="status-pill status-warning">$ {{ importes.registrado|floatformat:2 }} · Excedente</span>
-            {% else %}
-            <span{% if importes.hay_factura and importes.registrado == importes.neto %} class="fac-covered"{% endif %}>$ {{ importes.registrado|floatformat:2 }}</span>
-            {% endif %}
-        </p>
-    </div>
-    <p><a class="btn" href="{% url 'facturacion:detalle' solicitud.pk %}">Ver Detalle</a></p>
+    <dl class="kv-list">
+        <div><dt>Solicitante</dt><dd>{{ solicitud.nombre_solicitante }}</dd></div>
+        <div><dt>Correo de envío</dt><dd>{{ solicitud.email_envio_factura }}</dd></div>
+        <div><dt>Receptor / CUIT</dt><dd>{{ solicitud.nombre_receptor }} · {{ solicitud.cuit_receptor|cuit }}</dd></div>
+        <div><dt>Centro de costo</dt><dd>{{ solicitud.centro_costo|default:"—" }}</dd></div>
+        <div><dt>Producto o servicio</dt><dd>{{ solicitud.get_producto_servicio_display }}</dd></div>
+        <div><dt>Importe solicitado</dt><dd>{{ solicitud.importe_factura|ars }}</dd></div>
+        <div><dt>Fecha de presentación</dt><dd>{{ solicitud.fecha_presentacion|date:"d/m/Y H:i" }}</dd></div>
+        {% if solicitud.accion_bandeja and solicitud.accion_bandeja.descripcion %}
+            <div><dt>Próximo paso</dt><dd>{{ solicitud.accion_bandeja.descripcion }}</dd></div>
+        {% endif %}
+    </dl>
 </template>
 {% endfor %}

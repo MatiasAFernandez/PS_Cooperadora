@@ -250,15 +250,15 @@ def test_numeracion_por_solicitud_en_detalle_verificacion_e_historial(
     cliente.force_login(escenario.usuarios["a"])
     contenido = cliente.get(reverse("facturacion:detalle", args=[otra.pk])).content.decode()
     assert "Cobro #1:" in contenido and f"Cobro #{intercalado.pk}:" not in contenido
-    assert "Cobro #1. 60.10 ARS." in contenido
+    assert "Cobro #1. $ 60,10." in contenido
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
-    assert "Cobro #1. 60.10 ARS." in contenido
-    assert "Cobro #2. 60.10 ARS." in contenido
+    assert "Cobro #1. $ 60,10." in contenido
+    assert "Cobro #2. $ 60,10." in contenido
     escenario.usuarios["o"].groups.add(Group.objects.get(name="demo_verificacion_cobros"))
     cliente.force_login(escenario.usuarios["o"])
     respuesta = cliente.get(reverse("facturacion:verificar_cobro", args=[otra.pk, intercalado.pk]))
     assert respuesta.status_code == 200
-    assert "Constatar Ingreso del cobro #1" in respuesta.content.decode()
+    assert "Verificar ingreso del cobro #1" in respuesta.content.decode()
 
 
 def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada):
@@ -273,8 +273,8 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
     cliente.force_login(escenario.usuarios["o"])
     detalle = reverse("facturacion:detalle", args=[solicitud.pk])
     contenido = cliente.get(detalle).content.decode()
-    assert "Realizar revisión documental" in contenido
-    assert "Constatar Ingreso</a>" in contenido
+    assert "Revisar documento" in contenido
+    assert "Verificar ingreso</a>" in contenido
     revision_url = reverse("documentos:revision", args=[cobro.documento_id])
     contenido = cliente.get(revision_url).content.decode()
     assert "Datos ingresados del cobro" in contenido
@@ -291,10 +291,10 @@ def test_aceptacion_documental_no_confirma_ingreso(escenario, solicitud, entrada
     )
     assert resumen_cobros(solicitud)[1]["PENDIENTE"] == Decimal("60.10")
     contenido = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk])).content.decode()
-    assert "Falta constatar el ingreso externo" in contenido
-    assert "Constatar Ingreso</a>" in contenido
-    assert "Revisión documental:" in contenido and ">ACEPTADO<" in contenido
-    assert "Consultar revisión documental" in contenido
+    assert "Falta verificar el ingreso externo" in contenido
+    assert "Verificar ingreso</a>" in contenido
+    assert "Revisión documental:" in contenido and ">Aceptado<" in contenido
+    assert "Ver revisión" in contenido
     respuesta = cliente.get(revision_url)
     contenido = respuesta.content.decode()
     assert "Aceptar este comprobante no confirma el cobro" in contenido
@@ -359,7 +359,7 @@ def test_anticipos_parciales_verificacion_y_factura_posterior(escenario, solicit
     respuesta = cliente.get(reverse("facturacion:detalle", args=[solicitud.pk]))
     assert respuesta.status_code == 200
     assert len(respuesta.context["historial"]) == 8
-    assert "CONFIRMADO" in respuesta.content.decode()
+    assert ">Confirmado<" in respuesta.content.decode()
 
 
 @pytest.mark.parametrize(
@@ -700,3 +700,43 @@ def test_reversa_vacia_upgrade_preservan_solicitud(escenario, solicitud):
         assert solicitud.estado == "PRESENTADA" and solicitud.eventos.count() == 1
     finally:
         MigrationExecutor(connection).migrate(finales)
+
+
+def test_cobro_form_oculta_select_vacio_y_usa_selector_compartido_con_respaldos(
+    escenario, solicitud, entrada
+):
+    from documentos.services import incorporar
+
+    cliente = Client()
+    cliente.force_login(escenario.usuarios["a"])
+    url = reverse("facturacion:registrar_cobro", args=[solicitud.pk])
+
+    sin_respaldos = cliente.get(url)
+    assert sin_respaldos.status_code == 200
+    html_sin = sin_respaldos.content.decode("utf-8")
+    assert 'id="fac-cobro-archivo-selector"' in html_sin
+    assert "data-file-drop-custom" in html_sin
+    assert 'id="visor-documento-dialogo"' in html_sin
+    assert 'name="documento"' not in html_sin
+
+    doc_previo = incorporar(
+        actor=escenario.actores["a"],
+        referencia=f"facturacion:{solicitud.pk}",
+        archivo=pdf(),
+        tipo="COMPROBANTE_COBRO",
+        procedencia="SOLICITANTE",
+    )
+    con_respaldos = cliente.get(url)
+    assert con_respaldos.status_code == 200
+    html_con = con_respaldos.content.decode("utf-8")
+    assert 'name="documento"' in html_con
+    assert 'id="fac-cobro-archivo-selector"' in html_con
+
+    combinado = cliente.post(
+        url, dict(entrada, documento=str(doc_previo.pk), archivo=pdf())
+    )
+    assert combinado.status_code == 400
+    html_err = combinado.content.decode("utf-8")
+    assert 'name="documento"' in html_err
+    assert "Usá una sola opción" in html_err
+    assert "volvé a seleccionarlo" in html_err

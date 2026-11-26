@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Respaldo documental — Solicitud #{{ solicitud.pk }}{% endblock %}
+{% block title %}Respaldo documental — Solicitud #{{ solicitud.pk }} — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
@@ -9,14 +9,19 @@
 
 {% block content %}
 <div class="solicitud-detalle">
-    <p class="sd-back"><a href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle de la solicitud</a></p>
+    <a class="page-back" href="{% url 'gastos:detalle' pk=solicitud.pk %}">&larr; Volver al detalle</a>
 
-    <div class="sd-card">
-        <h3 class="sd-h2" style="margin-top: 0;">Cargar o reemplazar un respaldo</h3>
-        <p class="sd-muted sd-small" style="margin-bottom: 1.25rem;">Solicitud #{{ solicitud.pk }} — {{ solicitud.concepto }}</p>
+    <header class="sd-page-head">
+        <h1>Cargar o reemplazar respaldo</h1>
+        <p class="sd-page-subtitle font-tabular">Solicitud #{{ solicitud.pk }} — {{ solicitud.concepto }}</p>
+    </header>
 
+    <section class="sd-card" aria-label="Formulario de respaldo documental">
         {% include "gastos/_documento_aporte_form.html" with form=form versiones_reemplazables=versiones_reemplazables aporte_inline=False %}
-    </div>
+    </section>
 </div>
-<script src="{% static 'gastos/js/documento_aporte.js' %}"></script>
+<script src="{% static 'gastos/js/documento_aporte.js' %}" defer></script>
+{% if form.errors %}
+<script src="{% static 'js/foco_errores.js' %}" defer></script>
+{% endif %}
 {% endblock %}

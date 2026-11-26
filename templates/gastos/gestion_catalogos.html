@@ -2,29 +2,26 @@
 {% load static %}
 
 {% block title %}Catálogos y parámetros — PS Cooperadora{% endblock %}
+{% block titulo_modulo %}Configuración — PS Cooperadora{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'gestion/gestion.css' %}">
 <link rel="stylesheet" href="{% static 'gastos/css/gestion_catalogos.css' %}">
-
 {% endblock %}
 
 {% block content %}
-{% include "gestion/tabs_configuracion.html" with circuito="GASTO" %}
 <div class="catalog-admin">
     <header class="catalog-heading">
         <div>
-            <p class="catalog-eyebrow">Administración de gastos</p>
-            <h1>Catálogos y parámetros</h1>
+            <h1 class="catalog-title">Catálogos y parámetros</h1>
+            <p class="catalog-intro">Administrá los centros de costo disponibles y los parámetros de referencia para retenciones ATP.</p>
         </div>
-        <a href="{% url 'gastos:lista' %}" class="btn btn-secondary">Ir al listado de gastos</a>
     </header>
 
-    {% for message in messages %}
-        <p class="catalog-message" role="status">{{ message }}</p>
-    {% endfor %}
+    {% include "gestion/tabs_configuracion.html" with circuito="GASTO" %}
 
+    {% include "comunes/mensajes_flash.html" %}
     {% include "gastos/_catalogos_contenido.html" %}
-
 </div>
 <script src="{% static 'gastos/js/gestion_catalogos.js' %}" defer></script>
 {% endblock %}
