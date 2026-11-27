@@ -151,6 +151,7 @@
         <span>Constancias ATP pendientes: <b>{{ pendientes_actuales.sin_atp.cantidad }} pago{{ pendientes_actuales.sin_atp.cantidad|pluralize }}</b></span>
       </div>
       <div class="kpi-sub">Incluye todos los centros y modalidades, en cualquier período.</div>
+      <a class="btn btn-secondary btn-row kpi-detalle-enlace" href="{% url 'gastos:deuda_documental' %}">Ver por titular</a>
     </div>
   </div>
 

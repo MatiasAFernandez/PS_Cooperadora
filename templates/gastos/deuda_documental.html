@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Rendiciones pendientes por titular — PS Cooperadora{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="solicitud-detalle" aria-labelledby="rendiciones-titulo">
+    <a class="page-back" href="{% url 'gestion:reporte_gastos' %}">&larr; Volver al reporte</a>
+
+    <header class="sd-page-head">
+        <h1 id="rendiciones-titulo">Rendiciones pendientes por titular</h1>
+        {% if titulares %}
+            <p class="sd-page-subtitle font-tabular">
+                {{ titulares|length }} titular{{ titulares|length|pluralize:"es" }} ·
+                {{ total_pendientes }} rendici{{ total_pendientes|pluralize:"ón,ones" }} pendiente{{ total_pendientes|pluralize }} ·
+                {{ total_vencidas }} vencida{{ total_vencidas|pluralize }}
+            </p>
+        {% endif %}
+    </header>
+
+    {% for titular in titulares %}
+        <details class="sd-card sd-details sd-details-flush">
+            <summary>
+                <strong class="sd-row-main sd-titular-nombre">{{ titular.nombre }}</strong>
+                {% with pendientes=titular.tramites|length vencidas=titular.total_vencidas %}
+                    <span class="sd-small sd-muted font-tabular">
+                        {{ pendientes }} pendiente{{ pendientes|pluralize }}{% if vencidas %} · {{ vencidas }} vencida{{ vencidas|pluralize }}{% endif %}
+                    </span>
+                {% endwith %}
+            </summary>
+            <ul class="sd-list">
+                {% for tramite in titular.tramites %}
+                    <li class="sd-row">
+                        <div class="sd-row-main">
+                            <div class="sd-doc-title-line">
+                                <strong>{{ tramite.concepto }}</strong>
+                                {% if tramite.en_mora %}
+                                    <span class="status-pill status-error">Vencida</span>
+                                {% else %}
+                                    <span class="status-pill status-warning">En plazo</span>
+                                {% endif %}
+                            </div>
+                            <p class="sd-small sd-muted font-tabular">
+                                Solicitud #{{ tramite.solicitud_id }} ·
+                                {% if tramite.factura_para_corregir %}Para corregir{% else %}Falta cargar{% endif %} ·
+                                {% if tramite.en_mora %}Venció el{% else %}Vence el{% endif %}
+                                <time datetime="{{ tramite.fecha_vencimiento|date:'Y-m-d' }}">{{ tramite.fecha_vencimiento|date:"d/m/Y" }}</time>
+                            </p>
+                        </div>
+                        <div class="sd-row-actions">
+                            <a class="btn btn-secondary btn-row" href="{% url 'gastos:detalle' pk=tramite.solicitud_id %}" aria-label="Ver trámite #{{ tramite.solicitud_id }}">Ver trámite</a>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </details>
+    {% empty %}
+        <div class="sd-card">
+            <p>Las rendiciones de compras directas están al día.</p>
+        </div>
+    {% endfor %}
+</section>
+{% endblock %}

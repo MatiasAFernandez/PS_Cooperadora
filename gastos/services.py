@@ -294,6 +294,7 @@ class TramiteDeudaDocumentalDTO:
     fecha_vencimiento: date
     dias_transcurridos: int
     en_mora: bool
+    factura_para_corregir: bool
 
     @property
     def solicitud_id(self) -> int:
@@ -329,6 +330,19 @@ class ResumenDeudaDocumentalDTO:
         return len(self.solicitudes_en_mora) > self.max_mora_permitida
 
 
+@dataclass(frozen=True)
+class DeudaDocumentalTitularDTO:
+    """Rendiciones pendientes de la cuenta titular de las solicitudes."""
+
+    titular_id: int
+    nombre: str
+    tramites: tuple[TramiteDeudaDocumentalDTO, ...]
+
+    @property
+    def total_vencidas(self) -> int:
+        return sum(tramite.en_mora for tramite in self.tramites)
+
+
 def _vencimiento_factura_definitiva(fecha_pago: date) -> date:
     vencimiento = fecha_pago + timedelta(days=settings.GASTOS_RENDICION_DIAS_GRACIA)
     ultimo_dia = monthrange(fecha_pago.year, fecha_pago.month)[1]
@@ -339,6 +353,21 @@ def _vencimiento_factura_definitiva(fecha_pago: date) -> date:
         )
         vencimiento = max(vencimiento, vencimiento_fin_de_mes)
     return vencimiento
+
+
+def _tramite_deuda_documental(
+    solicitud: SolicitudGasto, fecha_actual: date
+) -> TramiteDeudaDocumentalDTO:
+    fecha_pago = solicitud.pago_externo.fecha_pago
+    vencimiento = _vencimiento_factura_definitiva(fecha_pago)
+    return TramiteDeudaDocumentalDTO(
+        solicitud=solicitud,
+        fecha_pago=fecha_pago,
+        fecha_vencimiento=vencimiento,
+        dias_transcurridos=max(0, (fecha_actual - fecha_pago).days),
+        en_mora=fecha_actual > vencimiento,
+        factura_para_corregir=solicitud.factura_para_corregir,
+    )
 
 
 def verificar_deuda_documental_solicitante(
@@ -368,15 +397,7 @@ def verificar_deuda_documental_solicitante(
     en_mora: list[TramiteDeudaDocumentalDTO] = []
 
     for solicitud in solicitudes:
-        fecha_pago = solicitud.pago_externo.fecha_pago
-        vencimiento = _vencimiento_factura_definitiva(fecha_pago)
-        item = TramiteDeudaDocumentalDTO(
-            solicitud=solicitud,
-            fecha_pago=fecha_pago,
-            fecha_vencimiento=vencimiento,
-            dias_transcurridos=max(0, (fecha_actual - fecha_pago).days),
-            en_mora=fecha_actual > vencimiento,
-        )
+        item = _tramite_deuda_documental(solicitud, fecha_actual)
         pendientes.append(item)
         if item.en_mora:
             en_mora.append(item)
@@ -385,6 +406,35 @@ def verificar_deuda_documental_solicitante(
         solicitudes_pendientes=tuple(pendientes),
         solicitudes_en_mora=tuple(en_mora),
     )
+
+
+def obtener_deuda_documental_por_titular(
+    *, fecha_referencia: date | None = None
+) -> tuple[DeudaDocumentalTitularDTO, ...]:
+    """Proyección para la consulta global, ordenada por el primer vencimiento."""
+    fecha_actual = fecha_referencia if fecha_referencia is not None else timezone.localdate()
+    solicitudes = compras_directas_con_deuda_documental().select_related(
+        "solicitante", "pago_externo"
+    )
+    tramites_ordenados = sorted(
+        (_tramite_deuda_documental(solicitud, fecha_actual) for solicitud in solicitudes),
+        key=lambda tramite: (tramite.fecha_vencimiento, tramite.solicitud_id),
+    )
+    por_titular: dict[int, list[TramiteDeudaDocumentalDTO]] = {}
+    for tramite in tramites_ordenados:
+        por_titular.setdefault(tramite.solicitud.solicitante_id, []).append(tramite)
+
+    titulares = []
+    for titular_id, tramites in por_titular.items():
+        solicitante = tramites[0].solicitud.solicitante
+        titulares.append(
+            DeudaDocumentalTitularDTO(
+                titular_id=titular_id,
+                nombre=solicitante.get_full_name().strip() or solicitante.get_username(),
+                tramites=tuple(tramites),
+            )
+        )
+    return tuple(titulares)
 
 
 @transaction.atomic

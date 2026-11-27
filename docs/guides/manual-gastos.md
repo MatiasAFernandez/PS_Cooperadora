@@ -109,6 +109,7 @@ Las **compras directas** ya pagadas que aún no cuentan con una **factura de pro
 - **Cronología del trámite:** reúne en orden cronológico las decisiones, subsanaciones, aportes documentales, revisiones y el registro del pago, según los alcances descriptos en la [guía de historial y navegación común](historial-y-navegacion-comunes.md).
 - **Avisos web y correo:** el ícono **Avisos** en la barra superior muestra notificaciones de nueva solicitud, cambios de decisión (incluida la observación) y registro inicial de pago; el envío de correo depende de la configuración activa del entorno. Para más detalle, consultá la [guía de avisos web de Gastos](avisos-web-gastos.md).
 - **Reporte directivo y catálogos:** el **Reporte Directivo de Gastos** consolida solicitudes, compromisos y pagos con retención ATP por cuatrimestre y centro de costo. Su uso y la gestión de catálogos y parámetros se explican en la [guía de administración y reportes](administracion-formularios-reportes.md).
+- En **Pendientes hoy** del reporte, elegí **Ver por titular** para desplegar las rendiciones de cada solicitante. Cada trámite indica si falta cargar la factura o si requiere corrección, muestra el vencimiento y enlaza al detalle.
 
 ---
 

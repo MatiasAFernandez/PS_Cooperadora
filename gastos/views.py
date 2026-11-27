@@ -116,6 +116,7 @@ from gastos.services import (
     evaluar_requisitos_cierre,
     obtener_alicuota_atp,
     obtener_base_imponible_atp,
+    obtener_deuda_documental_por_titular,
     puede_cerrar_solicitud,
     puede_corregir_solicitud,
     verificar_deuda_documental_solicitante,
@@ -902,6 +903,30 @@ class SolicitudGastoListView(View):
                 "url_tab_todas": url_tab_todas,
                 "url_tab_atencion": url_tab_atencion,
                 "consulta_bandeja": request.GET.urlencode(),
+            },
+        )
+
+
+class DeudaDocumentalGastosView(View):
+    """Rendiciones pendientes de compras directas para la consulta global."""
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        result = _enforce_actor(request)
+        if isinstance(result, HttpResponse):
+            return result
+        actor = result
+        if not has_capability(actor, "gastos.consultar_todas"):
+            raise PermissionDenied("No tenés permiso para consultar rendiciones por titular.")
+
+        titulares = obtener_deuda_documental_por_titular()
+        return render(
+            request,
+            "gastos/deuda_documental.html",
+            {
+                "actor": actor,
+                "titulares": titulares,
+                "total_pendientes": sum(len(titular.tramites) for titular in titulares),
+                "total_vencidas": sum(titular.total_vencidas for titular in titulares),
             },
         )
 
