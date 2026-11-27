@@ -442,11 +442,36 @@
         }
     }
 
+    function inicializarFiltroReemplazo(grupo) {
+        var formulario = grupo.closest('form');
+        var tipo = formulario.elements.namedItem('tipo');
+        var reemplazo = formulario.elements.namedItem('reemplaza_id');
+        var opcionNueva = reemplazo.options[0];
+        var versiones = Array.from(reemplazo.options).slice(1);
+
+        function filtrarVersiones() {
+            var seleccion = reemplazo.value;
+            var compatibles = versiones.filter(function (opcion) {
+                return opcion.dataset.tipoDocumento === tipo.value;
+            });
+            reemplazo.replaceChildren(opcionNueva, ...compatibles);
+            reemplazo.value = seleccion;
+            if (reemplazo.selectedIndex < 0) {
+                reemplazo.value = '';
+            }
+            grupo.hidden = compatibles.length === 0;
+        }
+
+        tipo.addEventListener('change', filtrarVersiones);
+        filtrarVersiones();
+    }
+
     function init() {
         var wrappers = document.querySelectorAll('[data-aporte-upload]');
         for (var i = 0; i < wrappers.length; i += 1) {
             inicializarWrapper(wrappers[i]);
         }
+        document.querySelectorAll('[data-aporte-reemplazo]').forEach(inicializarFiltroReemplazo);
         inicializarCancelarInline(document);
     }
 

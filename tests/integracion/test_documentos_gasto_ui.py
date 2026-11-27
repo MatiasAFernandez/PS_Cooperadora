@@ -9,6 +9,7 @@ from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
+from pytest_django.asserts import assertContains
 
 from documentos.models import Documento, RevisionDocumento
 from documentos.revision import revisar
@@ -238,6 +239,34 @@ def test_selector_no_ofrece_tipos_que_el_actor_no_puede_incorporar(
         valor for valor, _etiqueta in formulario.context["form"].fields["reemplaza_id"].choices
     }
     assert str(documento.pk) not in valores_reemplazables
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("vista", ["gastos:detalle", "gastos:documentos"])
+def test_selector_marca_tipo_y_conserva_reemplazo_preseleccionado(escenario_comun, vista):
+    e = escenario_comun
+    factura = incorporar(
+        actor=e.actor_a,
+        referencia=f"gastos:{e.gasto.pk}",
+        archivo=_pdf("factura-sintetica.pdf"),
+        tipo=Documento.Tipo.FACTURA_PROVEEDOR,
+        procedencia=Documento.Procedencia.SOLICITANTE,
+    )
+    respuesta = _cliente(e.a).get(
+        reverse(vista, args=[e.gasto.pk]), {"reemplaza": str(factura.pk)}
+    )
+
+    assertContains(
+        respuesta,
+        f'<option value="{factura.pk}" data-tipo-documento="{factura.tipo}" selected>'
+        "factura-sintetica.pdf · v1 · Factura de proveedor</option>",
+        html=True,
+    )
+    assertContains(
+        respuesta,
+        f'<option value="{factura.tipo}" selected>Factura de proveedor</option>',
+        html=True,
+    )
 
 
 @pytest.mark.django_db

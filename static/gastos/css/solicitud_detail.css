@@ -757,6 +757,11 @@
   color: var(--ink-primary);
 }
 
+.solicitud-detalle .sd-form-aporte [data-aporte-label] {
+  display: inline-flex;
+  margin: 0;
+}
+
 :is(.solicitud-detalle, .nueva-solicitud) [data-aporte-drop] input[type="file"] {
   max-width: 100%;
   font-size: var(--text-sm);
@@ -920,6 +925,10 @@ html:not(.js) :is(.solicitud-detalle, .nueva-solicitud) .sd-dropzone [data-aport
   :is(.solicitud-detalle, .nueva-solicitud) .sd-file-card-content {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .solicitud-detalle .sd-form-aporte .sd-file-info {
+    flex-basis: auto;
   }
 
   :is(.solicitud-detalle, .nueva-solicitud) .sd-ready-chip {
