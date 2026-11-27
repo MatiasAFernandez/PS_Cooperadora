@@ -264,6 +264,11 @@
   font-size: var(--text-sm);
 }
 
+.solicitud-detalle .sd-titular-nombre {
+  flex-basis: auto;
+  font-size: inherit;
+}
+
 .solicitud-detalle .sd-doc-title-line {
   display: flex;
   flex-wrap: wrap;

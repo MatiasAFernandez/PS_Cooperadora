@@ -37,6 +37,7 @@ from gastos.services import (
     MAX_TRAMITES_MORA_PERMITIDOS,
     DeudaDocumentalBloqueoError,
     crear_solicitud_gasto,
+    obtener_deuda_documental_por_titular,
     verificar_deuda_documental_solicitante,
 )
 from tests.soporte_gastos import crear_gasto_sintetico
@@ -137,6 +138,98 @@ def test_solicitante_sin_solicitudes_resumen_vacio(create_actor: Any) -> None:
     assert not resumen.tiene_bloqueo
     assert resumen.solicitudes_pendientes == ()
     assert resumen.solicitudes_en_mora == ()
+
+
+def test_consulta_por_titular_exige_el_permiso_global(
+    client: Any, create_actor: Any, auth_client: Any
+) -> None:
+    url = reverse("gastos:deuda_documental")
+    solicitante, _ = create_actor("solic_deuda_propia", ["gastos.presentar"])
+    _crear_compra_directa_pagada(
+        solicitante, "Gasto que sólo puede ver el titular", date(2026, 10, 1)
+    )
+
+    assert client.get(url).status_code == 302
+    respuesta = auth_client(solicitante).get(url)
+    assert respuesta.status_code == 403
+    assert "Gasto que sólo puede ver el titular" not in respuesta.content.decode()
+
+
+def test_consulta_por_titular_vacia_para_lector_global(
+    create_actor: Any, auth_client: Any
+) -> None:
+    lector, _ = create_actor("lector_deuda_vacia", ["gastos.consultar_todas"])
+
+    respuesta = auth_client(lector).get(reverse("gastos:deuda_documental"))
+
+    assert respuesta.status_code == 200
+    assert respuesta.context["total_pendientes"] == 0
+    assert "Las rendiciones de compras directas están al día" in respuesta.content.decode()
+
+
+@pytest.mark.parametrize(
+    "dictamen",
+    [RevisionDocumento.Resultado.OBSERVADO, RevisionDocumento.Resultado.RECHAZADO],
+)
+def test_consulta_por_titular_ordena_y_distingue_homonimos(
+    create_actor: Any, auth_client: Any, monkeypatch: Any,
+    django_assert_num_queries: Any, dictamen: str,
+) -> None:
+    from django.utils import timezone
+
+    en_plazo, _ = create_actor("solic_deuda_en_plazo", ["gastos.presentar"])
+    con_mora, _ = create_actor("solic_deuda_en_mora", ["gastos.presentar"])
+    lector, _ = create_actor("lector_deuda_global", ["gastos.consultar_todas"])
+    for titular in (en_plazo, con_mora):
+        titular.first_name = "Ana"
+        titular.last_name = "López"
+        titular.save(update_fields=["first_name", "last_name"])
+
+    otra = _crear_compra_directa_pagada(en_plazo, "Repuestos del taller", date(2026, 10, 27))
+    corregir = _crear_compra_directa_pagada(con_mora, "Compra por corregir", date(2026, 10, 25))
+    vencida = _crear_compra_directa_pagada(con_mora, "Compra vencida", date(2026, 10, 24))
+    presentada = _crear_compra_directa_pagada(
+        con_mora, "Factura presentada", date(2026, 10, 18), con_factura_inicial=True,
+    )
+    factura = _adjuntar_factura(corregir, con_mora)
+    RevisionDocumento.objects.create(
+        documento=factura, resultado=dictamen, motivo="Actualizar datos de factura", actor=lector,
+    )
+    referencia = date(2026, 11, 15)
+
+    with django_assert_num_queries(1):
+        titulares = obtener_deuda_documental_por_titular(fecha_referencia=referencia)
+
+    assert [titular.titular_id for titular in titulares] == [con_mora.pk, en_plazo.pk]
+    assert [titular.nombre for titular in titulares] == ["Ana López", "Ana López"]
+    primer_grupo, segundo_grupo = titulares
+    assert [tramite.solicitud_id for tramite in primer_grupo.tramites] == [vencida.pk, corregir.pk]
+    assert [tramite.solicitud_id for tramite in segundo_grupo.tramites] == [otra.pk]
+    sin_factura, para_corregir = primer_grupo.tramites
+    assert sin_factura.fecha_vencimiento == date(2026, 11, 8)
+    assert sin_factura.en_mora and not sin_factura.factura_para_corregir
+    assert para_corregir.fecha_vencimiento == referencia
+    assert para_corregir.factura_para_corregir and not para_corregir.en_mora
+
+    monkeypatch.setattr(timezone, "localdate", lambda: referencia)
+    cliente = auth_client(lector)
+    url = reverse("gastos:deuda_documental")
+    respuesta = cliente.get(url)
+    assert respuesta.status_code == 200
+    assert respuesta.context["total_pendientes"] == 3
+    assert respuesta.context["total_vencidas"] == 1
+    html = respuesta.content.decode()
+    assert html.count('<details class="sd-card sd-details sd-details-flush">') == 2
+    assert "Falta cargar" in html and "Para corregir" in html
+    assert presentada.concepto not in html
+    for solicitud in (vencida, corregir, otra):
+        detalle = reverse("gastos:detalle", args=[solicitud.pk])
+        assert f'href="{detalle}" aria-label="Ver trámite #{solicitud.pk}"' in html
+
+    reporte = cliente.get(reverse("gestion:reporte_gastos"), {"corte": "C1"})
+    assert reporte.status_code == 200
+    assert reporte.context["pendientes_actuales"]["sin_factura"]["cantidad"] == 3
+    assert f'href="{url}">Ver por titular</a>' in reporte.content.decode()
 
 
 def test_reintegro_pagado_no_genera_deuda_documental(create_actor: Any) -> None:

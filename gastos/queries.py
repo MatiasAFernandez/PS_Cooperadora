@@ -33,20 +33,23 @@ def compras_directas_con_deuda_documental() -> QuerySet[SolicitudGasto]:
     ultima_revision = RevisionDocumento.objects.filter(
         documento_id=OuterRef("pk")
     ).order_by("-id")
-    facturas_validas = (
-        Documento.objects.filter(tipo=Documento.Tipo.FACTURA_PROVEEDOR, sucesor__isnull=True)
-        .filter(
-            Q(solicitud_gasto_id=OuterRef("pk"))
-            | Q(solicitud_gasto_id__isnull=True, tramite_base_id=OuterRef("tramite_base_id"))
-        )
-        .alias(ultimo_resultado=Subquery(ultima_revision.values("resultado")[:1]))
-        .filter(
-            Q(ultimo_resultado__isnull=True)
-            | Q(ultimo_resultado=RevisionDocumento.Resultado.ACEPTADO)
-        )
+    facturas_vigentes = Documento.objects.filter(
+        tipo=Documento.Tipo.FACTURA_PROVEEDOR, sucesor__isnull=True,
+    ).filter(
+        Q(solicitud_gasto_id=OuterRef("pk"))
+        | Q(solicitud_gasto_id__isnull=True, tramite_base_id=OuterRef("tramite_base_id"))
     )
-    return SolicitudGasto.objects.filter(
-        tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
-        pago_externo__isnull=False,
-        cierre__isnull=True,
-    ).filter(~Exists(facturas_validas))
+    facturas_validas = facturas_vigentes.alias(
+        ultimo_resultado=Subquery(ultima_revision.values("resultado")[:1])
+    ).filter(
+        Q(ultimo_resultado__isnull=True) | Q(ultimo_resultado=RevisionDocumento.Resultado.ACEPTADO)
+    )
+    return (
+        SolicitudGasto.objects.filter(
+            tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
+            pago_externo__isnull=False,
+            cierre__isnull=True,
+        )
+        .filter(~Exists(facturas_validas))
+        .annotate(factura_para_corregir=Exists(facturas_vigentes))
+    )
