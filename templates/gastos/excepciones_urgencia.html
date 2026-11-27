@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Excepciones por urgencia — PS Cooperadora{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+<link rel="stylesheet" href="{% static 'gastos/css/excepciones_urgencia.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="solicitud-detalle excepciones" aria-labelledby="excepciones-titulo">
+    <a class="page-back" href="{% url 'gastos:deuda_documental' %}">&larr; Volver a rendiciones</a>
+    <header class="sd-page-head">
+        <h1 id="excepciones-titulo">Excepciones por urgencia</h1>
+        <p class="sd-page-subtitle">Habilitá temporalmente la presentación de gastos cuando la mora documental la bloquea.</p>
+    </header>
+
+    <form class="filter-fields excepciones-busqueda" method="get" role="search">
+        <div class="form-group">
+            <label for="excepciones-consulta">Nombre o correo del titular</label>
+            <input id="excepciones-consulta" type="search" name="q" value="{{ consulta }}" maxlength="150">
+        </div>
+        <button class="btn btn-primary" type="submit">Buscar</button>
+        {% if consulta %}
+            <a class="btn btn-ghost" href="{% url 'gastos:excepciones_urgencia' %}">Limpiar</a>
+        {% endif %}
+    </form>
+
+    {% if pagina.object_list %}
+        <ul class="sd-card sd-list excepciones-resultados" aria-label="Titulares encontrados">
+            {% for titular in pagina %}
+                <li class="sd-row">
+                    <div class="sd-row-main">
+                        {% firstof titular.cuenta_local.nombre_completo titular.get_full_name titular.username as nombre %}
+                        <strong>{{ nombre }}</strong>
+                        {% firstof titular.cuenta_local.email titular.email titular.username as correo %}
+                        <p class="sd-muted sd-small">{{ correo }}</p>
+                    </div>
+                    <a class="btn btn-secondary btn-row" href="{% url 'gastos:excepcion_titular' titular.pk %}?q={{ consulta|urlencode }}" aria-label="Gestionar excepción de {{ nombre }}">
+                        Gestionar
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+        {% include "gastos/_excepciones_paginacion.html" with pagina=pagina parametros=request.GET etiqueta="Paginación de titulares" only %}
+    {% elif consulta %}
+        <p class="excepciones-vacio">No encontramos titulares para esa búsqueda.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,93 @@
+.excepciones,
+.excepciones-encabezado-rendiciones {
+    overflow-wrap: anywhere;
+}
+
+.excepciones-encabezado-rendiciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem 1rem;
+}
+
+.excepciones-busqueda {
+    max-width: 34rem;
+    margin: 1.15rem 0;
+}
+
+.excepciones .excepciones-resultados {
+    padding: 0 1rem;
+}
+
+.excepciones-vacio {
+    color: var(--ink-muted);
+}
+
+.excepciones-estado h2,
+.excepciones-historial h2 {
+    color: var(--ink-strong);
+    font-size: var(--text-lg);
+    margin: 0;
+}
+
+.excepciones-estado-cabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .35rem .75rem;
+}
+
+.excepciones-estado time,
+.excepciones-historial time {
+    font-variant-numeric: tabular-nums;
+}
+
+.excepciones-formulario {
+    display: grid;
+    gap: .875rem;
+    justify-items: start;
+    margin-top: 1rem;
+    max-width: 34rem;
+}
+
+.excepciones-campo {
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.excepciones-campo input[type="datetime-local"] {
+    max-width: 100%;
+    min-height: var(--ctrl-h);
+}
+
+.excepciones-campo textarea {
+    display: block;
+    width: 100%;
+}
+
+.excepciones-revocar {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border-hairline);
+}
+
+.excepciones .excepciones-revocacion {
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--border-hairline);
+}
+
+.excepciones-paginacion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
+}
+
+@media (max-width: 640px) {
+    .excepciones-busqueda .form-group {
+        flex-basis: 100%;
+    }
+}

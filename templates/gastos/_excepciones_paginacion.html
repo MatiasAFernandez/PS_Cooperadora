@@ -1,0 +1,11 @@
+{% if pagina.has_other_pages %}
+    <nav class="excepciones-paginacion" aria-label="{{ etiqueta }}">
+        {% if pagina.has_previous %}
+            <a class="btn btn-secondary" href="{% querystring parametros page=pagina.previous_page_number %}">Anterior</a>
+        {% endif %}
+        <span class="sd-small sd-muted font-tabular">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}
+            <a class="btn btn-secondary" href="{% querystring parametros page=pagina.next_page_number %}">Siguiente</a>
+        {% endif %}
+    </nav>
+{% endif %}

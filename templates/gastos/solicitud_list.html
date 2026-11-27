@@ -26,6 +26,9 @@
                 <h2 id="bandeja-deuda">Presentación de nuevas solicitudes bloqueada</h2>
                 <p>Regularizá las facturas definitivas vencidas para volver a presentar solicitudes.</p>
                 {% include "gastos/_bandeja_deuda.html" with items=resumen_deuda.solicitudes_en_mora %}
+            {% elif resumen_deuda.excepcion_urgencia_hasta %}
+                <h2 id="bandeja-deuda">Excepción por urgencia vigente</h2>
+                <p>Podés presentar solicitudes hasta el {{ resumen_deuda.excepcion_urgencia_hasta|date:"d/m/Y" }} a las {{ resumen_deuda.excepcion_urgencia_hasta|date:"H:i" }}. Las facturas pendientes siguen abiertas.</p>
             {% else %}
                 <h2 id="bandeja-deuda">Rendición de comprobantes pendiente</h2>
                 <p>Consultá el vencimiento de cada solicitud en la bandeja de pendientes.</p>

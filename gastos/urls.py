@@ -19,6 +19,7 @@ from gastos.views import (
     SolicitudGastoPagoRectificarView,
     SolicitudGastoPagoView,
 )
+from gastos.views_excepciones import ExcepcionTitularView, TitularesExcepcionView
 
 app_name = "gastos"
 
@@ -34,6 +35,16 @@ urlpatterns = [
         "reportes/deuda-documental/",
         DeudaDocumentalGastosView.as_view(),
         name="deuda_documental",
+    ),
+    path(
+        "reportes/excepciones-urgencia/",
+        TitularesExcepcionView.as_view(),
+        name="excepciones_urgencia",
+    ),
+    path(
+        "reportes/excepciones-urgencia/<int:titular_id>/",
+        ExcepcionTitularView.as_view(),
+        name="excepcion_titular",
     ),
     path(
         "catalogos/",

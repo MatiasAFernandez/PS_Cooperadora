@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Excepción por urgencia — PS Cooperadora{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+<link rel="stylesheet" href="{% static 'gastos/css/excepciones_urgencia.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="solicitud-detalle excepciones" aria-labelledby="excepcion-titular">
+    <a class="page-back" href="{% url 'gastos:excepciones_urgencia' %}{% if consulta %}?q={{ consulta|urlencode }}{% endif %}">&larr; Volver a excepciones por urgencia</a>
+    <header class="sd-page-head">
+        <h1 id="excepcion-titular">{% firstof titular.cuenta_local.nombre_completo titular.get_full_name titular.username %}</h1>
+        <p class="sd-page-subtitle">{% firstof titular.cuenta_local.email titular.email titular.username %}</p>
+    </header>
+
+    {% include "comunes/mensajes_flash.html" %}
+
+    {% if error_accion_no_disponible %}
+        <div class="form-error-summary" role="alert" tabindex="-1" data-auto-focus-error>
+            <p>La acción solicitada dejó de estar disponible. Revisá el estado actual.</p>
+        </div>
+    {% endif %}
+
+    <section class="sd-card excepciones-estado" aria-labelledby="excepcion-estado">
+        {% if vigente %}
+            <div class="excepciones-estado-cabecera">
+                <h2 id="excepcion-estado">Excepción por urgencia</h2>
+                <span class="status-pill status-success">Vigente</span>
+            </div>
+            <p>Puede presentar solicitudes de Gastos hasta el <time datetime="{{ vigente.vence_en|date:'c' }}">{{ vigente.vence_en|date:"d/m/Y" }} a las {{ vigente.vence_en|date:"H:i" }}</time>. Las rendiciones pendientes siguen abiertas.</p>
+            <details class="sd-details excepciones-revocar"{% if form.errors %} open{% endif %}>
+                <summary>Revocar excepción</summary>
+                <p>Con la revocación, la próxima solicitud vuelve a quedar sujeta a la mora del titular.</p>
+                {% include "gastos/_excepcion_form.html" with revocacion=True %}
+            </details>
+        {% elif form %}
+            <h2 id="excepcion-estado">Otorgar excepción por urgencia</h2>
+            <p>Habilitá nuevas solicitudes de Gastos hasta la fecha y hora que indiques.</p>
+            {% include "gastos/_excepcion_form.html" %}
+        {% else %}
+            <h2 id="excepcion-estado">Excepción por urgencia</h2>
+            <p>Esta cuenta no puede presentar solicitudes de Gastos.</p>
+        {% endif %}
+    </section>
+
+    <section class="excepciones-historial" aria-labelledby="excepcion-historial">
+        <h2 id="excepcion-historial">Historial</h2>
+        {% if historial.object_list %}
+            <ul class="history-list">
+                {% for excepcion in historial %}
+                    <li class="history-event">
+                        <div class="excepciones-estado-cabecera">
+                            <strong>Otorgada el <time datetime="{{ excepcion.otorgada_en|date:'c' }}">{{ excepcion.otorgada_en|date:"d/m/Y H:i" }}</time></strong>
+                            {% if excepcion.revocada_en %}
+                                <span class="status-pill status-neutral">Revocada</span>
+                            {% elif excepcion.pk == vigente.pk %}
+                                <span class="status-pill status-success">Vigente</span>
+                            {% else %}
+                                <span class="status-pill status-neutral">Vencida</span>
+                            {% endif %}
+                        </div>
+                        <p class="sd-small sd-muted">Por {{ excepcion.otorgada_por.get_full_name|default:excepcion.otorgada_por.username }} · Vencimiento previsto {{ excepcion.vence_en|date:"d/m/Y H:i" }}</p>
+                        <p>{{ excepcion.motivo|linebreaksbr }}</p>
+                        {% if excepcion.revocada_en %}
+                            <p class="excepciones-revocacion"><strong>Revocada el <time datetime="{{ excepcion.revocada_en|date:'c' }}">{{ excepcion.revocada_en|date:"d/m/Y H:i" }}</time></strong></p>
+                            <p class="sd-small sd-muted">Por {{ excepcion.revocada_por.get_full_name|default:excepcion.revocada_por.username }}</p>
+                            <p>{{ excepcion.motivo_revocacion|linebreaksbr }}</p>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            {% include "gastos/_excepciones_paginacion.html" with pagina=historial parametros=request.GET etiqueta="Paginación del historial" only %}
+        {% else %}
+            <p class="sd-muted">Todavía no hay excepciones registradas para esta cuenta.</p>
+        {% endif %}
+    </section>
+</section>
+{% if form.errors or error_accion_no_disponible %}
+    <script src="{% static 'js/foco_errores.js' %}" defer></script>
+{% endif %}
+{% endblock %}
