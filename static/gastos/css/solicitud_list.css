@@ -706,7 +706,7 @@ body:has(.bandeja-panel[open]) {
     }
 
     .bandeja-filtros .form-group:has(#id_pendiente) {
-        flex: 0 0 170px;
+        flex: 0 0 196px;
     }
 
     .bandeja-filtros .form-group:has(#id_periodo) {

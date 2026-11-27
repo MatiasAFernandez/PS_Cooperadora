@@ -29,8 +29,8 @@
             {% else %}
                 <h2 id="bandeja-deuda">Rendición de comprobantes pendiente</h2>
                 <p>Adjuntá la factura definitiva dentro de los {{ resumen_deuda.dias_gracia }} días posteriores al pago.</p>
-                {% include "gastos/_bandeja_deuda.html" with items=resumen_deuda.solicitudes_pendientes %}
             {% endif %}
+            <p><a class="btn btn-secondary" href="{% url 'gastos:lista' %}?atencion=1&amp;pendiente=deuda">Ver facturas pendientes</a></p>
         </section>
     {% endif %}
 
