@@ -9,9 +9,10 @@
     {% if form.errors or detalle_aporte_con_error %}
         <div class="form-error-summary" role="alert" tabindex="-1"{% if aporte_inline %} data-respaldo-error{% else %} data-auto-focus-error{% endif %}>
             <p>Hubo un problema al procesar el respaldo:</p>
-            {% if form.non_field_errors %}
-                <ul>
+            {% if form.non_field_errors or form.reemplaza_id.errors %}
+                <ul{% if form.reemplaza_id.errors %} id="{{ form.reemplaza_id.id_for_label }}_error"{% endif %}>
                     {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                    {% for error in form.reemplaza_id.errors %}<li>{{ error }}</li>{% endfor %}
                 </ul>
             {% else %}
                 <p class="sd-reselect-note">Revisá los campos indicados y volvé a seleccionar el archivo a cargar.</p>
@@ -23,7 +24,7 @@
         {% for field in form %}
             {% if field.is_hidden %}
                 {{ field }}
-                {% if field.errors %}
+                {% if field.errors and field.name != "reemplaza_id" %}
                     <div class="sd-field-error sd-form-group-full" role="alert"{% if aporte_inline %} data-respaldo-error tabindex="-1"{% endif %}>
                         {% for error in field.errors %}
                             <p>{{ error }}</p>
@@ -33,7 +34,7 @@
             {% elif field.name == "archivo" %}
                 {% include "gastos/_documento_archivo.html" with field=field max_upload_mib=max_upload_mib aporte_inline=aporte_inline %}
             {% else %}
-                <div class="form-group sd-form-group{% if field.errors %} has-error{% endif %}">
+                <div class="form-group sd-form-group{% if field.errors %} has-error{% endif %}"{% if field.name == "reemplaza_id" %} data-aporte-reemplazo{% endif %}>
                     <label for="{{ field.id_for_label }}" class="sd-form-label">
                         {{ field.label }}{% if not field.field.required %} <span class="field-optional">(Opcional)</span>{% endif %}
                     </label>
@@ -43,7 +44,7 @@
                     {% if field.help_text %}
                         <p class="sd-field-help" id="{{ field.id_for_label }}_help">{{ field.help_text }}</p>
                     {% endif %}
-                    {% if field.errors %}
+                    {% if field.errors and field.name != "reemplaza_id" %}
                         <div id="{{ field.id_for_label }}_error" class="sd-field-error" role="alert"{% if aporte_inline %} data-respaldo-error tabindex="-1"{% endif %}>
                             {% for error in field.errors %}
                                 <p>{{ error }}</p>

@@ -441,6 +441,18 @@ class CerrarSolicitudGastoForm(forms.Form):
         return obs
 
 
+class _SelectorReemplazoDocumento(forms.Select):
+    def __init__(self, tipos_por_id: dict[str, str], attrs=None):
+        super().__init__(attrs=attrs)
+        self.tipos_por_id = tipos_por_id
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        opcion = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if tipo := self.tipos_por_id.get(value):
+            opcion["attrs"]["data-tipo-documento"] = tipo
+        return opcion
+
+
 class DocumentoGastoForm(forms.Form):
     """Formulario de aporte o reemplazo; los servicios documentales revalidan."""
 
@@ -529,22 +541,29 @@ class DocumentoGastoForm(forms.Form):
                 ("", "Seleccioná una procedencia"),
                 *((codigo, etiquetas_procedencia[codigo]) for codigo in procedencias),
             ]
-        self.fields["reemplaza_id"].choices = [
-            ("", "Cargar como documento nuevo"),
-            *(
-                (
-                    documento_id,
-                    f"{version.tipo_mostrado} — {version.nombre} — versión {version.version}",
-                )
-                for documento_id, version in self.versiones_reemplazables.items()
-            ),
-        ]
-        if not self.versiones_reemplazables:
+        campo_reemplazo = self.fields["reemplaza_id"]
+        if self.versiones_reemplazables:
+            campo_reemplazo.widget = _SelectorReemplazoDocumento(
+                {
+                    documento_id: version.tipo
+                    for documento_id, version in self.versiones_reemplazables.items()
+                },
+                attrs=campo_reemplazo.widget.attrs,
+            )
+            campo_reemplazo.choices = [
+                ("", "Cargar como documento nuevo"),
+                *(
+                    (
+                        documento_id,
+                        f"{version.nombre} · v{version.version} · {version.tipo_mostrado}",
+                    )
+                    for documento_id, version in self.versiones_reemplazables.items()
+                ),
+            ]
+        else:
             # Sin versiones reemplazables el selector sólo tendría la opción
             # "documento nuevo": se conserva el campo como hidden para el POST.
-            campo_reemplazo = self.fields["reemplaza_id"]
             campo_reemplazo.widget = forms.HiddenInput()
-            campo_reemplazo.required = False
             campo_reemplazo.choices = [("", "")]
 
     def clean_procedencia(self) -> str:
