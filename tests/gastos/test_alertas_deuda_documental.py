@@ -594,29 +594,65 @@ def test_vista_alta_post_bloqueado_retorna_400(
     assert SolicitudGasto.objects.count() == conteo_previo
 
 
-def test_vista_listado_muestra_banner_deuda_al_solicitante(
-    create_actor: Any, auth_client: Any, monkeypatch: Any
+@pytest.mark.parametrize("cantidad_vencidas", [1, 3])
+def test_vista_listado_enlaza_a_facturas_pendientes(
+    create_actor: Any, auth_client: Any, monkeypatch: Any, cantidad_vencidas: int
 ) -> None:
-    """GET /gastos/ muestra el banner de aviso de rendición en el panel del solicitante."""
+    """El aviso lleva a la deuda aun si la búsqueda actual oculta sus filas."""
+    from django.utils import timezone
+
     user, _ = create_actor("solic_list_banner", ["gastos.presentar"])
     client = auth_client(user)
+    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 10, 20))
 
-    s_vencida = _crear_compra_directa_pagada(
+    vencidas = [
+        _crear_compra_directa_pagada(
+            solicitante=user,
+            concepto=f"Compra de insumos {numero}",
+            fecha_pago=date(2026, 10, 1),
+        )
+        for numero in range(1, cantidad_vencidas + 1)
+    ]
+    en_gracia = _crear_compra_directa_pagada(
         solicitante=user,
-        concepto="Compra de reactivos químicos",
-        fecha_pago=date(2026, 10, 1),
+        concepto="Repuestos para mantenimiento",
+        fecha_pago=date(2026, 10, 12),
     )
-
-    from django.utils import timezone
-    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 10, 20))  # 19 días (1 mora)
-
-    response = client.get(reverse("gastos:lista"))
+    observada = crear_gasto_sintetico(
+        solicitante=user,
+        concepto="Material para taller",
+        estado=EstadoSolicitud.OBSERVADA,
+    )
+    lista = reverse("gastos:lista")
+    response = client.get(lista, {"q": "taller"})
     assert response.status_code == 200
-    html = response.content.decode()
+    assert list(response.context["solicitudes"]) == [observada]
+    aviso = response.content.decode().split('aria-labelledby="bandeja-deuda">', 1)[1]
+    aviso = aviso.split("</section>", 1)[0]
+    hay_bloqueo = cantidad_vencidas > MAX_TRAMITES_MORA_PERMITIDOS
+    titulo = (
+        "Presentación de nuevas solicitudes bloqueada"
+        if hay_bloqueo
+        else "Rendición de comprobantes pendiente"
+    )
+    assert titulo in aviso
+    assert aviso.count("<a ") == 1
+    assert f'href="{lista}?atencion=1&amp;pendiente=deuda"' in aviso
+    assert "Ver facturas pendientes" in aviso
+    assert en_gracia.concepto not in aviso
+    for solicitud in vencidas:
+        assert (solicitud.concepto in aviso) == hay_bloqueo
 
-    assert "Rendición de comprobantes pendiente" in html
-    assert "Compra de reactivos químicos" in html
-    assert f'href="/gastos/{s_vencida.pk}/"' in html
+    filtrada = client.get(lista, {"atencion": "1", "pendiente": "deuda"})
+    assert filtrada.status_code == 200
+    assert filtrada.context["filtro_form"]["pendiente"].value() == "deuda"
+    assert set(filtrada.context["solicitudes"]) == {*vencidas, en_gracia}
+    assert filtrada.context["limpiar_filtros_url"] == f"{lista}?atencion=1"
+
+    sin_deuda = client.get(lista, {"atencion": "1", "pendiente": "", "q": "taller"})
+    assert sin_deuda.status_code == 200
+    assert sin_deuda.context["filtro_form"]["q"].value() == "taller"
+    assert list(sin_deuda.context["solicitudes"]) == [observada]
 
 
 def test_aislamiento_deuda_entre_solicitantes(

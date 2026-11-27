@@ -156,6 +156,7 @@ import { enlaceResumenDeFila, iniciarDesplazamiento, sincronizarPestanas } from 
 
     function iniciarBusqueda(formulario, resultados, estado) {
         const buscador = formulario.elements.namedItem("q");
+        const filtroPendiente = formulario.elements.namedItem("pendiente");
         const bandeja = formulario.closest(".bandeja");
         const avisoError = "No se pudo actualizar la búsqueda. Se muestran los resultados anteriores. Podés reintentar con «Filtrar».";
         let observadorDesplazamiento = iniciarDesplazamiento(resultados);
@@ -261,7 +262,8 @@ import { enlaceResumenDeFila, iniciarDesplazamiento, sincronizarPestanas } from 
             else if (!componiendo && !evento.isComposing) programarBusqueda();
         });
         formulario.addEventListener("change", (evento) => {
-            if (evento.target !== buscador) cancelarBusqueda();
+            if (evento.target === filtroPendiente) programarBusqueda();
+            else if (evento.target !== buscador) cancelarBusqueda();
         });
         formulario.addEventListener("submit", cancelarBusqueda);
 
