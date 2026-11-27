@@ -47,6 +47,7 @@ from gastos.datos_transferencia import (
     registrar_revision_datos_transferencia,
 )
 from gastos.document_provider import cargar_proveedor_documental
+from gastos.excepciones_deuda import puede_gestionar_excepciones_deuda
 from gastos.forms import (
     CentroCostoForm,
     CerrarSolicitudGastoForm,
@@ -566,6 +567,7 @@ class SolicitudGastoCreateView(View):
                           status=400)
         except DeudaDocumentalBloqueoError as exc:
             form.add_error(None, str(exc))
+            resumen_deuda = verificar_deuda_documental_solicitante(actor)
             return render(
                 request,
                 "gastos/solicitud_form.html",
@@ -925,6 +927,7 @@ class DeudaDocumentalGastosView(View):
             {
                 "actor": actor,
                 "titulares": titulares,
+                "puede_gestionar_excepciones": puede_gestionar_excepciones_deuda(actor),
                 "total_pendientes": sum(len(titular.tramites) for titular in titulares),
                 "total_vencidas": sum(titular.total_vencidas for titular in titulares),
             },

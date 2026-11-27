@@ -27,6 +27,52 @@ class TipoFlujoGasto(models.TextChoices):
     REINTEGRO = "REINTEGRO", "Reintegro a solicitante"
 
 
+class ExcepcionDeudaDocumental(models.Model):
+    """Vigencia y trazabilidad de una excepción individual a GAST-R07."""
+
+    titular = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="excepciones_deuda_gastos"
+    )
+    otorgada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    otorgada_en = models.DateTimeField()
+    vence_en = models.DateTimeField()
+    motivo = models.CharField(max_length=500)
+    revocada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", null=True, blank=True
+    )
+    revocada_en = models.DateTimeField(null=True, blank=True)
+    motivo_revocacion = models.CharField(max_length=500, blank=True, default="")
+
+    class Meta:
+        ordering = ("-otorgada_en", "-pk")
+        indexes = [
+            models.Index(fields=["titular", "-otorgada_en"], name="gasto_excep_titular_fecha_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(vence_en__gt=models.F("otorgada_en")) & ~Q(motivo=""),
+                name="gasto_excep_concesion_valida",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(revocada_en__isnull=True, revocada_por__isnull=True, motivo_revocacion="")
+                    | (
+                        Q(
+                            revocada_en__isnull=False,
+                            revocada_por__isnull=False,
+                            revocada_en__gte=models.F("otorgada_en"),
+                            revocada_en__lt=models.F("vence_en"),
+                        )
+                        & ~Q(motivo_revocacion="")
+                    )
+                ),
+                name="gasto_excep_revocacion_valida",
+            ),
+        ]
+
+
 _SOLICITUD_GASTO_CAMPOS_INMUTABLES = {
     "id",
     "pk",

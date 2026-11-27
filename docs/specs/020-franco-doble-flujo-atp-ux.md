@@ -74,7 +74,7 @@ Al presentar la solicitud, quien cuenta con permiso de aporte documental y visib
 - `GAST-R04 (Cálculo ATP y CheckConstraint):` `PagoExterno` asegura en base de datos que `importe == monto_bruto - monto_retencion_atp`. Si no se especifica retención, `monto_retencion_atp = Decimal("0.00")` y `monto_bruto = importe`.
 - `GAST-R05 (Firma Retrocompatible de Pago):` `registrar_pago_externo` mantiene compatibilidad con llamadas existentes (parámetros nuevos opcionales con defaults neutros).
 - `GAST-R06 (Privacidad en Drawer):` Los datos bancarios (CBU/alias, titular, correo) y el botón de copiado rápido sólo se renderizan en el Drawer si `puede_consultar_datos_transferencia(actor, solicitud)` es verdadero.
-- `GAST-R07 (Alertas y Control Determinista)` prevé un aviso para compras directas pagadas con rendición pendiente. Con más de dos compras directas en mora, el servidor rechaza nuevas solicitudes con `DeudaDocumentalBloqueoError`.
+- `GAST-R07 (Alertas y Control Determinista)` prevé un aviso para compras directas pagadas con rendición pendiente. Con más de dos compras directas en mora, el servidor rechaza nuevas solicitudes con `DeudaDocumentalBloqueoError`, salvo que se aplique una excepción vigente de demo.
 - `GAST-R08 (Reportería Cuatrimestral):` La vista de reporte agrupa montos por cuatrimestre del año y por centro de costo para usuarios con `gastos.consultar_todas`.
 
 ---
@@ -109,6 +109,14 @@ El entorno permite cambiar el plazo ordinario con `GASTOS_RENDICION_DIAS_GRACIA`
 
 La bandeja y el aviso de presentación muestran la fecha de vencimiento por trámite. El reporte cuenta las rendiciones pendientes según la misma regla documental, incluidas las facturas observadas o rechazadas que todavía requieren corrección.
 
+#### Excepción individual por urgencia (hipótesis de demo)
+
+Desde **Rendiciones pendientes por titular**, un perfil con consulta global de Gastos y la capacidad explícita `gastos.gestionar_excepciones_deuda` busca al titular por nombre o correo. Puede otorgarle una excepción con motivo obligatorio y vencimiento futuro editable. El valor inicial es de siete días y se muestra en hora de Argentina. La cuenta debe poder presentar solicitudes de Gastos al momento del otorgamiento.
+
+La excepción permite presentar nuevas solicitudes de Gastos desde el otorgamiento hasta el instante de vencimiento, excluido. La mora y las rendiciones pendientes siguen visibles, y la subsanación conserva su recorrido habitual. Una revocación anticipada exige motivo y, como un vencimiento, hace que el próximo envío vuelva a evaluar la mora. Cada titular puede tener como máximo una excepción vigente. El historial por cuenta registra motivo, actor y fecha de otorgamiento, vencimiento previsto y, si se revoca, motivo, actor y fecha de revocación.
+
+La activación para la demo requiere `DEMO_IDENTITY_ENABLED` y una asignación explícita a una cuenta sintética con consulta global de Gastos. El grupo propuesto para otorgar esa capacidad es `demo_gastos_excepciones`. La asignación institucional y el contrato común de [#85](https://github.com/MatiasAFernandez/PS_Cooperadora/issues/85) quedan sujetos a revisión con Matías y validación con Cooperadora.
+
 ### Regla Impositiva de Retención ATP
 
 ```
@@ -139,7 +147,7 @@ Sino:
 4. **Dado** un intento de forzar en base de datos un pago donde $\text{importe} \ne \text{monto\_bruto} - \text{monto\_retencion\_atp}$, **entonces** la base de datos PostgreSQL rechaza la transacción con violación de `pago_externo_identidad_neto_atp`.
 5. **Dado** un usuario lector global sin permisos de pago (`demo_lectura`), **cuando** visualiza el panel de solicitudes e inspecciona el Drawer lateral, **entonces** no se renderizan el CBU, alias ni los datos bancarios del solicitante.
 6. **Dado** un solicitante con 1 compra directa pagada hace 20 días sin factura definitiva, **cuando** ingresa al panel, **entonces** observa un banner preventivo amarillo pero puede seguir creando solicitudes.
-7. **Dado** un solicitante con 3 compras directas pagadas con rendición pendiente después de su fecha de vencimiento, **cuando** intenta enviar una nueva solicitud, **entonces** el servidor rechaza la creación y le indica regularizar los comprobantes pendientes.
+7. **Dado** un solicitante con 3 compras directas pagadas con rendición pendiente después de su fecha de vencimiento y sin excepción vigente, **cuando** intenta enviar una nueva solicitud, **entonces** el servidor rechaza la creación y le indica regularizar los comprobantes pendientes.
 8. **Dado** un comando `python manage.py muestra_entrega crear` ejecutado sobre base vacía, **cuando** se ejecuta, **entonces** finaliza exitosamente con código 0 y conserva idénticas las huellas de verificación determinista.
 
 ---

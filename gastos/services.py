@@ -4,7 +4,7 @@ import hashlib
 from calendar import monthrange
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -19,6 +19,7 @@ from documentos.models import Documento, RevisionDocumento
 from documentos.services import bloquear_serie
 from gastos.auth import has_capability
 from gastos.datos_transferencia import validar_datos_transferencia
+from gastos.excepciones_deuda import bloquear_titular_excepcion, excepcion_deuda_vigente
 from gastos.models import (
     CentroCosto,
     CierreGasto,
@@ -312,6 +313,7 @@ class ResumenDeudaDocumentalDTO:
     solicitudes_pendientes: tuple[TramiteDeudaDocumentalDTO, ...] = ()
     solicitudes_en_mora: tuple[TramiteDeudaDocumentalDTO, ...] = ()
     max_mora_permitida: int = MAX_TRAMITES_MORA_PERMITIDOS
+    excepcion_urgencia_hasta: datetime | None = None
 
     @property
     def total_pendientes(self) -> int:
@@ -327,7 +329,10 @@ class ResumenDeudaDocumentalDTO:
 
     @property
     def tiene_bloqueo(self) -> bool:
-        return len(self.solicitudes_en_mora) > self.max_mora_permitida
+        return (
+            self.total_en_mora > self.max_mora_permitida
+            and self.excepcion_urgencia_hasta is None
+        )
 
 
 @dataclass(frozen=True)
@@ -402,9 +407,13 @@ def verificar_deuda_documental_solicitante(
         if item.en_mora:
             en_mora.append(item)
 
+    excepcion = (
+        excepcion_deuda_vigente(user_id) if len(en_mora) > MAX_TRAMITES_MORA_PERMITIDOS else None
+    )
     return ResumenDeudaDocumentalDTO(
         solicitudes_pendientes=tuple(pendientes),
         solicitudes_en_mora=tuple(en_mora),
+        excepcion_urgencia_hasta=excepcion.vence_en if excepcion else None,
     )
 
 
@@ -477,7 +486,9 @@ def crear_solicitud_gasto(
         if not formulario.is_valid():
             raise ValidationError({k: list(v) for k, v in formulario.errors.items()})
 
-    # Control determinista de deuda documental (GAST-R07)
+    # Revalúa GAST-R07 y la vigencia tras serializar con las acciones de excepción.
+    if settings.DEMO_IDENTITY_ENABLED:
+        bloquear_titular_excepcion(actor.subject_id)
     resumen_deuda = verificar_deuda_documental_solicitante(actor, fecha_referencia=fecha_referencia)
     if resumen_deuda.tiene_bloqueo:
         raise DeudaDocumentalBloqueoError(

@@ -4,20 +4,26 @@
 {% block title %}Rendiciones pendientes por titular — PS Cooperadora{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'gastos/css/solicitud_detail.css' %}">
+{% if puede_gestionar_excepciones %}<link rel="stylesheet" href="{% static 'gastos/css/excepciones_urgencia.css' %}">{% endif %}
 {% endblock %}
 
 {% block content %}
 <section class="solicitud-detalle" aria-labelledby="rendiciones-titulo">
     <a class="page-back" href="{% url 'gestion:reporte_gastos' %}">&larr; Volver al reporte</a>
 
-    <header class="sd-page-head">
-        <h1 id="rendiciones-titulo">Rendiciones pendientes por titular</h1>
-        {% if titulares %}
-            <p class="sd-page-subtitle font-tabular">
-                {{ titulares|length }} titular{{ titulares|length|pluralize:"es" }} ·
-                {{ total_pendientes }} rendici{{ total_pendientes|pluralize:"ón,ones" }} pendiente{{ total_pendientes|pluralize }} ·
-                {{ total_vencidas }} vencida{{ total_vencidas|pluralize }}
-            </p>
+    <header class="sd-page-head{% if puede_gestionar_excepciones %} excepciones-encabezado-rendiciones{% endif %}">
+        <div>
+            <h1 id="rendiciones-titulo">Rendiciones pendientes por titular</h1>
+            {% if titulares %}
+                <p class="sd-page-subtitle font-tabular">
+                    {{ titulares|length }} titular{{ titulares|length|pluralize:"es" }} ·
+                    {{ total_pendientes }} rendici{{ total_pendientes|pluralize:"ón,ones" }} pendiente{{ total_pendientes|pluralize }} ·
+                    {{ total_vencidas }} vencida{{ total_vencidas|pluralize }}
+                </p>
+            {% endif %}
+        </div>
+        {% if puede_gestionar_excepciones %}
+            <a class="btn btn-secondary" href="{% url 'gastos:excepciones_urgencia' %}">Excepciones por urgencia</a>
         {% endif %}
     </header>
 
