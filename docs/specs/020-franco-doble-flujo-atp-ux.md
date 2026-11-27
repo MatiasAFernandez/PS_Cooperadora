@@ -52,7 +52,7 @@ La demostración operativa del 29/10/2026 con la Asociación Cooperadora evidenc
 - **Tipificación de Solicitud (`tipo_flujo`):** `COMPRA_DIRECTA` vs. `REINTEGRO` en `SolicitudGasto`.
 - **Evolución contable de `PagoExterno`:** Registro de `monto_bruto`, `monto_retencion_atp`, `referencia_atp`, manteniendo `importe` como el neto transferido con `CheckConstraint` SQL estricto.
 - **Panel compacto Master-Detail:** Rediseño de `solicitud_list.html` con tabla densa de 8 columnas (ancho expandido a 1140px), Drawer lateral para inspección rápida, copiado seguro de CBU/alias según permisos de `SPEC-013` y acciones directas.
-- **Alertas y control determinista de comprobantes pendientes:** Banners visuales de advertencia y restricción por mora reiterada con parámetros configurables en código (`DIAS_GRACIA_RENDICION_FACTURA = 15`, `MAX_TRAMITES_MORA_PERMITIDOS = 2`) y fecha de referencia inyectable para pruebas.
+- Las **alertas de rendición** muestran fechas de vencimiento. La restricción se activa con mora reiterada según GAST-R07 y el cálculo acepta una fecha de referencia para pruebas.
 - **Reporte cuatrimestral:** Vista agregada de montos solicitados y erogados por cuatrimestres (C1, C2, C3) y por centro de costo, protegida por `gastos.consultar_todas`.
 
 ### No incluye
@@ -74,7 +74,7 @@ Al presentar la solicitud, quien cuenta con permiso de aporte documental y visib
 - `GAST-R04 (Cálculo ATP y CheckConstraint):` `PagoExterno` asegura en base de datos que `importe == monto_bruto - monto_retencion_atp`. Si no se especifica retención, `monto_retencion_atp = Decimal("0.00")` y `monto_bruto = importe`.
 - `GAST-R05 (Firma Retrocompatible de Pago):` `registrar_pago_externo` mantiene compatibilidad con llamadas existentes (parámetros nuevos opcionales con defaults neutros).
 - `GAST-R06 (Privacidad en Drawer):` Los datos bancarios (CBU/alias, titular, correo) y el botón de copiado rápido sólo se renderizan en el Drawer si `puede_consultar_datos_transferencia(actor, solicitud)` es verdadero.
-- `GAST-R07 (Alertas y Control Determinista):` Un solicitante con compras directas pagadas que adeuden factura definitiva recibe un banner preventivo. Si acumula más de `MAX_TRAMITES_MORA_PERMITIDOS` con antigüedad mayor a `DIAS_GRACIA_RENDICION_FACTURA`, la creación de nuevas solicitudes es rechazada con `DeudaDocumentalBloqueoError`.
+- `GAST-R07 (Alertas y Control Determinista)` prevé un aviso para compras directas pagadas con rendición pendiente. Con más de dos compras directas en mora, el servidor rechaza nuevas solicitudes con `DeudaDocumentalBloqueoError`.
 - `GAST-R08 (Reportería Cuatrimestral):` La vista de reporte agrupa montos por cuatrimestre del año y por centro de costo para usuarios con `gastos.consultar_todas`.
 
 ---
@@ -103,7 +103,11 @@ Para calcular la restricción de nuevas solicitudes, una compra directa pagada d
 
 Al guardar una nueva versión de la factura, se evalúa esa versión desde su estado pendiente de revisión. El dictamen anterior queda en el historial de su versión. Si hay otras compras vencidas, la restricción se levanta sólo cuando el total queda dentro del límite. Este cálculo afecta la presentación de nuevas solicitudes y es independiente de la revisión documental y del estado de la cuenta.
 
-Los 15 días y el máximo de dos compras vencidas son parámetros de demo pendientes de validación institucional.
+El plazo ordinario de la demo es de 15 días corridos a partir del pago original. Para pagos de los últimos siete días del mes, el vencimiento es la fecha más tardía entre el plazo ordinario y el día 15 del mes siguiente. Se puede rendir hasta esa fecha inclusive. La mora empieza al día siguiente. El cálculo aplica a las compras pagadas que siguen abiertas, incluidas las registradas antes del ajuste.
+
+El entorno permite cambiar el plazo ordinario con `GASTOS_RENDICION_DIAS_GRACIA`. La ventana `GASTOS_RENDICION_ULTIMOS_DIAS_MES` y el día `GASTOS_RENDICION_DIA_MES_SIGUIENTE` admiten enteros de 1 a 28. La gracia de fin de mes y el umbral de dos compras vencidas siguen como hipótesis de demo pendientes de validación institucional.
+
+La bandeja y el aviso de presentación muestran la fecha de vencimiento por trámite. El reporte cuenta las rendiciones pendientes según la misma regla documental, incluidas las facturas observadas o rechazadas que todavía requieren corrección.
 
 ### Regla Impositiva de Retención ATP
 
@@ -135,7 +139,7 @@ Sino:
 4. **Dado** un intento de forzar en base de datos un pago donde $\text{importe} \ne \text{monto\_bruto} - \text{monto\_retencion\_atp}$, **entonces** la base de datos PostgreSQL rechaza la transacción con violación de `pago_externo_identidad_neto_atp`.
 5. **Dado** un usuario lector global sin permisos de pago (`demo_lectura`), **cuando** visualiza el panel de solicitudes e inspecciona el Drawer lateral, **entonces** no se renderizan el CBU, alias ni los datos bancarios del solicitante.
 6. **Dado** un solicitante con 1 compra directa pagada hace 20 días sin factura definitiva, **cuando** ingresa al panel, **entonces** observa un banner preventivo amarillo pero puede seguir creando solicitudes.
-7. **Dado** un solicitante con 3 compras directas pagadas hace más de 15 días sin factura definitiva, **cuando** intenta enviar una nueva solicitud, **entonces** el servidor rechaza la creación y le indica regularizar los comprobantes pendientes.
+7. **Dado** un solicitante con 3 compras directas pagadas con rendición pendiente después de su fecha de vencimiento, **cuando** intenta enviar una nueva solicitud, **entonces** el servidor rechaza la creación y le indica regularizar los comprobantes pendientes.
 8. **Dado** un comando `python manage.py muestra_entrega crear` ejecutado sobre base vacía, **cuando** se ejecuta, **entonces** finaliza exitosamente con código 0 y conserva idénticas las huellas de verificación determinista.
 
 ---

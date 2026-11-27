@@ -96,7 +96,7 @@ El sistema **no ejecuta transferencias bancarias ni opera con home banking**: re
 
 Las **compras directas** ya pagadas que aún no cuentan con una **factura de proveedor** vigente (pendiente de revisión o aceptada) permanecen en seguimiento:
 
-- **Plazo de gracia:** se cuenta desde la fecha de pago y depende del parámetro vigente, indicado en el aviso.
+- La **fecha de vencimiento** se calcula desde el pago y aparece junto a cada trámite pendiente en la bandeja y en el aviso antes de presentar una solicitud.
 - **Aviso preventivo:** el solicitante ve el seguimiento de comprobantes pendientes al ingresar a **Presentar gasto**, con los plazos y el límite aplicables.
 - **Bloqueo de nuevas solicitudes:** si las compras directas en mora superan el máximo configurado, la presentación queda bloqueada hasta regularizar los comprobantes desde los enlaces del aviso.
 - Los **reintegros** no generan mora posterior porque exigen factura definitiva antes de registrar el pago.

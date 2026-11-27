@@ -12,7 +12,14 @@
                 <span class="bandeja-chip {% if s.pagada_bandeja %}bandeja-chip-pagada{% else %}bandeja-chip-{{ s.estado }}{% endif %}">{% if s.pagada_bandeja %}Pagada{% else %}{{ s.get_estado_display }}{% endif %}</span>
                 {% if s.cerrada_bandeja %}<span class="bandeja-chip bandeja-chip-cerrada">Cerrada</span>{% endif %}
             </div>
-            {% if s.pendiente_bandeja %}<span class="bandeja-subestado{% if s.pendiente_bandeja == 'Falta factura definitiva' %} bandeja-subestado--err{% endif %}">{{ s.pendiente_bandeja }}</span>{% endif %}
+            {% if s.pendiente_bandeja %}<span class="bandeja-subestado{% if s.deuda_documental_bandeja.en_mora %} bandeja-subestado--err{% endif %}">{{ s.pendiente_bandeja }}</span>{% endif %}
+            {% if s.deuda_documental_bandeja %}
+                {% with deuda=s.deuda_documental_bandeja %}
+                    <span class="bandeja-subestado{% if deuda.en_mora %} bandeja-subestado--err{% endif %} font-tabular">
+                        {% if deuda.en_mora %}Venció el{% else %}Vence el{% endif %} {{ deuda.fecha_vencimiento|date:"d/m/Y" }}
+                    </span>
+                {% endwith %}
+            {% endif %}
         </div>
     </td>
     <td class="bandeja-fila-accion">
@@ -39,7 +46,7 @@
                     <strong>$ {{ s.monto_estimado|floatformat:"2g" }}</strong>
                 </div>
                 {% if s.pendiente_bandeja %}
-                    <p class="bandeja-pendiente{% if s.pendiente_bandeja == 'Falta factura definitiva' %} bandeja-pendiente--err{% endif %}">{{ s.pendiente_bandeja }}</p>
+                    <p class="bandeja-pendiente{% if s.deuda_documental_bandeja.en_mora %} bandeja-pendiente--err{% endif %}">{{ s.pendiente_bandeja }}</p>
                 {% endif %}
                 {% if s.motivo_bandeja and s.estado == "observada" or s.motivo_bandeja and s.estado == "postergada" or s.motivo_bandeja and s.estado == "rechazada" %}
                     <p class="bandeja-panel-motivo"><strong>Motivo:</strong> {{ s.motivo_bandeja }}</p>

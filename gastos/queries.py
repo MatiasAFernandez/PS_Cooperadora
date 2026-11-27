@@ -2,10 +2,11 @@
 
 from typing import Any
 
-from django.db.models import QuerySet
+from django.db.models import Exists, OuterRef, Q, QuerySet, Subquery
 
+from documentos.models import Documento, RevisionDocumento
 from gastos.auth import has_capability
-from gastos.models import SolicitudGasto
+from gastos.models import SolicitudGasto, TipoFlujoGasto
 
 
 def visible_expenses(actor: Any) -> QuerySet[SolicitudGasto]:
@@ -25,3 +26,27 @@ def visible_expenses(actor: Any) -> QuerySet[SolicitudGasto]:
         return SolicitudGasto.objects.filter(solicitante_id=actor.subject_id)
 
     return SolicitudGasto.objects.none()
+
+
+def compras_directas_con_deuda_documental() -> QuerySet[SolicitudGasto]:
+    """Compras pagadas y abiertas sin una factura vigente en revisión o aceptada."""
+    ultima_revision = RevisionDocumento.objects.filter(
+        documento_id=OuterRef("pk")
+    ).order_by("-id")
+    facturas_validas = (
+        Documento.objects.filter(tipo=Documento.Tipo.FACTURA_PROVEEDOR, sucesor__isnull=True)
+        .filter(
+            Q(solicitud_gasto_id=OuterRef("pk"))
+            | Q(solicitud_gasto_id__isnull=True, tramite_base_id=OuterRef("tramite_base_id"))
+        )
+        .alias(ultimo_resultado=Subquery(ultima_revision.values("resultado")[:1]))
+        .filter(
+            Q(ultimo_resultado__isnull=True)
+            | Q(ultimo_resultado=RevisionDocumento.Resultado.ACEPTADO)
+        )
+    )
+    return SolicitudGasto.objects.filter(
+        tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
+        pago_externo__isnull=False,
+        cierre__isnull=True,
+    ).filter(~Exists(facturas_validas))

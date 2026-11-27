@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,6 +29,17 @@ def env_optional_str(name: str) -> str | None:
     if value is None:
         return None
     return value.strip() or None
+
+
+def env_positive_int(name: str, default: int, *, max_value: int | None = None) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} debe ser un entero.") from exc
+    if value < 1 or (max_value is not None and value > max_value):
+        rango = f"entre 1 y {max_value}" if max_value is not None else "positivo"
+        raise ImproperlyConfigured(f"{name} debe ser un entero {rango}.")
+    return value
 
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-development-key")
@@ -121,6 +133,13 @@ DOCUMENTOS_MAX_UPLOAD_SIZE_BYTES = int(os.getenv("DOCUMENTOS_MAX_UPLOAD_SIZE_BYT
 # `gastos.contracts.DocumentVerificationPort`. No se importa ni se instancia
 # aquí; gastos la resuelve en tiempo de uso y falla cerrado (503) cuando falta.
 GASTOS_PAYMENT_DOCUMENT_PROVIDER = env_optional_str("GASTOS_PAYMENT_DOCUMENT_PROVIDER")
+GASTOS_RENDICION_DIAS_GRACIA = env_positive_int("GASTOS_RENDICION_DIAS_GRACIA", 15)
+GASTOS_RENDICION_ULTIMOS_DIAS_MES = env_positive_int(
+    "GASTOS_RENDICION_ULTIMOS_DIAS_MES", 7, max_value=28
+)
+GASTOS_RENDICION_DIA_MES_SIGUIENTE = env_positive_int(
+    "GASTOS_RENDICION_DIA_MES_SIGUIENTE", 15, max_value=28
+)
 
 LOGIN_URL = "cuentas:login" if LOCAL_IDENTITY_ENABLED else "identidad:login"
 LOGIN_REDIRECT_URL = "cuentas:inicio" if LOCAL_IDENTITY_ENABLED else "identidad:inicio"
