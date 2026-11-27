@@ -5,11 +5,10 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from django.db.models import Count, Exists, OuterRef, Q, Subquery, Sum
+from django.db.models import Count, Q, Sum
 from django.db.models.functions import Coalesce, ExtractYear
 from django.utils import timezone
 
-from documentos.models import Documento, RevisionDocumento
 from gastos.models import (
     CentroCosto,
     EstadoSolicitud,
@@ -17,6 +16,7 @@ from gastos.models import (
     SolicitudGasto,
     TipoFlujoGasto,
 )
+from gastos.queries import compras_directas_con_deuda_documental
 
 CERO = Decimal("0.00")
 CIEN = Decimal("100.00")
@@ -263,69 +263,19 @@ def _porcentaje_grafico(valor: Decimal, maximo: Decimal) -> Decimal:
     return porcentaje
 
 
-def _subquery_factura_valida() -> Any:
-    """Factura vigente con última revisión no rechazada, para una solicitud.
-
-    Replica las reglas de ``verificar_deuda_documental_solicitante`` sin
-    recorrer solicitantes ni solicitudes: una factura reemplazada no cuenta y
-    la última revisión (por id) debe ser aceptada, observada o inexistente.
-    Los documentos sin solicitud directa se asocian por su trámite base.
-    """
-    ultima_revision = RevisionDocumento.objects.filter(
-        documento=OuterRef("pk")
-    ).order_by("-id")
-    return (
-        Documento.objects.filter(
-            tipo=Documento.Tipo.FACTURA_PROVEEDOR,
-            sucesor__isnull=True,
-        )
-        .annotate(
-            ultimo_resultado=Subquery(
-                ultima_revision.values("resultado")[:1]
-            )
-        )
-        .filter(
-            Q(ultimo_resultado__isnull=True)
-            | Q(
-                ultimo_resultado__in=(
-                    RevisionDocumento.Resultado.ACEPTADO,
-                    RevisionDocumento.Resultado.OBSERVADO,
-                )
-            )
-        )
-        .filter(
-            Q(solicitud_gasto_id=OuterRef("pk"))
-            | (
-                Q(solicitud_gasto_id__isnull=True)
-                & Q(tramite_base_id=OuterRef("tramite_base_id"))
-            )
-        )
-    )
-
-
 def obtener_pendientes_actuales_gastos() -> dict[str, Any]:
     """Recuentos globales al día de pendientes documentales, por modalidad.
 
-    No dependen del período ni del año elegido. ``sin_factura`` aplica sólo a
-    compras directas pagadas y usa las mismas reglas de deuda documental
-    vigentes, sin calcular mora ni cierre. ``sin_atp`` cuenta pagos con
-    retención positiva y constancia pendiente. ``monto`` suma el bruto pagado
+    No dependen del período ni del año elegido. ``sin_factura`` cuenta compras
+    directas pagadas y abiertas con deuda documental, en plazo o en mora.
+    ``sin_atp`` cuenta pagos con retención positiva y constancia pendiente.
+    ``monto`` suma el bruto pagado
     en el primer caso y la retención ATP en el segundo; ``por_modalidad``
     desglosa la cantidad.
     """
-    factura_valida = _subquery_factura_valida()
-    sin_factura = (
-        SolicitudGasto.objects.filter(
-            tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
-            pago_externo__isnull=False,
-            cierre__isnull=True,
-        )
-        .annotate(tiene_factura_valida=Exists(factura_valida))
-        .filter(tiene_factura_valida=False)
-        .aggregate(
-            cantidad=Count("id"),
-            monto=Coalesce(Sum("pago_externo__monto_bruto"), CERO),
-        )
+    sin_factura = compras_directas_con_deuda_documental().aggregate(
+        cantidad=Count("id"),
+        monto=Coalesce(Sum("pago_externo__monto_bruto"), CERO),
     )
     sin_atp = PagoExterno.objects.filter(
         monto_retencion_atp__gt=CERO,

@@ -1,8 +1,7 @@
 """Pruebas exhaustivas para la política de advertencias visuales y control de deuda (Issue #93).
 
 Cubre:
-- GAST-R07: Parámetros canónicos DIAS_GRACIA_RENDICION_FACTURA = 15
-  y MAX_TRAMITES_MORA_PERMITIDOS = 2.
+- GAST-R07: vencimiento ordinario y ampliado, parámetros de demo y umbral de mora.
 - Inyección de fecha_referencia en verificar_deuda_documental_solicitante y crear_solicitud_gasto.
 - Aislamiento por modalidad: REINTEGRO nunca adeuda factura post-pago;
   COMPRA_DIRECTA con factura inicial no adeuda.
@@ -23,7 +22,7 @@ Cubre:
 """
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -33,8 +32,8 @@ from django.urls import reverse
 
 from documentos.models import Documento, RevisionDocumento
 from gastos.models import EstadoSolicitud, PagoExterno, SolicitudGasto, TipoFlujoGasto
+from gastos.reports import obtener_pendientes_actuales_gastos
 from gastos.services import (
-    DIAS_GRACIA_RENDICION_FACTURA,
     MAX_TRAMITES_MORA_PERMITIDOS,
     DeudaDocumentalBloqueoError,
     crear_solicitud_gasto,
@@ -120,10 +119,11 @@ def _adjuntar_factura(
 # ---------------------------------------------------------------------------
 
 
-def test_constantes_canonicas_deuda_documental() -> None:
-    """Verifica que los parámetros en código coincidan con la especificación GAST-R07."""
-    assert DIAS_GRACIA_RENDICION_FACTURA == 15
-    assert MAX_TRAMITES_MORA_PERMITIDOS == 2
+@pytest.fixture(autouse=True)
+def _plazos_de_demo(settings: Any) -> None:
+    settings.GASTOS_RENDICION_DIAS_GRACIA = 15
+    settings.GASTOS_RENDICION_ULTIMOS_DIAS_MES = 7
+    settings.GASTOS_RENDICION_DIA_MES_SIGUIENTE = 15
 
 
 def test_solicitante_sin_solicitudes_resumen_vacio(create_actor: Any) -> None:
@@ -229,23 +229,58 @@ def test_compra_directa_dentro_plazo_gracia_genera_aviso_sin_bloqueo(create_acto
     assert nueva.pk is not None
 
 
-def test_borde_exacto_dia_15_no_es_mora(create_actor: Any) -> None:
-    """Exactamente a los 15 días del pago, el trámite sigue dentro del plazo de gracia."""
-    user, actor = create_actor("solic_borde_15", ["gastos.presentar"])
-    fecha_pago = date(2026, 10, 1)
+@pytest.mark.parametrize(
+    ("fecha_pago", "vencimiento"),
+    [
+        (date(2026, 10, 24), date(2026, 11, 8)),
+        (date(2026, 10, 25), date(2026, 11, 15)),
+        (date(2026, 2, 22), date(2026, 3, 15)),
+        (date(2028, 2, 22), date(2028, 3, 8)),
+        (date(2028, 2, 23), date(2028, 3, 15)),
+        (date(2026, 12, 25), date(2027, 1, 15)),
+    ],
+)
+def test_mora_empieza_despues_del_vencimiento(
+    create_actor: Any, fecha_pago: date, vencimiento: date
+) -> None:
+    user, actor = create_actor("solic_borde_vencimiento", ["gastos.presentar"])
     _crear_compra_directa_pagada(
         solicitante=user,
-        concepto="Compra al día 15",
+        concepto="Compra con vencimiento verificable",
         fecha_pago=fecha_pago,
     )
 
-    fecha_eval = date(2026, 10, 16)  # 15 días exactos
-    resumen = verificar_deuda_documental_solicitante(actor, fecha_referencia=fecha_eval)
+    en_plazo = verificar_deuda_documental_solicitante(actor, fecha_referencia=vencimiento)
+    vencida = verificar_deuda_documental_solicitante(
+        actor, fecha_referencia=vencimiento + timedelta(days=1)
+    )
 
-    assert resumen.total_pendientes == 1
-    assert resumen.total_en_mora == 0
-    assert resumen.tiene_bloqueo is False
-    assert resumen.solicitudes_pendientes[0].en_mora is False
+    assert en_plazo.solicitudes_pendientes[0].fecha_vencimiento == vencimiento
+    assert en_plazo.total_en_mora == 0
+    assert vencida.total_en_mora == 1
+    assert vencida.solicitudes_en_mora[0].fecha_vencimiento == vencimiento
+
+
+@pytest.mark.parametrize(
+    ("dia_pago", "dia_mes_siguiente", "dia_vencimiento"),
+    [(29, 28, 18), (30, 28, 28), (30, 5, 19)],
+)
+def test_parametros_de_gracia_conservan_el_plazo_mas_largo(
+    create_actor: Any, settings: Any, dia_pago: int, dia_mes_siguiente: int, dia_vencimiento: int
+) -> None:
+    settings.GASTOS_RENDICION_DIAS_GRACIA = 20
+    settings.GASTOS_RENDICION_ULTIMOS_DIAS_MES = 2
+    settings.GASTOS_RENDICION_DIA_MES_SIGUIENTE = dia_mes_siguiente
+    user, actor = create_actor("solic_ajuste_plazos", ["gastos.presentar"])
+    _crear_compra_directa_pagada(
+        solicitante=user,
+        concepto="Compra con plazos configurados",
+        fecha_pago=date(2026, 10, dia_pago),
+    )
+
+    resumen = verificar_deuda_documental_solicitante(actor, fecha_referencia=date(2026, 11, 1))
+
+    assert resumen.solicitudes_pendientes[0].fecha_vencimiento == date(2026, 11, dia_vencimiento)
 
 
 def test_dia_16_entra_en_mora_pero_1_tramite_no_bloquea(create_actor: Any) -> None:
@@ -469,6 +504,7 @@ def test_reemplazo_de_factura_con_dictamen_desbloquea(
     assert verificar_deuda_documental_solicitante(
         actor, fecha_referencia=fecha_eval
     ).tiene_bloqueo is False
+    assert obtener_pendientes_actuales_gastos()["sin_factura"]["cantidad"] == 2
 
     RevisionDocumento.objects.create(
         documento=factura_v1,
@@ -479,6 +515,9 @@ def test_reemplazo_de_factura_con_dictamen_desbloquea(
     assert verificar_deuda_documental_solicitante(
         actor, fecha_referencia=fecha_eval
     ).tiene_bloqueo is True
+    pendiente_reporte = obtener_pendientes_actuales_gastos()["sin_factura"]
+    assert pendiente_reporte["cantidad"] == 3
+    assert pendiente_reporte["monto"] == Decimal("150000.00")
 
     factura_v2 = _adjuntar_factura(s1, user, reemplaza=factura_v1)
     assert factura_v2.version == 2
@@ -496,6 +535,7 @@ def test_reemplazo_de_factura_con_dictamen_desbloquea(
     assert verificar_deuda_documental_solicitante(
         actor, fecha_referencia=fecha_eval
     ).tiene_bloqueo is False
+    assert obtener_pendientes_actuales_gastos()["sin_factura"]["cantidad"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -518,7 +558,7 @@ def test_vista_alta_muestra_banner_warning_preventivo_dentro_de_gracia(
 
     # Fijar fecha del sistema simulada
     from django.utils import timezone
-    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 10, 30))
+    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 11, 15))
 
     response = client.get(reverse("gastos:presentar"))
     assert response.status_code == 200
@@ -527,6 +567,7 @@ def test_vista_alta_muestra_banner_warning_preventivo_dentro_de_gracia(
     assert "message-warning" in html
     assert "Aviso preventivo de rendición documental" in html
     assert "Compra en plazo de gracia" in html
+    assert "Vence el 15/11/2026" in html
     assert "message-error" not in html
     assert 'button type="submit" class="btn btn-primary">Enviar solicitud</button>' in html
 
@@ -542,11 +583,11 @@ def test_vista_alta_muestra_banner_error_critico_y_bloquea_boton(
         _crear_compra_directa_pagada(
             solicitante=user,
             concepto=f"Compra vencida crítica #{i+1}",
-            fecha_pago=date(2026, 10, 1),
+            fecha_pago=date(2026, 10, 25),
         )
 
     from django.utils import timezone
-    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 10, 31))
+    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 11, 16))
 
     response = client.get(reverse("gastos:presentar"))
     assert response.status_code == 200
@@ -554,7 +595,8 @@ def test_vista_alta_muestra_banner_error_critico_y_bloquea_boton(
 
     assert "message-error" in html
     assert "Bloqueo de nuevas solicitudes por comprobantes adeudados" in html
-    assert "Registrás <strong>3</strong> compra(s) directa(s)" in html
+    assert "Registrás <strong>3</strong> compras directas" in html
+    assert "Venció el 15/11/2026" in html
     assert "disabled" in html
     assert "Presentación bloqueada" in html
 
@@ -570,11 +612,11 @@ def test_vista_alta_post_bloqueado_retorna_400(
         _crear_compra_directa_pagada(
             solicitante=user,
             concepto=f"Mora acumulada #{i+1}",
-            fecha_pago=date(2026, 10, 1),
+            fecha_pago=date(2026, 10, 25),
         )
 
     from django.utils import timezone
-    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 10, 31))
+    monkeypatch.setattr(timezone, "localdate", lambda: date(2026, 11, 16))
 
     conteo_previo = SolicitudGasto.objects.count()
     response = client.post(
@@ -648,6 +690,8 @@ def test_vista_listado_enlaza_a_facturas_pendientes(
     assert filtrada.context["filtro_form"]["pendiente"].value() == "deuda"
     assert set(filtrada.context["solicitudes"]) == {*vencidas, en_gracia}
     assert filtrada.context["limpiar_filtros_url"] == f"{lista}?atencion=1"
+    assert "Venció el 16/10/2026" in filtrada.content.decode()
+    assert "Vence el 27/10/2026" in filtrada.content.decode()
 
     sin_deuda = client.get(lista, {"atencion": "1", "pendiente": "", "q": "taller"})
     assert sin_deuda.status_code == 200

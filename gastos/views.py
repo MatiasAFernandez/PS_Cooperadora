@@ -472,9 +472,8 @@ class SolicitudGastoCreateView(View):
             form.add_error(
                 None,
                 f"Presentación bloqueada: Registrás {resumen_deuda.total_en_mora} compras directas "
-                f"con rendición de factura definitiva vencida "
-                f"(más de {resumen_deuda.dias_gracia} días). "
-                f"Debés regularizar los comprobantes pendientes antes de presentar nuevas.",
+                "con rendición de factura definitiva vencida. "
+                "Debés regularizar los comprobantes pendientes antes de presentar nuevas.",
             )
             return render(
                 request,
@@ -689,9 +688,9 @@ class SolicitudGastoListView(View):
         ofrece_atencion = puede_decidir or puede_pagar or puede_presentar
 
         resumen_deuda = verificar_deuda_documental_solicitante(actor) if puede_presentar else None
-        deuda_ids = (
-            {item.solicitud_id for item in resumen_deuda.solicitudes_pendientes}
-            if resumen_deuda else set()
+        deuda_por_solicitud = (
+            {item.solicitud_id: item for item in resumen_deuda.solicitudes_pendientes}
+            if resumen_deuda else {}
         )
 
         en_revision = Q(estado__in=(EstadoSolicitud.PRESENTADA, EstadoSolicitud.POSTERGADA))
@@ -712,7 +711,7 @@ class SolicitudGastoListView(View):
             condiciones_pendiente["atp"] = sin_atp
             atencion |= sin_pago | sin_atp
         if puede_presentar:
-            deuda_q = Q(pk__in=deuda_ids)
+            deuda_q = Q(pk__in=deuda_por_solicitud)
             subsanacion_q = Q(
                 estado=EstadoSolicitud.OBSERVADA,
                 solicitante_id=actor.subject_id,
@@ -749,7 +748,7 @@ class SolicitudGastoListView(View):
                 ("subsanacion", "Observada para corregir"),
                 ("pago", "Sin pago registrado"),
                 ("atp", "Constancia ATP pendiente"),
-                ("deuda", "Falta factura definitiva"),
+                ("deuda", "Factura pendiente"),
             )
             if clave in condiciones_pendiente
         ]
@@ -807,8 +806,9 @@ class SolicitudGastoListView(View):
             )
             if s.cerrada_bandeja:
                 continue
-            if s.pk in deuda_ids:
-                s.pendiente_bandeja = "Falta factura definitiva"
+            s.deuda_documental_bandeja = deuda_por_solicitud.get(s.pk)
+            if s.deuda_documental_bandeja:
+                s.pendiente_bandeja = "Factura pendiente"
                 if puede_incorporar:
                     s.accion_bandeja = "Adjuntar factura"
                     s.ancla_bandeja = "#cargar-respaldo"

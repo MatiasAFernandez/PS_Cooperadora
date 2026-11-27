@@ -24,11 +24,11 @@
         <section class="bandeja-aviso {% if resumen_deuda.tiene_bloqueo %}bandeja-aviso-bloqueo{% endif %}" aria-labelledby="bandeja-deuda">
             {% if resumen_deuda.tiene_bloqueo %}
                 <h2 id="bandeja-deuda">Presentación de nuevas solicitudes bloqueada</h2>
-                <p>Adjuntá las facturas definitivas vencidas para volver a presentar solicitudes.</p>
+                <p>Regularizá las facturas definitivas vencidas para volver a presentar solicitudes.</p>
                 {% include "gastos/_bandeja_deuda.html" with items=resumen_deuda.solicitudes_en_mora %}
             {% else %}
                 <h2 id="bandeja-deuda">Rendición de comprobantes pendiente</h2>
-                <p>Adjuntá la factura definitiva dentro de los {{ resumen_deuda.dias_gracia }} días posteriores al pago.</p>
+                <p>Consultá el vencimiento de cada solicitud en la bandeja de pendientes.</p>
             {% endif %}
             <p><a class="btn btn-secondary" href="{% url 'gastos:lista' %}?atencion=1&amp;pendiente=deuda">Ver facturas pendientes</a></p>
         </section>

@@ -370,7 +370,7 @@ def test_filtro_deuda_propia_visible_para_quien_presenta(create_actor: Any) -> N
     client.force_login(solicitante)
 
     response = client.get(reverse("gastos:lista"))
-    assert '<option value="deuda">Falta factura definitiva</option>' in response.content.decode()
+    assert '<option value="deuda">Factura pendiente</option>' in response.content.decode()
     filtrada = client.get(reverse("gastos:lista"), {"pendiente": "deuda"})
     assert list(filtrada.context["solicitudes"]) == [solicitud]
 
@@ -717,7 +717,7 @@ def test_quitar_filtros_solo_visible_con_criterios_y_limpia_en_pestana_actual(
 
 
 def test_solicitante_ve_pestana_atencion_observada_y_deuda_con_cta_adjuntar(
-    create_actor: Any, django_assert_num_queries: Any
+    create_actor: Any, django_assert_max_num_queries: Any
 ) -> None:
     """Solicitante agrupa OBSERVADA + deuda en O(1) con contador solo en Atención."""
     from django.core.files.uploadedfile import SimpleUploadedFile
@@ -838,8 +838,8 @@ def test_solicitante_ve_pestana_atencion_observada_y_deuda_con_cta_adjuntar(
     client = Client()
     client.force_login(solicitante)
 
-    # Cantidad fija de consultas independientemente del número de filas
-    with django_assert_num_queries(9):
+    # Presupuesto de consultas para una bandeja con deuda y solicitudes observadas.
+    with django_assert_max_num_queries(8):
         resp_todas = client.get(reverse("gastos:lista"))
     assert resp_todas.status_code == 200
     assert resp_todas.context["ofrece_atencion"] is True

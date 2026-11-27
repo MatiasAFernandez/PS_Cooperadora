@@ -1,15 +1,17 @@
 """Servicios de negocio para el módulo de gastos."""
 
 import hashlib
+from calendar import monthrange
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError, connection, transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django.utils import timezone
 
 from comunes.models import Circuito, TramiteBase
@@ -29,7 +31,7 @@ from gastos.models import (
     SubsanacionGasto,
     TipoFlujoGasto,
 )
-from gastos.queries import visible_expenses
+from gastos.queries import compras_directas_con_deuda_documental, visible_expenses
 
 
 class ExpenseError(Exception):
@@ -280,7 +282,6 @@ def _reservar_numero_solicitud_gasto() -> int:
                 return numero
 
 
-DIAS_GRACIA_RENDICION_FACTURA = 15
 MAX_TRAMITES_MORA_PERMITIDOS = 2
 
 
@@ -290,6 +291,7 @@ class TramiteDeudaDocumentalDTO:
 
     solicitud: SolicitudGasto
     fecha_pago: date
+    fecha_vencimiento: date
     dias_transcurridos: int
     en_mora: bool
 
@@ -308,7 +310,6 @@ class ResumenDeudaDocumentalDTO:
 
     solicitudes_pendientes: tuple[TramiteDeudaDocumentalDTO, ...] = ()
     solicitudes_en_mora: tuple[TramiteDeudaDocumentalDTO, ...] = ()
-    dias_gracia: int = DIAS_GRACIA_RENDICION_FACTURA
     max_mora_permitida: int = MAX_TRAMITES_MORA_PERMITIDOS
 
     @property
@@ -328,24 +329,24 @@ class ResumenDeudaDocumentalDTO:
         return len(self.solicitudes_en_mora) > self.max_mora_permitida
 
 
+def _vencimiento_factura_definitiva(fecha_pago: date) -> date:
+    vencimiento = fecha_pago + timedelta(days=settings.GASTOS_RENDICION_DIAS_GRACIA)
+    ultimo_dia = monthrange(fecha_pago.year, fecha_pago.month)[1]
+    if fecha_pago.day > ultimo_dia - settings.GASTOS_RENDICION_ULTIMOS_DIAS_MES:
+        inicio_mes_siguiente = fecha_pago.replace(day=ultimo_dia) + timedelta(days=1)
+        vencimiento_fin_de_mes = inicio_mes_siguiente.replace(
+            day=settings.GASTOS_RENDICION_DIA_MES_SIGUIENTE
+        )
+        vencimiento = max(vencimiento, vencimiento_fin_de_mes)
+    return vencimiento
+
+
 def verificar_deuda_documental_solicitante(
     actor: Any,
     *,
     fecha_referencia: date | None = None,
 ) -> ResumenDeudaDocumentalDTO:
-    """Evalúa la deuda documental de compras directas pagadas para un solicitante.
-
-    Reglas canónicas (GAST-R07):
-    - Sólo aplica al solicitante (solicitante_id == actor.subject_id).
-    - Sólo audita compras directas (tipo_flujo == COMPRA_DIRECTA). Los reintegros
-      quedan rendidos al pagar y no generan deuda documental posterior.
-    - Requiere pago efectivo registrado (pago_externo existente).
-    - Un trámite adeuda factura definitiva si carece de un Documento de tipo
-      FACTURA_PROVEEDOR vigente (no reemplazado) pendiente de revisión o aceptado.
-    - Se computa la antigüedad en días respecto a fecha_referencia (o fecha local).
-    - Mora: días_transcurridos > DIAS_GRACIA_RENDICION_FACTURA (15 días).
-    - Bloqueo: total_en_mora > MAX_TRAMITES_MORA_PERMITIDOS (2 trámites).
-    """
+    """Evalúa los vencimientos de rendición del titular según GAST-R07."""
     user_id = (
         getattr(actor, "subject_id", None)
         or getattr(actor, "pk", None)
@@ -356,70 +357,29 @@ def verificar_deuda_documental_solicitante(
 
     fecha_actual = fecha_referencia if fecha_referencia is not None else timezone.localdate()
 
-    solicitudes = list(
-        SolicitudGasto.objects.filter(
-            solicitante_id=user_id,
-            tipo_flujo=TipoFlujoGasto.COMPRA_DIRECTA,
-            pago_externo__isnull=False,
-            cierre__isnull=True,
-        )
+    solicitudes = (
+        compras_directas_con_deuda_documental()
+        .filter(solicitante_id=user_id)
         .select_related("pago_externo")
         .order_by("pago_externo__fecha_pago", "pk")
     )
 
-    if not solicitudes:
-        return ResumenDeudaDocumentalDTO()
-
-    solicitudes_ids = [s.pk for s in solicitudes]
-    tramites_ids = [s.tramite_base_id for s in solicitudes if s.tramite_base_id]
-
-    documentos_candidatos = (
-        Documento.objects.filter(
-            Q(solicitud_gasto_id__in=solicitudes_ids) | Q(tramite_base_id__in=tramites_ids),
-            tipo=Documento.Tipo.FACTURA_PROVEEDOR,
-            sucesor__isnull=True,
-        )
-        .prefetch_related(
-            Prefetch(
-                "revisiones",
-                queryset=RevisionDocumento.objects.order_by("-id"),
-                to_attr="revisiones_ordenadas",
-            )
-        )
-    )
-
-    solicitudes_con_factura_valida: set[int] = set()
-    tramite_a_solicitud = {s.tramite_base_id: s.pk for s in solicitudes if s.tramite_base_id}
-
-    for doc in documentos_candidatos:
-        ultima_rev = (
-            doc.revisiones_ordenadas[0]
-            if getattr(doc, "revisiones_ordenadas", None)
-            else None
-        )
-        if ultima_rev is None or ultima_rev.resultado == RevisionDocumento.Resultado.ACEPTADO:
-            if doc.solicitud_gasto_id:
-                solicitudes_con_factura_valida.add(doc.solicitud_gasto_id)
-            elif doc.tramite_base_id and doc.tramite_base_id in tramite_a_solicitud:
-                solicitudes_con_factura_valida.add(tramite_a_solicitud[doc.tramite_base_id])
-
     pendientes: list[TramiteDeudaDocumentalDTO] = []
     en_mora: list[TramiteDeudaDocumentalDTO] = []
 
-    for s in solicitudes:
-        if s.pk not in solicitudes_con_factura_valida:
-            fecha_pago = s.pago_externo.fecha_pago
-            dias = max(0, (fecha_actual - fecha_pago).days)
-            mora = dias > DIAS_GRACIA_RENDICION_FACTURA
-            item = TramiteDeudaDocumentalDTO(
-                solicitud=s,
-                fecha_pago=fecha_pago,
-                dias_transcurridos=dias,
-                en_mora=mora,
-            )
-            pendientes.append(item)
-            if mora:
-                en_mora.append(item)
+    for solicitud in solicitudes:
+        fecha_pago = solicitud.pago_externo.fecha_pago
+        vencimiento = _vencimiento_factura_definitiva(fecha_pago)
+        item = TramiteDeudaDocumentalDTO(
+            solicitud=solicitud,
+            fecha_pago=fecha_pago,
+            fecha_vencimiento=vencimiento,
+            dias_transcurridos=max(0, (fecha_actual - fecha_pago).days),
+            en_mora=fecha_actual > vencimiento,
+        )
+        pendientes.append(item)
+        if item.en_mora:
+            en_mora.append(item)
 
     return ResumenDeudaDocumentalDTO(
         solicitudes_pendientes=tuple(pendientes),

@@ -29,15 +29,15 @@
             <div class="ns-banner-body">
                 <strong class="ns-banner-title">Bloqueo de nuevas solicitudes por comprobantes adeudados</strong>
                 <p>
-                    Registrás <strong>{{ resumen_deuda.total_en_mora }}</strong> compra(s) directa(s) con rendición de factura fiscal definitiva vencida (más de {{ resumen_deuda.dias_gracia }} días desde el pago). El límite máximo permitido es de {{ resumen_deuda.max_mora_permitida }} trámite(s) en mora.
+                    Registrás <strong>{{ resumen_deuda.total_en_mora }}</strong> compras directas con rendición vencida. Podés volver a presentar cuando te queden como máximo {{ resumen_deuda.max_mora_permitida }} trámites en mora.
                 </p>
                 <p>
-                    Debés adjuntar la factura correspondiente a los trámites pendientes para rehabilitar la presentación:
+                    Revisá qué facturas necesitás cargar o corregir.
                 </p>
                 <ul>
                     {% for item in resumen_deuda.solicitudes_en_mora %}
                         <li class="font-tabular">
-                            <strong>Solicitud #{{ item.solicitud_id }}</strong>: {{ item.concepto }} — Pagada el {{ item.fecha_pago|date:"d/m/Y" }} (hace {{ item.dias_transcurridos }} días).
+                            <strong>Solicitud #{{ item.solicitud_id }}</strong> · {{ item.concepto }} · Venció el {{ item.fecha_vencimiento|date:"d/m/Y" }}.
                             <a href="{% url 'gastos:detalle' pk=item.solicitud_id %}">Ver trámite</a>
                         </li>
                     {% endfor %}
@@ -53,13 +53,12 @@
             </svg>
             <div class="ns-banner-body">
                 <strong class="ns-banner-title">Aviso preventivo de rendición documental</strong>
-                <p>
-                    Tenés <strong>{{ resumen_deuda.total_pendientes }}</strong> compra(s) directa(s) pagada(s) pendiente(s) de factura definitiva. Recordá que el plazo de gracia para adjuntar la factura es de {{ resumen_deuda.dias_gracia }} días posteriores al pago.
-                </p>
+                <p>Revisá el vencimiento de cada factura definitiva pendiente.</p>
                 <ul>
                     {% for item in resumen_deuda.solicitudes_pendientes %}
                         <li class="font-tabular">
-                            <strong>Solicitud #{{ item.solicitud_id }}</strong>: {{ item.concepto }} — Pagada el {{ item.fecha_pago|date:"d/m/Y" }} (hace {{ item.dias_transcurridos }} días{% if item.en_mora %} — <span class="ns-banner-strong">vencida</span>{% endif %}).
+                            <strong>Solicitud #{{ item.solicitud_id }}</strong> · {{ item.concepto }} ·
+                            {% if item.en_mora %}Venció el{% else %}Vence el{% endif %} {{ item.fecha_vencimiento|date:"d/m/Y" }}.
                             <a href="{% url 'gastos:detalle' pk=item.solicitud_id %}">Ver trámite</a>
                         </li>
                     {% endfor %}
