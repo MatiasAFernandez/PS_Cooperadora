@@ -1,12 +1,13 @@
-"""Búsqueda de concepto combinada con estado, acceso y conservación de datos."""
+"""Búsqueda de gastos combinada con estado, acceso y conservación de datos."""
 
 from typing import Any
 
 import pytest
+from django.contrib.auth.models import Group
 from django.test import Client
 from django.urls import reverse
 
-from gastos.models import DecisionGasto, SolicitudGasto
+from gastos.models import DecisionGasto, EstadoSolicitud, SolicitudGasto
 from gastos.services import decide_expense
 from identidad.services import Actor
 from tests.soporte_gastos import crear_gasto_sintetico
@@ -89,8 +90,82 @@ def test_busqueda_sin_coincidencias_no_revela_gastos_ajenos(
     response = _client(accounts).get(reverse("gastos:lista"), {"q": "exclusivamente ajeno"})
     assert list(response.context["solicitudes"]) == []
     content = response.content.decode()
-    assert "No se encontraron solicitudes visibles con el concepto buscado" in content
+    assert "No se encontraron solicitudes que coincidan con la búsqueda y los filtros" in content
     assert gastos_busqueda["b_presentada"].concepto not in content
+
+
+@pytest.mark.parametrize(
+    ("username", "texto", "esperadas"),
+    [
+        ("demo_l", "  alICIA lÓP  ", {"a_presentada", "a_aceptada", "a_rechazada"}),
+        ("demo_b", "Alicia López", set()),
+        ("demo_l", "demo_b", {"b_aceptada", "b_presentada"}),
+        ("demo_l", "demo_a", set()),
+    ],
+)
+def test_busqueda_usa_el_nombre_visible_del_solicitante(
+    demo_accounts: Any,
+    gastos_busqueda: dict[str, SolicitudGasto],
+    username: str,
+    texto: str,
+    esperadas: set[str],
+) -> None:
+    accounts, _ = demo_accounts
+    solicitante = accounts["demo_a"]
+    solicitante.first_name = "María Alicia"
+    solicitante.last_name = "López"
+    solicitante.save(update_fields=["first_name", "last_name"])
+
+    response = _client(accounts, username).get(reverse("gastos:lista"), {"q": texto})
+
+    assert response.status_code == 200
+    assert {s.pk for s in response.context["solicitudes"]} == {
+        gastos_busqueda[clave].pk for clave in esperadas
+    }
+
+
+@pytest.mark.parametrize(
+    ("username", "registra_pago", "estados_autorizados"),
+    [
+        ("demo_a", False, set(EstadoSolicitud.values)),
+        ("demo_b", False, set()),
+        ("demo_l", False, set()),
+        ("demo_o", False, {EstadoSolicitud.PRESENTADA, EstadoSolicitud.POSTERGADA}),
+        ("demo_l", True, set(EstadoSolicitud.values)),
+    ],
+)
+def test_busqueda_por_correo_respeta_la_visibilidad_en_cada_detalle(
+    demo_accounts: Any,
+    username: str,
+    registra_pago: bool,
+    estados_autorizados: set[str],
+) -> None:
+    accounts, _ = demo_accounts
+    titular = accounts["demo_a"]
+    titular.email = "contacto-a@example.test"
+    titular.save(update_fields=["email"])
+    if registra_pago:
+        accounts[username].groups.add(Group.objects.get_or_create(name="demo_gastos_pago")[0])
+    solicitudes = [
+        crear_gasto_sintetico(solicitante=titular, estado=estado)
+        for estado in EstadoSolicitud.values
+    ]
+    client = _client(accounts, username)
+
+    response = client.get(reverse("gastos:lista"), {"q": "CONTACTO-A@"})
+
+    assert response.status_code == 200
+    assert {s.estado for s in response.context["solicitudes"]} == estados_autorizados
+    if username != "demo_a":
+        assert titular.email not in response.content.decode()
+    for solicitud in solicitudes:
+        detalle = client.get(reverse("gastos:detalle", args=[solicitud.pk]))
+        if username == "demo_b":
+            assert detalle.status_code == 404
+        else:
+            assert detalle.status_code == 200
+            correo_esperado = titular.email if solicitud.estado in estados_autorizados else ""
+            assert detalle.context["detalle_solicitante"]["correo"] == correo_esperado
 
 
 @pytest.mark.parametrize("query,expected", [("%", "literal_%"), ("_", "literal__")])
@@ -98,12 +173,15 @@ def test_porcentaje_y_guion_bajo_son_literales(
     demo_accounts: Any, gastos_busqueda: Any, query: str, expected: str
 ) -> None:
     accounts, _ = demo_accounts
+    solicitante = accounts["demo_a"]
+    solicitante.first_name = "Alicia"
+    solicitante.save(update_fields=["first_name"])
     literals = {
         name: crear_gasto_sintetico(
             concepto=f"Referencia {character} literal",
             monto_estimado="10.00",
             unidad_requirente="Unidad sintética",
-            solicitante=accounts["demo_a"],
+            solicitante=solicitante,
         )
         for name, character in [("literal_%", "%"), ("literal__", "_")]
     }
@@ -238,7 +316,11 @@ def test_consulta_combinada_y_recarga_no_escriben_solicitudes_o_decisiones(
     assert list(response.context["solicitudes"]) == list(reload.context["solicitudes"])
     assert list(response.context["solicitudes"]) == [gastos_busqueda["a_presentada"]]
     content = response.content.decode()
-    assert '<label for="id_q">Buscar por concepto o número</label>' in content
+    assert (
+        '<label for="id_q">Buscar por concepto, número de solicitud, '
+        "nombre o correo del solicitante</label>"
+    ) in content
+    assert 'placeholder="Concepto, #, nombre o correo"' in content
     assert 'value="  insumos  "' in content
     assert '<option value="postergada" selected>Postergada</option>' in content
     assert list(SolicitudGasto.objects.order_by("pk").values()) == before_solicitudes

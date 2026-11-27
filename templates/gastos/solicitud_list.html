@@ -87,7 +87,7 @@
     {% elif filtro_form.errors %}
         <p class="bandeja-vacio">Corregí los filtros para consultar las solicitudes.</p>
     {% elif filtro_form.cleaned_data.q %}
-        <p class="bandeja-vacio">No se encontraron solicitudes visibles con el concepto buscado y los filtros seleccionados.</p>
+        <p class="bandeja-vacio">No se encontraron solicitudes que coincidan con la búsqueda y los filtros.</p>
     {% elif filtro_form.cleaned_data.estado %}
         <p class="bandeja-vacio">No se encontraron solicitudes visibles con el estado seleccionado.</p>
     {% elif solo_atencion and not tiene_filtros_activos %}
