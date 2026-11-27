@@ -10,7 +10,8 @@ from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import OuterRef, Q, Subquery
+from django.db.models import OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce, Concat, NullIf, Trim
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -673,14 +674,16 @@ class SolicitudGastoListView(View):
         actor = result
 
         puede_decidir = has_capability(actor, "gastos.decidir")
-        puede_pagar = all(
+        puede_registrar_pago = has_capability(actor, "gastos.registrar_pago")
+        puede_pagar = puede_registrar_pago and all(
             has_capability(actor, capacidad)
             for capacidad in (
-                "gastos.registrar_pago", "gastos.consultar_todas",
-                "documentos.ver_metadatos", "documentos.incorporar",
+                "gastos.consultar_todas",
+                "documentos.ver_metadatos",
+                "documentos.incorporar",
             )
         )
-        es_operador = puede_decidir or has_capability(actor, "gastos.registrar_pago")
+        es_operador = puede_decidir or puede_registrar_pago
         puede_presentar = has_capability(actor, "gastos.presentar")
         puede_incorporar = has_capability(actor, "documentos.incorporar")
         ofrece_atencion = puede_decidir or puede_pagar or puede_presentar
@@ -760,13 +763,29 @@ class SolicitudGastoListView(View):
                 )
             elif estado:
                 solicitudes = solicitudes.filter(estado=estado)
-            concepto = filtro_form.cleaned_data["q"]
-            if concepto:
-                criterio = Q(concepto__icontains=concepto)
-                numero = _numero_de_solicitud_buscado(concepto)
+            texto = filtro_form.cleaned_data["q"]
+            if texto:
+                nombre_completo = Trim(
+                    Concat("solicitante__first_name", Value(" "), "solicitante__last_name")
+                )
+                solicitudes = solicitudes.alias(
+                    nombre_solicitante=Coalesce(
+                        NullIf(nombre_completo, Value("")), "solicitante__username"
+                    )
+                )
+                criterio = Q(concepto__icontains=texto) | Q(nombre_solicitante__icontains=texto)
+                numero = _numero_de_solicitud_buscado(texto)
                 if numero is not None:
                     criterio |= Q(pk=numero)
-                solicitudes = solicitudes.filter(criterio)
+
+                correo = Q(solicitante__email__icontains=texto)
+                if not puede_registrar_pago:
+                    # Mismo alcance que el correo del solicitante en el detalle.
+                    correo_visible = Q(solicitante_id=actor.subject_id)
+                    if puede_decidir:
+                        correo_visible |= condiciones_pendiente["decision"]
+                    correo &= correo_visible
+                solicitudes = solicitudes.filter(criterio | correo)
             pendiente = filtro_form.cleaned_data["pendiente"]
             if pendiente:
                 solicitudes = solicitudes.filter(condiciones_pendiente[pendiente])

@@ -42,14 +42,14 @@ class FiltroEstadoGastoForm(FiltroFechaForm):
         error_messages={"invalid_choice": "Seleccioná un estado válido."},
     )
     q = forms.CharField(
-        label="Buscar por concepto o número",
+        label="Buscar por concepto, número de solicitud, nombre o correo del solicitante",
         required=False,
         max_length=255,
         widget=forms.TextInput(
             attrs={
                 "type": "search",
                 "class": "form-control",
-                "placeholder": "Buscar por concepto o número",
+                "placeholder": "Concepto, #, nombre o correo",
             }
         ),
     )
