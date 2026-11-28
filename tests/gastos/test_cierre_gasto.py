@@ -552,6 +552,21 @@ def test_permisos_metadatos_vistas_historial_privado_y_mutaciones_posteriores(
     assert "Pagada" in html_lista_o
     assert "Cerrada" in html_lista_o
 
+    gasto.refresh_from_db()
+    resp_reversion = client_o_panel.post(
+        reverse("gastos:decidir", args=[gasto.pk]),
+        data={
+            "action": "revertir",
+            "version": gasto.version,
+            "motivo": "Motivo conservado tras el cierre",
+        },
+    )
+    assert resp_reversion.status_code == 409
+    contenido_reversion = resp_reversion.content.decode()
+    assert "El trámite está cerrado" in contenido_reversion
+    assert "Motivo conservado tras el cierre" in contenido_reversion
+    assert "Confirmar reversión" not in contenido_reversion
+
     # Mutaciones posteriores bloqueadas en Gastos y en rutas directas de documentos
     with pytest.raises(PaymentConflictError):
         rectificar_pago_externo(
@@ -681,7 +696,7 @@ def test_concurrencia_real_dos_cierres_y_cierre_vs_revision_postgresql(
         assert ev.puede_cerrar is True
         return gasto, factura, rev_f, ev.huella_cierre
 
-    # Escenario 1: dos cierres simultáneos
+    # Escenario 1: dos cierres y una reversión simultáneos sobre un gasto pagado.
     gasto_1, _, _, huella_1 = _preparar_gasto_listo("c1")
     _client_como(
         user_o,
@@ -692,39 +707,50 @@ def test_concurrencia_real_dos_cierres_y_cierre_vs_revision_postgresql(
             "documentos.ver_metadatos",
         ],
     )
-    url_1 = reverse("gastos:cerrar", kwargs={"pk": gasto_1.pk})
-    barrier_1 = Barrier(2)
-    results_1: list[int | Exception | None] = [None, None]
+    url_cerrar = reverse("gastos:cerrar", args=[gasto_1.pk])
+    url_decidir = reverse("gastos:decidir", args=[gasto_1.pk])
+    datos_cierre = {"version": gasto_1.version, "huella_cierre": huella_1}
+    datos_reversion = {
+        "action": "revertir",
+        "version": gasto_1.version,
+        "motivo": "Corrección concurrente",
+    }
+    solicitudes_http = (
+        (url_cerrar, datos_cierre),
+        (url_cerrar, datos_cierre),
+        (url_decidir, datos_reversion),
+    )
+    barrier_1 = Barrier(len(solicitudes_http))
+    results_1: list[int | Exception | None] = [None] * len(solicitudes_http)
 
-    def worker_cierre(idx: int) -> None:
+    def worker_post(idx: int, url: str, datos: dict[str, Any]) -> None:
         connections.close_all()
         try:
             client = Client()
             client.force_login(user_o)
             barrier_1.wait(timeout=10)
-            resp = client.post(
-                url_1,
-                {
-                    "version": str(gasto_1.version),
-                    "huella_cierre": huella_1,
-                    "observacion": f"Hilo {idx}",
-                },
-            )
+            resp = client.post(url, datos)
             results_1[idx] = resp.status_code
         except Exception as exc:
             results_1[idx] = exc
         finally:
             connections.close_all()
 
-    t1 = Thread(target=worker_cierre, args=(0,))
-    t2 = Thread(target=worker_cierre, args=(1,))
-    t1.start()
-    t2.start()
-    t1.join(timeout=15)
-    t2.join(timeout=15)
-    assert sorted(r for r in results_1 if isinstance(r, int)) == [302, 409]
+    hilos = [
+        Thread(target=worker_post, args=(indice, url, datos))
+        for indice, (url, datos) in enumerate(solicitudes_http)
+    ]
+    for hilo in hilos:
+        hilo.start()
+    for hilo in hilos:
+        hilo.join(timeout=15)
+        assert not hilo.is_alive()
+    assert sorted(r for r in results_1[:2] if isinstance(r, int)) == [302, 409], results_1
+    assert results_1[2] == 409, results_1
     gasto_1.refresh_from_db()
     assert gasto_1.version == 2
+    assert gasto_1.estado == EstadoSolicitud.ACEPTADA
+    assert gasto_1.decisiones.count() == 1
     assert CierreGasto.objects.filter(solicitud=gasto_1).count() == 1
 
     # Escenario 2: cierre vs revisión concurrente sobre la factura

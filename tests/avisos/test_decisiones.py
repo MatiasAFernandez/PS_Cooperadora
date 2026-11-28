@@ -242,6 +242,56 @@ def test_secuencia_postergar_y_decidir_genera_dos_avisos_e_idempotencia_no_reini
 
 @pytest.mark.django_db
 @override_settings(
+    DEMO_IDENTITY_ENABLED=True,
+    AVISOS_EMAIL_ENABLED=True,
+    AVISOS_PUBLIC_BASE_URL="http://127.0.0.1:8000",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+def test_reversion_no_emite_aviso_ni_correo_y_conserva_el_aviso_previo(
+    django_capture_on_commit_callbacks,
+):
+    solicitante = _crear_usuario("sol_rev", grupos=["demo_solicitante"])
+    operadora = _crear_usuario("op_rev", grupos=["demo_operadora"])
+    actor = _actor_de(operadora)
+    solicitud = _crear_solicitud_directa(solicitante)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        decide_expense(
+            actor=actor, solicitud_id=solicitud.pk, action="aceptar", expected_version=0, motivo=""
+        )
+    previo = Aviso.objects.get(solicitud_id=solicitud.pk)
+    leida_ts = timezone.now()
+    Aviso.objects.filter(pk=previo.pk).update(leida_en=leida_ts)
+    assert len(mail.outbox) == 1
+
+    with django_capture_on_commit_callbacks(execute=True):
+        decide_expense(
+            actor=actor,
+            solicitud_id=solicitud.pk,
+            action="revertir",
+            expected_version=1,
+            motivo="Corresponde evaluar otro respaldo",
+        )
+    reversion = DecisionGasto.objects.get(
+        solicitud=solicitud, estado_resultante=EstadoSolicitud.PRESENTADA
+    )
+
+    assert generar_aviso_decision_gasto(reversion.pk, preparar_correo=True) == 0
+    call_command("reintentar_aviso_decision_gasto", str(reversion.pk), stdout=StringIO())
+
+    assert list(Aviso.objects.filter(solicitud_id=solicitud.pk)) == [previo]
+    intenciones = IntencionCorreo.objects.filter(aviso__solicitud_id=solicitud.pk)
+    assert list(intenciones.values_list("aviso_id", flat=True)) == [previo.pk]
+    assert len(mail.outbox) == 1
+    visible = avisos_autorizados_queryset(_actor_de(solicitante)).get(pk=previo.pk)
+    assert visible.leida_en == leida_ts
+    assert DecisionGasto.objects.get(pk=visible.decision_id).estado_resultante == (
+        EstadoSolicitud.ACEPTADA
+    )
+
+
+@pytest.mark.django_db
+@override_settings(
     LOCAL_IDENTITY_ENABLED=True,
     DEMO_IDENTITY_ENABLED=True,
     AVISOS_EMAIL_ENABLED=True,

@@ -216,6 +216,44 @@
             <div class="form-error-summary" role="alert" data-detail-decision-error tabindex="-1"><p>{{ error_decision }}</p></div>
             {% endif %}
 
+            {% if reversion_form %}
+            <section class="sd-card" aria-labelledby="reversion-heading">
+                <details id="revertir-decision" class="sd-details sd-details-flush"{% if reversion_form.is_bound %} open{% endif %}>
+                    <summary id="reversion-heading">Revertir decisión</summary>
+                    {% if error_reversion %}
+                    <div class="form-error-summary" role="alert" data-detail-decision-error tabindex="-1"><p>{{ error_reversion }}</p></div>
+                    {% endif %}
+                    <p class="sd-small">La solicitud volverá a Presentada y quedará pendiente de decisión.</p>
+                    {% url 'gastos:decidir' pk=solicitud.pk as url_revertir %}
+                    {% url 'gastos:detalle' pk=solicitud.pk as url_cancelar_reversion %}
+                    <form method="post" action="{{ url_revertir }}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">
+                        {% csrf_token %}
+                        {{ reversion_form.version }}
+                        <div class="sd-field">
+                            {{ reversion_form.motivo.label_tag }}
+                            {{ reversion_form.motivo }}
+                            {% if reversion_form.motivo.errors %}
+                            <div id="{{ reversion_form.motivo.auto_id }}_error" class="sd-field-error" role="alert" data-detail-decision-error tabindex="-1">
+                                <p>{{ reversion_form.motivo.errors.0 }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="sd-actions">
+                            <a href="{{ url_cancelar_reversion }}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}" class="btn btn-secondary">Cancelar</a>
+                            <button class="btn btn-danger" type="submit" name="action" value="revertir">Confirmar reversión</button>
+                        </div>
+                    </form>
+                </details>
+            </section>
+            {% elif error_reversion %}
+            <div class="form-error-summary" role="alert" data-detail-decision-error tabindex="-1">
+                <p>{{ error_reversion }}</p>
+                {% if motivo_reversion_ingresado %}
+                <p class="sd-break"><strong>Motivo ingresado</strong><br>{{ motivo_reversion_ingresado|linebreaksbr }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
             <!-- Documentos: respaldo, versiones y seguimiento -->
             <section id="respaldo-documental" class="sd-card" aria-labelledby="respaldo-documental-heading">
                 <h2 id="respaldo-documental-heading" class="sd-h2">Documentos</h2>

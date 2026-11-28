@@ -111,13 +111,19 @@ def generar_aviso_decision_gasto(
     *,
     preparar_correo: bool = False,
 ) -> int:
-    """Genera un aviso persistente e idempotente para una decisión de gasto existente."""
+    """Genera un aviso persistente e idempotente para una decisión de gasto existente.
+
+    Las decisiones de reversión no generan aviso y devuelven 0.
+    """
     try:
         decision = DecisionGasto.objects.select_related("solicitud").get(pk=decision_id)
     except DecisionGasto.DoesNotExist as exc:
         raise DecisionGasto.DoesNotExist(
             f"No existe la decisión de gasto #{decision_id}."
         ) from exc
+
+    if decision.es_reversion:
+        return 0
 
     solicitud = decision.solicitud
     titular = (

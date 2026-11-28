@@ -3,6 +3,8 @@
             <strong>
                 {% if evento.tipo_evento == "decision_gasto" %}
                     Decisión de gasto
+                {% elif evento.tipo_evento == "reversion_decision_gasto" %}
+                    Decisión revertida
                 {% elif evento.tipo_evento == "subsanacion_gasto" %}
                     Subsanación de solicitud
                 {% elif evento.tipo_evento == "cierre_gasto" %}

@@ -19,18 +19,19 @@ preferencias ni SMTP productivo como parte de este tramo.
 
 ## Evento y transiciones
 
-La fuente es cada `DecisionGasto` persistida por `decide_expense`, no una lectura
-del estado actual de `SolicitudGasto`. Se conservan las transiciones vigentes:
+La fuente de los avisos de decisión es el registro histórico `DecisionGasto`
+persistido por `decide_expense`. Este tramo comunica aceptación, observación,
+postergación y rechazo. La reversión de [SPEC-034](034-franco-reversion-decision-gasto.md)
+se consulta en el detalle del gasto y queda fuera de la generación y la
+recuperación de avisos.
 
-| Estado anterior | Decisiones permitidas |
+| Estado anterior | Decisiones que generan aviso |
 |---|---|
-| Presentada | Aceptada, Postergada, Rechazada |
-| Postergada | Aceptada, Rechazada |
-| Aceptada o Rechazada | Sin nueva decisión en este servicio |
+| Presentada | Aceptada, Observada, Postergada, Rechazada |
+| Postergada | Aceptada, Observada, Rechazada |
 
-No se agrega otra postergación, corrección, reapertura ni plazo. Se mantienen
-validación de motivo, conflicto de versión, permisos y prohibición vigente de
-decisión propia. Notificar no ejecuta ni registra un pago.
+El servicio comprueba permisos, versión esperada y el motivo que exige cada
+acción. El registro de un pago se realiza en su flujo propio.
 
 1. Programar la generación sólo por una decisión nueva confirmada, después del
    commit efectivo. Un rollback, entrada inválida, decisión no autorizada o
@@ -71,8 +72,9 @@ correos automáticamente ni crea una campaña histórica.
 
 ## Contenido y recorrido
 
-- Aviso web: **Decisión registrada: Aceptada / Postergada / Rechazada**, número de
-  solicitud y fecha de esa decisión. La fecha del evento se distingue de la de
+- Aviso web con **Decisión registrada** y el resultado **Aceptada**, **Observada**,
+  **Postergada** o **Rechazada**. Incluye número de solicitud y fecha de la
+  decisión. La fecha del evento se distingue de la de
   recepción si un aviso se recupera posteriormente.
 - Correo individual, texto y HTML: asunto `[PS_Cooperadora] Decisión sobre solicitud
   de gasto #N`; número, resultado y fecha del evento, botón **Ver solicitud** y
@@ -111,7 +113,7 @@ La guía explicará los comandos efectivos al implementar, sin otra consola web.
 Revisión de Gemini sobre el plan antes de editar código. Luego dos incrementos:
 productor/persistencia/permisos/recuperación; presentación/plantilla y guía.
 
-Probar tres resultados válidos, postergación seguida de aceptación o rechazo,
+Probar los cuatro resultados válidos, postergación seguida de aceptación o rechazo,
 repetición del mismo evento, conflicto concurrente y rollback. Verificar titular,
 identidades inactivas/no verificadas, pérdida de permisos, ID ajeno, CSRF, contador,
 paginación y lectura independiente. Repetir autorización al enviar y reintentar;

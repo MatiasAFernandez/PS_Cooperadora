@@ -350,6 +350,18 @@ class DecisionGastoForm(forms.Form):
     )
 
 
+class ReversionDecisionGastoForm(forms.Form):
+    """Confirmación de reversión dentro del detalle del gasto."""
+
+    version = forms.CharField(widget=forms.HiddenInput())
+    motivo = forms.CharField(
+        label="Motivo de la reversión",
+        label_suffix="",
+        error_messages={"required": "Ingresá el motivo de la reversión."},
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+    )
+
+
 class CorregirSolicitudGastoForm(forms.Form):
     """Formulario de subsanación para el subconjunto mínimo permitido de SolicitudGasto."""
 

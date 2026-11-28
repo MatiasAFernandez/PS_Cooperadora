@@ -80,6 +80,41 @@ class DeudaDocumentalBloqueoError(ExpenseError):
         self.solicitudes_en_mora = tuple(solicitudes_en_mora)
 
 
+TRANSICIONES_DECISION_GASTO: dict[str, dict[str, str]] = {
+    EstadoSolicitud.PRESENTADA: {
+        "aceptar": EstadoSolicitud.ACEPTADA,
+        "observar": EstadoSolicitud.OBSERVADA,
+        "postergar": EstadoSolicitud.POSTERGADA,
+        "rechazar": EstadoSolicitud.RECHAZADA,
+    },
+    EstadoSolicitud.POSTERGADA: {
+        "aceptar": EstadoSolicitud.ACEPTADA,
+        "observar": EstadoSolicitud.OBSERVADA,
+        "rechazar": EstadoSolicitud.RECHAZADA,
+    },
+    EstadoSolicitud.ACEPTADA: {"revertir": EstadoSolicitud.PRESENTADA},
+    EstadoSolicitud.RECHAZADA: {"revertir": EstadoSolicitud.PRESENTADA},
+}
+
+ACCIONES_DECISION_GASTO = frozenset(
+    accion for destinos in TRANSICIONES_DECISION_GASTO.values() for accion in destinos
+)
+ACCIONES_DECISION_CON_MOTIVO_OBLIGATORIO = frozenset(
+    {"observar", "postergar", "rechazar", "revertir"}
+)
+
+
+def _reversion_bloqueada(solicitud: SolicitudGasto) -> bool:
+    """Indica si un pago externo o un cierre persistidos impiden revertir la decisión.
+
+    Es la única guarda de ambos hechos, compartida por la consulta y la escritura.
+    """
+    return SolicitudGasto.objects.filter(
+        Q(pago_externo__isnull=False) | Q(cierre__isnull=False),
+        pk=solicitud.pk,
+    ).exists()
+
+
 def can_decide_expense(actor: Any, expense: SolicitudGasto, action: str) -> bool:
     """Verifica si el actor puede ejecutar una acción de decisión sobre la solicitud.
 
@@ -90,11 +125,12 @@ def can_decide_expense(actor: Any, expense: SolicitudGasto, action: str) -> bool
     - Exige que la solicitud sea visible para el actor según visible_expenses(actor).
     - Exige que el solicitante sea distinto del actor (prohibición de auto-decisión H2).
     - Exige que la transición solicitada sea válida desde el estado actual.
+    - Para 'revertir', exige ACEPTADA o RECHAZADA y ausencia de pago externo y cierre.
     """
-    if actor is None or not action:
+    if actor is None or not isinstance(action, str):
         return False
 
-    if action not in {"aceptar", "observar", "postergar", "rechazar"}:
+    if action not in TRANSICIONES_DECISION_GASTO.get(expense.estado, {}):
         return False
 
     if not has_capability(actor, "gastos.decidir"):
@@ -108,15 +144,7 @@ def can_decide_expense(actor: Any, expense: SolicitudGasto, action: str) -> bool
     if not visible_expenses(actor).filter(pk=expense.pk).exists():
         return False
 
-    # Matriz de transiciones permitidas
-    if expense.estado == EstadoSolicitud.PRESENTADA:
-        return action in {"aceptar", "observar", "postergar", "rechazar"}
-
-    if expense.estado == EstadoSolicitud.POSTERGADA:
-        return action in {"aceptar", "observar", "rechazar"}
-
-    # Estados OBSERVADA, ACEPTADA y RECHAZADA no admiten decisión del operador
-    return False
+    return action != "revertir" or not _reversion_bloqueada(expense)
 
 
 def _validar_version_entera(expected_version: Any, exc_cls: type[ExpenseError]) -> int:
@@ -146,7 +174,7 @@ def validate_decision_content(
     motivo: Any,
 ) -> tuple[str, int, str]:
     """Valida acción, versión y motivo dentro del servicio tras verificar acceso."""
-    if action not in {"aceptar", "observar", "postergar", "rechazar"}:
+    if not isinstance(action, str) or action not in ACCIONES_DECISION_GASTO:
         raise InvalidDecisionInputError(f"Acción de decisión desconocida: '{action}'.")
 
     version_int = _validar_version_entera(expected_version, InvalidDecisionInputError)
@@ -156,7 +184,7 @@ def validate_decision_content(
         raise InvalidDecisionInputError("El motivo no puede contener caracteres nulos (NUL).")
 
     motivo_limpio = motivo_raw.strip()
-    if action in {"observar", "postergar", "rechazar"} and not motivo_limpio:
+    if action in ACCIONES_DECISION_CON_MOTIVO_OBLIGATORIO and not motivo_limpio:
         raise InvalidDecisionInputError(
             f"El motivo es obligatorio para la acción '{action}' y no puede contener sólo espacios."
         )
@@ -178,8 +206,8 @@ def decide_expense(
     1. Inicio de transacción y bloqueo de la solicitud visible (404 si es ajena o inexistente).
     2. Comprobación de capacidad y prohibición de decisión propia (403).
     3. Validación de acción, versión y motivo dentro del servicio (400).
-    4. Comprobación de versión vigente y transición sobre la fila bloqueada (409).
-    5. Escritura conjunta de estado, versión y evento.
+    4. Comprobación de versión, transición y, al revertir, ausencia de pago o cierre (409).
+    5. Escritura conjunta de estado, versión y evento; aviso sólo si no es reversión.
     """
     if actor is None:
         raise ExpensePermissionDeniedError("Se requiere un actor autenticado.")
@@ -220,25 +248,19 @@ def decide_expense(
             f"actual en BD {solicitud.version}."
         )
 
-    # 5. Comprobación de transición permitida sobre el estado actual bloqueado
-    mapa_estados = {
-        "aceptar": EstadoSolicitud.ACEPTADA,
-        "observar": EstadoSolicitud.OBSERVADA,
-        "postergar": EstadoSolicitud.POSTERGADA,
-        "rechazar": EstadoSolicitud.RECHAZADA,
-    }
-    transiciones_validas = {
-        EstadoSolicitud.PRESENTADA: {"aceptar", "observar", "postergar", "rechazar"},
-        EstadoSolicitud.POSTERGADA: {"aceptar", "observar", "rechazar"},
-    }
-    acciones_permitidas = transiciones_validas.get(solicitud.estado, set())
-    if valid_action not in acciones_permitidas:
+    # 5. Transición permitida y, al revertir, ausencia de pago externo o cierre
+    destinos = TRANSICIONES_DECISION_GASTO.get(solicitud.estado, {})
+    if valid_action not in destinos:
         raise InvalidTransitionError(
             f"Transición '{valid_action}' no permitida desde estado actual '{solicitud.estado}'."
         )
+    if valid_action == "revertir" and _reversion_bloqueada(solicitud):
+        raise InvalidTransitionError(
+            "No se puede revertir una decisión con pago externo o cierre persistidos."
+        )
 
     # 6. Escritura conjunta atómica de estado, versión y evento
-    nuevo_estado = mapa_estados[valid_action]
+    nuevo_estado = destinos[valid_action]
     estado_anterior = solicitud.estado
 
     solicitud.estado = nuevo_estado
@@ -253,9 +275,10 @@ def decide_expense(
         estado_resultante=nuevo_estado,
     )
 
-    from avisos.services import programar_aviso_decision_gasto
+    if not decision.es_reversion:
+        from avisos.services import programar_aviso_decision_gasto
 
-    programar_aviso_decision_gasto(decision.pk)
+        programar_aviso_decision_gasto(decision.pk)
 
     return solicitud
 
