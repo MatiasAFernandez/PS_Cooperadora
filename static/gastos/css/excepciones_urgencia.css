@@ -52,10 +52,21 @@
     max-width: 34rem;
 }
 
+.excepciones-formulario .form-error-summary {
+    justify-self: stretch;
+    width: 100%;
+    margin-bottom: 0;
+}
+
 .excepciones-campo {
     width: 100%;
     min-width: 0;
     margin-bottom: 0;
+}
+
+.excepciones-campo .errorlist {
+    list-style: none;
+    padding-inline-start: 0;
 }
 
 .excepciones-campo input[type="datetime-local"] {
@@ -71,6 +82,10 @@
 .excepciones-revocar {
     margin-top: 1rem;
     border-top: 1px solid var(--border-hairline);
+}
+
+.excepciones .excepciones-revocar > summary {
+    padding-inline-start: 0;
 }
 
 .excepciones .excepciones-revocacion {

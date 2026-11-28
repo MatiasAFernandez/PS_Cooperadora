@@ -11,6 +11,7 @@ from django.db.models import Exists, OuterRef, Q, Value
 from django.db.models.functions import Concat
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 
@@ -25,7 +26,7 @@ from gastos.excepciones_deuda import (
 )
 from gastos.models import ExcepcionDeudaDocumental
 from gastos.views import _enforce_actor
-from identidad.services import GROUP_CAPABILITIES
+from identidad.services import usuarios_con_capacidad
 
 
 class MotivoExcepcionForm(forms.Form):
@@ -62,15 +63,12 @@ class RevocarExcepcionForm(MotivoExcepcionForm):
 
 
 def _titulares_excepciones():
-    grupos_solicitantes = [
-        nombre for nombre, caps in GROUP_CAPABILITIES.items() if "gastos.presentar" in caps
-    ]
+    ids_capacidad = usuarios_con_capacidad("gastos.presentar").values("pk")
     tiene_historial = Exists(ExcepcionDeudaDocumental.objects.filter(titular_id=OuterRef("pk")))
     return (
         get_user_model()
         .objects.select_related("cuenta_local")
-        .filter(Q(is_active=True, groups__name__in=grupos_solicitantes) | Q(tiene_historial))
-        .distinct()
+        .filter(Q(pk__in=ids_capacidad) | Q(tiene_historial))
     )
 
 
@@ -135,9 +133,12 @@ class ExcepcionTitularView(GestionExcepcionesView):
             aplicar(actor=self.actor, titular_id=titular.pk, **form.cleaned_data)
         except ValidationError as exc:
             messages.error(request, exc.messages[0])
-        else:
-            messages.success(request, confirmacion)
-        return redirect(request.get_full_path())
+            return redirect(request.get_full_path())
+        messages.success(request, confirmacion)
+        parametros = request.GET.copy()
+        parametros.pop("page", None)
+        destino = reverse("gastos:excepcion_titular", args=[titular.pk], query=parametros)
+        return redirect(destino)
 
     def _render(self, request, titular, *, form=None, accion=None, status=200):
         historial = ExcepcionDeudaDocumental.objects.filter(titular=titular).select_related(
