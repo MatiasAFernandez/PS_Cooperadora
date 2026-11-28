@@ -17,7 +17,8 @@ from gastos.excepciones_deuda import (
 )
 from gastos.models import ExcepcionDeudaDocumental, SolicitudGasto, TipoFlujoGasto
 from gastos.services import verificar_deuda_documental_solicitante
-from identidad.services import actor_para_usuario
+from identidad.models import CuentaLocal
+from identidad.services import actor_para_usuario, has_capability
 from tests.gastos.test_alertas_deuda_documental import (
     _adjuntar_factura,
     _crear_compra_directa_pagada,
@@ -104,6 +105,124 @@ def test_otorgamiento_y_revocacion_por_cuenta(administrador, titular, auth_clien
     usuario.save(update_fields=["is_active"])
     assert ruta_titular in cliente.get(ruta_busqueda, {"q": usuario.email}).content.decode()
     assert cliente.get(ruta_titular).context["form"] is None
+
+
+@pytest.mark.parametrize(
+    ("local_habilitado", "estado", "correo_verificado", "grupos", "elegible"),
+    [
+        (False, CuentaLocal.Estado.APROBADA, True, ("local_solicitante",), False),
+        (True, CuentaLocal.Estado.PENDIENTE, True, ("demo_solicitante",), False),
+        (True, CuentaLocal.Estado.RECHAZADA, True, ("demo_solicitante",), False),
+        (True, CuentaLocal.Estado.APROBADA, False, ("demo_solicitante",), False),
+        (True, None, False, ("local_solicitante",), False),
+        (True, CuentaLocal.Estado.APROBADA, True, ("local_solicitante", "demo_solicitante"), True),
+        (False, None, False, ("demo_solicitante",), True),
+    ],
+    ids=[
+        "adaptador-local-apagado",
+        "local-pendiente",
+        "local-rechazada",
+        "local-sin-verificar",
+        "demo-con-grupo-local",
+        "local-habilitada",
+        "demo-habilitada",
+    ],
+)
+def test_busqueda_respeta_elegibilidad_y_mantiene_historial(
+    local_habilitado,
+    estado,
+    correo_verificado,
+    grupos,
+    elegible,
+    administrador,
+    auth_client,
+    settings,
+    instante,
+):
+    settings.LOCAL_IDENTITY_ENABLED = local_habilitado
+    correo = "elegibilidad@example.invalid"
+    usuario = get_user_model().objects.create_user(username="elegibilidad_demo", email=correo)
+    usuario.groups.add(*(Group.objects.get_or_create(name=nombre)[0] for nombre in grupos))
+    if estado is not None:
+        CuentaLocal.objects.create(
+            user=usuario,
+            email=correo,
+            nombre_completo="Cuenta sintética de elegibilidad",
+            estado=estado,
+            email_verificado_en=instante if correo_verificado else None,
+        )
+    assert has_capability(actor_para_usuario(usuario), "gastos.presentar") is elegible
+
+    cliente = auth_client(administrador[0])
+    busqueda = reverse("gastos:excepciones_urgencia")
+    ficha = reverse("gastos:excepcion_titular", args=[usuario.pk])
+    resultado = cliente.get(busqueda, {"q": correo})
+    assert [cuenta.pk for cuenta in resultado.context["pagina"]] == (
+        [usuario.pk] if elegible else []
+    )
+    assert cliente.get(ficha).status_code == (200 if elegible else 404)
+    if elegible:
+        return
+
+    anterior = ExcepcionDeudaDocumental.objects.create(
+        titular=usuario,
+        otorgada_por=administrador[0],
+        otorgada_en=instante - timedelta(days=9),
+        vence_en=instante - timedelta(days=2),
+        motivo="Excepción histórica de la cuenta",
+    )
+    resultado_con_historial = cliente.get(busqueda, {"q": correo})
+    assert [cuenta.pk for cuenta in resultado_con_historial.context["pagina"]] == [usuario.pk]
+    respuesta = cliente.get(ficha)
+    assert respuesta.status_code == 200
+    assert list(respuesta.context["historial"]) == [anterior]
+    assert respuesta.context["form"] is None
+
+
+@pytest.mark.parametrize("accion", ["otorgar", "revocar"])
+def test_guardar_regresa_a_la_primera_pagina_con_la_busqueda(
+    accion, administrador, titular, auth_client, instante
+):
+    usuario, _ = titular
+    ExcepcionDeudaDocumental.objects.bulk_create(
+        [
+            ExcepcionDeudaDocumental(
+                titular=usuario,
+                otorgada_por=administrador[0],
+                otorgada_en=instante - timedelta(days=2 * dias),
+                vence_en=instante - timedelta(days=2 * dias - 1),
+                motivo=f"Motivo histórico {dias}",
+            )
+            for dias in range(1, 12)
+        ]
+    )
+    vence_en = instante + timedelta(days=1)
+    if accion == "otorgar":
+        datos = _otorgar_formulario(vence_en)
+    else:
+        vigente = otorgar_excepcion_deuda(
+            actor=administrador[1], titular_id=usuario.pk, motivo="Urgencia", vence_en=vence_en
+        )
+        datos = {"accion": "revocar", "excepcion_id": vigente.pk, "motivo": "Urgencia resuelta"}
+
+    cliente = auth_client(administrador[0])
+    consulta = "Lucía Herrera / Laboratorio"
+    origen = reverse(
+        "gastos:excepcion_titular", args=[usuario.pk], query={"page": 2, "q": consulta}
+    )
+    invalida = cliente.post(origen, datos | {"motivo": "   "})
+    assert invalida.status_code == 400
+    assert invalida.context["historial"].number == 2
+    assert invalida.context["consulta"] == consulta
+    assert "motivo" in invalida.context["form"].errors
+
+    guardada = cliente.post(origen, datos, follow=True)
+    destino = reverse("gastos:excepcion_titular", args=[usuario.pk], query={"q": consulta})
+    assert guardada.redirect_chain == [(destino, 302)]
+    assert guardada.context["historial"].number == 1
+    reciente = guardada.context["historial"][0]
+    motivo = reciente.motivo if accion == "otorgar" else reciente.motivo_revocacion
+    assert motivo == datos["motivo"]
 
 
 @pytest.mark.parametrize(

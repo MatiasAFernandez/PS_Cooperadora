@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
-from django.contrib.auth import get_user
+from django.contrib.auth import get_user, get_user_model
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 
 GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
@@ -184,3 +185,32 @@ def has_capability(actor: Actor | None, code: str) -> bool:
         and code in KNOWN_CAPABILITIES
         and code in actor.capabilities
     )
+
+
+def usuarios_con_capacidad(capacidad: str) -> QuerySet:
+    """Usuarios activos que obtendrían la capacidad según los adaptadores habilitados."""
+    usuarios = get_user_model().objects.filter(is_active=True)
+    if capacidad not in KNOWN_CAPABILITIES:
+        return usuarios.none()
+
+    from identidad.models import CuentaLocal
+
+    grupos = [
+        nombre for nombre, capacidades in GROUP_CAPABILITIES.items() if capacidad in capacidades
+    ]
+    elegibles = Q(pk__in=[])
+    # Refleja las ramas por adaptador de actor_para_usuario en la consulta SQL.
+    if getattr(settings, "LOCAL_IDENTITY_ENABLED", False):
+        elegibles |= Q(
+            cuenta_local__estado=CuentaLocal.Estado.APROBADA,
+            cuenta_local__email_verificado_en__isnull=False,
+            groups__name__in=grupos,
+        )
+    if getattr(settings, "DEMO_IDENTITY_ENABLED", False) and not capacidad.startswith(
+        ("identidad.", "local_")
+    ):
+        elegibles |= Q(
+            cuenta_local__isnull=True,
+            groups__name__in=[nombre for nombre in grupos if not nombre.startswith("local_")],
+        )
+    return usuarios.filter(elegibles).distinct()
