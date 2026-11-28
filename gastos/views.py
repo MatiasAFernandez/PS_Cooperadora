@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from django import forms
 from django.conf import settings
@@ -62,6 +62,7 @@ from gastos.forms import (
     ParametrosATPForm,
     RectificacionPagoForm,
     RespaldoSolicitudForm,
+    ReversionDecisionGastoForm,
     SolicitudGastoForm,
 )
 from gastos.models import (
@@ -1094,6 +1095,14 @@ def _solicitud_detail_context(
     decision_form = (
         DecisionGastoForm(initial={"version": solicitud.version}) if can_decide else None
     )
+    reversion_form = (
+        ReversionDecisionGastoForm(
+            initial={"version": solicitud.version},
+            auto_id="id_reversion_%s",
+        )
+        if can_decide_expense(actor, solicitud, "revertir")
+        else None
+    )
     # Acción de pago: requiere ambos permisos, estado aceptado y ausencia de pago.
     # El detalle no lista opciones; el formulario de pago comprueba el respaldo
     # habilitado y explica el bloqueo y el camino según permisos.
@@ -1383,6 +1392,7 @@ def _solicitud_detail_context(
         "can_decide": can_decide,
         "acciones_decision": acciones_decision,
         "decision_form": decision_form,
+        "reversion_form": reversion_form,
         "mostrar_estado_registro_pago": mostrar_estado_registro_pago,
         "puede_registrar_pago": puede_registrar_pago,
         "pago_permiso_registrar": pago_permiso_registrar,
@@ -2071,12 +2081,20 @@ class SolicitudGastoDecidirView(View):
                 expected_version=version,
                 motivo=motivo,
             )
-            return redirect(reverse("gastos:detalle", kwargs={"pk": pk}))
+            url_detalle = reverse("gastos:detalle", kwargs={"pk": pk})
+            if action == "revertir":
+                messages.success(request, "Decisión revertida.")
+                bandeja = request.GET.get("bandeja")
+                if bandeja:
+                    url_detalle += "?" + urlencode({"bandeja": bandeja})
+            return redirect(url_detalle)
         except ExpenseNotFoundError as exc:
             raise Http404("Solicitud inexistente o no visible.") from exc
         except ExpensePermissionDeniedError as exc:
             raise PermissionDenied(str(exc)) from exc
         except InvalidDecisionInputError as exc:
+            if action == "revertir":
+                return self._error_reversion(request, actor, pk, error_entrada=exc)
             solicitud = visible_expenses(actor).filter(pk=pk).first()
             if solicitud:
                 msg = str(exc)
@@ -2099,6 +2117,8 @@ class SolicitudGastoDecidirView(View):
                 )
             return HttpResponse(str(exc), status=400)
         except (ConcurrencyConflictError, InvalidTransitionError):
+            if action == "revertir":
+                return self._error_reversion(request, actor, pk)
             solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
             context = _solicitud_detail_context(actor, solicitud)
             context["error_decision"] = (
@@ -2106,6 +2126,50 @@ class SolicitudGastoDecidirView(View):
                 "y las acciones disponibles."
             )
             return render(request, "gastos/solicitud_detail.html", context, status=409)
+
+    def _error_reversion(
+        self,
+        request: HttpRequest,
+        actor: Any,
+        pk: int,
+        *,
+        error_entrada: InvalidDecisionInputError | None = None,
+    ) -> HttpResponse:
+        solicitud = get_object_or_404(visible_expenses(actor), pk=pk)
+        context = _solicitud_detail_context(actor, solicitud)
+        motivo = request.POST.get("motivo", "")
+        form = context["reversion_form"]
+
+        if error_entrada is not None:
+            mensaje = str(error_entrada)
+        elif context["tiene_cierre"]:
+            mensaje = "El trámite está cerrado. No se revirtió la decisión."
+        elif context["pago_consulta"] is not None:
+            mensaje = "Ya hay un pago registrado. No se revirtió la decisión."
+        elif form is None:
+            mensaje = "El estado actual de la solicitud no permite revertir la decisión."
+        else:
+            mensaje = "La solicitud cambió. Revisá el estado actual antes de volver a confirmar."
+
+        if form is not None:
+            form = ReversionDecisionGastoForm(
+                data={"version": solicitud.version, "motivo": motivo},
+                auto_id="id_reversion_%s",
+            )
+            if error_entrada is not None and "motivo" in mensaje.lower():
+                form.add_error("motivo", mensaje)
+                mensaje = None
+            context["reversion_form"] = form
+        else:
+            context["motivo_reversion_ingresado"] = motivo.strip()
+
+        context["error_reversion"] = mensaje
+        return render(
+            request,
+            "gastos/solicitud_detail.html",
+            context,
+            status=400 if error_entrada is not None else 409,
+        )
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         return HttpResponseNotAllowed(["POST"])

@@ -402,20 +402,26 @@ class DecisionGasto(models.Model):
     def __str__(self) -> str:
         return f"Decisión #{self.pk} sobre Solicitud #{self.solicitud_id}: {self.estado_resultante}"
 
+    @property
+    def es_reversion(self) -> bool:
+        """Indica si la decisión devolvió a presentada un gasto aceptado o rechazado."""
+        return (
+            self.estado_anterior in (EstadoSolicitud.ACEPTADA, EstadoSolicitud.RECHAZADA)
+            and self.estado_resultante == EstadoSolicitud.PRESENTADA
+        )
+
     def como_historial(self) -> EventoHistorialDTO:
         """Adapta la decisión al contrato de lectura común sin incluir otros datos."""
-        estado_anterior = self.get_estado_anterior_display()
-        estado_resultante = self.get_estado_resultante_display()
-        detalle = (
-            f"Estado anterior: {estado_anterior}. "
-            f"Estado resultante: {estado_resultante}."
-        )
+        es_reversion = self.es_reversion
+        detalle = f"Estado anterior: {self.get_estado_anterior_display()}."
+        if not es_reversion:
+            detalle += f" Estado resultante: {self.get_estado_resultante_display()}."
         if self.motivo:
             detalle += f" Motivo: {self.motivo}"
         return EventoHistorialDTO(
             evento_id=self.pk,
             tramite_ref=f"gastos:{self.solicitud_id}",
-            tipo_evento="decision_gasto",
+            tipo_evento="reversion_decision_gasto" if es_reversion else "decision_gasto",
             actor_id=str(self.autor_id),
             fecha_hora=self.fecha,
             estado_resultante=self.estado_resultante,
