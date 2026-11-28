@@ -517,7 +517,7 @@ def test_permisos_metadatos_vistas_historial_privado_y_mutaciones_posteriores(
     )
     assert resp_ok.status_code == 302
 
-    # Solicitante y lectura sin metadatos ven Cerrada y Cierre del trámite sin filtrar archivos
+    # El solicitante conserva el resumen del cierre.
     client_a = _client_como(user_a, ["gastos.consultar_propias", "gastos.presentar"])
     resp_det_a = client_a.get(reverse("gastos:detalle", kwargs={"pk": gasto.pk}))
     html_det_a = resp_det_a.content.decode("utf-8")
@@ -527,13 +527,15 @@ def test_permisos_metadatos_vistas_historial_privado_y_mutaciones_posteriores(
     assert "banco_red.pdf" not in html_det_a
 
     user_l = accounts["demo_l"]
-    client_l = _client_como(user_l, ["gastos.consultar_todas"])
+    client_l = _client_como(user_l, ["gastos.consultar_todas", "gastos.consultar_adjuntos"])
     resp_det_l = client_l.get(reverse("gastos:detalle", kwargs={"pk": gasto.pk}))
     html_det_l = resp_det_l.content.decode("utf-8")
     assert "Cerrada" in html_det_l
     assert "Cierre del trámite" in html_det_l
     assert "banco_red.pdf" not in html_det_l
-    assert "factura_red.pdf" not in html_det_l
+    assert "factura_red.pdf" in html_det_l
+    assert reverse("documentos:archivo", args=[factura.pk]) in html_det_l
+    assert "/revision/" not in html_det_l
 
     # Bandeja y panel de vista rápida muestran Pagada + Cerrada
     resp_lista_a = client_a.get(reverse("gastos:lista"))

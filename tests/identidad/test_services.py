@@ -99,7 +99,7 @@ def test_perfiles_sinteticos_tienen_solo_las_capacidades_de_su_grupo(demo_accoun
         "demo_a": {"gastos.presentar", "gastos.consultar_propias"},
         "demo_b": {"gastos.presentar", "gastos.consultar_propias"},
         "demo_o": {"gastos.consultar_todas", "gastos.decidir"},
-        "demo_l": {"gastos.consultar_todas"},
+        "demo_l": {"gastos.consultar_todas", "gastos.consultar_adjuntos"},
     }
     for username, capabilities in expected.items():
         client = Client()

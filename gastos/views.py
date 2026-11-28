@@ -20,6 +20,7 @@ from django.views import View
 
 from comunes.actores import presentar_historial, resolver_actores_visibles
 from comunes.models import Circuito
+from documentos.acceso import adjuntos_gastos_visibles
 from documentos.models import Documento
 from documentos.operaciones import operacion_documental
 from documentos.policy import ArchivoInvalido, validar_archivo
@@ -1036,7 +1037,24 @@ def _solicitud_detail_context(
         )
         if evento_pago is not None:
             cronologia.append(evento_pago.como_historial())
-    proyeccion_documental = proyectar_documentos(actor, solicitud)
+    puede_ver_revision_documental = has_capability(actor, "documentos.consultar_metadatos")
+    puede_descargar_documentos = has_capability(actor, "documentos.recuperar_contenido")
+    proyeccion_documental = proyectar_documentos(actor, solicitud, incluir_lectura_gastos=True)
+    ids_adjuntos_lector = frozenset()
+    if not puede_descargar_documentos:
+        ids_adjuntos_lector = frozenset(
+            adjuntos_gastos_visibles(actor)
+            .filter(solicitud_gasto_id=solicitud.pk)
+            .values_list("pk", flat=True)
+        )
+    puede_descargar_constancia_atp = bool(
+        pago_consulta
+        and pago_consulta.constancia_atp_id
+        and (
+            puede_descargar_documentos
+            or pago_consulta.constancia_atp_id in ids_adjuntos_lector
+        )
+    )
     if proyeccion_documental is not None:
         cronologia.extend(proyeccion_documental.eventos)
     subsanaciones = solicitud.subsanaciones.select_related(
@@ -1117,7 +1135,7 @@ def _solicitud_detail_context(
             pago_sin_respaldo_confirmado = len(opciones_pago) == 0
 
     respaldo_categoria = None
-    if pago_consulta is not None and has_capability(actor, "documentos.consultar_metadatos"):
+    if pago_consulta is not None and puede_ver_revision_documental:
         carga = _cargar_opciones_documentales(actor, solicitud)
         if carga is not None:
             _, opciones = carga
@@ -1258,7 +1276,7 @@ def _solicitud_detail_context(
         detalle_pendientes.append(
             ("Respaldo observado o rechazado", "#respaldo-documental")
         )
-    elif proyeccion_documental is not None and (
+    elif puede_ver_revision_documental and (
         tiene_revision_pendiente_u_observada or tiene_revision_rechazada
     ):
         detalle_pendientes.append(("Revisión documental pendiente", "#respaldo-documental"))
@@ -1288,9 +1306,19 @@ def _solicitud_detail_context(
     evaluacion_cierre = evaluar_requisitos_cierre(solicitud)
     puede_cerrar = puede_cerrar_solicitud(actor, solicitud)
     tiene_permiso_cerrar = has_capability(actor, "gastos.cerrar")
-    tiene_permiso_metadatos_cierre = has_capability(
-        actor, "documentos.consultar_metadatos"
-    ) or has_capability(actor, "documentos.ver_metadatos")
+    tiene_permiso_metadatos_cierre = puede_ver_revision_documental or has_capability(
+        actor, "documentos.ver_metadatos"
+    )
+    mostrar_visor_documental = (
+        puede_descargar_constancia_atp
+        or bool(
+            pago_consulta and pago_consulta.comprobante_bancario_id and puede_descargar_documentos
+        )
+        or any(
+            puede_descargar_documentos or version.documento_id in ids_adjuntos_lector
+            for version in detalle_versiones_actuales
+        )
+    )
 
     respaldo_cerrado = solicitud.estado == EstadoSolicitud.RECHAZADA or tiene_cierre
     puede_incorporar_documentos = not respaldo_cerrado and has_capability(
@@ -1336,6 +1364,7 @@ def _solicitud_detail_context(
         "detalle_pendientes": [
             {"texto": texto, "ancla": ancla} for texto, ancla in detalle_pendientes
         ],
+        "puede_ver_revision_documental": puede_ver_revision_documental,
         "detalle_puede_revisar": has_capability(actor, "documentos.revisar"),
         "actor": actor,
         "tramite_id": f"gastos:{solicitud.pk}",
@@ -1375,9 +1404,10 @@ def _solicitud_detail_context(
             and has_capability(actor, "documentos.incorporar")
             and has_capability(actor, "gastos.consultar_todas")
         ),
-        "puede_descargar_documentos": has_capability(
-            actor, "documentos.recuperar_contenido"
-        ),
+        "puede_descargar_documentos": puede_descargar_documentos,
+        "ids_adjuntos_lector": ids_adjuntos_lector,
+        "puede_descargar_constancia_atp": puede_descargar_constancia_atp,
+        "mostrar_visor_documental": mostrar_visor_documental,
         "cambios_pago": (
             consultar_cambios_pago(actor, solicitud.pk) if pago_consulta else ()
         ),
@@ -1391,9 +1421,7 @@ def _solicitud_detail_context(
         "detalle_datos_transferencia_con_error": bool(
             detalle_datos_transferencia_con_error
         ),
-        "mostrar_seguimiento_factura": (
-            pago_consulta is not None and proyeccion_documental is not None
-        ),
+        "mostrar_seguimiento_factura": pago_consulta is not None and puede_ver_revision_documental,
         "factura_vigente": factura_vigente,
         "puede_incorporar_documentos": puede_incorporar_documentos,
         "respaldo_cerrado": respaldo_cerrado,

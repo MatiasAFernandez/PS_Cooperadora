@@ -72,6 +72,22 @@ vinculado a un cobro de facturación, muestra el medio o cuenta de destino, la
 operación, la fecha y el importe del registro asociado a esa versión. La
 integración de la navegación propia de gastos sigue bajo responsabilidad de Franco en #28.
 
+### Lectura de adjuntos de Gastos
+
+El perfil **Lectura global de gastos** (`demo_lectura`) combina
+`gastos.consultar_todas` y `gastos.consultar_adjuntos`. El visor y la descarga
+consultan `GET /documentos/<id>/archivo/`. El servidor limita esta capacidad
+a solicitudes visibles del circuito Gastos y a `FACTURA_PROVEEDOR`,
+`PRESUPUESTO_PROFORMA`, `TICKET_NO_FISCAL` y `CONSTANCIA_RETENCION_ATP`.
+Para el lector con esta capacidad, un adjunto fuera del alcance o inexistente
+recibe la denegación 403 de la descarga sin permiso general.
+
+La descarga general sigue autorizándose con `documentos.recuperar_contenido`.
+Los metadatos genéricos y la pantalla de revisión requieren
+`documentos.consultar_metadatos`. Cada escritura exige su capacidad y sus
+guardas propias. Los originales autorizados pueden contener datos impresos.
+La tarjeta de transferencia tiene una autorización independiente. [SPEC-013](../specs/013-franco-datos-operativos-transferencia.md)
+
 ## Concurrencia, reemplazo y atomicidad
 
 El formulario envía el ID de la última revisión vista, o cero si no existe.

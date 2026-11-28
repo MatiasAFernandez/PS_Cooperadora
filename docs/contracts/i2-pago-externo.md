@@ -66,9 +66,9 @@ de persistencia del pago externo y el consumidor web parcial en el módulo de ga
     el proveedor real disponible en la base; los dobles se reservan a las suites unitarias.
   - El registro del pago vincula comprobante bancario y constancia ATP como documentos
     del trámite. La pantalla y el detalle muestran nombre/tamaño y enlaces de descarga
-    sólo bajo las capacidades documentales correspondientes; el endpoint real
-    reautoriza `documentos.recuperar_contenido`. Gastos no almacena binarios en el
-    pago: conserva las FKs y la representación original de sus hashes.
+    según las capacidades documentales correspondientes. El endpoint reautoriza la
+    lectura del archivo. Gastos conserva las FKs al documento y la representación
+    original de sus hashes. [Permisos de lectura](revision-documental-i2.md#lectura-de-adjuntos-de-gastos)
 
 - **Identidad y Permisos ([Issue #21](../planning/i2-issues/02-identidad-facturacion.md) / [#28](../planning/i2-issues/09-integracion-circuitos.md) - adaptador de demo disponible; integración productiva y conjunta pendiente)**:
   - El adaptador de demo existente en `identidad.services.GROUP_CAPABILITIES` define
@@ -333,10 +333,10 @@ def consultar_pago_externo(
   pago y del evento (`id`, `solicitud_id`, `importe`, `moneda`, `fecha_pago`,
   `referencia_externa`, `fecha_registro`, `actor_id`, `version`, presencia de
   comprobante/constancia y pendiente ATP).
-- **Garantía de privacidad**: Omite deliberadamente la referencia documental. Los
-  identificadores, nombres y tamaños de los documentos sólo se completan con
-  `documentos.consultar_metadatos`; la descarga se autoriza por separado en
-  `documentos.recuperar_contenido`.
+- **Garantía de privacidad**. El identificador, nombre y tamaño del comprobante
+  bancario requieren `documentos.consultar_metadatos`. La constancia ATP admite
+  además la capacidad de lectura acotada sobre el documento visible. El DTO omite
+  la referencia documental del respaldo. [Permisos de lectura](revision-documental-i2.md#lectura-de-adjuntos-de-gastos)
 - **Comportamiento ante solicitudes ajenas o sin pago**: Retorna `None` de forma segura sin
   revelar existencia a terceros.
 

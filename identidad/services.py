@@ -13,7 +13,7 @@ GROUP_CAPABILITIES: dict[str, frozenset[str]] = {
     "demo_administracion": frozenset({"gestion.configurar"}),
     "demo_solicitante": frozenset({"gastos.presentar", "gastos.consultar_propias"}),
     "demo_operadora": frozenset({"gastos.consultar_todas", "gastos.decidir"}),
-    "demo_lectura": frozenset({"gastos.consultar_todas"}),
+    "demo_lectura": frozenset({"gastos.consultar_todas", "gastos.consultar_adjuntos"}),
     "demo_gastos_excepciones": frozenset({"gastos.gestionar_excepciones_deuda"}),
     "demo_gastos_pago": frozenset({"gastos.registrar_pago"}),
     "demo_gastos_cierre": frozenset({"gastos.cerrar"}),

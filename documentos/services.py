@@ -15,6 +15,7 @@ from identidad.services import Actor, has_capability
 
 from .acceso import (
     DocumentoNoVisible,
+    adjuntos_gastos_visibles,
     bloquear_facturacion_abierta,
     destino_visible,
     documentos_visibles,
@@ -204,6 +205,16 @@ def obtener(*, actor: Actor | None, documento_id: int, capacidad: str) -> Docume
     if documento is None:
         raise DocumentoNoVisible("Documento inexistente o no visible.")
     return documento
+
+
+def obtener_archivo(*, actor: Actor | None, documento_id: int) -> Documento:
+    """Autoriza la descarga general o la lectura acotada de adjuntos de Gastos."""
+    capacidad_general = "documentos.recuperar_contenido"
+    if not has_capability(actor, capacidad_general):
+        documento = adjuntos_gastos_visibles(actor).filter(pk=documento_id).first()
+        if documento is not None:
+            return documento
+    return obtener(actor=actor, documento_id=documento_id, capacidad=capacidad_general)
 
 
 def metadatos(documento: Documento) -> dict:

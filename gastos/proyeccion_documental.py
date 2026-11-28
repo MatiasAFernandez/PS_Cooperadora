@@ -11,7 +11,11 @@ from datetime import datetime
 from django.db.models import Exists, OuterRef, Prefetch
 
 from comunes.contracts import EventoHistorialDTO
-from documentos.acceso import documentos_visibles
+from documentos.acceso import (
+    adjuntos_gastos_visibles,
+    documentos_visibles,
+    puede_consultar_adjuntos_gastos,
+)
 from documentos.models import Documento, RevisionDocumento
 from gastos.auth import has_capability
 from gastos.models import CierreGasto, EstadoSolicitud, SolicitudGasto
@@ -130,29 +134,31 @@ def _ids_vinculados_pago(gasto_pk: int) -> set[int]:
 
 
 def proyectar_documentos(
-    actor: Actor | None, gasto: SolicitudGasto
+    actor: Actor | None, gasto: SolicitudGasto, *, incluir_lectura_gastos: bool = False
 ) -> ProyeccionDocumental | None:
-    """Proyecta versiones y hechos o devuelve None si falta la capacidad.
+    """Proyecta versiones con revisiones según la capacidad del actor.
 
-    La visibilidad del gasto y de cada documento se resuelve con las consultas
-    autorizadas existentes. Las versiones reemplazadas se conservan y cada una
-    mantiene sus propias revisiones; ninguna hereda el resultado de otra.
+    El detalle puede pedir la lectura acotada de adjuntos. En ese caso la
+    proyección contiene versiones visibles, sin hechos ni motivos de revisión.
     """
-    if not has_capability(actor, CAPACIDAD_CONSULTA_DOCUMENTAL):
+    puede_ver_metadatos = has_capability(actor, CAPACIDAD_CONSULTA_DOCUMENTAL)
+    if puede_ver_metadatos:
+        qs = documentos_visibles(actor)
+    elif incluir_lectura_gastos and puede_consultar_adjuntos_gastos(actor):
+        qs = adjuntos_gastos_visibles(actor)
+    else:
         return None
 
     ids_vinculados_pago = _ids_vinculados_pago(gasto.pk)
-
-    qs = documentos_visibles(actor).filter(solicitud_gasto_id=gasto.pk)
+    qs = qs.filter(solicitud_gasto_id=gasto.pk)
     if ids_vinculados_pago:
         qs = qs.exclude(pk__in=ids_vinculados_pago)
 
-    documentos = list(
-        qs
-        .annotate(
-            reemplazada=Exists(Documento.objects.filter(reemplaza=OuterRef("pk")))
-        )
-        .prefetch_related(
+    qs = qs.annotate(
+        reemplazada=Exists(Documento.objects.filter(reemplaza=OuterRef("pk")))
+    ).order_by("fecha_incorporacion", "pk")
+    if puede_ver_metadatos:
+        qs = qs.prefetch_related(
             Prefetch(
                 "revisiones",
                 queryset=RevisionDocumento.objects.select_related(
@@ -161,16 +167,11 @@ def proyectar_documentos(
                 to_attr="revisiones_proyectadas",
             )
         )
-        .order_by("fecha_incorporacion", "pk")
-    )
 
     versiones: list[VersionDocumentalProyectada] = []
     eventos: list[EventoHistorialDTO] = []
-    for documento in documentos:
-        revisiones = tuple(
-            _proyectar_revision(revision)
-            for revision in documento.revisiones_proyectadas
-        )
+    for documento in qs:
+        revisiones = documento.revisiones_proyectadas if puede_ver_metadatos else ()
         versiones.append(
             VersionDocumentalProyectada(
                 documento_id=documento.pk,
@@ -181,14 +182,12 @@ def proyectar_documentos(
                 actor_id=documento.autor_id,
                 fecha_incorporacion=documento.fecha_incorporacion,
                 vigente=not documento.reemplazada,
-                revisiones=revisiones,
+                revisiones=tuple(_proyectar_revision(revision) for revision in revisiones),
             )
         )
-        eventos.append(_evento_aporte(documento))
-        eventos.extend(
-            revision.como_historial()
-            for revision in documento.revisiones_proyectadas
-        )
+        if puede_ver_metadatos:
+            eventos.append(_evento_aporte(documento))
+            eventos.extend(revision.como_historial() for revision in revisiones)
 
     return ProyeccionDocumental(tuple(versiones), tuple(eventos))
 

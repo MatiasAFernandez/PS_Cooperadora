@@ -70,7 +70,9 @@ def test_cuentas_demo_resolucion_y_capacidades_reales(demo_accounts: Any) -> Non
     actor_l = resolve_actor(req_l)
     assert actor_l is not None
     assert actor_l.subject_id == accounts["demo_l"].pk
-    assert actor_l.capabilities == frozenset({"gastos.consultar_todas"})
+    assert actor_l.capabilities == frozenset(
+        {"gastos.consultar_todas", "gastos.consultar_adjuntos"}
+    )
     assert has_capability(actor_l, "gastos.consultar_todas") is True
     assert has_capability(actor_l, "gastos.decidir") is False
     assert has_capability(actor_l, "gastos.presentar") is False
