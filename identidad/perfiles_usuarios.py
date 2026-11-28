@@ -68,7 +68,7 @@ PERFILES_CATALOGO: tuple[PerfilCatalogo, ...] = (
     PerfilCatalogo(
         clave="lectura_gastos",
         nombre="Lectura global de gastos",
-        descripcion="Consulta global de gastos.",
+        descripcion="Consulta global de gastos y lectura de adjuntos autorizados.",
         grupo="demo_lectura",
     ),
     PerfilCatalogo(

@@ -101,7 +101,7 @@
                     {% if cierre_gasto.observacion %}
                         <p><strong>Observación:</strong> {{ cierre_gasto.observacion }}</p>
                     {% endif %}
-                    {% if puede_ver_documentos %}
+                    {% if puede_ver_revision_documental %}
                         <dl class="kv-list sd-kv">
                             <div>
                                 <dt>Factura definitiva respaldatoria</dt>
@@ -132,14 +132,14 @@
                     {% endif %}
                 {% else %}
                     {% if evaluacion_cierre.pendientes %}
-                        {% if puede_ver_documentos or tiene_permiso_cerrar %}
+                        {% if puede_ver_revision_documental or tiene_permiso_cerrar %}
                             <p class="sd-small">Requisitos pendientes para habilitar el cierre:</p>
                             <ul class="sd-list">
                                 {% for item in evaluacion_cierre.pendientes %}
                                 <li class="sd-row">
                                     <div class="sd-row-main">{{ item.mensaje }}</div>
                                     <div class="sd-row-actions">
-                                        {% if item.tipo_accion == "revision" and item.documento_id and detalle_puede_revisar %}
+                                        {% if item.tipo_accion == "revision" and item.documento_id and detalle_puede_revisar and puede_ver_revision_documental %}
                                             <a class="btn btn-secondary btn-row" href="{% url 'documentos:revision' item.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">Revisar</a>
                                         {% elif item.tipo_accion == "pago" and puede_registrar_pago and pago_provider_configurado and not pago_sin_respaldo_confirmado %}
                                             <a class="btn btn-secondary btn-row" href="{% url 'gastos:pagar' pk=solicitud.pk %}">Registrar pago</a>
@@ -232,16 +232,18 @@
                                 <div class="sd-row-main">
                                     <div class="sd-doc-title-line">
                                         <strong>{{ version.tipo_mostrado }}</strong> — {{ version.nombre }}
-                                        {% if not version.revision_actual %}
-                                            <span class="status-pill status-warning">Pendiente de revisión</span>
-                                        {% elif 'rechaz' in res %}
-                                            <span class="status-pill status-error">Rechazado</span>
-                                        {% elif 'observ' in res %}
-                                            <span class="status-pill status-warning">Observado</span>
-                                        {% elif 'acept' in res %}
-                                            <span class="status-pill status-success">Aceptado</span>
-                                        {% else %}
-                                            <span class="status-pill status-neutral">{{ version.revision_actual.resultado_mostrado }}</span>
+                                        {% if puede_ver_revision_documental %}
+                                            {% if not version.revision_actual %}
+                                                <span class="status-pill status-warning">Pendiente de revisión</span>
+                                            {% elif 'rechaz' in res %}
+                                                <span class="status-pill status-error">Rechazado</span>
+                                            {% elif 'observ' in res %}
+                                                <span class="status-pill status-warning">Observado</span>
+                                            {% elif 'acept' in res %}
+                                                <span class="status-pill status-success">Aceptado</span>
+                                            {% else %}
+                                                <span class="status-pill status-neutral">{{ version.revision_actual.resultado_mostrado }}</span>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                     {% if version.revision_actual %}
@@ -253,14 +255,16 @@
                                             <p class="sd-muted sd-small">Motivo: {{ version.revision_actual.motivo }}</p>
                                         {% endif %}
                                     {% endif %}
-                                    <p class="sd-muted sd-small font-tabular">Versión {{ version.version }} · Usuario #{{ version.actor_id }} · {{ version.fecha_incorporacion|date:"d/m/Y H:i" }}</p>
+                                    <p class="sd-muted sd-small font-tabular">Versión {{ version.version }}{% if puede_ver_revision_documental %} · Usuario #{{ version.actor_id }}{% endif %} · {{ version.fecha_incorporacion|date:"d/m/Y H:i" }}</p>
                                 </div>
                                 <div class="sd-row-actions">
-                                    {% if puede_descargar_documentos %}
+                                    {% if puede_descargar_documentos or version.documento_id in ids_adjuntos_lector %}
                                         {% url 'documentos:archivo' version.documento_id as url_doc %}
                                         {% include "comunes/visor_documento_acciones.html" with url=url_doc formatos="pdf-imagen" titulo=version.tipo_mostrado nombre=version.nombre ver_label="Ver archivo "|add:version.nombre descargar_label="Descargar "|add:version.nombre only %}
                                     {% endif %}
-                                    <a class="btn btn-secondary btn-row" href="{% url 'documentos:revision' version.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{% if not version.revision_actual and detalle_puede_revisar and not tiene_cierre %}Revisar{% else %}Ver revisión{% endif %}</a>
+                                    {% if puede_ver_revision_documental %}
+                                        <a class="btn btn-secondary btn-row" href="{% url 'documentos:revision' version.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{% if not version.revision_actual and detalle_puede_revisar and not tiene_cierre %}Revisar{% else %}Ver revisión{% endif %}</a>
+                                    {% endif %}
                                 </div>
                             </li>
                             {% endwith %}
@@ -333,7 +337,9 @@
                             {% else %}
                                 Estado: <strong>Pendiente de revisión</strong>
                             {% endif %}
-                            · <a href="{% url 'documentos:revision' factura_vigente.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">Ver revisión</a>
+                            {% if puede_ver_revision_documental %}
+                                · <a href="{% url 'documentos:revision' factura_vigente.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">Ver revisión</a>
+                            {% endif %}
                         </p>
                     {% else %}
                         <p class="sd-small">Estado: <strong>Factura definitiva no incorporada.</strong></p>
@@ -376,7 +382,11 @@
                     {% for version in versiones_documentales %}
                         {% if not version.vigente %}
                             <p class="sd-small sd-replaced-row">
-                                <a href="{% url 'documentos:revision' version.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{{ version.nombre }} · versión {{ version.version }}</a>
+                                {% if puede_ver_revision_documental %}
+                                    <a href="{% url 'documentos:revision' version.documento_id %}{% if request.GET.bandeja %}?bandeja={{ request.GET.bandeja|urlencode }}{% endif %}">{{ version.nombre }} · versión {{ version.version }}</a>
+                                {% else %}
+                                    {{ version.nombre }} · versión {{ version.version }}
+                                {% endif %}
                                 <span class="status-pill status-neutral">Reemplazada</span>
                             </p>
                         {% endif %}
@@ -421,10 +431,8 @@
                                 <strong>Comprobante bancario</strong>
                                 {% if pago_consulta.tiene_comprobante_bancario %}
                                     <p class="sd-muted sd-small sd-break">{% if pago_consulta.comprobante_bancario_nombre %}{{ pago_consulta.comprobante_bancario_nombre }}{% else %}Incorporado{% endif %}</p>
-                                    {% if not pago_consulta.comprobante_bancario_id or not puede_descargar_documentos %}
-                                        {% if pago_consulta.comprobante_bancario_id %}
-                                            <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
-                                        {% endif %}
+                                    {% if pago_consulta.comprobante_bancario_id and not puede_descargar_documentos %}
+                                        <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
                                     {% endif %}
                                 {% else %}
                                     <p class="sd-small sd-warn">Registro histórico sin comprobante bancario.</p>
@@ -440,10 +448,8 @@
                                 <strong>Constancia ATP</strong>
                                 {% if pago_consulta.tiene_constancia_atp %}
                                     <p class="sd-muted sd-small sd-break">{% if pago_consulta.constancia_atp_nombre %}{{ pago_consulta.constancia_atp_nombre }}{% else %}Incorporada{% endif %}</p>
-                                    {% if not pago_consulta.constancia_atp_id or not puede_descargar_documentos %}
-                                        {% if pago_consulta.constancia_atp_id %}
-                                            <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
-                                        {% endif %}
+                                    {% if pago_consulta.constancia_atp_id and not puede_descargar_constancia_atp %}
+                                        <p class="sd-muted sd-small">Descarga no disponible: falta permiso de descarga documental.</p>
                                     {% endif %}
                                 {% elif pago_consulta.constancia_atp_pendiente %}
                                     <p><span class="status-pill status-warning">Pendiente de aporte</span></p>
@@ -451,7 +457,7 @@
                                     <p class="sd-muted sd-small">No aplica según la retención registrada.</p>
                                 {% endif %}
                             </div>
-                            {% if pago_consulta.tiene_constancia_atp and pago_consulta.constancia_atp_id and puede_descargar_documentos %}
+                            {% if puede_descargar_constancia_atp %}
                                 {% url 'documentos:archivo' pago_consulta.constancia_atp_id as url_archivo %}
                                 {% include "comunes/visor_documento_acciones.html" with url=url_archivo formatos="pdf" titulo="Constancia ATP" nombre=pago_consulta.constancia_atp_nombre ver_label="Ver constancia ATP" descargar_label="Descargar constancia ATP" only %}
                             {% endif %}
@@ -685,10 +691,8 @@
         </aside>
     </div>
 
-    {% if puede_descargar_documentos %}
-        {% if detalle_versiones_actuales or pago_consulta and pago_consulta.tiene_comprobante_bancario and pago_consulta.comprobante_bancario_id or pago_consulta and pago_consulta.tiene_constancia_atp and pago_consulta.constancia_atp_id %}
-            {% include "comunes/visor_documento_dialogo.html" only %}
-        {% endif %}
+    {% if mostrar_visor_documental %}
+        {% include "comunes/visor_documento_dialogo.html" only %}
     {% endif %}
 </div>
 

@@ -14,6 +14,7 @@ from typing import Any
 
 from django.utils.formats import date_format
 
+from documentos.acceso import adjuntos_gastos_visibles
 from gastos.auth import has_capability
 from gastos.contracts import (
     DocumentVerificationError,
@@ -75,10 +76,10 @@ class PagoExternoConsulta:
     """Información de presentación de un pago externo para un gasto visible.
 
     Garantía de privacidad y separación documental:
-    NO incluye la referencia documental opaca ni metadatos del documento.
+    NO incluye la referencia documental opaca.
     Toma actor y fecha_hora del evento autoritativo asociado.
-    Los identificadores/nombres documentales sólo se completan cuando el actor
-    puede consultar metadatos; la presencia documental se informa como hecho.
+    Los datos de cada adjunto se completan según su autorización. La presencia
+    documental se informa como hecho.
     """
 
     id: int
@@ -1332,8 +1333,8 @@ def consultar_pago_externo(
     Garantías:
     - No escribe ni filtra la referencia documental opaca.
     - La presencia del comprobante/constancia se informa como hecho.
-    - El nombre, tamaño e identificador de cada documento sólo se completa con
-      ``documentos.consultar_metadatos``; la descarga real se autoriza aparte.
+    - Los datos del comprobante requieren ``documentos.consultar_metadatos``.
+      Los de la constancia ATP también admiten la lectura acotada de Gastos.
     """
     if actor is None:
         return None
@@ -1361,6 +1362,10 @@ def consultar_pago_externo(
 
     banco = pago.comprobante_bancario if pago.comprobante_bancario_id else None
     atp = pago.constancia_atp if pago.constancia_atp_id else None
+    puede_ver_constancia = atp is not None and (
+        puede_metadatos
+        or adjuntos_gastos_visibles(actor).filter(pk=atp.pk, solicitud_gasto=solicitud).exists()
+    )
 
     return PagoExternoConsulta(
         id=pago.pk,
@@ -1382,9 +1387,9 @@ def consultar_pago_externo(
         ),
         comprobante_bancario_tamano=(banco.tamano if banco and puede_metadatos else None),
         tiene_constancia_atp=atp is not None,
-        constancia_atp_id=atp.pk if atp and puede_metadatos else None,
-        constancia_atp_nombre=(atp.nombre_original if atp and puede_metadatos else ""),
-        constancia_atp_tamano=(atp.tamano if atp and puede_metadatos else None),
+        constancia_atp_id=atp.pk if puede_ver_constancia else None,
+        constancia_atp_nombre=atp.nombre_original if puede_ver_constancia else "",
+        constancia_atp_tamano=atp.tamano if puede_ver_constancia else None,
         constancia_atp_pendiente=pago.constancia_atp_pendiente,
         es_registro_legado=pago.comprobante_bancario_id is None,
     )

@@ -69,6 +69,13 @@ def destino_visible(actor: Actor | None, referencia: str) -> DestinoDocumental:
     return DestinoDocumental(ref, base, None)
 
 
+def puede_consultar_adjuntos_gastos(actor: Actor | None) -> bool:
+    """La lectura acotada de adjuntos exige además la consulta global de gastos."""
+    return has_capability(actor, "gastos.consultar_adjuntos") and has_capability(
+        actor, "gastos.consultar_todas"
+    )
+
+
 def documentos_visibles(actor: Actor | None):
     """Filtra también la coherencia del puente si cambia el gasto legado."""
     gastos = Q(
@@ -86,3 +93,18 @@ def documentos_visibles(actor: Actor | None):
             tramite_base__solicitante_actor_id=str(actor.subject_id),
         )
     return Documento.objects.filter(gastos | facturacion).select_related("tramite_base")
+
+
+def adjuntos_gastos_visibles(actor: Actor | None):
+    """Acota la visibilidad general a los tipos operativos del circuito de gastos."""
+    if not puede_consultar_adjuntos_gastos(actor):
+        return Documento.objects.none()
+    return documentos_visibles(actor).filter(
+        tramite_base__circuito=Circuito.GASTO,
+        tipo__in=(
+            Documento.Tipo.FACTURA_PROVEEDOR,
+            Documento.Tipo.PRESUPUESTO_PROFORMA,
+            Documento.Tipo.TICKET_NO_FISCAL,
+            Documento.Tipo.CONSTANCIA_RETENCION_ATP,
+        ),
+    )

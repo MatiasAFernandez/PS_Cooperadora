@@ -230,11 +230,13 @@ def test_pendiente_negativo_accesos_y_privacidad_de_otros_tramites(escenario_com
         reverse("gastos:detalle", kwargs={"pk": e.gasto.pk})
     )
     assert respuesta_lector.status_code == 200
-    assert respuesta_lector.context["puede_ver_documentos"] is False
-    assert respuesta_lector.context["versiones_documentales"] is None
+    assert respuesta_lector.context["puede_ver_documentos"] is True
+    assert respuesta_lector.context["puede_ver_revision_documental"] is False
     contenido_lector = respuesta_lector.content.decode()
-    assert "respaldo-observado.pdf" not in contenido_lector
-    assert "respaldo-pendiente.pdf" not in contenido_lector
+    assert "respaldo-observado.pdf" in contenido_lector
+    assert "respaldo-pendiente.pdf" in contenido_lector
+    assert reverse("documentos:archivo", args=[pendiente.pk]) in contenido_lector
+    assert reverse("documentos:revision", args=[pendiente.pk]) not in contenido_lector
     assert "OBSERVADO" not in contenido_lector
     assert "PENDIENTE" not in contenido_lector
     assert "No hay versiones documentales visibles" not in contenido_lector
@@ -389,13 +391,15 @@ def test_c01_omite_version_negativa_sin_mutar_pago_ni_ocultar_documento(
         reverse("gastos:detalle", kwargs={"pk": e.gasto.pk})
     )
     assert respuesta_lector.status_code == 200
-    assert respuesta_lector.context["puede_ver_documentos"] is False
-    assert respuesta_lector.context["versiones_documentales"] is None
+    assert respuesta_lector.context["puede_ver_documentos"] is True
+    assert respuesta_lector.context["puede_ver_revision_documental"] is False
     contenido_lector = respuesta_lector.content.decode()
     assert "OBSERVADO" not in contenido_lector
     assert "PENDIENTE" not in contenido_lector
-    assert "respaldo-pagado.pdf" not in contenido_lector
-    assert "respaldo-negativo.pdf" not in contenido_lector
+    assert "respaldo-pagado.pdf" in contenido_lector
+    assert "respaldo-negativo.pdf" in contenido_lector
+    assert reverse("documentos:archivo", args=[pagada.pk]) in contenido_lector
+    assert reverse("documentos:revision", args=[pagada.pk]) not in contenido_lector
     assert "Versiones y revisión documental" not in contenido_lector
     assert "La categoría del respaldo no surge" not in contenido_lector
     assert "No hay versiones documentales visibles" not in contenido_lector

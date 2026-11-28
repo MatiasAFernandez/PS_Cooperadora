@@ -28,6 +28,7 @@ from .services import (
     listar,
     metadatos,
     obtener,
+    obtener_archivo,
 )
 
 
@@ -85,10 +86,7 @@ def documento_detalle(request, documento_id: int):
 @require_http_methods(["GET"])
 def documento_archivo(request, documento_id: int):
     try:
-        documento = obtener(
-            actor=_actor(request), documento_id=documento_id,
-            capacidad="documentos.recuperar_contenido"
-        )
+        documento = obtener_archivo(actor=_actor(request), documento_id=documento_id)
     except DocumentoNoVisible as exc:
         raise Http404(str(exc)) from exc
     try:
